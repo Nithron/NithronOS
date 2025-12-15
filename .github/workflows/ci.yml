@@ -77,7 +77,7 @@ jobs:
       - name: Web typecheck + audit
         working-directory: web
         run: |
-          npm ci
+          npm install
           npm run typecheck
           npm audit --omit=dev --audit-level=high
       - name: Property test (TOTP window)
@@ -129,7 +129,7 @@ jobs:
       - name: Web install & build
         run: |
           cd web
-          npm ci
+          npm install
           npm run build
           cd -
 
@@ -173,7 +173,7 @@ jobs:
       - name: Web tests (if configured)
         run: |
           cd web
-          npm ci
+          npm install
           npm test -- --run || echo "no web tests configured"
           cd -
 
@@ -466,7 +466,7 @@ jobs:
             agent/nos-agent/go.sum
       - name: Install web deps
         working-directory: web
-        run: npm ci
+        run: npm install
       - name: Extract FE contract
         run: node web/scripts/extract-nos-contract.mjs
       - name: Dump backend routes
@@ -501,7 +501,7 @@ jobs:
         if: steps.check-tests.outputs.tests_exist == 'true'
         run: |
           cd tests/e2e/ui
-          npm ci
+          npm install
           npx playwright install --with-deps chromium
         continue-on-error: true
           
