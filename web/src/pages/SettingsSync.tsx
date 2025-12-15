@@ -33,7 +33,7 @@ import { Link } from 'react-router-dom';
 
 export default function SettingsSync() {
   const [shares, setShares] = useState<SyncShare[]>([]);
-  const [config, setConfig] = useState<SyncConfig | null>(null);
+  const [_config, setConfig] = useState<SyncConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -113,12 +113,12 @@ export default function SettingsSync() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link to="/settings/sync/devices">
+          <Link to="/settings/sync/devices">
+            <Button variant="outline">
               Manage Devices
               <ChevronRight className="h-4 w-4 ml-1" />
-            </Link>
-          </Button>
+            </Button>
+          </Link>
           <Button onClick={handleSave} disabled={saving}>
             {saving ? 'Saving...' : 'Save Changes'}
           </Button>
@@ -201,9 +201,9 @@ export default function SettingsSync() {
                   <p className="text-sm text-muted-foreground mb-4">
                     Create network shares to enable file synchronization
                   </p>
-                  <Button variant="outline" asChild>
-                    <Link to="/shares">Manage Shares</Link>
-                  </Button>
+                  <Link to="/shares">
+                    <Button variant="outline">Manage Shares</Button>
+                  </Link>
                 </div>
               ) : (
                 <div className="space-y-3">
