@@ -34,10 +34,10 @@ jobs:
           go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.3
           go install honnef.co/go/tools/cmd/staticcheck@latest
           go install golang.org/x/vuln/cmd/govulncheck@latest
-      - name: Tidy Go modules
+      - name: Tidy and download Go modules
         run: |
-          (cd backend/nosd && go mod tidy)
-          (cd agent/nos-agent && go mod tidy)
+          (cd backend/nosd && go mod tidy && go mod download)
+          (cd agent/nos-agent && go mod tidy && go mod download)
       - name: Go linters (backend)
         id: lint-backend
         working-directory: backend/nosd
