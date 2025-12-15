@@ -1,0 +1,23 @@
+[Unit]
+Description=NithronSync File Synchronization Service
+Documentation=https://github.com/Nithronverse/NithronOS
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/nithron-sync --daemon
+Restart=on-failure
+RestartSec=10
+Environment=HOME=%h
+Environment=XDG_RUNTIME_DIR=/run/user/%U
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/NithronSync %h/.config/NithronSync %h/.local/share/NithronSync
+
+[Install]
+WantedBy=default.target
+

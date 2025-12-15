@@ -220,11 +220,11 @@ Filters/jails under `deploy/fail2ban/`; see comments inside for enabling.
 - **UI/UX Improvements**: Fixed all major crashes, improved button styles, better navigation
 - **Remote & Monitoring**: Working remote backup system and monitoring dashboard
 
-### Pre-v1 / NithronSync ✅ (In Progress)
+### Pre-v1 / NithronSync ✅ (Complete)
 - [x] **Server Foundation**: Sync API endpoints, device token authentication, WebDAV access, delta sync algorithm
 - [x] **Web UI**: Device management, sync settings, QR code generation for mobile setup
-- [ ] **Desktop Clients**: Windows, Linux, macOS sync applications with system tray integration
-- [ ] **Mobile Apps**: iOS and Android apps with offline support and camera backup
+- [x] **Desktop Clients**: Windows, Linux, macOS sync applications with system tray integration
+- [ ] **Mobile Apps**: iOS and Android apps with offline support and camera backup (Phase 3)
 
 ### Post-v1 / Alpha
 - [ ] **A1 — Reliability & Telemetry (opt-in)**: Crash reports (symbolized), perf traces, health pings; redaction; one-click diagnostics.
