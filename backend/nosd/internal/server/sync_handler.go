@@ -184,9 +184,8 @@ func (h *SyncHandler) RegisterDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(response)
+	writeJSON(w, response)
 }
 
 // RefreshDeviceToken handles POST /sync/devices/refresh
@@ -209,8 +208,7 @@ func (h *SyncHandler) RefreshDeviceToken(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	writeJSON(w, response)
 }
 
 // ListDevices handles GET /sync/devices
@@ -218,8 +216,7 @@ func (h *SyncHandler) ListDevices(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("X-Device-User-ID")
 	devices := h.deviceMgr.ListDevices(userID)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	writeJSON(w, map[string]interface{}{
 		"devices": devices,
 		"count":   len(devices),
 	})
@@ -240,8 +237,7 @@ func (h *SyncHandler) GetDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(device)
+	writeJSON(w, device)
 }
 
 // RevokeDevice handles DELETE /sync/devices/{device_id}
@@ -282,8 +278,7 @@ func (h *SyncHandler) UpdateDevice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	device, _ := h.deviceMgr.GetDevice(deviceID, userID)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(device)
+	writeJSON(w, device)
 }
 
 // ListSyncShares handles GET /sync/shares
@@ -320,8 +315,7 @@ func (h *SyncHandler) ListSyncShares(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	writeJSON(w, map[string]interface{}{
 		"shares": syncShares,
 		"count":  len(syncShares),
 	})
@@ -341,8 +335,7 @@ func (h *SyncHandler) GetSyncConfig(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(config)
+	writeJSON(w, config)
 }
 
 // UpdateSyncConfig handles PUT /sync/config
@@ -361,8 +354,7 @@ func (h *SyncHandler) UpdateSyncConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(config)
+	writeJSON(w, config)
 }
 
 // GetChanges handles GET /sync/changes
@@ -397,8 +389,7 @@ func (h *SyncHandler) GetChanges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	writeJSON(w, response)
 }
 
 // GetFileMetadata handles GET /sync/files/{share_id}/metadata
@@ -427,8 +418,7 @@ func (h *SyncHandler) GetFileMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(meta)
+	writeJSON(w, meta)
 }
 
 // GetFilesMetadata handles POST /sync/files/{share_id}/metadata
@@ -455,8 +445,7 @@ func (h *SyncHandler) GetFilesMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	writeJSON(w, map[string]interface{}{
 		"files": files,
 	})
 }
@@ -491,8 +480,7 @@ func (h *SyncHandler) GetBlockHashes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.Path = req.Path // Return relative path
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	writeJSON(w, response)
 }
 
 // GetSyncState handles GET /sync/state/{share_id}
@@ -511,8 +499,7 @@ func (h *SyncHandler) GetSyncState(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(state)
+	writeJSON(w, state)
 }
 
 // UpdateSyncState handles PUT /sync/state/{share_id}
@@ -536,10 +523,9 @@ func (h *SyncHandler) UpdateSyncState(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Record sync for stats
-	h.deviceMgr.RecordSync(deviceID, state.TotalBytes)
+	_ = h.deviceMgr.RecordSync(deviceID, state.TotalBytes)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(state)
+	writeJSON(w, state)
 }
 
 // Stats returns sync handler statistics

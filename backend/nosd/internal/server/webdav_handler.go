@@ -222,7 +222,6 @@ func (h *WebDAVHandler) GetInfo() WebDAVInfo {
 // WrappedFile wraps os.File to implement webdav.File
 type WrappedFile struct {
 	*os.File
-	path string
 }
 
 // ContentType returns the content type of the file
