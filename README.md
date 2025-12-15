@@ -45,6 +45,7 @@ Local-first storage management (Btrfs/ZFS*), snapshots, shares, backups, and a m
 ## Why NithronOS?
 - **Local-first, privacy-first** — admin UI served on your LAN by default; remote access is opt-in.
 - **Btrfs-first** — snapshots, send/receive; optional ZFS via DKMS*.
+- **NithronSync** — OneDrive-like file sync across Windows, Linux, macOS, iOS, and Android devices.
 - **One-click apps** — Docker/Compose (Plex/Jellyfin, Nextcloud, Immich, etc.).
 - **Real safety features** — dry-run plans, pre-update snapshots, easy rollback.
 - **Clean UX** — React dashboard with real-time updates, clear health/status, sensible defaults.
@@ -53,10 +54,11 @@ Local-first storage management (Btrfs/ZFS*), snapshots, shares, backups, and a m
 ---
 
 ## Architecture
-- **`nosd`** (Go): REST API for disks, pools, snapshots, shares, jobs, and real-time health metrics.
+- **`nosd`** (Go): REST API for disks, pools, snapshots, shares, sync, jobs, and real-time health metrics.
 - **`nos-agent`** (Go, root): allow-listed helper for privileged actions.
 - **Web UI** (React + TypeScript): talks to `nosd` via OpenAPI client with React Query for live updates.
-- **Reverse proxy** (Caddy): serves UI and proxies API. Pre-alpha default is HTTP-only on LAN (no TLS) with security headers; backend bound to loopback. Browsers will show “Not secure” — acceptable for local preview.
+- **NithronSync**: Cross-platform file sync with device token authentication, delta sync, and WebDAV access.
+- **Reverse proxy** (Caddy): serves UI, proxies API, and provides WebDAV endpoints for sync clients.
 - **Jobs**: systemd timers for snapshots/prune & scheduled maintenance.
 - **Real-time monitoring**: gopsutil integration for live system metrics, health endpoints, and dashboard aggregation.
 
@@ -68,7 +70,8 @@ Pre-Alpha Recovery Checklist → [RECOVERY-CHECKLIST.md](RECOVERY-CHECKLIST.md)
 Storage pools (create/import/encrypt & device ops) → [docs/storage/pools.md](docs/storage/pools.md)  
 Storage health (SMART, scrub, schedules) → [docs/storage/health.md](docs/storage/health.md)  
 Health monitoring → [docs/monitoring.md](docs/monitoring.md) (real-time system and disk metrics)  
-Observability → [docs/dev/observability.md](docs/dev/observability.md) (scrape combined metrics via `/metrics/all`)
+Observability → [docs/dev/observability.md](docs/dev/observability.md) (scrape combined metrics via `/metrics/all`)  
+**NithronSync** → [docs/sync/overview.md](docs/sync/overview.md) (cross-platform file synchronization)
 
 ---
 
@@ -217,7 +220,13 @@ Filters/jails under `deploy/fail2ban/`; see comments inside for enabling.
 - **UI/UX Improvements**: Fixed all major crashes, improved button styles, better navigation
 - **Remote & Monitoring**: Working remote backup system and monitoring dashboard
 
-### Pos-v1 / Alpha
+### Pre-v1 / NithronSync ✅ (In Progress)
+- [x] **Server Foundation**: Sync API endpoints, device token authentication, WebDAV access, delta sync algorithm
+- [x] **Web UI**: Device management, sync settings, QR code generation for mobile setup
+- [ ] **Desktop Clients**: Windows, Linux, macOS sync applications with system tray integration
+- [ ] **Mobile Apps**: iOS and Android apps with offline support and camera backup
+
+### Post-v1 / Alpha
 - [ ] **A1 — Reliability & Telemetry (opt-in)**: Crash reports (symbolized), perf traces, health pings; redaction; one-click diagnostics.
 - [ ] **A2 — App Catalog v2 (Safety & Lifecycle)**: Per-app permissions, resource limits, atomic upgrades/rollbacks, health retries, hooks.
 - [ ] **A3 — Backup & Replication v2 (Cloud + Immutability)**: S3/Backblaze providers; seed/restore; snapshot locking/retention; verification; key mgmt.
@@ -227,7 +236,7 @@ Filters/jails under `deploy/fail2ban/`; see comments inside for enabling.
 - [ ] **A7 — Hardware, Power & UPS**: NUT integration; scheduled shutdown/wake; sensors/temps/fan; CPU governor controls.
 - [ ] **A8 — Observability & Alerts v2**: Prometheus exporter, ready-made Grafana dashboards; audit log shipping; more alert channels.
 - [ ] **A9 — Extensibility & SDK v2**: Signed app bundles; nosctl improvements; app lifecycle webhooks; review tools.
-- [ ] **A10 — Desktop Companion (Windows/macOS) stretch**: LAN discovery, share mapping, client backups to NithronOS, notifications.
+- [ ] **A10 — NithronSync v2**: Conflict resolution UI, shared folder collaboration, sync activity history, end-to-end encryption.
 
 > Each milestone ships release notes, migration notes, E2E suite green (HTTP/UI/backup/upgrade), and no data-loss regressions.
 
@@ -236,6 +245,9 @@ Filters/jails under `deploy/fail2ban/`; see comments inside for enabling.
 ## Docs
 
 ### User Guides
+- NithronSync overview → [docs/sync/overview.md](docs/sync/overview.md)
+- NithronSync client setup → [docs/sync/client-setup.md](docs/sync/client-setup.md)
+- NithronSync troubleshooting → [docs/sync/troubleshooting.md](docs/sync/troubleshooting.md)
 - Shares & Permissions → [docs/user/shares-permissions.md](docs/user/shares-permissions.md)
 
 ### Administration
@@ -244,6 +256,8 @@ Filters/jails under `deploy/fail2ban/`; see comments inside for enabling.
 - App implementation guide → [docs/apps/implementation.md](docs/apps/implementation.md)
 - App runtime architecture → [docs/apps/runtime.md](docs/apps/runtime.md)  
 - Backup system → [docs/backup.md](docs/backup.md)
+- NithronSync API reference → [docs/sync/api.md](docs/sync/api.md)
+- NithronSync security → [docs/sync/security.md](docs/sync/security.md)
 - Certificates & HTTPS configuration → [docs/admin/certificates.md](docs/admin/certificates.md)  
 - Configuration management → [docs/admin/config.md](docs/admin/config.md)
 - First boot experience → [docs/admin/first-boot.md](docs/admin/first-boot.md) / [docs/first-boot.md](docs/first-boot.md)

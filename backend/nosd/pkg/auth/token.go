@@ -20,6 +20,7 @@ type TokenType string
 const (
 	TokenTypePersonal TokenType = "personal"
 	TokenTypeService  TokenType = "service"
+	TokenTypeDevice   TokenType = "device" // Sync device tokens
 )
 
 // APIToken represents an API access token
@@ -74,6 +75,12 @@ const (
 	// Backup scopes
 	ScopeBackupsRead   TokenScope = "backups.read"
 	ScopeBackupsWrite  TokenScope = "backups.write"
+	
+	// Sync scopes (for NithronSync client devices)
+	ScopeSyncRead    TokenScope = "sync.read"    // Read files via sync API
+	ScopeSyncWrite   TokenScope = "sync.write"   // Write files via sync API
+	ScopeSyncDevices TokenScope = "sync.devices" // Manage sync devices
+	ScopeSyncAdmin   TokenScope = "sync.admin"   // Full sync administration
 	
 	// Admin scope (all permissions)
 	ScopeAdminAll      TokenScope = "admin.*"
@@ -184,6 +191,8 @@ func (tm *TokenManager) ValidateToken(tokenValue string, ip string) (*APIToken, 
 		tokenType = TokenTypePersonal
 	} else if strings.HasPrefix(tokenValue, "nos_st_") {
 		tokenType = TokenTypeService
+	} else if strings.HasPrefix(tokenValue, "nos_dt_") {
+		tokenType = TokenTypeDevice
 	} else {
 		return nil, fmt.Errorf("invalid token format")
 	}
@@ -345,6 +354,8 @@ func (tm *TokenManager) generateTokenValue(tokenType TokenType) string {
 		prefix = "nos_pt_"
 	case TokenTypeService:
 		prefix = "nos_st_"
+	case TokenTypeDevice:
+		prefix = "nos_dt_"
 	default:
 		prefix = "nos_"
 	}
@@ -367,6 +378,10 @@ func (tm *TokenManager) validateScopes(scopes []string) error {
 		string(ScopeAlertsWrite):   true,
 		string(ScopeBackupsRead):   true,
 		string(ScopeBackupsWrite):  true,
+		string(ScopeSyncRead):      true,
+		string(ScopeSyncWrite):     true,
+		string(ScopeSyncDevices):   true,
+		string(ScopeSyncAdmin):     true,
 		string(ScopeAdminAll):      true,
 	}
 	
@@ -533,6 +548,10 @@ func GetAllScopes() []string {
 		string(ScopeAlertsWrite),
 		string(ScopeBackupsRead),
 		string(ScopeBackupsWrite),
+		string(ScopeSyncRead),
+		string(ScopeSyncWrite),
+		string(ScopeSyncDevices),
+		string(ScopeSyncAdmin),
 		string(ScopeAdminAll),
 	}
 }

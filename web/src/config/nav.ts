@@ -10,6 +10,8 @@ import {
   Calendar,
   Activity,
   Heart,
+  Cloud,
+  Smartphone,
   LucideIcon,
 } from 'lucide-react'
 
@@ -45,6 +47,26 @@ export const navItems: NavItem[] = [
     label: 'Shares',
     icon: Share2,
     path: '/shares',
+  },
+  {
+    id: 'sync',
+    label: 'Sync',
+    icon: Cloud,
+    path: '/settings/sync',
+    children: [
+      {
+        id: 'sync-settings',
+        label: 'Settings',
+        icon: Settings,
+        path: '/settings/sync',
+      },
+      {
+        id: 'sync-devices',
+        label: 'Devices',
+        icon: Smartphone,
+        path: '/settings/sync/devices',
+      },
+    ],
   },
   {
     id: 'backup',

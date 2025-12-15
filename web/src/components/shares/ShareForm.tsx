@@ -12,7 +12,9 @@ import {
 	AlertCircle,
 	Info,
 	Shield,
-	X
+	X,
+	Cloud,
+	FolderSync,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -48,6 +50,11 @@ const shareFormSchema = z.object({
 		enabled: z.boolean(),
 		networks: z.array(z.string()).optional(),
 		read_only: z.boolean(),
+	}),
+	sync: z.object({
+		enabled: z.boolean(),
+		max_size_gb: z.number().optional(),
+		exclude_patterns: z.array(z.string()).optional(),
 	}),
 	owners: z.array(z.string()),
 	readers: z.array(z.string()),
@@ -95,6 +102,11 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 				networks: share?.nfs?.networks || ['192.168.0.0/16', '10.0.0.0/8'],
 				read_only: share?.nfs?.read_only || false,
 			},
+			sync: {
+				enabled: (share as any)?.sync?.enabled || false,
+				max_size_gb: (share as any)?.sync?.max_size_gb || 0,
+				exclude_patterns: (share as any)?.sync?.exclude_patterns || ['*.tmp', '*.bak', '.git'],
+			},
 			owners: share?.owners || [],
 			readers: share?.readers || [],
 		},
@@ -107,6 +119,8 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 	const watchNfsEnabled = watch('nfs.enabled')
 	const watchOwners = watch('owners')
 	const watchReaders = watch('readers')
+	const watchSyncEnabled = watch('sync.enabled')
+	const watchSyncExcludePatterns = watch('sync.exclude_patterns')
 
 	const pathPreview = watchName ? `/srv/shares/${watchName}` : '/srv/shares/<name>'
 
@@ -130,9 +144,10 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 	return (
 		<form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
 			<Tabs value={activeTab} onValueChange={setActiveTab}>
-				<TabsList className="grid w-full grid-cols-3">
+				<TabsList className="grid w-full grid-cols-4">
 					<TabsTrigger value="general">General</TabsTrigger>
 					<TabsTrigger value="protocols">Protocols</TabsTrigger>
+					<TabsTrigger value="sync">Sync</TabsTrigger>
 					<TabsTrigger value="permissions">Permissions</TabsTrigger>
 				</TabsList>
 
@@ -346,6 +361,103 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 							<Info className="h-4 w-4" />
 							<AlertDescription>
 								At least one protocol (SMB or NFS) must be enabled for the share to be accessible.
+							</AlertDescription>
+						</Alert>
+					)}
+				</TabsContent>
+
+				{/* Sync Configuration (NithronSync) */}
+				<TabsContent value="sync" className="space-y-6">
+					<Card className="p-6 space-y-6">
+						<div className="flex items-center justify-between">
+							<div className="flex items-center gap-3">
+								<Cloud className="h-5 w-5 text-blue-500" />
+								<div>
+									<h3 className="font-medium">NithronSync</h3>
+									<p className="text-sm text-muted-foreground">Enable file synchronization to devices</p>
+								</div>
+							</div>
+							<Switch
+								checked={watchSyncEnabled}
+								onCheckedChange={(checked: boolean) => setValue('sync.enabled', checked)}
+							/>
+						</div>
+
+						{watchSyncEnabled && (
+							<>
+								<Separator />
+								<div className="space-y-4">
+									<Alert>
+										<FolderSync className="h-4 w-4" />
+										<AlertDescription>
+											When enabled, this share will be available for sync on Windows, Linux, and mobile devices via the NithronSync client.
+										</AlertDescription>
+									</Alert>
+
+									<div className="space-y-2">
+										<Label htmlFor="max-size">Maximum Sync Size (GB)</Label>
+										<Input
+											id="max-size"
+											type="number"
+											{...register('sync.max_size_gb', { valueAsNumber: true })}
+											placeholder="0 = unlimited"
+											className="max-w-xs"
+										/>
+										<p className="text-sm text-muted-foreground">
+											Set to 0 for unlimited. This limits the total size that can be synced.
+										</p>
+									</div>
+
+									<div className="space-y-2">
+										<Label>Exclude Patterns</Label>
+										<p className="text-sm text-muted-foreground">
+											Files matching these patterns will not be synced
+										</p>
+										<div className="flex flex-wrap gap-2">
+											{watchSyncExcludePatterns?.map((pattern, index) => (
+												<Badge key={index} variant="secondary">
+													{pattern}
+													<button
+														type="button"
+														onClick={() => {
+															const patterns = watch('sync.exclude_patterns') || []
+															setValue('sync.exclude_patterns', patterns.filter((_, i) => i !== index))
+														}}
+														className="ml-1"
+													>
+														<X className="h-3 w-3" />
+													</button>
+												</Badge>
+											))}
+										</div>
+										<Input
+											placeholder="Add pattern (e.g., *.tmp, .git)"
+											onKeyDown={(e) => {
+												if (e.key === 'Enter') {
+													e.preventDefault()
+													const input = e.currentTarget
+													const value = input.value.trim()
+													if (value) {
+														const patterns = watch('sync.exclude_patterns') || []
+														setValue('sync.exclude_patterns', [...patterns, value])
+														input.value = ''
+													}
+												}
+											}}
+											className="max-w-xs"
+										/>
+									</div>
+								</div>
+							</>
+						)}
+					</Card>
+
+					{!watchSyncEnabled && (
+						<Alert>
+							<Info className="h-4 w-4" />
+							<AlertDescription>
+								Enable NithronSync to allow devices to synchronize files from this share.
+								This works alongside SMB/NFS access.
 							</AlertDescription>
 						</Alert>
 					)}

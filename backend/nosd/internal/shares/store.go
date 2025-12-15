@@ -15,6 +15,12 @@ type Share struct {
 	Name  string   `json:"name"`
 	RO    bool     `json:"ro"`
 	Users []string `json:"users"`
+	
+	// Sync-related fields for NithronSync
+	SyncEnabled     bool     `json:"sync_enabled"`
+	SyncMaxSize     int64    `json:"sync_max_size,omitempty"`     // Max sync size in bytes (0 = unlimited)
+	SyncExclude     []string `json:"sync_exclude,omitempty"`      // Glob patterns to exclude from sync
+	SyncAllowedUsers []string `json:"sync_allowed_users,omitempty"` // Users allowed to sync (empty = all share users)
 }
 
 type Store struct {

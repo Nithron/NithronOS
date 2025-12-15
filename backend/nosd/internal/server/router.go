@@ -30,6 +30,7 @@ import (
 	"nithronos/backend/nosd/internal/notifications"
 	"nithronos/backend/nosd/internal/pools"
 	"nithronos/backend/nosd/internal/ratelimit"
+	"nithronos/backend/nosd/internal/shares"
 	"nithronos/backend/nosd/internal/sessions"
 	"nithronos/backend/nosd/pkg/agentclient"
 	"nithronos/backend/nosd/pkg/auth"
@@ -1403,6 +1404,23 @@ func NewRouter(cfg config.Config) http.Handler {
 		// Backup endpoints
 		if backupHandler != nil {
 			pr.Mount("/api/v1/backup", backupHandler.Routes())
+		}
+
+		// Sync endpoints (for NithronSync clients)
+		syncSharesStorePath := filepath.Join(filepath.Dir(cfg.UsersPath), "shares.json")
+		syncSharesStore := shares.NewStore(syncSharesStorePath)
+		syncHandler, syncErr := NewSyncHandler(cfg, syncSharesStore, *Logger(cfg))
+		if syncErr != nil {
+			Logger(cfg).Error().Err(syncErr).Msg("Failed to create sync handler")
+		} else {
+			// Mount sync API routes
+			pr.Mount("/api/v1/sync", syncHandler.Routes())
+			
+			// Mount WebDAV endpoint for file access
+			webdavHandler := NewWebDAVHandler(syncSharesStore, syncHandler.DeviceManager(), *Logger(cfg))
+			r.Mount("/dav", webdavHandler)
+			
+			Logger(cfg).Info().Msg("NithronSync API initialized")
 		}
 
 		// Notification endpoints

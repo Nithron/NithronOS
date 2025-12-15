@@ -1,0 +1,360 @@
+/**
+ * NithronSync API Client
+ * Handles sync device management and file synchronization operations
+ */
+
+import http from '@/lib/nos-client';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export type DeviceType = 'windows' | 'linux' | 'macos' | 'android' | 'ios';
+
+export interface SyncDevice {
+  id: string;
+  device_name: string;
+  device_type: DeviceType;
+  os_version?: string;
+  client_version?: string;
+  created_at: string;
+  last_sync_at?: string;
+  last_seen_at?: string;
+  last_ip?: string;
+  sync_count: number;
+  bytes_synced: number;
+  is_revoked: boolean;
+}
+
+export interface DeviceRegisterRequest {
+  device_name: string;
+  device_type: DeviceType;
+  os_version?: string;
+  client_version?: string;
+}
+
+export interface DeviceRegisterResponse {
+  device_id: string;
+  device_token: string;
+  refresh_token: string;
+  expires_at: string;
+}
+
+export interface DeviceRefreshRequest {
+  refresh_token: string;
+}
+
+export interface DeviceRefreshResponse {
+  device_token: string;
+  refresh_token: string;
+  expires_at: string;
+}
+
+export interface SyncShare {
+  share_id: string;
+  share_name: string;
+  share_path: string;
+  sync_enabled: boolean;
+  total_size: number;
+  file_count: number;
+  max_sync_size?: number;
+  exclude_patterns?: string[];
+}
+
+export interface SyncConfig {
+  device_id: string;
+  sync_shares: string[];
+  selective_paths?: string[];
+  bandwidth_limit_kbps?: number;
+  pause_sync: boolean;
+  sync_on_mobile_data?: boolean;
+}
+
+export type FileChangeType = 'create' | 'modify' | 'delete' | 'rename';
+
+export interface FileChange {
+  path: string;
+  type: FileChangeType;
+  size?: number;
+  mtime?: string;
+  hash?: string;
+  old_path?: string;
+  is_dir?: boolean;
+}
+
+export interface ChangesResponse {
+  changes: FileChange[];
+  cursor: string;
+  has_more: boolean;
+}
+
+export interface FileMetadata {
+  path: string;
+  size?: number;
+  mtime?: string;
+  hash?: string;
+  is_dir?: boolean;
+  mode?: number;
+}
+
+export interface BlockHash {
+  offset: number;
+  size: number;
+  hash: string;
+  weak?: number;
+}
+
+export interface BlockHashResponse {
+  path: string;
+  size: number;
+  hash: string;
+  block_size: number;
+  blocks: BlockHash[];
+}
+
+export interface SyncState {
+  device_id: string;
+  share_id: string;
+  cursor: string;
+  last_sync: string;
+  total_files: number;
+  total_bytes: number;
+}
+
+export interface SyncStats {
+  total_devices: number;
+  token_cache_size: number;
+  max_devices_per_user: number;
+  device_token_ttl_sec: number;
+}
+
+// ============================================================================
+// API Functions
+// ============================================================================
+
+const BASE_PATH = '/v1/sync';
+
+/**
+ * Register a new sync device
+ * Note: This requires user session authentication, not device token
+ */
+export async function registerDevice(request: DeviceRegisterRequest): Promise<DeviceRegisterResponse> {
+  return http.post<DeviceRegisterResponse>(`${BASE_PATH}/devices/register`, request);
+}
+
+/**
+ * Refresh device tokens using a refresh token
+ */
+export async function refreshDeviceToken(request: DeviceRefreshRequest): Promise<DeviceRefreshResponse> {
+  return http.post<DeviceRefreshResponse>(`${BASE_PATH}/devices/refresh`, request);
+}
+
+/**
+ * List all sync devices for the current user
+ */
+export async function listDevices(): Promise<{ devices: SyncDevice[]; count: number }> {
+  return http.get<{ devices: SyncDevice[]; count: number }>(`${BASE_PATH}/devices`);
+}
+
+/**
+ * Get details for a specific device
+ */
+export async function getDevice(deviceId: string): Promise<SyncDevice> {
+  return http.get<SyncDevice>(`${BASE_PATH}/devices/${deviceId}`);
+}
+
+/**
+ * Revoke a device's access
+ */
+export async function revokeDevice(deviceId: string): Promise<void> {
+  return http.del<void>(`${BASE_PATH}/devices/${deviceId}`);
+}
+
+/**
+ * Update a device (e.g., rename)
+ */
+export async function updateDevice(deviceId: string, updates: { device_name?: string }): Promise<SyncDevice> {
+  return http.patch<SyncDevice>(`${BASE_PATH}/devices/${deviceId}`, updates);
+}
+
+/**
+ * List sync-enabled shares accessible to the current user/device
+ */
+export async function listSyncShares(): Promise<{ shares: SyncShare[]; count: number }> {
+  return http.get<{ shares: SyncShare[]; count: number }>(`${BASE_PATH}/shares`);
+}
+
+/**
+ * Get sync configuration for the current device
+ */
+export async function getSyncConfig(): Promise<SyncConfig> {
+  return http.get<SyncConfig>(`${BASE_PATH}/config`);
+}
+
+/**
+ * Update sync configuration
+ */
+export async function updateSyncConfig(config: Partial<SyncConfig>): Promise<SyncConfig> {
+  return http.put<SyncConfig>(`${BASE_PATH}/config`, config);
+}
+
+/**
+ * Get file changes since the given cursor
+ */
+export async function getChanges(
+  shareId: string,
+  cursor?: string,
+  limit?: number
+): Promise<ChangesResponse> {
+  const params: Record<string, string> = { share_id: shareId };
+  if (cursor) params.cursor = cursor;
+  if (limit) params.limit = limit.toString();
+  
+  return http.get<ChangesResponse>(`${BASE_PATH}/changes`, params);
+}
+
+/**
+ * Get metadata for a single file
+ */
+export async function getFileMetadata(shareId: string, path: string): Promise<FileMetadata> {
+  return http.get<FileMetadata>(`${BASE_PATH}/files/${shareId}/metadata`, { path });
+}
+
+/**
+ * Get metadata for multiple files
+ */
+export async function getFilesMetadata(shareId: string, paths: string[]): Promise<{ files: FileMetadata[] }> {
+  return http.post<{ files: FileMetadata[] }>(`${BASE_PATH}/files/${shareId}/metadata`, { paths });
+}
+
+/**
+ * Get block hashes for delta sync
+ */
+export async function getBlockHashes(
+  shareId: string,
+  path: string,
+  blockSize?: number
+): Promise<BlockHashResponse> {
+  return http.post<BlockHashResponse>(`${BASE_PATH}/files/${shareId}/hash`, {
+    path,
+    block_size: blockSize,
+  });
+}
+
+/**
+ * Get sync state for a share
+ */
+export async function getSyncState(shareId: string): Promise<SyncState> {
+  return http.get<SyncState>(`${BASE_PATH}/state/${shareId}`);
+}
+
+/**
+ * Update sync state for a share
+ */
+export async function updateSyncState(shareId: string, state: Partial<SyncState>): Promise<SyncState> {
+  return http.put<SyncState>(`${BASE_PATH}/state/${shareId}`, state);
+}
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Format device type for display
+ */
+export function formatDeviceType(type: DeviceType): string {
+  const labels: Record<DeviceType, string> = {
+    windows: 'Windows',
+    linux: 'Linux',
+    macos: 'macOS',
+    android: 'Android',
+    ios: 'iOS',
+  };
+  return labels[type] || type;
+}
+
+/**
+ * Get icon name for device type
+ */
+export function getDeviceIcon(type: DeviceType): string {
+  const icons: Record<DeviceType, string> = {
+    windows: 'monitor',
+    linux: 'terminal',
+    macos: 'laptop',
+    android: 'smartphone',
+    ios: 'smartphone',
+  };
+  return icons[type] || 'device-unknown';
+}
+
+/**
+ * Format bytes for display
+ */
+export function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+/**
+ * Format relative time
+ */
+export function formatRelativeTime(dateString: string | undefined): string {
+  if (!dateString) return 'Never';
+  
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+  
+  if (diffSec < 60) return 'Just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHour < 24) return `${diffHour}h ago`;
+  if (diffDay < 7) return `${diffDay}d ago`;
+  
+  return date.toLocaleDateString();
+}
+
+/**
+ * Check if a device is considered active (seen in last 24 hours)
+ */
+export function isDeviceActive(device: SyncDevice): boolean {
+  if (!device.last_seen_at) return false;
+  const lastSeen = new Date(device.last_seen_at);
+  const now = new Date();
+  const diffMs = now.getTime() - lastSeen.getTime();
+  const diffHours = diffMs / (1000 * 60 * 60);
+  return diffHours < 24;
+}
+
+/**
+ * Generate QR code data for mobile device registration
+ */
+export function generateDeviceQRData(serverUrl: string, setupToken: string): string {
+  return JSON.stringify({
+    type: 'nithronos-sync',
+    version: 1,
+    server: serverUrl,
+    token: setupToken,
+  });
+}
+
+// ============================================================================
+// React Query Keys (for cache management)
+// ============================================================================
+
+export const syncKeys = {
+  all: ['sync'] as const,
+  devices: () => [...syncKeys.all, 'devices'] as const,
+  device: (id: string) => [...syncKeys.devices(), id] as const,
+  shares: () => [...syncKeys.all, 'shares'] as const,
+  config: () => [...syncKeys.all, 'config'] as const,
+  changes: (shareId: string) => [...syncKeys.all, 'changes', shareId] as const,
+  state: (shareId: string) => [...syncKeys.all, 'state', shareId] as const,
+};
+

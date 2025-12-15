@@ -791,6 +791,511 @@ components:
           type: array
           items: { type: string }
       required: [roots]
+    
+    # Sync API Types
+    DeviceRegisterRequest:
+      type: object
+      properties:
+        device_name:
+          type: string
+          maxLength: 64
+        device_type:
+          type: string
+          enum: [windows, linux, macos, android, ios]
+        os_version:
+          type: string
+        client_version:
+          type: string
+      required: [device_name, device_type]
+    
+    DeviceRegisterResponse:
+      type: object
+      properties:
+        device_id:
+          type: string
+        device_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+      required: [device_id, device_token, refresh_token, expires_at]
+    
+    DeviceRefreshRequest:
+      type: object
+      properties:
+        refresh_token:
+          type: string
+      required: [refresh_token]
+    
+    DeviceRefreshResponse:
+      type: object
+      properties:
+        device_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+      required: [device_token, refresh_token, expires_at]
+    
+    SyncDevice:
+      type: object
+      properties:
+        id:
+          type: string
+        device_name:
+          type: string
+        device_type:
+          type: string
+          enum: [windows, linux, macos, android, ios]
+        os_version:
+          type: string
+        client_version:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_sync_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_ip:
+          type: string
+        sync_count:
+          type: integer
+        bytes_synced:
+          type: integer
+        is_revoked:
+          type: boolean
+      required: [id, device_name, device_type, created_at]
+    
+    SyncShare:
+      type: object
+      properties:
+        share_id:
+          type: string
+        share_name:
+          type: string
+        share_path:
+          type: string
+        sync_enabled:
+          type: boolean
+        total_size:
+          type: integer
+        file_count:
+          type: integer
+        max_sync_size:
+          type: integer
+        exclude_patterns:
+          type: array
+          items:
+            type: string
+      required: [share_id, share_name, sync_enabled]
+    
+    SyncConfig:
+      type: object
+      properties:
+        device_id:
+          type: string
+        sync_shares:
+          type: array
+          items:
+            type: string
+        selective_paths:
+          type: array
+          items:
+            type: string
+        bandwidth_limit_kbps:
+          type: integer
+        pause_sync:
+          type: boolean
+        sync_on_mobile_data:
+          type: boolean
+      required: [device_id]
+    
+    FileChange:
+      type: object
+      properties:
+        path:
+          type: string
+        type:
+          type: string
+          enum: [create, modify, delete, rename]
+        size:
+          type: integer
+        mtime:
+          type: string
+          format: date-time
+        hash:
+          type: string
+        old_path:
+          type: string
+        is_dir:
+          type: boolean
+      required: [path, type]
+    
+    ChangesResponse:
+      type: object
+      properties:
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileChange'
+        cursor:
+          type: string
+        has_more:
+          type: boolean
+      required: [changes, cursor, has_more]
+    
+    FileMetadata:
+      type: object
+      properties:
+        path:
+          type: string
+        size:
+          type: integer
+        mtime:
+          type: string
+          format: date-time
+        hash:
+          type: string
+        is_dir:
+          type: boolean
+        mode:
+          type: integer
+      required: [path]
+    
+    BlockHash:
+      type: object
+      properties:
+        offset:
+          type: integer
+        size:
+          type: integer
+        hash:
+          type: string
+        weak:
+          type: integer
+      required: [offset, size, hash]
+    
+    BlockHashResponse:
+      type: object
+      properties:
+        path:
+          type: string
+        size:
+          type: integer
+        hash:
+          type: string
+        block_size:
+          type: integer
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/BlockHash'
+      required: [path, size, hash, blocks]
 
+  # Sync API Paths
+paths:
+  /api/v1/sync/devices/register:
+    post:
+      summary: Register a new sync device
+      tags: [sync]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRegisterRequest'
+      responses:
+        '201':
+          description: Device registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceRegisterResponse'
+        '401':
+          description: Authentication required
+        '409':
+          description: Device limit reached
+  
+  /api/v1/sync/devices/refresh:
+    post:
+      summary: Refresh device tokens
+      tags: [sync]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRefreshRequest'
+      responses:
+        '200':
+          description: Tokens refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceRefreshResponse'
+        '401':
+          description: Invalid refresh token
+  
+  /api/v1/sync/devices:
+    get:
+      summary: List all sync devices for current user
+      tags: [sync]
+      security:
+        - deviceToken: []
+      responses:
+        '200':
+          description: List of devices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  devices:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SyncDevice'
+                  count:
+                    type: integer
+  
+  /api/v1/sync/devices/{device_id}:
+    get:
+      summary: Get device details
+      tags: [sync]
+      security:
+        - deviceToken: []
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Device details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncDevice'
+        '404':
+          description: Device not found
+    delete:
+      summary: Revoke device access
+      tags: [sync]
+      security:
+        - deviceToken: []
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Device revoked
+        '404':
+          description: Device not found
+  
+  /api/v1/sync/shares:
+    get:
+      summary: List sync-enabled shares
+      tags: [sync]
+      security:
+        - deviceToken: []
+      responses:
+        '200':
+          description: List of sync shares
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  shares:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SyncShare'
+                  count:
+                    type: integer
+  
+  /api/v1/sync/config:
+    get:
+      summary: Get sync configuration for device
+      tags: [sync]
+      security:
+        - deviceToken: []
+      responses:
+        '200':
+          description: Sync configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncConfig'
+    put:
+      summary: Update sync configuration
+      tags: [sync]
+      security:
+        - deviceToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncConfig'
+      responses:
+        '200':
+          description: Configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncConfig'
+  
+  /api/v1/sync/changes:
+    get:
+      summary: Get file changes since cursor
+      tags: [sync]
+      security:
+        - deviceToken: []
+      parameters:
+        - name: share_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 1000
+            maximum: 1000
+      responses:
+        '200':
+          description: List of changes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangesResponse'
+        '404':
+          description: Share not found
+  
+  /api/v1/sync/files/{share_id}/metadata:
+    get:
+      summary: Get file metadata
+      tags: [sync]
+      security:
+        - deviceToken: []
+      parameters:
+        - name: share_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileMetadata'
+        '404':
+          description: File or share not found
+    post:
+      summary: Get metadata for multiple files
+      tags: [sync]
+      security:
+        - deviceToken: []
+      parameters:
+        - name: share_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paths:
+                  type: array
+                  items:
+                    type: string
+              required: [paths]
+      responses:
+        '200':
+          description: File metadata list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FileMetadata'
+  
+  /api/v1/sync/files/{share_id}/hash:
+    post:
+      summary: Get block hashes for delta sync
+      tags: [sync]
+      security:
+        - deviceToken: []
+      parameters:
+        - name: share_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+                block_size:
+                  type: integer
+                  default: 4194304
+              required: [path]
+      responses:
+        '200':
+          description: Block hashes for file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlockHashResponse'
+        '404':
+          description: File or share not found
 
+securitySchemes:
+  bearerAuth:
+    type: http
+    scheme: bearer
+    bearerFormat: JWT
+  deviceToken:
+    type: http
+    scheme: bearer
+    description: Device token (nos_dt_...)
 

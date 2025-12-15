@@ -38,6 +38,23 @@
 		}
 	}
 	
+	# WebDAV endpoint for NithronSync file access
+	handle /dav/* {
+		reverse_proxy 127.0.0.1:9000 {
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			
+			# Longer timeouts for file transfers
+			transport http {
+				dial_timeout 30s
+				response_header_timeout 600s
+				read_timeout 600s
+				write_timeout 600s
+			}
+		}
+	}
+	
 	# WebSocket support for real-time features
 	@websocket {
 		header Connection *Upgrade*

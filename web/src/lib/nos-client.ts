@@ -69,7 +69,9 @@ const ALLOWED_PATH_PREFIXES = [
   '/firewall',
   '/smb',
   '/health',
-  '/storage'
+  '/storage',
+  '/sync',
+  '/dav',
 ];
 
 function assertValidPath(path: string) {

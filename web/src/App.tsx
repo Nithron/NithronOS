@@ -18,6 +18,8 @@ import { TwoFactorSettings } from './pages/TwoFactorSettings'
 import { PoolsCreate } from './pages/PoolsCreate'
 import { PoolDetails } from './pages/PoolDetails'
 import Updates from './pages/Updates'
+import SettingsSync from './pages/SettingsSync'
+import SyncDevices from './pages/SyncDevices'
 import Setup from './pages/Setup'
 import Snapshots from './pages/Snapshots'
 import BackupSchedules from './pages/BackupSchedules'
@@ -159,6 +161,8 @@ const router = createBrowserRouter([
           { path: 'monitor', element: <MonitoringDashboard /> },
           { path: 'settings/network/wizard', element: <RemoteAccessWizard /> },
           { path: 'settings/2fa', element: <TwoFactorSettings /> },
+          { path: 'settings/sync', element: <SettingsSync /> },
+          { path: 'settings/sync/devices', element: <SyncDevices /> },
           { path: 'remote', element: <Remote /> },
           { path: 'storage/create', element: <PoolsCreate /> },
           { path: 'storage/:id', element: <PoolDetails /> },
