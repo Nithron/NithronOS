@@ -552,10 +552,3 @@ func (h *SyncHandler) DeviceManager() *nosync.DeviceManager {
 	return h.deviceMgr
 }
 
-// parseInt is a helper to parse integers
-func parseInt(s string) (int, error) {
-	var i int
-	_, err := json.Unmarshal([]byte(s), &i)
-	return i, err
-}
-
