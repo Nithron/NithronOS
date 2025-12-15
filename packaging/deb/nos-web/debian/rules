@@ -4,7 +4,7 @@
 	dh $@
 
 override_dh_auto_build:
-	cd ../../../web && npm ci && npm run build
+	cd ../../../web && npm install && npm run build
 
 override_dh_auto_install:
 	install -d debian/nos-web/usr/share/nithronos/web
