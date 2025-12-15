@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23.x'
+          go-version: '1.24.x'
           check-latest: true
           cache: true
           cache-dependency-path: |
@@ -96,7 +96,7 @@ jobs:
       - name: Set up Go (with cache for both modules)
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23.x'
+          go-version: '1.24.x'
           check-latest: true
           cache: true
           cache-dependency-path: |
@@ -112,8 +112,8 @@ jobs:
 
       - name: Normalize go.mod and tidy
         run: |
-          sed -i 's/^go 1\.23\.0$/go 1.23/' backend/nosd/go.mod || true
-          sed -i 's/^go 1\.23\.0$/go 1.23/' agent/nos-agent/go.mod || true
+          sed -i 's/^go 1\.24\.0$/go 1.24/' backend/nosd/go.mod || true
+          sed -i 's/^go 1\.24\.0$/go 1.24/' agent/nos-agent/go.mod || true
           (cd backend/nosd && go mod tidy)
           (cd agent/nos-agent && go mod tidy)
 
@@ -147,7 +147,7 @@ jobs:
       - name: Set up Go (with cache for both modules)
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23.x'
+          go-version: '1.24.x'
           check-latest: true
           cache: true
           cache-dependency-path: |
@@ -209,7 +209,7 @@ jobs:
       - name: Set up Go (with cache for both modules)
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23.x'
+          go-version: '1.24.x'
           check-latest: true
           cache: true
           cache-dependency-path: |
@@ -455,7 +455,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23.x'
+          go-version: '1.24.x'
           cache: true
           cache-dependency-path: |
             backend/nosd/go.sum

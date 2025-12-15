@@ -1,6 +1,6 @@
 module nithronos/cmd/nosctl
 
-go 1.25.0
+go 1.24
 
 require (
 	github.com/fsnotify/fsnotify v1.8.0 // indirect

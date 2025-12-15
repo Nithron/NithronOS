@@ -1,6 +1,6 @@
 module nithronos/backend/nosd
 
-go 1.23.0
+go 1.24
 
 require (
 	github.com/go-chi/chi/v5 v5.2.2
