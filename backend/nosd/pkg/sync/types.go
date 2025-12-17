@@ -189,25 +189,7 @@ type FileState struct {
 	Version  int64     `json:"version"`
 }
 
-// ConflictResolution defines how conflicts should be resolved
-type ConflictResolution string
-
-const (
-	ConflictKeepBoth   ConflictResolution = "keep_both"
-	ConflictKeepServer ConflictResolution = "keep_server"
-	ConflictKeepClient ConflictResolution = "keep_client"
-	ConflictNewerWins  ConflictResolution = "newer_wins"
-)
-
-// SyncConflict represents a sync conflict
-type SyncConflict struct {
-	Path           string             `json:"path"`
-	ServerVersion  FileMetadata       `json:"server_version"`
-	ClientVersion  FileMetadata       `json:"client_version"`
-	DetectedAt     time.Time          `json:"detected_at"`
-	Resolution     ConflictResolution `json:"resolution,omitempty"`
-	ResolvedAt     *time.Time         `json:"resolved_at,omitempty"`
-}
+// Note: ConflictResolution and SyncConflict are defined in conflict.go
 
 // DeviceRegisterRequest is the request to register a new device
 type DeviceRegisterRequest struct {

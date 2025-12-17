@@ -492,11 +492,8 @@ func (m *SmartSyncManager) processHydrationQueue() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			m.processNextHydration()
-		}
+	for range ticker.C {
+		m.processNextHydration()
 	}
 }
 
@@ -561,11 +558,8 @@ func (m *SmartSyncManager) dehydrationLoop() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			m.performDehydration()
-		}
+	for range ticker.C {
+		m.performDehydration()
 	}
 }
 

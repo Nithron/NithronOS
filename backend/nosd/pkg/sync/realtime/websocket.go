@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -658,7 +657,6 @@ func generateUserColor(userID string) string {
 type ConnectionManager struct {
 	handler *WebSocketHandler
 	hub     *Hub
-	mu      sync.RWMutex
 }
 
 // NewConnectionManager creates a new connection manager

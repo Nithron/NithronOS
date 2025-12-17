@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/internal/httpx"
+	"nithronos/backend/nosd/pkg/httpx"
 	"nithronos/backend/nosd/pkg/sync/crypto"
 )
 
@@ -47,7 +47,7 @@ type EncryptionSettings struct {
 
 // NewEncryptionHandler creates a new encryption handler
 func NewEncryptionHandler(cfg config.Config, logger zerolog.Logger) (*EncryptionHandler, error) {
-	dataDir := filepath.Join(cfg.DataDir, "sync", "encryption")
+	dataDir := filepath.Join(cfg.AppsDataDir, "..", "sync", "encryption")
 	keyMgr, err := crypto.NewKeyManager(dataDir)
 	if err != nil {
 		return nil, err

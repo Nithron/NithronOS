@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/internal/httpx"
+	"nithronos/backend/nosd/pkg/httpx"
 	"nithronos/backend/nosd/pkg/sync/offline"
 )
 
@@ -22,7 +22,7 @@ type OfflineHandler struct {
 
 // NewOfflineHandler creates a new offline handler
 func NewOfflineHandler(cfg config.Config, logger zerolog.Logger) (*OfflineHandler, error) {
-	dataDir := filepath.Join(cfg.DataDir, "sync", "offline")
+	dataDir := filepath.Join(cfg.AppsDataDir, "..", "sync", "offline")
 	manager, err := offline.NewOfflineManager(dataDir, logger)
 	if err != nil {
 		return nil, err

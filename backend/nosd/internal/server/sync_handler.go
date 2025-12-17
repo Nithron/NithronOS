@@ -674,8 +674,8 @@ func (h *SyncHandler) ListActivity(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shareID := r.URL.Query().Get("share_id")
-	page := parseInt(r.URL.Query().Get("page"), 1)
-	pageSize := parseInt(r.URL.Query().Get("page_size"), 50)
+	page := parseIntWithDefault(r.URL.Query().Get("page"), 1)
+	pageSize := parseIntWithDefault(r.URL.Query().Get("page_size"), 50)
 
 	result := h.activityStore.ListActivities(deviceID, shareID, page, pageSize)
 	writeJSON(w, result)
@@ -689,7 +689,7 @@ func (h *SyncHandler) GetRecentActivity(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	limit := parseInt(r.URL.Query().Get("limit"), 20)
+	limit := parseIntWithDefault(r.URL.Query().Get("limit"), 20)
 	activities := h.activityStore.GetRecentActivities(deviceID, limit)
 	writeJSON(w, activities)
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/internal/httpx"
+	"nithronos/backend/nosd/pkg/httpx"
 	"nithronos/backend/nosd/pkg/sync/smartsync"
 )
 
@@ -23,7 +23,7 @@ type SmartSyncHandler struct {
 
 // NewSmartSyncHandler creates a new smart sync handler
 func NewSmartSyncHandler(cfg config.Config, logger zerolog.Logger) (*SmartSyncHandler, error) {
-	dataDir := filepath.Join(cfg.DataDir, "sync", "smartsync")
+	dataDir := filepath.Join(cfg.AppsDataDir, "..", "sync", "smartsync")
 	manager, err := smartsync.NewSmartSyncManager(dataDir, logger)
 	if err != nil {
 		return nil, err
