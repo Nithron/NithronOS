@@ -26,25 +26,25 @@ type DeviceToken struct {
 	DeviceType    DeviceType `json:"device_type"`
 	OSVersion     string     `json:"os_version,omitempty"`
 	ClientVersion string     `json:"client_version,omitempty"`
-	
+
 	// Token hashes (never exposed)
 	TokenHash   string `json:"-"`
 	RefreshHash string `json:"-"`
-	
+
 	// Timestamps
-	CreatedAt   time.Time  `json:"created_at"`
-	LastSyncAt  *time.Time `json:"last_sync_at,omitempty"`
-	LastSeenAt  *time.Time `json:"last_seen_at,omitempty"`
-	RevokedAt   *time.Time `json:"revoked_at,omitempty"`
-	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
-	
+	CreatedAt  time.Time  `json:"created_at"`
+	LastSyncAt *time.Time `json:"last_sync_at,omitempty"`
+	LastSeenAt *time.Time `json:"last_seen_at,omitempty"`
+	RevokedAt  *time.Time `json:"revoked_at,omitempty"`
+	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
+
 	// Connection info
-	LastIP     string `json:"last_ip,omitempty"`
+	LastIP        string `json:"last_ip,omitempty"`
 	LastUserAgent string `json:"last_user_agent,omitempty"`
-	
+
 	// Scopes granted to this device
 	Scopes []string `json:"scopes"`
-	
+
 	// Statistics
 	SyncCount   int64 `json:"sync_count"`
 	BytesSynced int64 `json:"bytes_synced"`
@@ -92,19 +92,19 @@ type SyncShare struct {
 	SyncEnabled     bool     `json:"sync_enabled"`
 	TotalSize       int64    `json:"total_size"`
 	FileCount       int64    `json:"file_count"`
-	MaxSyncSize     int64    `json:"max_sync_size,omitempty"`     // 0 = unlimited
+	MaxSyncSize     int64    `json:"max_sync_size,omitempty"`    // 0 = unlimited
 	ExcludePatterns []string `json:"exclude_patterns,omitempty"` // e.g., ["*.tmp", ".git"]
 	AllowedUsers    []string `json:"allowed_users,omitempty"`    // Empty = all share users
 }
 
 // SyncConfig represents device-specific sync configuration
 type SyncConfig struct {
-	DeviceID          string   `json:"device_id"`
-	SyncShares        []string `json:"sync_shares"`         // Share IDs to sync
-	SelectivePaths    []string `json:"selective_paths"`     // Specific paths within shares
-	BandwidthLimitKBps int     `json:"bandwidth_limit_kbps"` // 0 = unlimited
-	PauseSync         bool     `json:"pause_sync"`
-	SyncOnMobileData  bool     `json:"sync_on_mobile_data"`
+	DeviceID           string   `json:"device_id"`
+	SyncShares         []string `json:"sync_shares"`          // Share IDs to sync
+	SelectivePaths     []string `json:"selective_paths"`      // Specific paths within shares
+	BandwidthLimitKBps int      `json:"bandwidth_limit_kbps"` // 0 = unlimited
+	PauseSync          bool     `json:"pause_sync"`
+	SyncOnMobileData   bool     `json:"sync_on_mobile_data"`
 }
 
 // FileChangeType represents the type of file change
@@ -119,13 +119,13 @@ const (
 
 // FileChange represents a change to a file
 type FileChange struct {
-	Path     string         `json:"path"`
-	Type     FileChangeType `json:"type"`
-	Size     int64          `json:"size"`
-	MTime    time.Time      `json:"mtime"`
-	Hash     string         `json:"hash,omitempty"` // SHA-256
-	OldPath  string         `json:"old_path,omitempty"` // For renames
-	IsDir    bool           `json:"is_dir"`
+	Path    string         `json:"path"`
+	Type    FileChangeType `json:"type"`
+	Size    int64          `json:"size"`
+	MTime   time.Time      `json:"mtime"`
+	Hash    string         `json:"hash,omitempty"`     // SHA-256
+	OldPath string         `json:"old_path,omitempty"` // For renames
+	IsDir   bool           `json:"is_dir"`
 }
 
 // ChangesResponse is the response for the changes endpoint
@@ -137,12 +137,12 @@ type ChangesResponse struct {
 
 // FileMetadata represents metadata about a file
 type FileMetadata struct {
-	Path     string    `json:"path"`
-	Size     int64     `json:"size"`
-	MTime    time.Time `json:"mtime"`
-	Hash     string    `json:"hash"` // SHA-256
-	IsDir    bool      `json:"is_dir"`
-	Mode     uint32    `json:"mode,omitempty"`
+	Path  string    `json:"path"`
+	Size  int64     `json:"size"`
+	MTime time.Time `json:"mtime"`
+	Hash  string    `json:"hash"` // SHA-256
+	IsDir bool      `json:"is_dir"`
+	Mode  uint32    `json:"mode,omitempty"`
 }
 
 // BlockHash represents a hash of a file block for delta sync
@@ -202,8 +202,8 @@ type DeviceRegisterRequest struct {
 // DeviceRegisterResponse is the response after registering a device
 type DeviceRegisterResponse struct {
 	DeviceID     string    `json:"device_id"`
-	DeviceToken  string    `json:"device_token"`   // nos_dt_...
-	RefreshToken string    `json:"refresh_token"`  // nos_rt_...
+	DeviceToken  string    `json:"device_token"`  // nos_dt_...
+	RefreshToken string    `json:"refresh_token"` // nos_rt_...
 	ExpiresAt    time.Time `json:"expires_at"`
 }
 
@@ -257,4 +257,3 @@ const MaxFileSize = 50 * 1024 * 1024 * 1024
 
 // MaxChangesPerRequest is the maximum number of changes per request
 const MaxChangesPerRequest = 1000
-
