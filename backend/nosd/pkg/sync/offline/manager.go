@@ -243,7 +243,7 @@ func (m *OfflineManager) SetLocalState(state *LocalFileState) {
 	m.localStateMu.Lock()
 	defer m.localStateMu.Unlock()
 	m.localState[state.ShareID+":"+state.Path] = state
-	m.saveLocalState()
+	_ = m.saveLocalState()
 }
 
 // MarkAsSynced marks a file as synced
@@ -258,7 +258,7 @@ func (m *OfflineManager) MarkAsSynced(shareID, path string, remoteVersion int64,
 		state.RemoteVersion = remoteVersion
 		state.RemoteHash = remoteHash
 	}
-	m.saveLocalState()
+	_ = m.saveLocalState()
 }
 
 // GetPendingChanges returns files with pending local changes

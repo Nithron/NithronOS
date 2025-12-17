@@ -1005,7 +1005,7 @@ func (h *SyncHandler) AcceptInvite(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Username string `json:"username"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+	_ = json.NewDecoder(r.Body).Decode(&req)
 
 	if err := h.collaborationStore.AcceptInvite(inviteID, userID, req.Username); err != nil {
 		httpx.WriteTypedError(w, http.StatusBadRequest, "invite.accept_failed", err.Error(), 0)

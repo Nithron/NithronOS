@@ -430,7 +430,7 @@ func (m *SmartSyncManager) CompleteHydration(shareID, path string, err error) {
 		m.onHydrationComplete(placeholder, err)
 	}
 
-	m.save()
+	_ = m.save()
 }
 
 // RecordAccess records file access time
@@ -640,7 +640,7 @@ func (m *SmartSyncManager) performDehydration() {
 	}
 
 	if freedSpace > 0 {
-		m.save()
+		_ = m.save()
 		m.logger.Info().
 			Int64("freed_bytes", freedSpace).
 			Int64("total_local", m.totalLocalSize).

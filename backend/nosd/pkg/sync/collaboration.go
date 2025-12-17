@@ -346,7 +346,7 @@ func (s *CollaborationStore) AcceptInvite(inviteID, userID, username string) err
 
 	if time.Now().After(invite.ExpiresAt) {
 		invite.Status = InviteExpired
-		s.save()
+		_ = s.save()
 		return os.ErrInvalid
 	}
 

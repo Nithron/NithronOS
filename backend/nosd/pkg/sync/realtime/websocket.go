@@ -105,10 +105,9 @@ func (h *WebSocketHandler) readPump(client *Client, conn *websocket.Conn) {
 	}()
 
 	conn.SetReadLimit(maxMessageSize)
-	conn.SetReadDeadline(time.Now().Add(pongWait))
+	_ = conn.SetReadDeadline(time.Now().Add(pongWait))
 	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(pongWait))
-		return nil
+		return conn.SetReadDeadline(time.Now().Add(pongWait))
 	})
 
 	for {
@@ -143,10 +142,10 @@ func (h *WebSocketHandler) writePump(client *Client, conn *websocket.Conn) {
 	for {
 		select {
 		case message, ok := <-client.Send:
-			conn.SetWriteDeadline(time.Now().Add(writeWait))
+			_ = conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// Hub closed the channel
-				conn.WriteMessage(websocket.CloseMessage, []byte{})
+				_ = conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
@@ -161,15 +160,15 @@ func (h *WebSocketHandler) writePump(client *Client, conn *websocket.Conn) {
 				continue
 			}
 
-			w.Write(msgBytes)
+			_, _ = w.Write(msgBytes)
 
 			// Write queued messages in the same frame if available
 			n := len(client.Send)
 			for i := 0; i < n; i++ {
-				w.Write([]byte{'\n'})
+				_, _ = w.Write([]byte{'\n'})
 				msg := <-client.Send
 				msgBytes, _ := json.Marshal(msg)
-				w.Write(msgBytes)
+				_, _ = w.Write(msgBytes)
 			}
 
 			if err := w.Close(); err != nil {
@@ -177,7 +176,7 @@ func (h *WebSocketHandler) writePump(client *Client, conn *websocket.Conn) {
 			}
 
 		case <-ticker.C:
-			conn.SetWriteDeadline(time.Now().Add(writeWait))
+			_ = conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}

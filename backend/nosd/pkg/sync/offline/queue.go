@@ -205,7 +205,7 @@ func (q *OperationQueue) Dequeue() *QueuedOperation {
 	op.LastAttempt = &now
 	op.AttemptCount++
 
-	q.save()
+	_ = q.save()
 	return op
 }
 
@@ -235,7 +235,7 @@ func (q *OperationQueue) UpdateStatus(id string, status OperationStatus, err str
 			q.mu.Lock()
 			defer q.mu.Unlock()
 			delete(q.operations, id)
-			q.save()
+			_ = q.save()
 		}()
 	}
 

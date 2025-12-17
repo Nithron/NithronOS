@@ -116,7 +116,7 @@ func (s *ActivityStore) RecordActivity(deviceID, shareID string, action Activity
 	s.trimOldEntries()
 
 	// Save asynchronously
-	go s.save()
+	go func() { _ = s.save() }()
 
 	return activity
 }
@@ -142,7 +142,7 @@ func (s *ActivityStore) UpdateActivity(id string, status ActivityStatus, progres
 		activity.Progress = 100
 	}
 
-	go s.save()
+	go func() { _ = s.save() }()
 
 	return activity, nil
 }
@@ -327,7 +327,7 @@ func (s *ActivityStore) ClearActivities(olderThan time.Duration, deviceID string
 	}
 
 	s.activities = kept
-	go s.save()
+	go func() { _ = s.save() }()
 
 	return removed
 }
