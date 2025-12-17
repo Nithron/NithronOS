@@ -54,7 +54,6 @@ import {
   getActivityStats,
   listSyncShares,
   syncKeys,
-  SyncActivity,
   ActivityAction,
   ActivityStatus,
   formatBytes,

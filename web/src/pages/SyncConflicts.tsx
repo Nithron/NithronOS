@@ -3,12 +3,11 @@
  * View and resolve file synchronization conflicts
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   Check,
-  X,
   Copy,
   FileText,
   Clock,

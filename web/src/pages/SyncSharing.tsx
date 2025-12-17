@@ -18,9 +18,6 @@ import {
   Eye,
   Check,
   X,
-  Clock,
-  ChevronRight,
-  Shield,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -66,17 +63,13 @@ import {
   listPendingInvites,
   createSharedFolder,
   deleteSharedFolder,
-  addFolderMember,
   removeFolderMember,
-  updateFolderMember,
   acceptInvite,
   declineInvite,
   listSyncShares,
   syncKeys,
   SharedFolder,
-  ShareInvite,
   SharePermission,
-  FolderMember,
   formatRelativeTime,
 } from '@/api/sync';
 
@@ -85,14 +78,14 @@ export default function SyncSharing() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<SharedFolder | null>(null);
   const [manageMembersOpen, setManageMembersOpen] = useState(false);
-  const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [_addMemberOpen, _setAddMemberOpen] = useState(false);
 
   // Form state
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderPath, setNewFolderPath] = useState('/');
   const [selectedShareId, setSelectedShareId] = useState('');
-  const [newMemberEmail, setNewMemberEmail] = useState('');
-  const [newMemberPermission, setNewMemberPermission] = useState<SharePermission>('read');
+  const [_newMemberEmail, _setNewMemberEmail] = useState('');
+  const [_newMemberPermission, _setNewMemberPermission] = useState<SharePermission>('read');
 
   // Fetch shared folders
   const {

@@ -12,7 +12,6 @@ import {
   Unlock,
   RefreshCw,
   AlertTriangle,
-  CheckCircle2,
   Copy,
   Eye,
   EyeOff,
@@ -50,7 +49,6 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
@@ -67,9 +65,6 @@ import {
   updateEncryptionSettings,
   listKeys,
   encryptionKeys,
-  EncryptionStatus,
-  EncryptionSettings,
-  KeyInfo,
 } from '@/api/encryption';
 
 function formatBytes(bytes: number): string {
@@ -110,7 +105,7 @@ export default function SyncEncryption() {
   });
 
   // Fetch settings
-  const { data: settings, isLoading: loadingSettings } = useQuery({
+  const { data: settings, isLoading: _loadingSettings } = useQuery({
     queryKey: encryptionKeys.settings(),
     queryFn: getEncryptionSettings,
   });
