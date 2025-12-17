@@ -65,6 +65,7 @@ import {
   updateEncryptionSettings,
   listKeys,
   encryptionKeys,
+  EncryptionSettings,
 } from '@/api/encryption';
 
 function formatBytes(bytes: number): string {
