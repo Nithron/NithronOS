@@ -14,6 +14,8 @@ import {
   Smartphone,
   AlertTriangle,
   History,
+  Users,
+  Shield,
   LucideIcon,
 } from 'lucide-react'
 
@@ -79,6 +81,18 @@ export const navItems: NavItem[] = [
         label: 'Conflicts',
         icon: AlertTriangle,
         path: '/settings/sync/conflicts',
+      },
+      {
+        id: 'sync-sharing',
+        label: 'Sharing',
+        icon: Users,
+        path: '/settings/sync/sharing',
+      },
+      {
+        id: 'sync-encryption',
+        label: 'Encryption',
+        icon: Shield,
+        path: '/settings/sync/encryption',
       },
     ],
   },

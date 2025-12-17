@@ -18,15 +18,16 @@ import (
 
 // SyncHandler handles sync-related API endpoints
 type SyncHandler struct {
-	deviceMgr     *nosync.DeviceManager
-	changeTracker *nosync.ChangeTracker
-	deltaSync     *nosync.DeltaSync
-	shareStore    *shares.Store
-	syncStore     *nosync.Store
-	conflictStore *nosync.ConflictStore
-	activityStore *nosync.ActivityStore
-	logger        zerolog.Logger
-	cfg           config.Config
+	deviceMgr         *nosync.DeviceManager
+	changeTracker     *nosync.ChangeTracker
+	deltaSync         *nosync.DeltaSync
+	shareStore        *shares.Store
+	syncStore         *nosync.Store
+	conflictStore     *nosync.ConflictStore
+	activityStore     *nosync.ActivityStore
+	collaborationStore *nosync.CollaborationStore
+	logger            zerolog.Logger
+	cfg               config.Config
 }
 
 // NewSyncHandler creates a new sync handler
@@ -66,16 +67,23 @@ func NewSyncHandler(cfg config.Config, shareStore *shares.Store, logger zerolog.
 		return nil, err
 	}
 
+	// Initialize collaboration store
+	collaborationStore, err := nosync.NewCollaborationStore(syncBasePath)
+	if err != nil {
+		return nil, err
+	}
+
 	return &SyncHandler{
-		deviceMgr:     deviceMgr,
-		changeTracker: changeTracker,
-		deltaSync:     deltaSync,
-		shareStore:    shareStore,
-		syncStore:     syncStore,
-		conflictStore: conflictStore,
-		activityStore: activityStore,
-		logger:        logger.With().Str("component", "sync-handler").Logger(),
-		cfg:           cfg,
+		deviceMgr:          deviceMgr,
+		changeTracker:      changeTracker,
+		deltaSync:          deltaSync,
+		shareStore:         shareStore,
+		syncStore:          syncStore,
+		conflictStore:      conflictStore,
+		activityStore:      activityStore,
+		collaborationStore: collaborationStore,
+		logger:             logger.With().Str("component", "sync-handler").Logger(),
+		cfg:                cfg,
 	}, nil
 }
 
@@ -121,6 +129,21 @@ func (h *SyncHandler) Routes() chi.Router {
 		pr.Get("/activity", h.ListActivity)
 		pr.Get("/activity/recent", h.GetRecentActivity)
 		pr.Get("/activity/stats", h.GetActivityStats)
+
+		// Shared folder collaboration
+		pr.Get("/shared-folders", h.ListSharedFolders)
+		pr.Post("/shared-folders", h.CreateSharedFolder)
+		pr.Get("/shared-folders/{folder_id}", h.GetSharedFolder)
+		pr.Delete("/shared-folders/{folder_id}", h.DeleteSharedFolder)
+		pr.Post("/shared-folders/{folder_id}/members", h.AddFolderMember)
+		pr.Delete("/shared-folders/{folder_id}/members/{user_id}", h.RemoveFolderMember)
+		pr.Put("/shared-folders/{folder_id}/members/{user_id}", h.UpdateFolderMember)
+
+		// Invitations
+		pr.Get("/invites", h.ListPendingInvites)
+		pr.Post("/invites", h.CreateInvite)
+		pr.Put("/invites/{invite_id}/accept", h.AcceptInvite)
+		pr.Put("/invites/{invite_id}/decline", h.DeclineInvite)
 	})
 
 	return r
@@ -568,8 +591,8 @@ func (h *SyncHandler) DeviceManager() *nosync.DeviceManager {
 
 // ListConflicts returns all sync conflicts
 func (h *SyncHandler) ListConflicts(w http.ResponseWriter, r *http.Request) {
-	deviceID, ok := r.Context().Value(deviceIDKey).(string)
-	if !ok {
+	deviceID := r.Header.Get("X-Device-ID")
+	if deviceID == "" {
 		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
 		return
 	}
@@ -600,8 +623,8 @@ func (h *SyncHandler) GetConflict(w http.ResponseWriter, r *http.Request) {
 
 // ResolveConflict resolves a sync conflict
 func (h *SyncHandler) ResolveConflict(w http.ResponseWriter, r *http.Request) {
-	deviceID, ok := r.Context().Value(deviceIDKey).(string)
-	if !ok {
+	deviceID := r.Header.Get("X-Device-ID")
+	if deviceID == "" {
 		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
 		return
 	}
@@ -644,8 +667,8 @@ func (h *SyncHandler) ResolveConflict(w http.ResponseWriter, r *http.Request) {
 
 // ListActivity returns paginated sync activity
 func (h *SyncHandler) ListActivity(w http.ResponseWriter, r *http.Request) {
-	deviceID, ok := r.Context().Value(deviceIDKey).(string)
-	if !ok {
+	deviceID := r.Header.Get("X-Device-ID")
+	if deviceID == "" {
 		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
 		return
 	}
@@ -660,8 +683,8 @@ func (h *SyncHandler) ListActivity(w http.ResponseWriter, r *http.Request) {
 
 // GetRecentActivity returns recent sync activity
 func (h *SyncHandler) GetRecentActivity(w http.ResponseWriter, r *http.Request) {
-	deviceID, ok := r.Context().Value(deviceIDKey).(string)
-	if !ok {
+	deviceID := r.Header.Get("X-Device-ID")
+	if deviceID == "" {
 		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
 		return
 	}
@@ -673,8 +696,8 @@ func (h *SyncHandler) GetRecentActivity(w http.ResponseWriter, r *http.Request) 
 
 // GetActivityStats returns activity statistics
 func (h *SyncHandler) GetActivityStats(w http.ResponseWriter, r *http.Request) {
-	deviceID, ok := r.Context().Value(deviceIDKey).(string)
-	if !ok {
+	deviceID := r.Header.Get("X-Device-ID")
+	if deviceID == "" {
 		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
 		return
 	}
@@ -682,5 +705,337 @@ func (h *SyncHandler) GetActivityStats(w http.ResponseWriter, r *http.Request) {
 	shareID := r.URL.Query().Get("share_id")
 	stats := h.activityStore.GetActivityStats(deviceID, shareID)
 	writeJSON(w, stats)
+}
+
+// ==================== Collaboration Handlers ====================
+
+// ListSharedFolders returns shared folders accessible to the user
+func (h *SyncHandler) ListSharedFolders(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("X-Device-User-ID")
+	if userID == "" {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+		return
+	}
+
+	folders := h.collaborationStore.ListSharedFolders(userID)
+	writeJSON(w, map[string]interface{}{
+		"folders": folders,
+		"count":   len(folders),
+	})
+}
+
+// CreateSharedFolder creates a new shared folder
+func (h *SyncHandler) CreateSharedFolder(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("X-Device-User-ID")
+	if userID == "" {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+		return
+	}
+
+	var req struct {
+		ShareID   string `json:"share_id"`
+		Path      string `json:"path"`
+		Name      string `json:"name"`
+		OwnerName string `json:"owner_name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.invalid", "Invalid request body", 0)
+		return
+	}
+
+	if req.ShareID == "" || req.Path == "" || req.Name == "" {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.required", "share_id, path, and name are required", 0)
+		return
+	}
+
+	folder, err := h.collaborationStore.CreateSharedFolder(req.ShareID, req.Path, req.Name, userID, req.OwnerName)
+	if err != nil {
+		httpx.WriteTypedError(w, http.StatusInternalServerError, "folder.create_failed", err.Error(), 0)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, folder)
+}
+
+// GetSharedFolder returns a specific shared folder
+func (h *SyncHandler) GetSharedFolder(w http.ResponseWriter, r *http.Request) {
+	folderID := chi.URLParam(r, "folder_id")
+	if folderID == "" {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.required", "Folder ID required", 0)
+		return
+	}
+
+	folder, err := h.collaborationStore.GetSharedFolder(folderID)
+	if err != nil {
+		httpx.WriteTypedError(w, http.StatusNotFound, "folder.not_found", "Folder not found", 0)
+		return
+	}
+
+	writeJSON(w, folder)
+}
+
+// DeleteSharedFolder deletes a shared folder
+func (h *SyncHandler) DeleteSharedFolder(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("X-Device-User-ID")
+	if userID == "" {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+		return
+	}
+
+	folderID := chi.URLParam(r, "folder_id")
+	if folderID == "" {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.required", "Folder ID required", 0)
+		return
+	}
+
+	folder, err := h.collaborationStore.GetSharedFolder(folderID)
+	if err != nil {
+		httpx.WriteTypedError(w, http.StatusNotFound, "folder.not_found", "Folder not found", 0)
+		return
+	}
+
+	if folder.OwnerID != userID {
+		httpx.WriteTypedError(w, http.StatusForbidden, "permission.denied", "Only owner can delete folder", 0)
+		return
+	}
+
+	if err := h.collaborationStore.DeleteSharedFolder(folderID); err != nil {
+		httpx.WriteTypedError(w, http.StatusInternalServerError, "folder.delete_failed", err.Error(), 0)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// AddFolderMember adds a member to a shared folder
+func (h *SyncHandler) AddFolderMember(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("X-Device-User-ID")
+	if userID == "" {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+		return
+	}
+
+	folderID := chi.URLParam(r, "folder_id")
+	if folderID == "" {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.required", "Folder ID required", 0)
+		return
+	}
+
+	// Check permission
+	if !h.collaborationStore.HasPermission(folderID, userID, nosync.PermissionAdmin) {
+		httpx.WriteTypedError(w, http.StatusForbidden, "permission.denied", "Admin permission required", 0)
+		return
+	}
+
+	var req struct {
+		UserID     string `json:"user_id"`
+		Username   string `json:"username"`
+		Permission string `json:"permission"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.invalid", "Invalid request body", 0)
+		return
+	}
+
+	permission := nosync.SharePermission(req.Permission)
+	if permission != nosync.PermissionRead && permission != nosync.PermissionWrite && permission != nosync.PermissionAdmin {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.invalid", "Invalid permission level", 0)
+		return
+	}
+
+	if err := h.collaborationStore.AddMember(folderID, req.UserID, req.Username, permission, userID); err != nil {
+		httpx.WriteTypedError(w, http.StatusInternalServerError, "member.add_failed", err.Error(), 0)
+		return
+	}
+
+	folder, _ := h.collaborationStore.GetSharedFolder(folderID)
+	writeJSON(w, folder)
+}
+
+// RemoveFolderMember removes a member from a shared folder
+func (h *SyncHandler) RemoveFolderMember(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("X-Device-User-ID")
+	if userID == "" {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+		return
+	}
+
+	folderID := chi.URLParam(r, "folder_id")
+	memberUserID := chi.URLParam(r, "user_id")
+	if folderID == "" || memberUserID == "" {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.required", "Folder ID and User ID required", 0)
+		return
+	}
+
+	// Check permission (admins can remove, users can remove themselves)
+	if memberUserID != userID && !h.collaborationStore.HasPermission(folderID, userID, nosync.PermissionAdmin) {
+		httpx.WriteTypedError(w, http.StatusForbidden, "permission.denied", "Admin permission required", 0)
+		return
+	}
+
+	if err := h.collaborationStore.RemoveMember(folderID, memberUserID); err != nil {
+		httpx.WriteTypedError(w, http.StatusInternalServerError, "member.remove_failed", err.Error(), 0)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// UpdateFolderMember updates a member's permission
+func (h *SyncHandler) UpdateFolderMember(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("X-Device-User-ID")
+	if userID == "" {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+		return
+	}
+
+	folderID := chi.URLParam(r, "folder_id")
+	memberUserID := chi.URLParam(r, "user_id")
+	if folderID == "" || memberUserID == "" {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.required", "Folder ID and User ID required", 0)
+		return
+	}
+
+	if !h.collaborationStore.HasPermission(folderID, userID, nosync.PermissionAdmin) {
+		httpx.WriteTypedError(w, http.StatusForbidden, "permission.denied", "Admin permission required", 0)
+		return
+	}
+
+	var req struct {
+		Permission string `json:"permission"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.invalid", "Invalid request body", 0)
+		return
+	}
+
+	permission := nosync.SharePermission(req.Permission)
+	if err := h.collaborationStore.UpdateMemberPermission(folderID, memberUserID, permission); err != nil {
+		httpx.WriteTypedError(w, http.StatusInternalServerError, "member.update_failed", err.Error(), 0)
+		return
+	}
+
+	folder, _ := h.collaborationStore.GetSharedFolder(folderID)
+	writeJSON(w, folder)
+}
+
+// ==================== Invitation Handlers ====================
+
+// ListPendingInvites returns pending invitations for the user
+func (h *SyncHandler) ListPendingInvites(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("X-Device-User-ID")
+	if userID == "" {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+		return
+	}
+
+	invites := h.collaborationStore.ListPendingInvites(userID)
+	writeJSON(w, map[string]interface{}{
+		"invites": invites,
+		"count":   len(invites),
+	})
+}
+
+// CreateInvite creates a new invitation
+func (h *SyncHandler) CreateInvite(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("X-Device-User-ID")
+	if userID == "" {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+		return
+	}
+
+	var req struct {
+		FolderID     string `json:"folder_id"`
+		InviterName  string `json:"inviter_name"`
+		InviteeID    string `json:"invitee_id"`
+		InviteeEmail string `json:"invitee_email"`
+		Permission   string `json:"permission"`
+		Message      string `json:"message"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.invalid", "Invalid request body", 0)
+		return
+	}
+
+	// Check permission
+	if !h.collaborationStore.HasPermission(req.FolderID, userID, nosync.PermissionAdmin) {
+		httpx.WriteTypedError(w, http.StatusForbidden, "permission.denied", "Admin permission required", 0)
+		return
+	}
+
+	permission := nosync.SharePermission(req.Permission)
+	if permission == "" {
+		permission = nosync.PermissionRead
+	}
+
+	invite, err := h.collaborationStore.CreateInvite(
+		req.FolderID,
+		userID,
+		req.InviterName,
+		req.InviteeID,
+		req.InviteeEmail,
+		permission,
+		req.Message,
+		7*24*time.Hour, // 7 day expiry
+	)
+	if err != nil {
+		httpx.WriteTypedError(w, http.StatusInternalServerError, "invite.create_failed", err.Error(), 0)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, invite)
+}
+
+// AcceptInvite accepts an invitation
+func (h *SyncHandler) AcceptInvite(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("X-Device-User-ID")
+	if userID == "" {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+		return
+	}
+
+	inviteID := chi.URLParam(r, "invite_id")
+	if inviteID == "" {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.required", "Invite ID required", 0)
+		return
+	}
+
+	var req struct {
+		Username string `json:"username"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	if err := h.collaborationStore.AcceptInvite(inviteID, userID, req.Username); err != nil {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "invite.accept_failed", err.Error(), 0)
+		return
+	}
+
+	invite, _ := h.collaborationStore.GetInvite(inviteID)
+	writeJSON(w, invite)
+}
+
+// DeclineInvite declines an invitation
+func (h *SyncHandler) DeclineInvite(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("X-Device-User-ID")
+	if userID == "" {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+		return
+	}
+
+	inviteID := chi.URLParam(r, "invite_id")
+	if inviteID == "" {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.required", "Invite ID required", 0)
+		return
+	}
+
+	if err := h.collaborationStore.DeclineInvite(inviteID, userID); err != nil {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "invite.decline_failed", err.Error(), 0)
+		return
+	}
+
+	invite, _ := h.collaborationStore.GetInvite(inviteID)
+	writeJSON(w, invite)
 }
 

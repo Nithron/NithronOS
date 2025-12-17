@@ -1423,6 +1423,38 @@ func NewRouter(cfg config.Config) http.Handler {
 			Logger(cfg).Info().Msg("NithronSync API initialized")
 		}
 
+		// Phase 4: Real-time collaboration
+		realtimeHandler := NewRealtimeHandler(*Logger(cfg))
+		pr.Mount("/api/v1/sync/realtime", realtimeHandler.Routes())
+		Logger(cfg).Info().Msg("Real-time collaboration API initialized")
+
+		// Phase 4: End-to-end encryption
+		encryptionHandler, encErr := NewEncryptionHandler(cfg, *Logger(cfg))
+		if encErr != nil {
+			Logger(cfg).Error().Err(encErr).Msg("Failed to create encryption handler")
+		} else {
+			pr.Mount("/api/v1/sync/encryption", encryptionHandler.Routes())
+			Logger(cfg).Info().Msg("Encryption API initialized")
+		}
+
+		// Phase 4: Offline-first sync
+		offlineHandler, offErr := NewOfflineHandler(cfg, *Logger(cfg))
+		if offErr != nil {
+			Logger(cfg).Error().Err(offErr).Msg("Failed to create offline handler")
+		} else {
+			pr.Mount("/api/v1/sync/offline", offlineHandler.Routes())
+			Logger(cfg).Info().Msg("Offline sync API initialized")
+		}
+
+		// Phase 4: Smart sync (on-demand files)
+		smartsyncHandler, smartErr := NewSmartSyncHandler(cfg, *Logger(cfg))
+		if smartErr != nil {
+			Logger(cfg).Error().Err(smartErr).Msg("Failed to create smart sync handler")
+		} else {
+			pr.Mount("/api/v1/sync/smartsync", smartsyncHandler.Routes())
+			Logger(cfg).Info().Msg("Smart sync API initialized")
+		}
+
 		// Notification endpoints
 		if notificationManager != nil {
 			pr.Mount("/api/v1/notifications", NewNotificationHandler(notificationManager).Routes())

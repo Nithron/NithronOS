@@ -240,7 +240,7 @@ Filters/jails under `deploy/fail2ban/`; see comments inside for enabling.
 - [ ] **A7 — Hardware, Power & UPS**: NUT integration; scheduled shutdown/wake; sensors/temps/fan; CPU governor controls.
 - [ ] **A8 — Observability & Alerts v2**: Prometheus exporter, ready-made Grafana dashboards; audit log shipping; more alert channels.
 - [ ] **A9 — Extensibility & SDK v2**: Signed app bundles; nosctl improvements; app lifecycle webhooks; review tools.
-- [ ] **A10 — NithronSync v2**: Conflict resolution UI, shared folder collaboration, sync activity history, end-to-end encryption.
+- [x] **A10 — NithronSync v2**: Real-time collaboration, end-to-end encryption, offline-first sync, smart sync (on-demand files).
 
 > Each milestone ships release notes, migration notes, E2E suite green (HTTP/UI/backup/upgrade), and no data-loss regressions.
 

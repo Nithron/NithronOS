@@ -189,6 +189,45 @@ export interface ActivityStats {
   bytes_synced: number;
 }
 
+// Collaboration types
+export type SharePermission = 'read' | 'write' | 'admin';
+export type InviteStatus = 'pending' | 'accepted' | 'declined' | 'expired';
+
+export interface FolderMember {
+  user_id: string;
+  username: string;
+  permission: SharePermission;
+  added_at: string;
+  added_by: string;
+}
+
+export interface SharedFolder {
+  id: string;
+  share_id: string;
+  path: string;
+  name: string;
+  owner_id: string;
+  owner_name: string;
+  created_at: string;
+  members: FolderMember[];
+}
+
+export interface ShareInvite {
+  id: string;
+  shared_folder_id: string;
+  folder_name: string;
+  inviter_id: string;
+  inviter_name: string;
+  invitee_id: string;
+  invitee_email?: string;
+  permission: SharePermission;
+  status: InviteStatus;
+  message?: string;
+  created_at: string;
+  expires_at: string;
+  responded_at?: string;
+}
+
 // ============================================================================
 // API Functions
 // ============================================================================
@@ -384,6 +423,126 @@ export async function getActivityStats(shareId?: string): Promise<ActivityStats>
 }
 
 // ============================================================================
+// Collaboration API Functions
+// ============================================================================
+
+/**
+ * List shared folders accessible to the user
+ */
+export async function listSharedFolders(): Promise<{ folders: SharedFolder[]; count: number }> {
+  return http.get<{ folders: SharedFolder[]; count: number }>(`${BASE_PATH}/shared-folders`);
+}
+
+/**
+ * Create a new shared folder
+ */
+export async function createSharedFolder(
+  shareId: string,
+  path: string,
+  name: string,
+  ownerName: string
+): Promise<SharedFolder> {
+  return http.post<SharedFolder>(`${BASE_PATH}/shared-folders`, {
+    share_id: shareId,
+    path,
+    name,
+    owner_name: ownerName,
+  });
+}
+
+/**
+ * Get a specific shared folder
+ */
+export async function getSharedFolder(folderId: string): Promise<SharedFolder> {
+  return http.get<SharedFolder>(`${BASE_PATH}/shared-folders/${folderId}`);
+}
+
+/**
+ * Delete a shared folder
+ */
+export async function deleteSharedFolder(folderId: string): Promise<void> {
+  return http.del<void>(`${BASE_PATH}/shared-folders/${folderId}`);
+}
+
+/**
+ * Add a member to a shared folder
+ */
+export async function addFolderMember(
+  folderId: string,
+  userId: string,
+  username: string,
+  permission: SharePermission
+): Promise<SharedFolder> {
+  return http.post<SharedFolder>(`${BASE_PATH}/shared-folders/${folderId}/members`, {
+    user_id: userId,
+    username,
+    permission,
+  });
+}
+
+/**
+ * Remove a member from a shared folder
+ */
+export async function removeFolderMember(folderId: string, userId: string): Promise<void> {
+  return http.del<void>(`${BASE_PATH}/shared-folders/${folderId}/members/${userId}`);
+}
+
+/**
+ * Update a member's permission
+ */
+export async function updateFolderMember(
+  folderId: string,
+  userId: string,
+  permission: SharePermission
+): Promise<SharedFolder> {
+  return http.put<SharedFolder>(`${BASE_PATH}/shared-folders/${folderId}/members/${userId}`, {
+    permission,
+  });
+}
+
+/**
+ * List pending invitations
+ */
+export async function listPendingInvites(): Promise<{ invites: ShareInvite[]; count: number }> {
+  return http.get<{ invites: ShareInvite[]; count: number }>(`${BASE_PATH}/invites`);
+}
+
+/**
+ * Create an invitation
+ */
+export async function createInvite(
+  folderId: string,
+  inviterName: string,
+  inviteeId: string,
+  inviteeEmail: string,
+  permission: SharePermission,
+  message?: string
+): Promise<ShareInvite> {
+  return http.post<ShareInvite>(`${BASE_PATH}/invites`, {
+    folder_id: folderId,
+    inviter_name: inviterName,
+    invitee_id: inviteeId,
+    invitee_email: inviteeEmail,
+    permission,
+    message,
+  });
+}
+
+/**
+ * Accept an invitation
+ */
+export async function acceptInvite(inviteId: string, username: string): Promise<ShareInvite> {
+  return http.put<ShareInvite>(`${BASE_PATH}/invites/${inviteId}/accept`, { username });
+}
+
+/**
+ * Decline an invitation
+ */
+export async function declineInvite(inviteId: string): Promise<ShareInvite> {
+  return http.put<ShareInvite>(`${BASE_PATH}/invites/${inviteId}/decline`, {});
+}
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 
@@ -489,5 +648,8 @@ export const syncKeys = {
   activity: () => [...syncKeys.all, 'activity'] as const,
   activityRecent: () => [...syncKeys.activity(), 'recent'] as const,
   activityStats: () => [...syncKeys.activity(), 'stats'] as const,
+  sharedFolders: () => [...syncKeys.all, 'shared-folders'] as const,
+  sharedFolder: (id: string) => [...syncKeys.sharedFolders(), id] as const,
+  invites: () => [...syncKeys.all, 'invites'] as const,
 };
 

@@ -1002,6 +1002,83 @@ components:
             $ref: '#/components/schemas/BlockHash'
       required: [path, size, hash, blocks]
 
+    SharedFolder:
+      type: object
+      properties:
+        id:
+          type: string
+        share_id:
+          type: string
+        path:
+          type: string
+        name:
+          type: string
+        owner_id:
+          type: string
+        owner_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/FolderMember'
+      required: [id, share_id, path, name, owner_id, owner_name, created_at, members]
+
+    FolderMember:
+      type: object
+      properties:
+        user_id:
+          type: string
+        username:
+          type: string
+        permission:
+          type: string
+          enum: [read, write, admin]
+        added_at:
+          type: string
+          format: date-time
+        added_by:
+          type: string
+      required: [user_id, username, permission, added_at, added_by]
+
+    ShareInvite:
+      type: object
+      properties:
+        id:
+          type: string
+        shared_folder_id:
+          type: string
+        folder_name:
+          type: string
+        inviter_id:
+          type: string
+        inviter_name:
+          type: string
+        invitee_id:
+          type: string
+        invitee_email:
+          type: string
+        permission:
+          type: string
+          enum: [read, write, admin]
+        status:
+          type: string
+          enum: [pending, accepted, declined, expired]
+        message:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        responded_at:
+          type: string
+          format: date-time
+      required: [id, shared_folder_id, folder_name, inviter_id, permission, status, created_at, expires_at]
+
   # Sync API Paths
 paths:
   /api/v1/sync/devices/register:
@@ -1288,6 +1365,293 @@ paths:
                 $ref: '#/components/schemas/BlockHashResponse'
         '404':
           description: File or share not found
+
+  /api/v1/sync/shared-folders:
+    get:
+      summary: List shared folders
+      tags: [sync, collaboration]
+      security:
+        - deviceToken: []
+      responses:
+        '200':
+          description: List of shared folders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  folders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SharedFolder'
+                  count:
+                    type: integer
+    post:
+      summary: Create a shared folder
+      tags: [sync, collaboration]
+      security:
+        - deviceToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [share_id, path, name]
+              properties:
+                share_id:
+                  type: string
+                path:
+                  type: string
+                name:
+                  type: string
+                owner_name:
+                  type: string
+      responses:
+        '201':
+          description: Shared folder created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedFolder'
+
+  /api/v1/sync/shared-folders/{folder_id}:
+    get:
+      summary: Get shared folder details
+      tags: [sync, collaboration]
+      security:
+        - deviceToken: []
+      parameters:
+        - name: folder_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Shared folder details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedFolder'
+        '404':
+          description: Folder not found
+    delete:
+      summary: Delete a shared folder
+      tags: [sync, collaboration]
+      security:
+        - deviceToken: []
+      parameters:
+        - name: folder_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Folder deleted
+        '403':
+          description: Permission denied
+        '404':
+          description: Folder not found
+
+  /api/v1/sync/shared-folders/{folder_id}/members:
+    post:
+      summary: Add member to shared folder
+      tags: [sync, collaboration]
+      security:
+        - deviceToken: []
+      parameters:
+        - name: folder_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, username, permission]
+              properties:
+                user_id:
+                  type: string
+                username:
+                  type: string
+                permission:
+                  type: string
+                  enum: [read, write, admin]
+      responses:
+        '200':
+          description: Member added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedFolder'
+        '403':
+          description: Admin permission required
+
+  /api/v1/sync/shared-folders/{folder_id}/members/{user_id}:
+    delete:
+      summary: Remove member from shared folder
+      tags: [sync, collaboration]
+      security:
+        - deviceToken: []
+      parameters:
+        - name: folder_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Member removed
+        '403':
+          description: Permission denied
+    put:
+      summary: Update member permission
+      tags: [sync, collaboration]
+      security:
+        - deviceToken: []
+      parameters:
+        - name: folder_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [permission]
+              properties:
+                permission:
+                  type: string
+                  enum: [read, write, admin]
+      responses:
+        '200':
+          description: Permission updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedFolder'
+
+  /api/v1/sync/invites:
+    get:
+      summary: List pending invitations
+      tags: [sync, collaboration]
+      security:
+        - deviceToken: []
+      responses:
+        '200':
+          description: List of pending invites
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invites:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ShareInvite'
+                  count:
+                    type: integer
+    post:
+      summary: Create invitation
+      tags: [sync, collaboration]
+      security:
+        - deviceToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [folder_id]
+              properties:
+                folder_id:
+                  type: string
+                inviter_name:
+                  type: string
+                invitee_id:
+                  type: string
+                invitee_email:
+                  type: string
+                permission:
+                  type: string
+                  enum: [read, write, admin]
+                message:
+                  type: string
+      responses:
+        '201':
+          description: Invitation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareInvite'
+
+  /api/v1/sync/invites/{invite_id}/accept:
+    put:
+      summary: Accept invitation
+      tags: [sync, collaboration]
+      security:
+        - deviceToken: []
+      parameters:
+        - name: invite_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+      responses:
+        '200':
+          description: Invitation accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareInvite'
+        '400':
+          description: Invalid or expired invitation
+
+  /api/v1/sync/invites/{invite_id}/decline:
+    put:
+      summary: Decline invitation
+      tags: [sync, collaboration]
+      security:
+        - deviceToken: []
+      parameters:
+        - name: invite_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invitation declined
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareInvite'
 
 securitySchemes:
   bearerAuth:

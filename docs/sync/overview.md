@@ -167,9 +167,9 @@ WebDAV access is available at `/dav/{share_id}/`.
 - Sync activity history
 - App store deployment automation
 
-### Future (Phase 4)
-- Real-time collaboration
-- End-to-end encryption
-- Offline-first sync
-- Smart sync (on-demand files)
+### Phase 4 ✅
+- Real-time collaboration (WebSocket, presence, live cursors)
+- End-to-end encryption (AES-GCM, ChaCha20-Poly1305, key management)
+- Offline-first sync (operation queue, conflict resolution)
+- Smart sync (on-demand files, placeholders, hydration)
 

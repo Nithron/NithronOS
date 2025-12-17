@@ -22,6 +22,8 @@ import SettingsSync from './pages/SettingsSync'
 import SyncDevices from './pages/SyncDevices'
 import SyncActivity from './pages/SyncActivity'
 import SyncConflicts from './pages/SyncConflicts'
+import SyncSharing from './pages/SyncSharing'
+import SyncEncryption from './pages/SyncEncryption'
 import Setup from './pages/Setup'
 import Snapshots from './pages/Snapshots'
 import BackupSchedules from './pages/BackupSchedules'
@@ -167,6 +169,8 @@ const router = createBrowserRouter([
           { path: 'settings/sync/devices', element: <SyncDevices /> },
           { path: 'settings/sync/activity', element: <SyncActivity /> },
           { path: 'settings/sync/conflicts', element: <SyncConflicts /> },
+          { path: 'settings/sync/sharing', element: <SyncSharing /> },
+          { path: 'settings/sync/encryption', element: <SyncEncryption /> },
           { path: 'remote', element: <Remote /> },
           { path: 'storage/create', element: <PoolsCreate /> },
           { path: 'storage/:id', element: <PoolDetails /> },
