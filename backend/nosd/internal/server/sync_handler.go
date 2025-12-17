@@ -23,6 +23,8 @@ type SyncHandler struct {
 	deltaSync     *nosync.DeltaSync
 	shareStore    *shares.Store
 	syncStore     *nosync.Store
+	conflictStore *nosync.ConflictStore
+	activityStore *nosync.ActivityStore
 	logger        zerolog.Logger
 	cfg           config.Config
 }
@@ -52,12 +54,26 @@ func NewSyncHandler(cfg config.Config, shareStore *shares.Store, logger zerolog.
 	// Initialize delta sync
 	deltaSync := nosync.NewDeltaSync(nosync.DefaultBlockSize)
 
+	// Initialize conflict store
+	conflictStore, err := nosync.NewConflictStore(syncBasePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize activity store
+	activityStore, err := nosync.NewActivityStore(syncBasePath, 10000)
+	if err != nil {
+		return nil, err
+	}
+
 	return &SyncHandler{
 		deviceMgr:     deviceMgr,
 		changeTracker: changeTracker,
 		deltaSync:     deltaSync,
 		shareStore:    shareStore,
 		syncStore:     syncStore,
+		conflictStore: conflictStore,
+		activityStore: activityStore,
 		logger:        logger.With().Str("component", "sync-handler").Logger(),
 		cfg:           cfg,
 	}, nil
@@ -95,6 +111,16 @@ func (h *SyncHandler) Routes() chi.Router {
 		// Sync state
 		pr.Get("/state/{share_id}", h.GetSyncState)
 		pr.Put("/state/{share_id}", h.UpdateSyncState)
+
+		// Conflicts
+		pr.Get("/conflicts", h.ListConflicts)
+		pr.Get("/conflicts/{conflict_id}", h.GetConflict)
+		pr.Put("/conflicts/{conflict_id}", h.ResolveConflict)
+
+		// Activity history
+		pr.Get("/activity", h.ListActivity)
+		pr.Get("/activity/recent", h.GetRecentActivity)
+		pr.Get("/activity/stats", h.GetActivityStats)
 	})
 
 	return r
@@ -536,5 +562,125 @@ func (h *SyncHandler) Stats() map[string]interface{} {
 // DeviceManager returns the device manager for use by other handlers
 func (h *SyncHandler) DeviceManager() *nosync.DeviceManager {
 	return h.deviceMgr
+}
+
+// ==================== Conflict Handlers ====================
+
+// ListConflicts returns all sync conflicts
+func (h *SyncHandler) ListConflicts(w http.ResponseWriter, r *http.Request) {
+	deviceID, ok := r.Context().Value(deviceIDKey).(string)
+	if !ok {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+		return
+	}
+
+	shareID := r.URL.Query().Get("share_id")
+	unresolvedOnly := r.URL.Query().Get("unresolved_only") == "true"
+
+	conflicts := h.conflictStore.ListConflicts(shareID, deviceID, unresolvedOnly)
+	writeJSON(w, conflicts)
+}
+
+// GetConflict returns a specific conflict
+func (h *SyncHandler) GetConflict(w http.ResponseWriter, r *http.Request) {
+	conflictID := chi.URLParam(r, "conflict_id")
+	if conflictID == "" {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.required", "Conflict ID required", 0)
+		return
+	}
+
+	conflict, err := h.conflictStore.GetConflict(conflictID)
+	if err != nil {
+		httpx.WriteTypedError(w, http.StatusNotFound, "conflict.not_found", "Conflict not found", 0)
+		return
+	}
+
+	writeJSON(w, conflict)
+}
+
+// ResolveConflict resolves a sync conflict
+func (h *SyncHandler) ResolveConflict(w http.ResponseWriter, r *http.Request) {
+	deviceID, ok := r.Context().Value(deviceIDKey).(string)
+	if !ok {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+		return
+	}
+
+	conflictID := chi.URLParam(r, "conflict_id")
+	if conflictID == "" {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.required", "Conflict ID required", 0)
+		return
+	}
+
+	var req struct {
+		Resolution string `json:"resolution"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.invalid", "Invalid request body", 0)
+		return
+	}
+
+	resolution := nosync.ConflictResolution(req.Resolution)
+	if resolution != nosync.ResolutionKeepLocal && 
+	   resolution != nosync.ResolutionKeepRemote && 
+	   resolution != nosync.ResolutionKeepBoth {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.invalid", "Invalid resolution type", 0)
+		return
+	}
+
+	conflict, err := h.conflictStore.ResolveConflict(conflictID, resolution, deviceID)
+	if err != nil {
+		httpx.WriteTypedError(w, http.StatusNotFound, "conflict.not_found", "Conflict not found", 0)
+		return
+	}
+
+	// Record activity
+	h.activityStore.RecordActivity(deviceID, conflict.ShareID, nosync.ActivityConflict, conflict.Path, 0)
+
+	writeJSON(w, conflict)
+}
+
+// ==================== Activity Handlers ====================
+
+// ListActivity returns paginated sync activity
+func (h *SyncHandler) ListActivity(w http.ResponseWriter, r *http.Request) {
+	deviceID, ok := r.Context().Value(deviceIDKey).(string)
+	if !ok {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+		return
+	}
+
+	shareID := r.URL.Query().Get("share_id")
+	page := parseInt(r.URL.Query().Get("page"), 1)
+	pageSize := parseInt(r.URL.Query().Get("page_size"), 50)
+
+	result := h.activityStore.ListActivities(deviceID, shareID, page, pageSize)
+	writeJSON(w, result)
+}
+
+// GetRecentActivity returns recent sync activity
+func (h *SyncHandler) GetRecentActivity(w http.ResponseWriter, r *http.Request) {
+	deviceID, ok := r.Context().Value(deviceIDKey).(string)
+	if !ok {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+		return
+	}
+
+	limit := parseInt(r.URL.Query().Get("limit"), 20)
+	activities := h.activityStore.GetRecentActivities(deviceID, limit)
+	writeJSON(w, activities)
+}
+
+// GetActivityStats returns activity statistics
+func (h *SyncHandler) GetActivityStats(w http.ResponseWriter, r *http.Request) {
+	deviceID, ok := r.Context().Value(deviceIDKey).(string)
+	if !ok {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+		return
+	}
+
+	shareID := r.URL.Query().Get("share_id")
+	stats := h.activityStore.GetActivityStats(deviceID, shareID)
+	writeJSON(w, stats)
 }
 

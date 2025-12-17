@@ -1,0 +1,23 @@
+# NithronSync Fastlane Appfile
+# Contains the bundle identifiers and team IDs
+
+# iOS App Store Connect
+app_identifier("com.nithron.sync")
+apple_id(ENV["APPLE_ID"] || "your-apple-id@example.com")
+itc_team_id(ENV["ITC_TEAM_ID"])
+team_id(ENV["TEAM_ID"])
+
+# Android Play Store
+json_key_file(ENV["GOOGLE_PLAY_JSON_KEY"] || "google-play-key.json")
+package_name("com.nithron.sync")
+
+# For app-specific environments
+for_platform :ios do
+  # iOS-specific settings
+  apple_dev_portal_id(ENV["APPLE_DEV_PORTAL_ID"])
+end
+
+for_platform :android do
+  # Android-specific settings
+end
+

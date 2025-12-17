@@ -204,6 +204,9 @@ Filters/jails under `deploy/fail2ban/`; see comments inside for enabling.
     /backend/nosd          # Go API server
     /agent/nos-agent       # Privileged helper (Unix socket)
     /web                   # React + TypeScript dashboard
+    /clients/desktop       # Cross-platform desktop client (Wails + Go)
+    /clients/mobile        # Cross-platform mobile app (React Native)
+    /clients/sync-core     # Shared sync engine library (Go)
     /packaging/deb         # Debian packaging for nosd/agent/web
     /packaging/iso/debian  # Debian live-build profile (installer ISO)
     /scripts               # CI/build/release tools, helpers
@@ -224,7 +227,8 @@ Filters/jails under `deploy/fail2ban/`; see comments inside for enabling.
 - [x] **Server Foundation**: Sync API endpoints, device token authentication, WebDAV access, delta sync algorithm
 - [x] **Web UI**: Device management, sync settings, QR code generation for mobile setup
 - [x] **Desktop Clients**: Windows, Linux, macOS sync applications with system tray integration
-- [ ] **Mobile Apps**: iOS and Android apps with offline support and camera backup (Phase 3)
+- [x] **Mobile Apps**: iOS and Android apps with QR code setup, file browser, offline support
+- [x] **Collaboration**: Conflict resolution UI, shared folder collaboration, sync activity history
 
 ### Post-v1 / Alpha
 - [ ] **A1 — Reliability & Telemetry (opt-in)**: Crash reports (symbolized), perf traces, health pings; redaction; one-click diagnostics.

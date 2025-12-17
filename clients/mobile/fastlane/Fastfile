@@ -1,0 +1,194 @@
+# NithronSync Mobile Fastfile
+# Automates building and deploying iOS and Android apps
+
+default_platform(:ios)
+
+# ============================================================================
+# iOS Platform
+# ============================================================================
+
+platform :ios do
+  desc "Build iOS app for development"
+  lane :build_dev do
+    build_ios_app(
+      workspace: "ios/NithronSync.xcworkspace",
+      scheme: "NithronSync",
+      configuration: "Debug",
+      export_method: "development",
+      output_directory: "./build/ios",
+      output_name: "NithronSync-dev.ipa"
+    )
+  end
+
+  desc "Build iOS app for TestFlight"
+  lane :build_beta do
+    increment_build_number(
+      xcodeproj: "ios/NithronSync.xcodeproj"
+    )
+    
+    build_ios_app(
+      workspace: "ios/NithronSync.xcworkspace",
+      scheme: "NithronSync",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: "./build/ios",
+      output_name: "NithronSync.ipa"
+    )
+  end
+
+  desc "Upload to TestFlight"
+  lane :beta do
+    build_beta
+    
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      notify_external_testers: false
+    )
+  end
+
+  desc "Upload to App Store"
+  lane :release do
+    build_beta
+    
+    upload_to_app_store(
+      skip_screenshots: true,
+      skip_metadata: false,
+      submit_for_review: false,
+      automatic_release: false,
+      precheck_include_in_app_purchases: false
+    )
+  end
+
+  desc "Take screenshots"
+  lane :screenshots do
+    capture_screenshots
+    frame_screenshots(white: true)
+  end
+
+  desc "Sync certificates and profiles"
+  lane :sync_certs do
+    match(type: "development")
+    match(type: "appstore")
+  end
+end
+
+# ============================================================================
+# Android Platform
+# ============================================================================
+
+platform :android do
+  desc "Build Android app for development"
+  lane :build_dev do
+    gradle(
+      task: "assembleDebug",
+      project_dir: "android"
+    )
+  end
+
+  desc "Build Android app for release"
+  lane :build_release do
+    gradle(
+      task: "bundleRelease",
+      project_dir: "android"
+    )
+  end
+
+  desc "Build APK for release"
+  lane :build_apk do
+    gradle(
+      task: "assembleRelease",
+      project_dir: "android"
+    )
+  end
+
+  desc "Upload to Google Play internal track"
+  lane :internal do
+    build_release
+    
+    upload_to_play_store(
+      track: "internal",
+      aab: "android/app/build/outputs/bundle/release/app-release.aab",
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+
+  desc "Upload to Google Play beta track"
+  lane :beta do
+    build_release
+    
+    upload_to_play_store(
+      track: "beta",
+      aab: "android/app/build/outputs/bundle/release/app-release.aab",
+      skip_upload_apk: true
+    )
+  end
+
+  desc "Upload to Google Play production"
+  lane :release do
+    build_release
+    
+    upload_to_play_store(
+      track: "production",
+      aab: "android/app/build/outputs/bundle/release/app-release.aab",
+      skip_upload_apk: true
+    )
+  end
+
+  desc "Build and sign APK for direct distribution"
+  lane :distribute do
+    build_apk
+    
+    # Copy to distribution folder
+    sh("mkdir -p ../dist/android")
+    sh("cp ../android/app/build/outputs/apk/release/*.apk ../dist/android/")
+  end
+end
+
+# ============================================================================
+# Cross-platform Lanes
+# ============================================================================
+
+desc "Run tests on both platforms"
+lane :test do
+  sh("cd .. && npm test")
+end
+
+desc "Lint and type check"
+lane :lint do
+  sh("cd .. && npm run lint && npm run typecheck")
+end
+
+desc "Bump version"
+lane :bump do |options|
+  version = options[:version]
+  
+  # Update package.json
+  sh("cd .. && npm version #{version} --no-git-tag-version")
+  
+  # Update iOS
+  increment_version_number(
+    version_number: version,
+    xcodeproj: "ios/NithronSync.xcodeproj"
+  )
+  
+  # Update Android
+  android_set_version_name(
+    version_name: version,
+    gradle_file: "android/app/build.gradle"
+  )
+end
+
+desc "Build both platforms"
+lane :build_all do
+  ios do
+    build_beta
+  end
+  android do
+    build_release
+  end
+end
+

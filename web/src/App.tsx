@@ -20,6 +20,8 @@ import { PoolDetails } from './pages/PoolDetails'
 import Updates from './pages/Updates'
 import SettingsSync from './pages/SettingsSync'
 import SyncDevices from './pages/SyncDevices'
+import SyncActivity from './pages/SyncActivity'
+import SyncConflicts from './pages/SyncConflicts'
 import Setup from './pages/Setup'
 import Snapshots from './pages/Snapshots'
 import BackupSchedules from './pages/BackupSchedules'
@@ -163,6 +165,8 @@ const router = createBrowserRouter([
           { path: 'settings/2fa', element: <TwoFactorSettings /> },
           { path: 'settings/sync', element: <SettingsSync /> },
           { path: 'settings/sync/devices', element: <SyncDevices /> },
+          { path: 'settings/sync/activity', element: <SyncActivity /> },
+          { path: 'settings/sync/conflicts', element: <SyncConflicts /> },
           { path: 'remote', element: <Remote /> },
           { path: 'storage/create', element: <PoolsCreate /> },
           { path: 'storage/:id', element: <PoolDetails /> },

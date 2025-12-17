@@ -1,0 +1,59 @@
+{
+  "name": "nithron-sync",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "android": "react-native run-android",
+    "ios": "react-native run-ios",
+    "start": "react-native start",
+    "test": "jest",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "clean": "react-native clean",
+    "pod-install": "cd ios && pod install && cd .."
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.1.2",
+    "@react-native-camera-roll/camera-roll": "^9.0.0",
+    "@react-native-community/netinfo": "^11.4.1",
+    "@react-navigation/bottom-tabs": "^7.3.0",
+    "@react-navigation/native": "^7.1.0",
+    "@react-navigation/native-stack": "^7.3.0",
+    "date-fns": "^4.1.0",
+    "react": "^18.3.1",
+    "react-native": "^0.76.9",
+    "react-native-document-picker": "^9.3.1",
+    "react-native-file-access": "^3.1.1",
+    "react-native-gesture-handler": "^2.24.0",
+    "react-native-qrcode-scanner": "^1.5.5",
+    "react-native-reanimated": "^3.18.0",
+    "react-native-safe-area-context": "^5.3.0",
+    "react-native-screens": "^4.10.0",
+    "react-native-sqlite-storage": "^6.0.1",
+    "react-native-svg": "^15.11.2",
+    "react-native-vector-icons": "^10.2.0",
+    "react-native-webdav": "^1.0.0",
+    "zustand": "^5.0.5"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/preset-env": "^7.26.0",
+    "@babel/runtime": "^7.26.0",
+    "@react-native/babel-preset": "^0.76.9",
+    "@react-native/eslint-config": "^0.76.9",
+    "@react-native/metro-config": "^0.76.9",
+    "@react-native/typescript-config": "^0.76.9",
+    "@types/react": "^18.3.18",
+    "@types/react-native-sqlite-storage": "^6.0.5",
+    "@types/react-native-vector-icons": "^6.4.18",
+    "eslint": "^9.9.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.3.3",
+    "react-test-renderer": "^18.3.1",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
+

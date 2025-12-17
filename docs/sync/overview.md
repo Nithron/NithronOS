@@ -146,22 +146,30 @@ WebDAV access is available at `/dav/{share_id}/`.
 
 ## Roadmap
 
-### Current (Phase 1) ✅
+### Phase 1 ✅
 - Server-side sync infrastructure
 - Device management and authentication
 - WebDAV file access
 - Web UI for devices and settings
 - Delta sync algorithm
 
-### Upcoming (Phase 2)
+### Phase 2 ✅
 - Desktop client for Windows/Linux/macOS
 - Background sync daemon
 - System tray integration
 - Selective sync folders
+- Platform-specific installers
 
-### Future (Phase 3)
+### Phase 3 ✅
 - Mobile apps for iOS/Android
 - Conflict resolution UI
 - Shared folder collaboration
 - Sync activity history
+- App store deployment automation
+
+### Future (Phase 4)
+- Real-time collaboration
+- End-to-end encryption
+- Offline-first sync
+- Smart sync (on-demand files)
 

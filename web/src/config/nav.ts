@@ -12,6 +12,8 @@ import {
   Heart,
   Cloud,
   Smartphone,
+  AlertTriangle,
+  History,
   LucideIcon,
 } from 'lucide-react'
 
@@ -65,6 +67,18 @@ export const navItems: NavItem[] = [
         label: 'Devices',
         icon: Smartphone,
         path: '/settings/sync/devices',
+      },
+      {
+        id: 'sync-activity',
+        label: 'Activity',
+        icon: History,
+        path: '/settings/sync/activity',
+      },
+      {
+        id: 'sync-conflicts',
+        label: 'Conflicts',
+        icon: AlertTriangle,
+        path: '/settings/sync/conflicts',
       },
     ],
   },

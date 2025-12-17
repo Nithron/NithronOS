@@ -128,6 +128,67 @@ export interface SyncStats {
   device_token_ttl_sec: number;
 }
 
+// Conflict types
+export type ConflictResolution = 'keep_local' | 'keep_remote' | 'keep_both';
+
+export interface FileVersion {
+  hash: string;
+  size: number;
+  modified: string;
+  modified_by?: string;
+}
+
+export interface SyncConflict {
+  id: string;
+  share_id: string;
+  device_id: string;
+  path: string;
+  local_version: FileVersion;
+  remote_version: FileVersion;
+  detected_at: string;
+  resolved: boolean;
+  resolution?: ConflictResolution;
+  resolved_at?: string;
+  resolved_by?: string;
+}
+
+// Activity types
+export type ActivityAction = 'upload' | 'download' | 'delete' | 'rename' | 'conflict';
+export type ActivityStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
+
+export interface SyncActivity {
+  id: string;
+  device_id: string;
+  share_id: string;
+  action: ActivityAction;
+  path: string;
+  old_path?: string;
+  size?: number;
+  status: ActivityStatus;
+  error?: string;
+  started_at: string;
+  completed_at?: string;
+  progress?: number;
+}
+
+export interface ActivityListResponse {
+  activities: SyncActivity[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface ActivityStats {
+  total: number;
+  uploads: number;
+  downloads: number;
+  deletes: number;
+  conflicts: number;
+  completed: number;
+  failed: number;
+  bytes_synced: number;
+}
+
 // ============================================================================
 // API Functions
 // ============================================================================
@@ -256,6 +317,73 @@ export async function updateSyncState(shareId: string, state: Partial<SyncState>
 }
 
 // ============================================================================
+// Conflict API Functions
+// ============================================================================
+
+/**
+ * List sync conflicts
+ */
+export async function listConflicts(shareId?: string, unresolvedOnly = true): Promise<SyncConflict[]> {
+  const params: Record<string, string> = {};
+  if (shareId) params.share_id = shareId;
+  if (unresolvedOnly) params.unresolved_only = 'true';
+  return http.get<SyncConflict[]>(`${BASE_PATH}/conflicts`, params);
+}
+
+/**
+ * Get a specific conflict
+ */
+export async function getConflict(conflictId: string): Promise<SyncConflict> {
+  return http.get<SyncConflict>(`${BASE_PATH}/conflicts/${conflictId}`);
+}
+
+/**
+ * Resolve a conflict
+ */
+export async function resolveConflict(
+  conflictId: string,
+  resolution: ConflictResolution
+): Promise<SyncConflict> {
+  return http.put<SyncConflict>(`${BASE_PATH}/conflicts/${conflictId}`, { resolution });
+}
+
+// ============================================================================
+// Activity API Functions
+// ============================================================================
+
+/**
+ * List sync activity with pagination
+ */
+export async function listActivity(
+  shareId?: string,
+  page = 1,
+  pageSize = 50
+): Promise<ActivityListResponse> {
+  const params: Record<string, string> = {
+    page: page.toString(),
+    page_size: pageSize.toString(),
+  };
+  if (shareId) params.share_id = shareId;
+  return http.get<ActivityListResponse>(`${BASE_PATH}/activity`, params);
+}
+
+/**
+ * Get recent sync activity
+ */
+export async function getRecentActivity(limit = 20): Promise<SyncActivity[]> {
+  return http.get<SyncActivity[]>(`${BASE_PATH}/activity/recent`, { limit: limit.toString() });
+}
+
+/**
+ * Get activity statistics
+ */
+export async function getActivityStats(shareId?: string): Promise<ActivityStats> {
+  const params: Record<string, string> = {};
+  if (shareId) params.share_id = shareId;
+  return http.get<ActivityStats>(`${BASE_PATH}/activity/stats`, params);
+}
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 
@@ -356,5 +484,10 @@ export const syncKeys = {
   config: () => [...syncKeys.all, 'config'] as const,
   changes: (shareId: string) => [...syncKeys.all, 'changes', shareId] as const,
   state: (shareId: string) => [...syncKeys.all, 'state', shareId] as const,
+  conflicts: () => [...syncKeys.all, 'conflicts'] as const,
+  conflict: (id: string) => [...syncKeys.conflicts(), id] as const,
+  activity: () => [...syncKeys.all, 'activity'] as const,
+  activityRecent: () => [...syncKeys.activity(), 'recent'] as const,
+  activityStats: () => [...syncKeys.activity(), 'stats'] as const,
 };
 
