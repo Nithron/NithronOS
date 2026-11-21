@@ -140,6 +140,15 @@ Grouped by feature. Each item lists the evidence.
 
 **Apps**: log streaming (`internal/apps/manager.go:292`, `apps_handler.go:306`), `/apps/schema/{id}` (the UI uses hard-coded `mockSchemas`), and git catalog sources (`pkg/apps/catalog.go:173`).
 
+**Apps (found by the NithronAI session, see `NAI_INTEGRATION.md`)**:
+- App data ownership: `setAppOwnership` chowns `/srv/apps/<id>` to `nos:nos`, but containers run as `PUID:PGID` (1000:1000), so apps may not be able to write their data dir. Chown the data dir to the app's PUID:PGID, or give templates `NOS_UID`/`NOS_GID`.
+- Relative `./data` volumes (code-server, jellyfin, n8n, nextcloud) resolve to `/srv/apps/<id>/config/data` because `nos-app@.service` runs compose with `--project-directory /srv/apps/%i/config`, outside the snapshotted data subvolume.
+- jellyfin's `container_name` (`nos-app-jellyfin-jellyfin-1`) doesn't match the Caddy snippet (`nos-app-jellyfin-app-1`).
+- The renderer ignores catalog `defaults.resources` and caps every template without `deploy` at 2 CPUs / 1024M.
+- `AppCatalog.tsx` maps capitalised category keys while the catalog uses lowercase, so every app shows the generic icon.
+- Confirm Caddy and nosd can reach app containers by name (shared Docker network) or proxy to the published host port instead; confirm the source network of Caddy's traffic for `X-Forwarded-For` trust.
+- Read access to shares for indexing apps (nAI): a dedicated group added to share readers, passed via `group_add`/`PGID`.
+
 **Users / RBAC**: `/v1/groups` and `/v1/policy` are called by the UI but don't exist. Decide scope (README A4) and either implement minimal groups or remove them from the UI.
 
 **System**: `/system/config` and `/settings/advanced` (used by `SettingsConnected.tsx`); real service CPU/log data (`services_health_handler.go:276,322`, `system_handler.go:142,154`).
