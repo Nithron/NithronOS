@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"nithronos/backend/nosd/internal/version"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -160,8 +161,8 @@ func (h *UpdatesHandler) getCurrentVersion() string {
 		return strings.TrimSpace(string(data))
 	}
 
-	// Fallback to hardcoded version
-	return "0.9.5-pre-alpha"
+	// Fall back to the version compiled into this build
+	return version.Version
 }
 
 func (h *UpdatesHandler) getUpdateChannel() string {

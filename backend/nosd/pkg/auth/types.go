@@ -15,27 +15,27 @@ const (
 
 // User represents a system user
 type User struct {
-	ID           string    `json:"id"`
-	Username     string    `json:"username"`
-	Email        string    `json:"email,omitempty"`
-	Role         UserRole  `json:"role"`
-	Enabled      bool      `json:"enabled"`
-	
+	ID       string   `json:"id"`
+	Username string   `json:"username"`
+	Email    string   `json:"email,omitempty"`
+	Role     UserRole `json:"role"`
+	Enabled  bool     `json:"enabled"`
+
 	// 2FA settings
-	TwoFactorEnabled bool      `json:"two_factor_enabled"`
+	TwoFactorEnabled bool       `json:"two_factor_enabled"`
 	TwoFactorSetupAt *time.Time `json:"two_factor_setup_at,omitempty"`
 	LastTOTPUsed     *time.Time `json:"last_totp_used,omitempty"`
-	
+
 	// Metadata
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
-	LastLoginAt  *time.Time `json:"last_login_at,omitempty"`
-	LastLoginIP  string     `json:"last_login_ip,omitempty"`
-	
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	LastLoginAt *time.Time `json:"last_login_at,omitempty"`
+	LastLoginIP string     `json:"last_login_ip,omitempty"`
+
 	// Password metadata (not the password itself)
-	PasswordChangedAt time.Time `json:"password_changed_at"`
-	ForcePasswordChange bool    `json:"force_password_change"`
-	
+	PasswordChangedAt   time.Time `json:"password_changed_at"`
+	ForcePasswordChange bool      `json:"force_password_change"`
+
 	// Lockout status
 	LockedUntil  *time.Time `json:"locked_until,omitempty"`
 	FailedLogins int        `json:"failed_logins"`
@@ -43,45 +43,45 @@ type User struct {
 
 // Session represents an active user session
 type Session struct {
-	ID           string    `json:"id"`
-	UserID       string    `json:"user_id"`
-	Username     string    `json:"username"`
-	Role         UserRole  `json:"role"`
-	
+	ID       string   `json:"id"`
+	UserID   string   `json:"user_id"`
+	Username string   `json:"username"`
+	Role     UserRole `json:"role"`
+
 	// Session metadata
-	IssuedAt     time.Time `json:"issued_at"`
-	ExpiresAt    time.Time `json:"expires_at"`
-	LastSeenAt   time.Time `json:"last_seen_at"`
-	
+	IssuedAt   time.Time `json:"issued_at"`
+	ExpiresAt  time.Time `json:"expires_at"`
+	LastSeenAt time.Time `json:"last_seen_at"`
+
 	// Client info
-	IP           string    `json:"ip"`
-	UserAgent    string    `json:"user_agent"`
-	
+	IP        string `json:"ip"`
+	UserAgent string `json:"user_agent"`
+
 	// Security
-	TwoFactorVerified bool      `json:"two_factor_verified"`
+	TwoFactorVerified bool       `json:"two_factor_verified"`
 	ElevatedUntil     *time.Time `json:"elevated_until,omitempty"`
-	Scopes            []string  `json:"scopes,omitempty"`
-	
+	Scopes            []string   `json:"scopes,omitempty"`
+
 	// Token metadata
-	RefreshToken string    `json:"-"` // Never expose
-	TokenVersion int       `json:"token_version"`
+	RefreshToken string `json:"-"` // Never expose
+	TokenVersion int    `json:"token_version"`
 }
 
 // PasswordResetToken represents a password reset request
 type PasswordResetToken struct {
-	ID         string    `json:"id"`
-	UserID     string    `json:"user_id"`
-	Token      string    `json:"-"` // Stored hashed
-	Method     string    `json:"method"` // email or console
-	
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+	Token  string `json:"-"`      // Stored hashed
+	Method string `json:"method"` // email or console
+
 	// Lifecycle
-	CreatedAt  time.Time `json:"created_at"`
-	ExpiresAt  time.Time `json:"expires_at"`
-	UsedAt     *time.Time `json:"used_at,omitempty"`
-	
+	CreatedAt time.Time  `json:"created_at"`
+	ExpiresAt time.Time  `json:"expires_at"`
+	UsedAt    *time.Time `json:"used_at,omitempty"`
+
 	// Metadata
-	RequestIP  string    `json:"request_ip"`
-	ResetIP    string    `json:"reset_ip,omitempty"`
+	RequestIP string `json:"request_ip"`
+	ResetIP   string `json:"reset_ip,omitempty"`
 }
 
 // RecoveryCode represents a 2FA recovery code
@@ -93,72 +93,72 @@ type RecoveryCode struct {
 
 // AuditEvent represents an auditable action
 type AuditEvent struct {
-	ID          string                 `json:"id"`
-	Timestamp   time.Time              `json:"timestamp"`
-	
+	ID        string    `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+
 	// Actor
-	UserID      string                 `json:"user_id,omitempty"`
-	Username    string                 `json:"username,omitempty"`
-	SessionID   string                 `json:"session_id,omitempty"`
-	IP          string                 `json:"ip"`
-	UserAgent   string                 `json:"user_agent,omitempty"`
-	
+	UserID    string `json:"user_id,omitempty"`
+	Username  string `json:"username,omitempty"`
+	SessionID string `json:"session_id,omitempty"`
+	IP        string `json:"ip"`
+	UserAgent string `json:"user_agent,omitempty"`
+
 	// Event
-	Code        string                 `json:"code"` // e.g., "auth.login"
-	Category    string                 `json:"category"` // auth, user, password, session, acl
-	Severity    string                 `json:"severity"` // info, warning, critical
-	Success     bool                   `json:"success"`
-	
+	Code     string `json:"code"`     // e.g., "auth.login"
+	Category string `json:"category"` // auth, user, password, session, acl
+	Severity string `json:"severity"` // info, warning, critical
+	Success  bool   `json:"success"`
+
 	// Details
-	Target      string                 `json:"target,omitempty"` // Target user/resource
-	Message     string                 `json:"message"`
-	Details     map[string]interface{} `json:"details,omitempty"`
-	OldValues   map[string]interface{} `json:"old_values,omitempty"`
-	NewValues   map[string]interface{} `json:"new_values,omitempty"`
+	Target    string                 `json:"target,omitempty"` // Target user/resource
+	Message   string                 `json:"message"`
+	Details   map[string]interface{} `json:"details,omitempty"`
+	OldValues map[string]interface{} `json:"old_values,omitempty"`
+	NewValues map[string]interface{} `json:"new_values,omitempty"`
 }
 
 // PasswordPolicy defines password requirements
 type PasswordPolicy struct {
-	MinLength           int    `json:"min_length"`
-	RequireUppercase    bool   `json:"require_uppercase"`
-	RequireLowercase    bool   `json:"require_lowercase"`
-	RequireNumbers      bool   `json:"require_numbers"`
-	RequireSpecial      bool   `json:"require_special"`
-	MinEntropy          float64 `json:"min_entropy"` // Using zxcvbn-like scoring
-	ProhibitCommon      bool   `json:"prohibit_common"`
-	ProhibitUsername    bool   `json:"prohibit_username"`
-	ProhibitReuse       int    `json:"prohibit_reuse"` // Number of previous passwords to check
-	MaxAge              int    `json:"max_age_days"`
-	WarnAge             int    `json:"warn_age_days"`
+	MinLength        int     `json:"min_length"`
+	RequireUppercase bool    `json:"require_uppercase"`
+	RequireLowercase bool    `json:"require_lowercase"`
+	RequireNumbers   bool    `json:"require_numbers"`
+	RequireSpecial   bool    `json:"require_special"`
+	MinEntropy       float64 `json:"min_entropy"` // Using zxcvbn-like scoring
+	ProhibitCommon   bool    `json:"prohibit_common"`
+	ProhibitUsername bool    `json:"prohibit_username"`
+	ProhibitReuse    int     `json:"prohibit_reuse"` // Number of previous passwords to check
+	MaxAge           int     `json:"max_age_days"`
+	WarnAge          int     `json:"warn_age_days"`
 }
 
 // LoginAttempt tracks login attempts for rate limiting
 type LoginAttempt struct {
-	IP          string    `json:"ip"`
-	Username    string    `json:"username,omitempty"`
-	Timestamp   time.Time `json:"timestamp"`
-	Success     bool      `json:"success"`
-	Reason      string    `json:"reason,omitempty"`
+	IP        string    `json:"ip"`
+	Username  string    `json:"username,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
+	Success   bool      `json:"success"`
+	Reason    string    `json:"reason,omitempty"`
 }
 
 // Lockout represents a user or IP lockout
 type Lockout struct {
-	ID          string    `json:"id"`
-	Type        string    `json:"type"` // user or ip
-	Target      string    `json:"target"` // username or IP
-	LockedAt    time.Time `json:"locked_at"`
-	LockedUntil time.Time `json:"locked_until"`
-	Reason      string    `json:"reason"`
+	ID          string     `json:"id"`
+	Type        string     `json:"type"`   // user or ip
+	Target      string     `json:"target"` // username or IP
+	LockedAt    time.Time  `json:"locked_at"`
+	LockedUntil time.Time  `json:"locked_until"`
+	Reason      string     `json:"reason"`
 	ClearedAt   *time.Time `json:"cleared_at,omitempty"`
-	ClearedBy   string    `json:"cleared_by,omitempty"`
-	ClearReason string    `json:"clear_reason,omitempty"`
+	ClearedBy   string     `json:"cleared_by,omitempty"`
+	ClearReason string     `json:"clear_reason,omitempty"`
 }
 
 // TOTPSecret holds TOTP configuration
 type TOTPSecret struct {
-	Secret    string    `json:"-"` // Never expose
-	URL       string    `json:"url,omitempty"` // otpauth:// URL for QR
-	Verified  bool      `json:"verified"`
+	Secret      string         `json:"-"`             // Never expose
+	URL         string         `json:"url,omitempty"` // otpauth:// URL for QR
+	Verified    bool           `json:"verified"`
 	BackupCodes []RecoveryCode `json:"-"` // Never expose in normal responses
 }
 
@@ -172,9 +172,9 @@ type UserCreateRequest struct {
 
 // UserUpdateRequest for updating users
 type UserUpdateRequest struct {
-	Email    *string   `json:"email,omitempty"`
-	Role     *UserRole `json:"role,omitempty"`
-	Enabled  *bool     `json:"enabled,omitempty"`
+	Email   *string   `json:"email,omitempty"`
+	Role    *UserRole `json:"role,omitempty"`
+	Enabled *bool     `json:"enabled,omitempty"`
 }
 
 // PasswordChangeRequest for changing passwords
@@ -233,40 +233,40 @@ type AuditLogQuery struct {
 // Standard audit event codes
 const (
 	// Authentication events
-	AuditAuthLogin          = "auth.login"
-	AuditAuthLogout         = "auth.logout"
-	AuditAuthFailed         = "auth.failed"
-	AuditAuthLocked         = "auth.locked"
-	AuditAuthUnlocked       = "auth.unlocked"
-	AuditAuth2FAEnabled     = "auth.2fa.enabled"
-	AuditAuth2FADisabled    = "auth.2fa.disabled"
-	AuditAuth2FAFailed      = "auth.2fa.failed"
-	AuditAuthTokenRefresh   = "auth.token.refresh"
-	
+	AuditAuthLogin        = "auth.login"
+	AuditAuthLogout       = "auth.logout"
+	AuditAuthFailed       = "auth.failed"
+	AuditAuthLocked       = "auth.locked"
+	AuditAuthUnlocked     = "auth.unlocked"
+	AuditAuth2FAEnabled   = "auth.2fa.enabled"
+	AuditAuth2FADisabled  = "auth.2fa.disabled"
+	AuditAuth2FAFailed    = "auth.2fa.failed"
+	AuditAuthTokenRefresh = "auth.token.refresh"
+
 	// User management events
-	AuditUserCreate         = "user.create"
-	AuditUserUpdate         = "user.update"
-	AuditUserDelete         = "user.delete"
-	AuditUserEnable         = "user.enable"
-	AuditUserDisable        = "user.disable"
-	AuditUserRoleChange     = "user.role.change"
-	
+	AuditUserCreate     = "user.create"
+	AuditUserUpdate     = "user.update"
+	AuditUserDelete     = "user.delete"
+	AuditUserEnable     = "user.enable"
+	AuditUserDisable    = "user.disable"
+	AuditUserRoleChange = "user.role.change"
+
 	// Password events
 	AuditPasswordChange     = "password.change"
 	AuditPasswordReset      = "password.reset.request"
 	AuditPasswordResetApply = "password.reset.apply"
 	AuditPasswordExpired    = "password.expired"
-	
+
 	// Session events
-	AuditSessionCreate      = "session.create"
-	AuditSessionRevoke      = "session.revoke"
-	AuditSessionExpired     = "session.expired"
-	AuditSessionElevate     = "session.elevate"
-	
+	AuditSessionCreate  = "session.create"
+	AuditSessionRevoke  = "session.revoke"
+	AuditSessionExpired = "session.expired"
+	AuditSessionElevate = "session.elevate"
+
 	// Access control events
-	AuditACLDenied          = "acl.denied"
-	AuditACLGrant           = "acl.grant"
-	AuditACLRevoke          = "acl.revoke"
+	AuditACLDenied = "acl.denied"
+	AuditACLGrant  = "acl.grant"
+	AuditACLRevoke = "acl.revoke"
 )
 
 // GetRolePermissions returns permissions for a role

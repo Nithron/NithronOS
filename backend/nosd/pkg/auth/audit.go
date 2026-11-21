@@ -19,7 +19,7 @@ type AuditLogger struct {
 	dataPath string
 	events   []AuditEvent
 	mu       sync.RWMutex
-	
+
 	// File handles for streaming
 	currentFile *os.File
 	currentDate string
@@ -32,16 +32,16 @@ func NewAuditLogger(logger zerolog.Logger, dataPath string) *AuditLogger {
 		dataPath: dataPath,
 		events:   []AuditEvent{},
 	}
-	
+
 	// Create audit directory
 	_ = os.MkdirAll(dataPath, 0700)
-	
+
 	// Load recent events
 	al.loadRecentEvents()
-	
+
 	// Start rotation routine
 	go al.rotationRoutine()
-	
+
 	return al
 }
 
@@ -54,24 +54,24 @@ func (al *AuditLogger) LogEvent(event *AuditEvent) {
 	if event.Timestamp.IsZero() {
 		event.Timestamp = time.Now()
 	}
-	
+
 	// Redact sensitive data
 	al.redactSensitiveData(event)
-	
+
 	al.mu.Lock()
 	defer al.mu.Unlock()
-	
+
 	// Add to memory cache
 	al.events = append(al.events, *event)
-	
+
 	// Keep only recent events in memory (last 1000)
 	if len(al.events) > 1000 {
 		al.events = al.events[len(al.events)-1000:]
 	}
-	
+
 	// Write to file
 	al.writeToFile(event)
-	
+
 	// Log to system logger based on severity
 	switch event.Severity {
 	case "critical":
@@ -102,10 +102,10 @@ func (al *AuditLogger) LogEvent(event *AuditEvent) {
 func (al *AuditLogger) Query(query AuditLogQuery) ([]AuditEvent, int, error) {
 	al.mu.RLock()
 	defer al.mu.RUnlock()
-	
+
 	// Start with all events (from memory and files)
 	allEvents := al.getAllEvents(query.From, query.To)
-	
+
 	// Filter events
 	filtered := []AuditEvent{}
 	for _, event := range allEvents {
@@ -113,9 +113,9 @@ func (al *AuditLogger) Query(query AuditLogQuery) ([]AuditEvent, int, error) {
 			filtered = append(filtered, event)
 		}
 	}
-	
+
 	total := len(filtered)
-	
+
 	// Apply pagination
 	start := query.Offset
 	if start < 0 {
@@ -124,12 +124,12 @@ func (al *AuditLogger) Query(query AuditLogQuery) ([]AuditEvent, int, error) {
 	if start >= len(filtered) {
 		return []AuditEvent{}, total, nil
 	}
-	
+
 	end := start + query.Limit
 	if query.Limit <= 0 || end > len(filtered) {
 		end = len(filtered)
 	}
-	
+
 	return filtered[start:end], total, nil
 }
 
@@ -137,14 +137,14 @@ func (al *AuditLogger) Query(query AuditLogQuery) ([]AuditEvent, int, error) {
 func (al *AuditLogger) GetEvent(eventID string) (*AuditEvent, error) {
 	al.mu.RLock()
 	defer al.mu.RUnlock()
-	
+
 	// Check memory cache first
 	for _, event := range al.events {
 		if event.ID == eventID {
 			return &event, nil
 		}
 	}
-	
+
 	// Search in files
 	files, _ := filepath.Glob(filepath.Join(al.dataPath, "audit-*.json"))
 	for _, file := range files {
@@ -155,7 +155,7 @@ func (al *AuditLogger) GetEvent(eventID string) (*AuditEvent, error) {
 			}
 		}
 	}
-	
+
 	return nil, fmt.Errorf("event not found")
 }
 
@@ -165,10 +165,10 @@ func (al *AuditLogger) ExportCSV(query AuditLogQuery) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Build CSV
 	csv := "Timestamp,User,IP,Code,Category,Severity,Success,Target,Message\n"
-	
+
 	for _, event := range events {
 		csv += fmt.Sprintf("%s,%s,%s,%s,%s,%s,%t,%s,\"%s\"\n",
 			event.Timestamp.Format(time.RFC3339),
@@ -182,7 +182,7 @@ func (al *AuditLogger) ExportCSV(query AuditLogQuery) ([]byte, error) {
 			event.Message,
 		)
 	}
-	
+
 	return []byte(csv), nil
 }
 
@@ -190,9 +190,9 @@ func (al *AuditLogger) ExportCSV(query AuditLogQuery) ([]byte, error) {
 func (al *AuditLogger) GetStatistics(from, to time.Time) map[string]interface{} {
 	al.mu.RLock()
 	defer al.mu.RUnlock()
-	
+
 	events := al.getAllEvents(from, to)
-	
+
 	stats := map[string]interface{}{
 		"total_events": len(events),
 		"by_category":  make(map[string]int),
@@ -202,42 +202,42 @@ func (al *AuditLogger) GetStatistics(from, to time.Time) map[string]interface{} 
 		"top_users":    make(map[string]int),
 		"top_ips":      make(map[string]int),
 	}
-	
+
 	byCategory := stats["by_category"].(map[string]int)
 	bySeverity := stats["by_severity"].(map[string]int)
 	bySuccess := stats["by_success"].(map[string]int)
 	byCode := stats["by_code"].(map[string]int)
 	topUsers := stats["top_users"].(map[string]int)
 	topIPs := stats["top_ips"].(map[string]int)
-	
+
 	for _, event := range events {
 		// Category
 		byCategory[event.Category]++
-		
+
 		// Severity
 		bySeverity[event.Severity]++
-		
+
 		// Success
 		if event.Success {
 			bySuccess["success"]++
 		} else {
 			bySuccess["failure"]++
 		}
-		
+
 		// Code
 		byCode[event.Code]++
-		
+
 		// Users
 		if event.Username != "" {
 			topUsers[event.Username]++
 		}
-		
+
 		// IPs
 		if event.IP != "" {
 			topIPs[event.IP]++
 		}
 	}
-	
+
 	return stats
 }
 
@@ -246,7 +246,7 @@ func (al *AuditLogger) GetStatistics(from, to time.Time) map[string]interface{} 
 func (al *AuditLogger) redactSensitiveData(event *AuditEvent) {
 	// Redact passwords and tokens
 	redactKeys := []string{"password", "token", "secret", "key", "credential"}
-	
+
 	// Redact in details
 	if event.Details != nil {
 		for key := range event.Details {
@@ -257,7 +257,7 @@ func (al *AuditLogger) redactSensitiveData(event *AuditEvent) {
 			}
 		}
 	}
-	
+
 	// Redact in old values
 	if event.OldValues != nil {
 		for key := range event.OldValues {
@@ -268,7 +268,7 @@ func (al *AuditLogger) redactSensitiveData(event *AuditEvent) {
 			}
 		}
 	}
-	
+
 	// Redact in new values
 	if event.NewValues != nil {
 		for key := range event.NewValues {
@@ -279,7 +279,7 @@ func (al *AuditLogger) redactSensitiveData(event *AuditEvent) {
 			}
 		}
 	}
-	
+
 	// Partially mask email addresses
 	if email, ok := event.Details["email"].(string); ok {
 		event.Details["email"] = al.maskEmail(email)
@@ -294,25 +294,25 @@ func (al *AuditLogger) maskEmail(email string) string {
 	if len(parts) != 2 {
 		return email
 	}
-	
+
 	local := parts[0]
 	if len(local) > 3 {
 		local = local[:2] + "***"
 	}
-	
+
 	return local + "@" + parts[1]
 }
 
 func (al *AuditLogger) writeToFile(event *AuditEvent) {
 	// Get current date
 	dateStr := event.Timestamp.Format("2006-01-02")
-	
+
 	// Check if we need to rotate
 	if al.currentFile != nil && al.currentDate != dateStr {
 		al.currentFile.Close()
 		al.currentFile = nil
 	}
-	
+
 	// Open file if needed
 	if al.currentFile == nil {
 		filename := filepath.Join(al.dataPath, fmt.Sprintf("audit-%s.json", dateStr))
@@ -324,13 +324,13 @@ func (al *AuditLogger) writeToFile(event *AuditEvent) {
 		al.currentFile = file
 		al.currentDate = dateStr
 	}
-	
+
 	// Write event
 	data, err := json.Marshal(event)
 	if err != nil {
 		return
 	}
-	
+
 	_, _ = al.currentFile.Write(data)
 	_, _ = al.currentFile.Write([]byte("\n"))
 	_ = al.currentFile.Sync()
@@ -344,22 +344,22 @@ func (al *AuditLogger) matchesQuery(event AuditEvent, query AuditLogQuery) bool 
 	if query.Username != "" && !strings.Contains(strings.ToLower(event.Username), strings.ToLower(query.Username)) {
 		return false
 	}
-	
+
 	// IP filter
 	if query.IP != "" && !strings.Contains(event.IP, query.IP) {
 		return false
 	}
-	
+
 	// Code filter
 	if query.Code != "" && !strings.HasPrefix(event.Code, query.Code) {
 		return false
 	}
-	
+
 	// Category filter
 	if query.Category != "" && event.Category != query.Category {
 		return false
 	}
-	
+
 	// Time filter
 	if !query.From.IsZero() && event.Timestamp.Before(query.From) {
 		return false
@@ -367,21 +367,21 @@ func (al *AuditLogger) matchesQuery(event AuditEvent, query AuditLogQuery) bool 
 	if !query.To.IsZero() && event.Timestamp.After(query.To) {
 		return false
 	}
-	
+
 	return true
 }
 
 func (al *AuditLogger) getAllEvents(from, to time.Time) []AuditEvent {
 	events := []AuditEvent{}
-	
+
 	// Add events from memory
 	for _, event := range al.events {
 		if (from.IsZero() || event.Timestamp.After(from)) &&
-		   (to.IsZero() || event.Timestamp.Before(to)) {
+			(to.IsZero() || event.Timestamp.Before(to)) {
 			events = append(events, event)
 		}
 	}
-	
+
 	// Load events from files
 	if !from.IsZero() || !to.IsZero() {
 		files, _ := filepath.Glob(filepath.Join(al.dataPath, "audit-*.json"))
@@ -393,7 +393,7 @@ func (al *AuditLogger) getAllEvents(from, to time.Time) []AuditEvent {
 			if err != nil {
 				continue
 			}
-			
+
 			// Skip files outside date range
 			if !from.IsZero() && fileDate.Before(from.Truncate(24*time.Hour)) {
 				continue
@@ -401,40 +401,40 @@ func (al *AuditLogger) getAllEvents(from, to time.Time) []AuditEvent {
 			if !to.IsZero() && fileDate.After(to.Add(24*time.Hour)) {
 				continue
 			}
-			
+
 			fileEvents := al.loadEventsFromFile(file)
 			for _, event := range fileEvents {
 				if (from.IsZero() || event.Timestamp.After(from)) &&
-				   (to.IsZero() || event.Timestamp.Before(to)) {
+					(to.IsZero() || event.Timestamp.Before(to)) {
 					events = append(events, event)
 				}
 			}
 		}
 	}
-	
+
 	return events
 }
 
 func (al *AuditLogger) loadEventsFromFile(filename string) []AuditEvent {
 	events := []AuditEvent{}
-	
+
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return events
 	}
-	
+
 	lines := strings.Split(string(data), "\n")
 	for _, line := range lines {
 		if line == "" {
 			continue
 		}
-		
+
 		var event AuditEvent
 		if err := json.Unmarshal([]byte(line), &event); err == nil {
 			events = append(events, event)
 		}
 	}
-	
+
 	return events
 }
 
@@ -442,9 +442,9 @@ func (al *AuditLogger) loadRecentEvents() {
 	// Load today's events into memory
 	today := time.Now().Format("2006-01-02")
 	filename := filepath.Join(al.dataPath, fmt.Sprintf("audit-%s.json", today))
-	
+
 	al.events = al.loadEventsFromFile(filename)
-	
+
 	// Keep only last 1000
 	if len(al.events) > 1000 {
 		al.events = al.events[len(al.events)-1000:]
@@ -454,7 +454,7 @@ func (al *AuditLogger) loadRecentEvents() {
 func (al *AuditLogger) rotationRoutine() {
 	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		al.rotate()
 	}
@@ -463,17 +463,17 @@ func (al *AuditLogger) rotationRoutine() {
 func (al *AuditLogger) rotate() {
 	al.mu.Lock()
 	defer al.mu.Unlock()
-	
+
 	// Close current file
 	if al.currentFile != nil {
 		al.currentFile.Close()
 		al.currentFile = nil
 	}
-	
+
 	// Clean old files (keep 90 days)
 	cutoff := time.Now().AddDate(0, 0, -90)
 	files, _ := filepath.Glob(filepath.Join(al.dataPath, "audit-*.json"))
-	
+
 	for _, file := range files {
 		base := filepath.Base(file)
 		dateStr := strings.TrimPrefix(strings.TrimSuffix(base, ".json"), "audit-")
@@ -481,7 +481,7 @@ func (al *AuditLogger) rotate() {
 		if err != nil {
 			continue
 		}
-		
+
 		if fileDate.Before(cutoff) {
 			os.Remove(file)
 			al.logger.Info().
@@ -495,7 +495,7 @@ func (al *AuditLogger) rotate() {
 func (al *AuditLogger) Close() {
 	al.mu.Lock()
 	defer al.mu.Unlock()
-	
+
 	if al.currentFile != nil {
 		al.currentFile.Close()
 	}

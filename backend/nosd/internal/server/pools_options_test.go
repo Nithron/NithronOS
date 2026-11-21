@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"nithronos/backend/nosd/internal/config"
 )
@@ -47,8 +48,9 @@ func TestSavePoolOptionsStore(t *testing.T) {
 	cfg := config.Defaults()
 	dir := t.TempDir()
 	cfg.EtcDir = dir
-	st := poolOptionsStore{Records: []poolOptionsRecord{{Mount: "/mnt/p1", MountOptions: "compress=zstd:3,noatime"}}}
-	if err := savePoolOptions(cfg, st); err != nil {
+	if err := updatePoolOptions(cfg, func(st *poolOptionsStore) {
+		st.Records = append(st.Records, poolOptionsRecord{Mount: "/mnt/p1", MountOptions: "compress=zstd:3,noatime"})
+	}); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(filepath.Join(dir, "nos", "pools.json"))
@@ -103,4 +105,37 @@ func TestPoolOptionsPost_RemountFailRequiresReboot(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	// status can be 200 or 404 depending on other guards; focus on behavior
+}
+
+// Regression: the pool device tx and pool destroy used to call the store save
+// while already holding the pools.json lock, which deadlocks (flock is per open
+// file). updatePoolOptions must work when called from code that isn't holding
+// the lock, and repeated calls must not block.
+func TestUpdatePoolOptionsDoesNotDeadlock(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.EtcDir = t.TempDir()
+	done := make(chan error, 1)
+	go func() {
+		for i := 0; i < 3; i++ {
+			if err := updatePoolOptions(cfg, func(st *poolOptionsStore) {
+				st.Records = append(st.Records, poolOptionsRecord{Mount: "/mnt/p"})
+			}); err != nil {
+				done <- err
+				return
+			}
+		}
+		done <- nil
+	}()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("updatePoolOptions blocked")
+	}
+	st, _ := loadPoolOptions(cfg)
+	if len(st.Records) != 3 {
+		t.Fatalf("want 3 records, got %d", len(st.Records))
+	}
 }

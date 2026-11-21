@@ -52,7 +52,6 @@ func (f *fakeAgentPoll) ReplaceStatus(_ context.Context, _ string) (*agentclient
 
 func TestApplyDevice_BalanceRunningToDone(t *testing.T) {
 	t.Setenv("NOS_STATE_DIR", t.TempDir())
-	t.Setenv("NOS_TEST_DISABLE_STORE_LOCK", "1")
 	t.Setenv("NOS_TEST_FAST_POLL", "1")
 	oldPoll := devicePollInterval
 	devicePollInterval = 1 * time.Millisecond
@@ -114,7 +113,6 @@ func TestApplyDevice_BalanceRunningToDone(t *testing.T) {
 
 func TestApplyDevice_StepErrorStops(t *testing.T) {
 	t.Setenv("NOS_STATE_DIR", t.TempDir())
-	t.Setenv("NOS_TEST_DISABLE_STORE_LOCK", "1")
 	t.Setenv("NOS_TEST_FAST_POLL", "1")
 	oldPoll := devicePollInterval
 	devicePollInterval = 1 * time.Millisecond

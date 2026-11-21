@@ -185,4 +185,3 @@ type TelemetryData struct {
 	ErrorCode      string        `json:"error_code,omitempty"`
 	Timestamp      time.Time     `json:"timestamp"`
 }
-

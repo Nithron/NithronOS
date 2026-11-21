@@ -313,7 +313,7 @@ func (tr *TemplateRenderer) RenderEnvFile(params map[string]interface{}) ([]byte
 		if strings.ContainsAny(v, " \t\n\"'\\$") {
 			v = fmt.Sprintf("%q", v)
 		}
-		buffer.WriteString(fmt.Sprintf("%s=%s\n", k, v))
+		fmt.Fprintf(&buffer, "%s=%s\n", k, v)
 	}
 
 	return buffer.Bytes(), nil

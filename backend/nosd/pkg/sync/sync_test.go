@@ -77,7 +77,7 @@ func TestDefaultDeviceScopes(t *testing.T) {
 	if len(scopes) != 2 {
 		t.Errorf("Expected 2 default scopes, got %d", len(scopes))
 	}
-	
+
 	hasRead := false
 	hasWrite := false
 	for _, s := range scopes {
@@ -88,7 +88,7 @@ func TestDefaultDeviceScopes(t *testing.T) {
 			hasWrite = true
 		}
 	}
-	
+
 	if !hasRead {
 		t.Error("Default scopes should include sync.read")
 	}
@@ -337,7 +337,7 @@ func TestStoreSyncState(t *testing.T) {
 
 func TestRollingChecksum(t *testing.T) {
 	data := []byte("Hello, World!")
-	
+
 	checksum := ComputeRollingChecksum(data)
 	if checksum == 0 {
 		t.Error("Rolling checksum should not be 0")
@@ -379,9 +379,9 @@ func TestBlockTransferPlan(t *testing.T) {
 		Hash:      "fullhash456", // Different full hash
 		BlockSize: 1024,
 		Blocks: []BlockHash{
-			{Offset: 0, Size: 1024, Hash: "block0"},     // Same
-			{Offset: 1024, Size: 1024, Hash: "blockX"},  // Different
-			{Offset: 2048, Size: 1024, Hash: "block2"},  // Same
+			{Offset: 0, Size: 1024, Hash: "block0"},    // Same
+			{Offset: 1024, Size: 1024, Hash: "blockX"}, // Different
+			{Offset: 2048, Size: 1024, Hash: "block2"}, // Same
 		},
 	}
 
@@ -434,4 +434,3 @@ func TestBlockTransferPlanIdenticalFiles(t *testing.T) {
 		t.Errorf("Savings should be 100%% for identical files, got %f", plan.Savings)
 	}
 }
-

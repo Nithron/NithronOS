@@ -33,14 +33,14 @@ func NewMonitorHandler(logger zerolog.Logger, collector *monitor.Collector, stor
 // Routes returns the monitoring API routes
 func (h *MonitorHandler) Routes() chi.Router {
 	r := chi.NewRouter()
-	
+
 	// Metrics
 	r.Get("/overview", h.GetOverview)
 	r.Post("/timeseries", h.QueryTimeSeries)
 	r.Get("/devices", h.GetDevices)
 	r.Get("/services", h.GetServices)
 	r.Get("/btrfs", h.GetBtrfsMetrics)
-	
+
 	// Alerts
 	r.Route("/alerts", func(r chi.Router) {
 		// Rules
@@ -49,7 +49,7 @@ func (h *MonitorHandler) Routes() chi.Router {
 		r.Get("/rules/{id}", h.GetAlertRule)
 		r.Patch("/rules/{id}", h.UpdateAlertRule)
 		r.Delete("/rules/{id}", h.DeleteAlertRule)
-		
+
 		// Channels
 		r.Get("/channels", h.ListChannels)
 		r.Post("/channels", h.CreateChannel)
@@ -57,11 +57,11 @@ func (h *MonitorHandler) Routes() chi.Router {
 		r.Patch("/channels/{id}", h.UpdateChannel)
 		r.Delete("/channels/{id}", h.DeleteChannel)
 		r.Post("/channels/{id}/test", h.TestChannel)
-		
+
 		// Events
 		r.Get("/events", h.ListAlertEvents)
 	})
-	
+
 	return r
 }
 
@@ -74,7 +74,7 @@ func (h *MonitorHandler) GetOverview(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "Failed to get overview")
 		return
 	}
-	
+
 	// Add active alerts count
 	events := h.alertEngine.ListEvents(100)
 	activeCount := 0
@@ -84,7 +84,7 @@ func (h *MonitorHandler) GetOverview(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	overview.AlertsActive = activeCount
-	
+
 	respondJSON(w, http.StatusOK, overview)
 }
 
@@ -94,7 +94,7 @@ func (h *MonitorHandler) QueryTimeSeries(w http.ResponseWriter, r *http.Request)
 		respondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-	
+
 	// Default time range if not specified
 	if query.EndTime.IsZero() {
 		query.EndTime = time.Now()
@@ -102,7 +102,7 @@ func (h *MonitorHandler) QueryTimeSeries(w http.ResponseWriter, r *http.Request)
 	if query.StartTime.IsZero() {
 		query.StartTime = query.EndTime.Add(-1 * time.Hour)
 	}
-	
+
 	// Default step if not specified
 	if query.Step == 0 {
 		duration := query.EndTime.Sub(query.StartTime)
@@ -114,14 +114,14 @@ func (h *MonitorHandler) QueryTimeSeries(w http.ResponseWriter, r *http.Request)
 			query.Step = time.Hour
 		}
 	}
-	
+
 	ts, err := h.storage.Query(query)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to query time series")
 		respondError(w, http.StatusInternalServerError, "Failed to query metrics")
 		return
 	}
-	
+
 	respondJSON(w, http.StatusOK, ts)
 }
 
@@ -133,7 +133,7 @@ func (h *MonitorHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "Failed to get devices")
 		return
 	}
-	
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"disks": overview.Disks,
 	})
@@ -146,7 +146,7 @@ func (h *MonitorHandler) GetServices(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "Failed to get services")
 		return
 	}
-	
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"services": overview.Services,
 	})
@@ -159,7 +159,7 @@ func (h *MonitorHandler) GetBtrfsMetrics(w http.ResponseWriter, r *http.Request)
 		respondError(w, http.StatusInternalServerError, "Failed to get btrfs metrics")
 		return
 	}
-	
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"btrfs": overview.Btrfs,
 	})
@@ -180,55 +180,55 @@ func (h *MonitorHandler) CreateAlertRule(w http.ResponseWriter, r *http.Request)
 		respondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-	
+
 	if err := h.alertEngine.CreateRule(&rule); err != nil {
 		h.logger.Error().Err(err).Msg("Failed to create alert rule")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	
+
 	respondJSON(w, http.StatusCreated, rule)
 }
 
 func (h *MonitorHandler) GetAlertRule(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	
+
 	rule, err := h.alertEngine.GetRule(id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "Rule not found")
 		return
 	}
-	
+
 	respondJSON(w, http.StatusOK, rule)
 }
 
 func (h *MonitorHandler) UpdateAlertRule(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	
+
 	var rule alerts.AlertRule
 	if err := json.NewDecoder(r.Body).Decode(&rule); err != nil {
 		respondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-	
+
 	if err := h.alertEngine.UpdateRule(id, &rule); err != nil {
 		h.logger.Error().Err(err).Msg("Failed to update alert rule")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	
+
 	respondJSON(w, http.StatusOK, rule)
 }
 
 func (h *MonitorHandler) DeleteAlertRule(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	
+
 	if err := h.alertEngine.DeleteRule(id); err != nil {
 		h.logger.Error().Err(err).Msg("Failed to delete alert rule")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	
+
 	respondJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
@@ -245,35 +245,36 @@ func (h *MonitorHandler) CreateChannel(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-	
+
 	if err := h.alertEngine.CreateChannel(&channel); err != nil {
 		h.logger.Error().Err(err).Msg("Failed to create channel")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	
+
 	respondJSON(w, http.StatusCreated, channel)
 }
 
 func (h *MonitorHandler) GetChannel(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	
+
 	channel, err := h.alertEngine.GetChannel(id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "Channel not found")
 		return
 	}
-	
+
 	// Hide sensitive config
-	if channel.Type == "email" {
+	switch channel.Type {
+	case "email":
 		if cfg, ok := channel.Config["smtp_password"]; ok && cfg != "" {
 			channel.Config["smtp_password"] = "***"
 		}
-	} else if channel.Type == "webhook" {
+	case "webhook":
 		if cfg, ok := channel.Config["secret"]; ok && cfg != "" {
 			channel.Config["secret"] = "***"
 		}
-	} else if channel.Type == "ntfy" {
+	case "ntfy":
 		if cfg, ok := channel.Config["password"]; ok && cfg != "" {
 			channel.Config["password"] = "***"
 		}
@@ -281,40 +282,41 @@ func (h *MonitorHandler) GetChannel(w http.ResponseWriter, r *http.Request) {
 			channel.Config["token"] = "***"
 		}
 	}
-	
+
 	respondJSON(w, http.StatusOK, channel)
 }
 
 func (h *MonitorHandler) UpdateChannel(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	
+
 	// Get existing channel to preserve sensitive fields
 	existing, err := h.alertEngine.GetChannel(id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "Channel not found")
 		return
 	}
-	
+
 	var channel alerts.NotificationChannel
 	if err := json.NewDecoder(r.Body).Decode(&channel); err != nil {
 		respondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-	
+
 	// Preserve sensitive fields if not provided
-	if channel.Type == "email" {
+	switch channel.Type {
+	case "email":
 		if pwd, ok := channel.Config["smtp_password"].(string); !ok || pwd == "***" || pwd == "" {
 			if existingPwd, ok := existing.Config["smtp_password"]; ok {
 				channel.Config["smtp_password"] = existingPwd
 			}
 		}
-	} else if channel.Type == "webhook" {
+	case "webhook":
 		if secret, ok := channel.Config["secret"].(string); !ok || secret == "***" || secret == "" {
 			if existingSecret, ok := existing.Config["secret"]; ok {
 				channel.Config["secret"] = existingSecret
 			}
 		}
-	} else if channel.Type == "ntfy" {
+	case "ntfy":
 		if pwd, ok := channel.Config["password"].(string); !ok || pwd == "***" || pwd == "" {
 			if existingPwd, ok := existing.Config["password"]; ok {
 				channel.Config["password"] = existingPwd
@@ -326,31 +328,31 @@ func (h *MonitorHandler) UpdateChannel(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	
+
 	if err := h.alertEngine.UpdateChannel(id, &channel); err != nil {
 		h.logger.Error().Err(err).Msg("Failed to update channel")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	
+
 	respondJSON(w, http.StatusOK, channel)
 }
 
 func (h *MonitorHandler) DeleteChannel(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	
+
 	if err := h.alertEngine.DeleteChannel(id); err != nil {
 		h.logger.Error().Err(err).Msg("Failed to delete channel")
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	
+
 	respondJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
 func (h *MonitorHandler) TestChannel(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	
+
 	if err := h.alertEngine.TestChannel(id); err != nil {
 		h.logger.Error().Err(err).Msg("Test notification failed")
 		respondJSON(w, http.StatusOK, map[string]interface{}{
@@ -359,7 +361,7 @@ func (h *MonitorHandler) TestChannel(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 	})
@@ -372,7 +374,7 @@ func (h *MonitorHandler) ListAlertEvents(w http.ResponseWriter, r *http.Request)
 			limit = l
 		}
 	}
-	
+
 	events := h.alertEngine.ListEvents(limit)
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"events": events,

@@ -153,7 +153,7 @@ func allowedCommand(name string, args []string) bool {
 		}
 		src := args[idx]
 		dst := args[idx+1]
-		if !(strings.HasPrefix(src, "UUID=") || validDevice(src)) {
+		if !strings.HasPrefix(src, "UUID=") && !validDevice(src) {
 			return false
 		}
 		return filepath.IsAbs(dst)

@@ -13,23 +13,23 @@ import (
 
 // SessionManager handles session management and rate limiting
 type SessionManager struct {
-	logger       zerolog.Logger
-	userManager  *UserManager
-	auditLog     *AuditLogger
-	sessions     map[string]*Session
-	mu           sync.RWMutex
-	
+	logger      zerolog.Logger
+	userManager *UserManager
+	auditLog    *AuditLogger
+	sessions    map[string]*Session
+	mu          sync.RWMutex
+
 	// Rate limiting
 	loginAttempts map[string][]time.Time // IP -> timestamps
 	attemptsMu    sync.RWMutex
-	
+
 	// Configuration
-	sessionTTL         time.Duration
-	elevatedTTL        time.Duration
-	maxFailedAttempts  int
-	lockoutDuration    time.Duration
-	rateWindow         time.Duration
-	maxAttemptsPerIP   int
+	sessionTTL        time.Duration
+	elevatedTTL       time.Duration
+	maxFailedAttempts int
+	lockoutDuration   time.Duration
+	rateWindow        time.Duration
+	maxAttemptsPerIP  int
 }
 
 // NewSessionManager creates a new session manager
@@ -47,10 +47,10 @@ func NewSessionManager(logger zerolog.Logger, userManager *UserManager, auditLog
 		rateWindow:        15 * time.Minute,
 		maxAttemptsPerIP:  10,
 	}
-	
+
 	// Start cleanup routine
 	go sm.cleanupRoutine()
-	
+
 	return sm
 }
 
@@ -58,13 +58,13 @@ func NewSessionManager(logger zerolog.Logger, userManager *UserManager, auditLog
 func (sm *SessionManager) CreateSession(user *User, ip, userAgent string, twoFactorVerified bool) (*Session, error) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	// Generate session ID
 	sessionID := sm.generateSessionID()
-	
+
 	// Generate refresh token
 	refreshToken := sm.generateRefreshToken()
-	
+
 	// Create session
 	session := &Session{
 		ID:                sessionID,
@@ -81,20 +81,20 @@ func (sm *SessionManager) CreateSession(user *User, ip, userAgent string, twoFac
 		TokenVersion:      1,
 		Scopes:            user.Role.GetPermissions(),
 	}
-	
+
 	// Set elevated status if 2FA verified
 	if twoFactorVerified {
 		elevatedUntil := time.Now().Add(sm.elevatedTTL)
 		session.ElevatedUntil = &elevatedUntil
 	}
-	
+
 	// Store session
 	sm.sessions[sessionID] = session
-	
+
 	// Update user last login
 	user.LastLoginAt = &session.IssuedAt
 	user.LastLoginIP = ip
-	
+
 	// Audit log
 	sm.auditLog.LogEvent(&AuditEvent{
 		UserID:    user.ID,
@@ -111,7 +111,7 @@ func (sm *SessionManager) CreateSession(user *User, ip, userAgent string, twoFac
 			"two_factor_verified": twoFactorVerified,
 		},
 	})
-	
+
 	return session, nil
 }
 
@@ -119,26 +119,26 @@ func (sm *SessionManager) CreateSession(user *User, ip, userAgent string, twoFac
 func (sm *SessionManager) ValidateSession(sessionID string) (*Session, error) {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
-	
+
 	session, exists := sm.sessions[sessionID]
 	if !exists {
 		return nil, fmt.Errorf("session not found")
 	}
-	
+
 	// Check expiration
 	if session.ExpiresAt.Before(time.Now()) {
 		return nil, fmt.Errorf("session expired")
 	}
-	
+
 	// Check if user is still enabled
 	user, err := sm.userManager.GetUser(session.UserID)
 	if err != nil || !user.Enabled {
 		return nil, fmt.Errorf("user disabled or not found")
 	}
-	
+
 	// Update last seen
 	session.LastSeenAt = time.Now()
-	
+
 	return session, nil
 }
 
@@ -146,7 +146,7 @@ func (sm *SessionManager) ValidateSession(sessionID string) (*Session, error) {
 func (sm *SessionManager) RefreshSession(refreshToken string) (*Session, error) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	// Find session by refresh token
 	var session *Session
 	for _, s := range sm.sessions {
@@ -155,25 +155,25 @@ func (sm *SessionManager) RefreshSession(refreshToken string) (*Session, error) 
 			break
 		}
 	}
-	
+
 	if session == nil {
 		return nil, fmt.Errorf("invalid refresh token")
 	}
-	
+
 	// Check if user is still enabled
 	user, err := sm.userManager.GetUser(session.UserID)
 	if err != nil || !user.Enabled {
 		return nil, fmt.Errorf("user disabled or not found")
 	}
-	
+
 	// Extend expiration
 	session.ExpiresAt = time.Now().Add(sm.sessionTTL)
 	session.LastSeenAt = time.Now()
-	
+
 	// Rotate refresh token
 	session.RefreshToken = sm.generateRefreshToken()
 	session.TokenVersion++
-	
+
 	// Audit log
 	sm.auditLog.LogEvent(&AuditEvent{
 		UserID:    session.UserID,
@@ -185,7 +185,7 @@ func (sm *SessionManager) RefreshSession(refreshToken string) (*Session, error) 
 		Success:   true,
 		Message:   "Session refreshed",
 	})
-	
+
 	return session, nil
 }
 
@@ -193,15 +193,15 @@ func (sm *SessionManager) RefreshSession(refreshToken string) (*Session, error) 
 func (sm *SessionManager) ElevateSession(sessionID string, code string) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	session, exists := sm.sessions[sessionID]
 	if !exists {
 		return fmt.Errorf("session not found")
 	}
-	
+
 	// Verify TOTP
 	if !sm.userManager.verifyTOTP(session.UserID, code) &&
-	   !sm.userManager.verifyRecoveryCode(session.UserID, code) {
+		!sm.userManager.verifyRecoveryCode(session.UserID, code) {
 		sm.auditLog.LogEvent(&AuditEvent{
 			UserID:    session.UserID,
 			Username:  session.Username,
@@ -214,12 +214,12 @@ func (sm *SessionManager) ElevateSession(sessionID string, code string) error {
 		})
 		return fmt.Errorf("invalid 2FA code")
 	}
-	
+
 	// Elevate session
 	elevatedUntil := time.Now().Add(sm.elevatedTTL)
 	session.ElevatedUntil = &elevatedUntil
 	session.TwoFactorVerified = true
-	
+
 	// Audit log
 	sm.auditLog.LogEvent(&AuditEvent{
 		UserID:    session.UserID,
@@ -231,7 +231,7 @@ func (sm *SessionManager) ElevateSession(sessionID string, code string) error {
 		Success:   true,
 		Message:   "Session elevated with 2FA",
 	})
-	
+
 	return nil
 }
 
@@ -239,15 +239,15 @@ func (sm *SessionManager) ElevateSession(sessionID string, code string) error {
 func (sm *SessionManager) RevokeSession(sessionID string, actorID string) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	session, exists := sm.sessions[sessionID]
 	if !exists {
 		return fmt.Errorf("session not found")
 	}
-	
+
 	// Delete session
 	delete(sm.sessions, sessionID)
-	
+
 	// Audit log
 	sm.auditLog.LogEvent(&AuditEvent{
 		UserID:    actorID,
@@ -259,7 +259,7 @@ func (sm *SessionManager) RevokeSession(sessionID string, actorID string) error 
 		Target:    session.Username,
 		Message:   fmt.Sprintf("Session revoked for user %s", session.Username),
 	})
-	
+
 	return nil
 }
 
@@ -267,7 +267,7 @@ func (sm *SessionManager) RevokeSession(sessionID string, actorID string) error 
 func (sm *SessionManager) RevokeUserSessions(userID string, actorID string) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	count := 0
 	for id, session := range sm.sessions {
 		if session.UserID == userID {
@@ -275,14 +275,14 @@ func (sm *SessionManager) RevokeUserSessions(userID string, actorID string) erro
 			count++
 		}
 	}
-	
+
 	if count > 0 {
 		user, _ := sm.userManager.GetUser(userID)
 		username := "unknown"
 		if user != nil {
 			username = user.Username
 		}
-		
+
 		// Audit log
 		sm.auditLog.LogEvent(&AuditEvent{
 			UserID:   actorID,
@@ -294,7 +294,7 @@ func (sm *SessionManager) RevokeUserSessions(userID string, actorID string) erro
 			Message:  fmt.Sprintf("Revoked %d sessions for user %s", count, username),
 		})
 	}
-	
+
 	return nil
 }
 
@@ -302,14 +302,14 @@ func (sm *SessionManager) RevokeUserSessions(userID string, actorID string) erro
 func (sm *SessionManager) ListUserSessions(userID string) []*Session {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
-	
+
 	sessions := []*Session{}
 	for _, session := range sm.sessions {
 		if session.UserID == userID {
 			sessions = append(sessions, session)
 		}
 	}
-	
+
 	return sessions
 }
 
@@ -317,12 +317,12 @@ func (sm *SessionManager) ListUserSessions(userID string) []*Session {
 func (sm *SessionManager) ListAllSessions() []*Session {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
-	
+
 	sessions := make([]*Session, 0, len(sm.sessions))
 	for _, session := range sm.sessions {
 		sessions = append(sessions, session)
 	}
-	
+
 	return sessions
 }
 
@@ -330,10 +330,10 @@ func (sm *SessionManager) ListAllSessions() []*Session {
 func (sm *SessionManager) CheckRateLimit(ip string) (bool, error) {
 	sm.attemptsMu.Lock()
 	defer sm.attemptsMu.Unlock()
-	
+
 	now := time.Now()
 	cutoff := now.Add(-sm.rateWindow)
-	
+
 	// Clean old attempts
 	attempts := sm.loginAttempts[ip]
 	newAttempts := []time.Time{}
@@ -342,16 +342,16 @@ func (sm *SessionManager) CheckRateLimit(ip string) (bool, error) {
 			newAttempts = append(newAttempts, t)
 		}
 	}
-	
+
 	// Check if exceeded
 	if len(newAttempts) >= sm.maxAttemptsPerIP {
 		return false, fmt.Errorf("rate limit exceeded: %d attempts in %v", len(newAttempts), sm.rateWindow)
 	}
-	
+
 	// Add new attempt
 	newAttempts = append(newAttempts, now)
 	sm.loginAttempts[ip] = newAttempts
-	
+
 	return true, nil
 }
 
@@ -360,12 +360,12 @@ func (sm *SessionManager) RecordFailedLogin(username, ip, reason string) {
 	// Update user failed login count
 	if user, err := sm.userManager.GetUserByUsername(username); err == nil {
 		user.FailedLogins++
-		
+
 		// Check if should lock
 		if user.FailedLogins >= sm.maxFailedAttempts {
 			lockedUntil := time.Now().Add(sm.lockoutDuration)
 			user.LockedUntil = &lockedUntil
-			
+
 			// Audit log
 			sm.auditLog.LogEvent(&AuditEvent{
 				UserID:   user.ID,
@@ -379,7 +379,7 @@ func (sm *SessionManager) RecordFailedLogin(username, ip, reason string) {
 			})
 		}
 	}
-	
+
 	// Audit log failed attempt
 	sm.auditLog.LogEvent(&AuditEvent{
 		Username: username,
@@ -400,12 +400,12 @@ func (sm *SessionManager) RecordSuccessfulLogin(user *User, ip string) {
 	// Reset failed login count
 	user.FailedLogins = 0
 	user.LockedUntil = nil
-	
+
 	// Update last login
 	now := time.Now()
 	user.LastLoginAt = &now
 	user.LastLoginIP = ip
-	
+
 	// Audit log
 	sm.auditLog.LogEvent(&AuditEvent{
 		UserID:   user.ID,
@@ -423,12 +423,12 @@ func (sm *SessionManager) RecordSuccessfulLogin(user *User, ip string) {
 func (sm *SessionManager) IsIPLocked(ip string) bool {
 	sm.attemptsMu.RLock()
 	defer sm.attemptsMu.RUnlock()
-	
+
 	attempts := sm.loginAttempts[ip]
 	if len(attempts) < sm.maxAttemptsPerIP {
 		return false
 	}
-	
+
 	// Check if all attempts are within rate window
 	cutoff := time.Now().Add(-sm.rateWindow)
 	recentCount := 0
@@ -437,14 +437,14 @@ func (sm *SessionManager) IsIPLocked(ip string) bool {
 			recentCount++
 		}
 	}
-	
+
 	return recentCount >= sm.maxAttemptsPerIP
 }
 
 // GetLockouts returns current lockouts
 func (sm *SessionManager) GetLockouts() []Lockout {
 	lockouts := []Lockout{}
-	
+
 	// User lockouts
 	for _, user := range sm.userManager.ListUsers() {
 		if user.LockedUntil != nil && user.LockedUntil.After(time.Now()) {
@@ -458,11 +458,11 @@ func (sm *SessionManager) GetLockouts() []Lockout {
 			})
 		}
 	}
-	
+
 	// IP lockouts
 	sm.attemptsMu.RLock()
 	defer sm.attemptsMu.RUnlock()
-	
+
 	for ip, attempts := range sm.loginAttempts {
 		if len(attempts) >= sm.maxAttemptsPerIP {
 			// Find most recent attempt
@@ -472,7 +472,7 @@ func (sm *SessionManager) GetLockouts() []Lockout {
 					mostRecent = t
 				}
 			}
-			
+
 			lockouts = append(lockouts, Lockout{
 				ID:          ip,
 				Type:        "ip",
@@ -483,7 +483,7 @@ func (sm *SessionManager) GetLockouts() []Lockout {
 			})
 		}
 	}
-	
+
 	return lockouts
 }
 
@@ -493,7 +493,7 @@ func (sm *SessionManager) ClearLockout(lockoutID string, actorID string, reason 
 	if user, err := sm.userManager.GetUser(lockoutID); err == nil {
 		user.LockedUntil = nil
 		user.FailedLogins = 0
-		
+
 		// Audit log
 		sm.auditLog.LogEvent(&AuditEvent{
 			UserID:   actorID,
@@ -504,18 +504,18 @@ func (sm *SessionManager) ClearLockout(lockoutID string, actorID string, reason 
 			Target:   user.Username,
 			Message:  fmt.Sprintf("User %s unlocked: %s", user.Username, reason),
 		})
-		
+
 		return nil
 	}
-	
+
 	// Check if it's an IP lockout
 	sm.attemptsMu.Lock()
 	defer sm.attemptsMu.Unlock()
-	
+
 	// Try to parse as IP
 	if net.ParseIP(lockoutID) != nil {
 		delete(sm.loginAttempts, lockoutID)
-		
+
 		// Audit log
 		sm.auditLog.LogEvent(&AuditEvent{
 			UserID:   actorID,
@@ -526,10 +526,10 @@ func (sm *SessionManager) ClearLockout(lockoutID string, actorID string, reason 
 			Target:   lockoutID,
 			Message:  fmt.Sprintf("IP %s unlocked: %s", lockoutID, reason),
 		})
-		
+
 		return nil
 	}
-	
+
 	return fmt.Errorf("lockout not found")
 }
 
@@ -550,7 +550,7 @@ func (sm *SessionManager) generateRefreshToken() string {
 func (sm *SessionManager) cleanupRoutine() {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		sm.cleanup()
 	}
@@ -559,14 +559,14 @@ func (sm *SessionManager) cleanupRoutine() {
 func (sm *SessionManager) cleanup() {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	now := time.Now()
-	
+
 	// Clean expired sessions
 	for id, session := range sm.sessions {
 		if session.ExpiresAt.Before(now) {
 			delete(sm.sessions, id)
-			
+
 			// Audit log
 			sm.auditLog.LogEvent(&AuditEvent{
 				UserID:    session.UserID,
@@ -580,11 +580,11 @@ func (sm *SessionManager) cleanup() {
 			})
 		}
 	}
-	
+
 	// Clean old login attempts
 	sm.attemptsMu.Lock()
 	defer sm.attemptsMu.Unlock()
-	
+
 	cutoff := now.Add(-24 * time.Hour)
 	for ip, attempts := range sm.loginAttempts {
 		newAttempts := []time.Time{}
@@ -593,7 +593,7 @@ func (sm *SessionManager) cleanup() {
 				newAttempts = append(newAttempts, t)
 			}
 		}
-		
+
 		if len(newAttempts) == 0 {
 			delete(sm.loginAttempts, ip)
 		} else {

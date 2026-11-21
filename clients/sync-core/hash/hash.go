@@ -225,8 +225,9 @@ func ComputeDeltaPlanFromReader(r io.Reader, localSize int64, remoteBlocks *Bloc
 		return plan, nil
 	}
 
-	// Use rolling hash to find matching blocks
-	rolling := NewRollingHash(blockSize)
+	// Find matching blocks. Note: the weak hash is recomputed from scratch at
+	// every byte offset (O(n*blockSize)); switching to RollingHash is tracked
+	// in docs/dev/revision-plan.md (phase 7).
 	matchedRanges := make(map[int]bool) // Track matched remote blocks
 	var pendingData []byte
 	pos := 0
@@ -237,20 +238,20 @@ func ComputeDeltaPlanFromReader(r io.Reader, localSize int64, remoteBlocks *Bloc
 		if end > len(data) {
 			end = len(data)
 		}
-		
+
 		blockData := data[pos:end]
-		
+
 		// Only try to match full blocks
 		if len(blockData) == blockSize {
 			weakHash := adler32.Checksum(blockData)
-			
+
 			if indices, ok := weakMap[weakHash]; ok {
 				strongHash := BytesHash(blockData)
-				
+
 				for _, idx := range indices {
 					if remoteBlocks.Blocks[idx].StrongHash == strongHash && !matchedRanges[idx] {
 						// Found a match!
-						
+
 						// First, emit any pending data
 						if len(pendingData) > 0 {
 							plan.Operations = append(plan.Operations, DeltaOp{
@@ -260,7 +261,7 @@ func ComputeDeltaPlanFromReader(r io.Reader, localSize int64, remoteBlocks *Bloc
 							})
 							pendingData = nil
 						}
-						
+
 						// Emit copy operation
 						plan.Operations = append(plan.Operations, DeltaOp{
 							Type:       "copy",
@@ -280,7 +281,7 @@ func ComputeDeltaPlanFromReader(r io.Reader, localSize int64, remoteBlocks *Bloc
 		// No match - add byte to pending data
 		pendingData = append(pendingData, data[pos])
 		pos++
-		
+
 	nextBlock:
 	}
 
@@ -360,4 +361,3 @@ func (h *IncrementalHasher) Sum() string {
 func (h *IncrementalHasher) Reset() {
 	h.hash.Reset()
 }
-

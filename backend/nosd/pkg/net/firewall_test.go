@@ -8,7 +8,7 @@ import (
 
 func TestFirewallManager_CreatePlan(t *testing.T) {
 	fm := NewFirewallManager()
-	
+
 	tests := []struct {
 		name        string
 		mode        AccessMode
@@ -38,30 +38,30 @@ func TestFirewallManager_CreatePlan(t *testing.T) {
 			wantErr:     false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			plan, err := fm.CreatePlan(tt.mode, tt.enableWG, tt.enableHTTPS, nil)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreatePlan() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if !tt.wantErr {
 				if plan == nil {
 					t.Error("Expected plan to be non-nil")
 					return
 				}
-				
+
 				if plan.DesiredState.Mode != tt.mode {
 					t.Errorf("Expected mode %v, got %v", tt.mode, plan.DesiredState.Mode)
 				}
-				
+
 				if len(plan.DryRunOutput) == 0 {
 					t.Error("Expected dry run output to be non-empty")
 				}
-				
+
 				if time.Until(plan.ExpiresAt) > 5*time.Minute {
 					t.Error("Plan expiry time too far in future")
 				}
@@ -72,7 +72,7 @@ func TestFirewallManager_CreatePlan(t *testing.T) {
 
 func TestFirewallManager_CalculateDiff(t *testing.T) {
 	fm := NewFirewallManager()
-	
+
 	currentState := &FirewallState{
 		Mode: AccessModeLANOnly,
 		Rules: []FirewallRule{
@@ -92,7 +92,7 @@ func TestFirewallManager_CalculateDiff(t *testing.T) {
 			},
 		},
 	}
-	
+
 	desiredState := &FirewallState{
 		Mode: AccessModeWireGuard,
 		Rules: []FirewallRule{
@@ -112,13 +112,13 @@ func TestFirewallManager_CalculateDiff(t *testing.T) {
 			},
 		},
 	}
-	
+
 	diffs := fm.calculateDiff(currentState, desiredState)
-	
+
 	if len(diffs) != 2 {
 		t.Errorf("Expected 2 diffs (1 remove, 1 add), got %d", len(diffs))
 	}
-	
+
 	// Check for expected diff types
 	var hasRemove, hasAdd bool
 	for _, diff := range diffs {
@@ -129,7 +129,7 @@ func TestFirewallManager_CalculateDiff(t *testing.T) {
 			hasAdd = true
 		}
 	}
-	
+
 	if !hasRemove {
 		t.Error("Expected to find remove diff for allow-lan-http")
 	}
@@ -149,19 +149,19 @@ func TestIsLANIP(t *testing.T) {
 		{"172.31.255.255", true},
 		{"127.0.0.1", true},
 		{"::1", true},
-		{"fc00::1", true},        // IPv6 ULA
-		{"8.8.8.8", false},       // Public IP
-		{"203.0.113.1", false},   // Public IP
-		{"2001:db8::1", false},   // IPv6 public
+		{"fc00::1", true},      // IPv6 ULA
+		{"8.8.8.8", false},     // Public IP
+		{"203.0.113.1", false}, // Public IP
+		{"2001:db8::1", false}, // IPv6 public
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.ip, func(t *testing.T) {
 			ip := parseIP(tt.ip)
 			if ip == nil {
 				t.Fatalf("Failed to parse IP: %s", tt.ip)
 			}
-			
+
 			if got := IsLANIP(ip); got != tt.want {
 				t.Errorf("IsLANIP(%s) = %v, want %v", tt.ip, got, tt.want)
 			}

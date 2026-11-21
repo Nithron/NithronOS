@@ -27,7 +27,7 @@ type Updater struct {
 	aptManager  *APTManager
 	snapManager *SnapshotManager
 	lockFile    *os.File
-	
+
 	// Channels for progress updates
 	progressChan chan UpdateProgress
 	stopChan     chan struct{}
@@ -105,13 +105,13 @@ func (u *Updater) AcquireLock() error {
 	if err != nil {
 		return fmt.Errorf("failed to open lock file: %w", err)
 	}
-	
+
 	// Try to acquire exclusive lock (platform-specific)
 	if err := acquireFileLock(lockFile); err != nil {
 		lockFile.Close()
 		return fmt.Errorf("another update is already in progress")
 	}
-	
+
 	u.lockFile = lockFile
 	return nil
 }

@@ -3,7 +3,6 @@ import { ErrProxyMisconfigured, fetchJSON } from '../http'
 
 describe('fetchJSON', () => {
   it('throws ErrProxyMisconfigured when content-type is text/html', async () => {
-    // @ts-ignore
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,

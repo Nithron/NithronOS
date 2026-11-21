@@ -76,7 +76,7 @@ export default function SettingsSync() {
         pause_sync: pauseSync,
       });
       toast.success('Sync settings saved');
-    } catch (err) {
+    } catch {
       toast.error('Failed to save settings');
     } finally {
       setSaving(false);

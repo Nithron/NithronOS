@@ -342,11 +342,11 @@ function StepWelcome({ onContinue }: { onContinue: () => void }) {
            className="text-primary hover:underline flex-1 text-center">
           📚 Documentation
         </a>
-        <a href="https://github.com/Nithronverse/NithronOS/discussions" target="_blank" rel="noopener noreferrer" 
+        <a href="https://github.com/Nithron/NithronOS/discussions" target="_blank" rel="noopener noreferrer" 
            className="text-primary hover:underline flex-1 text-center">
           💬 Community
         </a>
-        <a href="https://github.com/Nithronverse/NithronOS/issues" target="_blank" rel="noopener noreferrer" 
+        <a href="https://github.com/Nithron/NithronOS/issues" target="_blank" rel="noopener noreferrer" 
            className="text-primary hover:underline flex-1 text-center">
           🐛 Issues
         </a>

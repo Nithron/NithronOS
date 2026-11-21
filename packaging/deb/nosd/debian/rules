@@ -9,7 +9,10 @@ export DEB_BUILD_MAINT_OPTIONS=hardening=+all
 override_dh_auto_build:
 	# Build backend binary from repo root path
 	# packaging/deb/nosd -> repo root is ../../../
-	cd ../../../backend/nosd && go mod tidy && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o ../../packaging/deb/nosd/deb-build/nosd .
+	# Version comes from the repository's VERSION file
+	cd ../../../backend/nosd && CGO_ENABLED=0 go build -trimpath \
+		-ldflags "-s -w -X nithronos/backend/nosd/internal/version.Version=$$(cat ../../VERSION)" \
+		-o ../../packaging/deb/nosd/deb-build/nosd .
 
 override_dh_auto_install:
 	install -D -m0755 deb-build/nosd debian/nosd/usr/bin/nosd

@@ -1,9 +1,9 @@
 # NithronOS (nOS)
 ![NithronOS](./assets/brand/nithronos-readme-banner.svg)
 
-[![CI](https://github.com/Nithronverse/NithronOS/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Nithronverse/NithronOS/actions/workflows/ci.yml)
+[![CI](https://github.com/Nithron/NithronOS/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Nithron/NithronOS/actions/workflows/ci.yml)
 [![Snapshots On Update](https://img.shields.io/badge/Snapshots%20On%20Update-Enabled%20by%20default-2D7FF9)](docs/updates.md)
-[![Release](https://img.shields.io/badge/NithronOS-v0.9.5--pre--alpha-yellow)](https://github.com/Nithronverse/NithronOS/releases/tag/v0.9.5-pre-alpha)
+[![Release](https://img.shields.io/badge/NithronOS-v0.9.5--pre--alpha-yellow)](https://github.com/Nithron/NithronOS/releases/tag/v0.9.5-pre-alpha)
 
 **Open-source Linux-based OS for NAS & homelabs.**  
 Local-first storage management (Btrfs/ZFS*), snapshots, shares, backups, and a modern web dashboard with an optional app catalog — all without cloud lock-in.
@@ -77,7 +77,7 @@ Observability → [docs/dev/observability.md](docs/dev/observability.md) (scrape
 **Requires:** Go 1.23+, Node 20+, npm, make (optional), Docker (for app catalog dev)
 
     # clone
-    git clone https://github.com/Nithronverse/NithronOS.git
+    git clone https://github.com/Nithron/NithronOS.git
     cd NithronOS
 
     # web deps

@@ -62,7 +62,7 @@ type Watcher struct {
 	debounceTime time.Duration
 	pending      map[string]*pendingEvent
 	pendingMu    sync.Mutex
-	
+
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
@@ -149,10 +149,10 @@ func (w *Watcher) Start() error {
 func (w *Watcher) Stop() error {
 	w.cancel()
 	w.wg.Wait()
-	
+
 	close(w.events)
 	close(w.errors)
-	
+
 	return w.watcher.Close()
 }
 
@@ -360,4 +360,3 @@ func (w *Watcher) GetRelativePath(absPath string) (string, error) {
 func (w *Watcher) GetAbsolutePath(relPath string) string {
 	return filepath.Join(w.rootPath, relPath)
 }
-

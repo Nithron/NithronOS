@@ -16,11 +16,11 @@ import (
 
 // EncryptionHandler handles encryption-related API endpoints
 type EncryptionHandler struct {
-	keyMgr   *crypto.KeyManager
+	keyMgr    *crypto.KeyManager
 	encryptor *crypto.FileEncryptor
-	logger   zerolog.Logger
-	cfg      config.Config
-	
+	logger    zerolog.Logger
+	cfg       config.Config
+
 	// State
 	isUnlocked bool
 	settings   EncryptionSettings
@@ -39,10 +39,10 @@ type EncryptionStatus struct {
 
 // EncryptionSettings represents encryption settings
 type EncryptionSettings struct {
-	DefaultAlgorithm  string `json:"default_algorithm"`
-	EncryptNewShares  bool   `json:"encrypt_new_shares"`
-	EncryptFilenames  bool   `json:"encrypt_filenames"`
-	KeyRotationDays   int    `json:"key_rotation_days"`
+	DefaultAlgorithm string `json:"default_algorithm"`
+	EncryptNewShares bool   `json:"encrypt_new_shares"`
+	EncryptFilenames bool   `json:"encrypt_filenames"`
+	KeyRotationDays  int    `json:"key_rotation_days"`
 }
 
 // NewEncryptionHandler creates a new encryption handler
@@ -58,10 +58,10 @@ func NewEncryptionHandler(cfg config.Config, logger zerolog.Logger) (*Encryption
 		logger: logger.With().Str("component", "encryption-handler").Logger(),
 		cfg:    cfg,
 		settings: EncryptionSettings{
-			DefaultAlgorithm:  string(crypto.AlgorithmXChaCha20Poly),
-			EncryptNewShares:  true,
-			EncryptFilenames:  false,
-			KeyRotationDays:   90,
+			DefaultAlgorithm: string(crypto.AlgorithmXChaCha20Poly),
+			EncryptNewShares: true,
+			EncryptFilenames: false,
+			KeyRotationDays:  90,
 		},
 	}
 
@@ -274,9 +274,9 @@ func (h *EncryptionHandler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 
 	// Validate algorithm
 	validAlgorithms := map[string]bool{
-		"aes-256-gcm":         true,
-		"chacha20-poly1305":   true,
-		"xchacha20-poly1305":  true,
+		"aes-256-gcm":        true,
+		"chacha20-poly1305":  true,
+		"xchacha20-poly1305": true,
 	}
 	if update.DefaultAlgorithm != "" && !validAlgorithms[update.DefaultAlgorithm] {
 		httpx.WriteTypedError(w, http.StatusBadRequest, "input.invalid", "Invalid algorithm", 0)
@@ -443,4 +443,3 @@ func (h *EncryptionHandler) GetEncryptor() *crypto.FileEncryptor {
 func (h *EncryptionHandler) IsUnlocked() bool {
 	return h.isUnlocked
 }
-

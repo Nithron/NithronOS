@@ -13,7 +13,7 @@ var (
 	Version   = "dev"
 	BuildTime = "unknown"
 	GitCommit = "unknown"
-	
+
 	// Global flags
 	cfgFile    string
 	baseURL    string
@@ -35,18 +35,18 @@ including storage, applications, backups, and more.`,
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	
+
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/nos/cli.yaml)")
 	rootCmd.PersistentFlags().StringVar(&baseURL, "url", "", "NithronOS API URL")
 	rootCmd.PersistentFlags().StringVar(&token, "token", "", "API token")
 	rootCmd.PersistentFlags().BoolVar(&outputJSON, "json", false, "output in JSON format")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
-	
+
 	// Bind flags to viper
-	viper.BindPFlag("url", rootCmd.PersistentFlags().Lookup("url"))
-	viper.BindPFlag("token", rootCmd.PersistentFlags().Lookup("token"))
-	
+	_ = viper.BindPFlag("url", rootCmd.PersistentFlags().Lookup("url"))
+	_ = viper.BindPFlag("token", rootCmd.PersistentFlags().Lookup("token"))
+
 	// Add commands
 	rootCmd.AddCommand(
 		newLoginCmd(),
@@ -74,16 +74,16 @@ func initConfig() {
 		viper.AddConfigPath("$HOME/.config/nos")
 		viper.AddConfigPath(".")
 	}
-	
+
 	// Environment variables
 	viper.SetEnvPrefix("NOS")
 	viper.AutomaticEnv()
-	
+
 	// Read config file
 	if err := viper.ReadInConfig(); err == nil && verbose {
 		fmt.Fprintf(os.Stderr, "Using config file: %s\n", viper.ConfigFileUsed())
 	}
-	
+
 	// Set defaults
 	if baseURL == "" {
 		baseURL = viper.GetString("url")
@@ -91,7 +91,7 @@ func initConfig() {
 			baseURL = "http://localhost:9000"
 		}
 	}
-	
+
 	if token == "" {
 		token = viper.GetString("token")
 	}
@@ -105,13 +105,6 @@ func main() {
 
 // Helper functions
 
-func checkError(err error) {
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-}
-
 func printJSON(data interface{}) {
 	// Implementation would use json.Marshal
 	fmt.Printf("%+v\n", data)
@@ -124,7 +117,7 @@ func printTable(headers []string, rows [][]string) {
 		fmt.Printf("%-20s", header)
 	}
 	fmt.Println()
-	
+
 	for _, row := range rows {
 		for _, col := range row {
 			fmt.Printf("%-20s", col)

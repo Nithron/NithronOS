@@ -298,4 +298,3 @@ func (am *APTManager) SimulateUpgrade() (string, error) {
 
 	return string(output), nil
 }
-

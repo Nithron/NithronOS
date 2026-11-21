@@ -70,3 +70,17 @@ docker-data/
 tmp/
 .cache/
 logs/
+
+# Build outputs (built by Makefile / debian/rules, never committed)
+/agent/nos-agent/nos-agent
+/backend/nosd/nosd
+/cmd/nosctl/nosctl
+packaging/deb/*/deb-build/
+*.tsbuildinfo
+
+# Local dev runtime state (devdata/users.json is the only tracked fixture)
+devdata/*
+!devdata/users.json
+!devdata/snapshots.yaml
+backend/nosd/**/devdata/
+*.json.lock

@@ -118,9 +118,7 @@ func handleApplyDestroy(cfg config.Config) http.HandlerFunc {
 		tx.FinishedAt = &now
 		_ = saveTx(tx)
 		// remove pool from pools.json
-		_ = fsatomic.WithLock(poolsStorePath(cfg), func() error {
-			var st poolOptionsStore
-			_, _ = fsatomic.LoadJSON(poolsStorePath(cfg), &st)
+		_ = updatePoolOptions(cfg, func(st *poolOptionsStore) {
 			out := st.Records[:0]
 			for _, rec := range st.Records {
 				if rec.Mount != mount {
@@ -128,7 +126,6 @@ func handleApplyDestroy(cfg config.Config) http.HandlerFunc {
 				}
 			}
 			st.Records = out
-			return savePoolOptions(cfg, st)
 		})
 		releasePoolLock(mount)
 		writeJSON(w, map[string]any{"ok": true, "tx_id": tx.ID})

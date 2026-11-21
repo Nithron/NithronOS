@@ -66,9 +66,10 @@ func handleServicesHealth(cfg config.Config) http.HandlerFunc {
 			summary.Services = append(summary.Services, service)
 			summary.TotalServices++
 
-			if service.Status == "running" {
+			switch service.Status {
+			case "running":
 				summary.RunningServices++
-			} else if service.Status == "failed" {
+			case "failed":
 				summary.FailedServices++
 			}
 		}

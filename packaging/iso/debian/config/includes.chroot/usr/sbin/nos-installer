@@ -78,5 +78,5 @@ read -r
 
 echo ""
 echo "Thank you for trying NithronOS!"
-echo "Visit https://github.com/Nithronverse/NithronOS for updates."
+echo "Visit https://github.com/Nithron/NithronOS for updates."
 echo ""

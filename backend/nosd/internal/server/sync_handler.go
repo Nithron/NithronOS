@@ -18,16 +18,16 @@ import (
 
 // SyncHandler handles sync-related API endpoints
 type SyncHandler struct {
-	deviceMgr         *nosync.DeviceManager
-	changeTracker     *nosync.ChangeTracker
-	deltaSync         *nosync.DeltaSync
-	shareStore        *shares.Store
-	syncStore         *nosync.Store
-	conflictStore     *nosync.ConflictStore
-	activityStore     *nosync.ActivityStore
+	deviceMgr          *nosync.DeviceManager
+	changeTracker      *nosync.ChangeTracker
+	deltaSync          *nosync.DeltaSync
+	shareStore         *shares.Store
+	syncStore          *nosync.Store
+	conflictStore      *nosync.ConflictStore
+	activityStore      *nosync.ActivityStore
 	collaborationStore *nosync.CollaborationStore
-	logger            zerolog.Logger
-	cfg               config.Config
+	logger             zerolog.Logger
+	cfg                config.Config
 }
 
 // NewSyncHandler creates a new sync handler
@@ -644,9 +644,9 @@ func (h *SyncHandler) ResolveConflict(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resolution := nosync.ConflictResolution(req.Resolution)
-	if resolution != nosync.ResolutionKeepLocal && 
-	   resolution != nosync.ResolutionKeepRemote && 
-	   resolution != nosync.ResolutionKeepBoth {
+	if resolution != nosync.ResolutionKeepLocal &&
+		resolution != nosync.ResolutionKeepRemote &&
+		resolution != nosync.ResolutionKeepBoth {
 		httpx.WriteTypedError(w, http.StatusBadRequest, "input.invalid", "Invalid resolution type", 0)
 		return
 	}
@@ -1038,4 +1038,3 @@ func (h *SyncHandler) DeclineInvite(w http.ResponseWriter, r *http.Request) {
 	invite, _ := h.collaborationStore.GetInvite(inviteID)
 	writeJSON(w, invite)
 }
-

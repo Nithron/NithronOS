@@ -50,33 +50,33 @@ const (
 type EncryptionAlgorithm string
 
 const (
-	AlgorithmAESGCM         EncryptionAlgorithm = "aes-256-gcm"
-	AlgorithmChaCha20Poly   EncryptionAlgorithm = "chacha20-poly1305"
-	AlgorithmXChaCha20Poly  EncryptionAlgorithm = "xchacha20-poly1305"
+	AlgorithmAESGCM        EncryptionAlgorithm = "aes-256-gcm"
+	AlgorithmChaCha20Poly  EncryptionAlgorithm = "chacha20-poly1305"
+	AlgorithmXChaCha20Poly EncryptionAlgorithm = "xchacha20-poly1305"
 )
 
 // KeyType represents the type of encryption key
 type KeyType string
 
 const (
-	KeyTypeMaster     KeyType = "master"
-	KeyTypeFile       KeyType = "file"
-	KeyTypeShare      KeyType = "share"
-	KeyTypeDevice     KeyType = "device"
-	KeyTypeRecovery   KeyType = "recovery"
+	KeyTypeMaster   KeyType = "master"
+	KeyTypeFile     KeyType = "file"
+	KeyTypeShare    KeyType = "share"
+	KeyTypeDevice   KeyType = "device"
+	KeyTypeRecovery KeyType = "recovery"
 )
 
 // EncryptedKey represents an encrypted key
 type EncryptedKey struct {
-	ID           string              `json:"id"`
-	Type         KeyType             `json:"type"`
-	Algorithm    EncryptionAlgorithm `json:"algorithm"`
-	EncryptedData []byte             `json:"encrypted_data"`
-	Nonce        []byte              `json:"nonce"`
-	Salt         []byte              `json:"salt,omitempty"`
-	CreatedAt    time.Time           `json:"created_at"`
-	ExpiresAt    *time.Time          `json:"expires_at,omitempty"`
-	Metadata     map[string]string   `json:"metadata,omitempty"`
+	ID            string              `json:"id"`
+	Type          KeyType             `json:"type"`
+	Algorithm     EncryptionAlgorithm `json:"algorithm"`
+	EncryptedData []byte              `json:"encrypted_data"`
+	Nonce         []byte              `json:"nonce"`
+	Salt          []byte              `json:"salt,omitempty"`
+	CreatedAt     time.Time           `json:"created_at"`
+	ExpiresAt     *time.Time          `json:"expires_at,omitempty"`
+	Metadata      map[string]string   `json:"metadata,omitempty"`
 }
 
 // KeyPair represents an ECDH key pair
@@ -87,25 +87,25 @@ type KeyPair struct {
 
 // FileEncryptionHeader contains metadata for encrypted files
 type FileEncryptionHeader struct {
-	Version       int                 `json:"version"`
-	Algorithm     EncryptionAlgorithm `json:"algorithm"`
-	KeyID         string              `json:"key_id"`
-	EncryptedKey  []byte              `json:"encrypted_key"`
-	KeyNonce      []byte              `json:"key_nonce"`
-	ChunkSize     int                 `json:"chunk_size"`
-	OriginalSize  int64               `json:"original_size"`
-	OriginalHash  string              `json:"original_hash"`
-	CreatedAt     time.Time           `json:"created_at"`
-	Metadata      map[string]string   `json:"metadata,omitempty"`
+	Version      int                 `json:"version"`
+	Algorithm    EncryptionAlgorithm `json:"algorithm"`
+	KeyID        string              `json:"key_id"`
+	EncryptedKey []byte              `json:"encrypted_key"`
+	KeyNonce     []byte              `json:"key_nonce"`
+	ChunkSize    int                 `json:"chunk_size"`
+	OriginalSize int64               `json:"original_size"`
+	OriginalHash string              `json:"original_hash"`
+	CreatedAt    time.Time           `json:"created_at"`
+	Metadata     map[string]string   `json:"metadata,omitempty"`
 }
 
 // KeyManager manages encryption keys
 type KeyManager struct {
-	dataDir     string
-	masterKey   []byte
-	deviceKeys  map[string]*KeyPair
-	shareKeys   map[string][]byte
-	mu          sync.RWMutex
+	dataDir    string
+	masterKey  []byte
+	deviceKeys map[string]*KeyPair
+	shareKeys  map[string][]byte
+	mu         sync.RWMutex
 }
 
 // NewKeyManager creates a new key manager
@@ -571,16 +571,16 @@ func (fe *FileEncryptor) EncryptFile(shareID string, plaintext []byte, metadata 
 
 	// Create header
 	header := FileEncryptionHeader{
-		Version:       1,
-		Algorithm:     fe.algorithm,
-		KeyID:         shareID,
-		EncryptedKey:  encryptedFileKey,
-		KeyNonce:      fileKeyNonce,
-		ChunkSize:     ChunkSize,
-		OriginalSize:  int64(len(plaintext)),
-		OriginalHash:  hex.EncodeToString(hash[:]),
-		CreatedAt:     time.Now(),
-		Metadata:      metadata,
+		Version:      1,
+		Algorithm:    fe.algorithm,
+		KeyID:        shareID,
+		EncryptedKey: encryptedFileKey,
+		KeyNonce:     fileKeyNonce,
+		ChunkSize:    ChunkSize,
+		OriginalSize: int64(len(plaintext)),
+		OriginalHash: hex.EncodeToString(hash[:]),
+		CreatedAt:    time.Now(),
+		Metadata:     metadata,
 	}
 
 	headerBytes, err := json.Marshal(header)
@@ -918,4 +918,3 @@ func SharedSecretFromECDH(privateKey *ecdh.PrivateKey, peerPublicKeyBytes []byte
 
 	return privateKey.ECDH(peerPublicKey)
 }
-

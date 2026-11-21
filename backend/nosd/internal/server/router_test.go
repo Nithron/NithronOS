@@ -47,7 +47,7 @@ func TestLoginThrottleLockUnlock(t *testing.T) {
 	_ = os.MkdirAll(filepath.Join(dir, "nos"), 0o755)
 	_ = os.WriteFile(filepath.Join(dir, "nos", "setup-complete"), []byte(""), 0o644)
 	cfg := config.FromEnv()
-	_ = os.Setenv("NOS_RL_PATH", filepath.Join(filepath.Dir(up), "ratelimit.json"))
+	t.Setenv("NOS_RL_PATH", filepath.Join(filepath.Dir(up), "ratelimit.json"))
 	r := NewRouter(cfg)
 
 	// Too many bad passwords should increment failures and eventually lock
@@ -72,7 +72,7 @@ func TestLoginThrottleLockUnlock(t *testing.T) {
 }
 
 func TestDisksShape(t *testing.T) {
-	_ = os.Setenv("NOS_USERS_PATH", "../../../../devdata/users.json")
+	t.Setenv("NOS_USERS_PATH", filepath.Join(t.TempDir(), "users.json"))
 	// Seed minimal users db for new auth store
 	if up := os.Getenv("NOS_USERS_PATH"); up != "" {
 		_ = os.MkdirAll(filepath.Dir(up), 0o755)
@@ -84,7 +84,7 @@ func TestDisksShape(t *testing.T) {
 	_ = os.MkdirAll(filepath.Join(dir, "nos"), 0o755)
 	_ = os.WriteFile(filepath.Join(dir, "nos", "setup-complete"), []byte(""), 0o644)
 	cfg := config.FromEnv()
-	_ = os.Setenv("NOS_RL_PATH", filepath.Join(filepath.Dir(cfg.SharesPath), "ratelimit.json"))
+	t.Setenv("NOS_RL_PATH", filepath.Join(filepath.Dir(cfg.SharesPath), "ratelimit.json"))
 	r := NewRouter(cfg)
 
 	// Login to get cookies
@@ -144,7 +144,7 @@ func TestLsblkFixture(t *testing.T) {
 // minimal fake agent server over a real TCP listener and temporary client override is complex due to unix socket usage.
 // Instead, we assert that deletion returns 204 and the config path is computed as expected by inspecting the store state change.
 func TestDeleteShareReturnsNoContent(t *testing.T) {
-	_ = os.Setenv("NOS_USERS_PATH", "../../../../devdata/users.json")
+	t.Setenv("NOS_USERS_PATH", filepath.Join(t.TempDir(), "users.json"))
 	// Seed minimal users db for new auth store
 	if up := os.Getenv("NOS_USERS_PATH"); up != "" {
 		_ = os.MkdirAll(filepath.Dir(up), 0o755)
@@ -156,7 +156,7 @@ func TestDeleteShareReturnsNoContent(t *testing.T) {
 	_ = os.MkdirAll(filepath.Join(etcDir, "nos"), 0o755)
 	_ = os.WriteFile(filepath.Join(etcDir, "nos", "setup-complete"), []byte(""), 0o644)
 	cfg := config.FromEnv()
-	_ = os.Setenv("NOS_RL_PATH", filepath.Join(filepath.Dir(cfg.SharesPath), "ratelimit.json"))
+	t.Setenv("NOS_RL_PATH", filepath.Join(filepath.Dir(cfg.SharesPath), "ratelimit.json"))
 	// Seed a store with an entry
 	_ = os.MkdirAll(filepath.Dir(cfg.SharesPath), 0o755)
 	_ = os.WriteFile(cfg.SharesPath, []byte(`[{"id":"media","type":"smb","path":"/srv/pool/media","name":"media","ro":false}]`), 0o600)

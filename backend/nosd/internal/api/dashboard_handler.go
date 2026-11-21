@@ -19,23 +19,23 @@ import (
 
 // DashboardResponse aggregates all dashboard data
 type DashboardResponse struct {
-	System      SystemSummary      `json:"system"`
-	Storage     StorageSummary     `json:"storage"`
-	Disks       DisksSummary       `json:"disks"`
-	Shares      []ShareInfo        `json:"shares"`
-	Apps        []AppInfo          `json:"apps"`
-	Maintenance MaintenanceStatus  `json:"maintenance"`
-	Events      []EventInfo        `json:"events"`
+	System      SystemSummary     `json:"system"`
+	Storage     StorageSummary    `json:"storage"`
+	Disks       DisksSummary      `json:"disks"`
+	Shares      []ShareInfo       `json:"shares"`
+	Apps        []AppInfo         `json:"apps"`
+	Maintenance MaintenanceStatus `json:"maintenance"`
+	Events      []EventInfo       `json:"events"`
 }
 
 // SystemSummary for dashboard widget
 type SystemSummary struct {
-	Status   string  `json:"status"` // ok, degraded, critical
-	CPUPct   float64 `json:"cpuPct"`
-	Load1    float64 `json:"load1"`
-	Memory   MemInfo `json:"mem"`
-	Swap     MemInfo `json:"swap"`
-	UptimeSec int64  `json:"uptimeSec"`
+	Status    string  `json:"status"` // ok, degraded, critical
+	CPUPct    float64 `json:"cpuPct"`
+	Load1     float64 `json:"load1"`
+	Memory    MemInfo `json:"mem"`
+	Swap      MemInfo `json:"swap"`
+	UptimeSec int64   `json:"uptimeSec"`
 }
 
 // MemInfo for memory stats
@@ -302,18 +302,18 @@ func getMaintenanceStatus(ctx context.Context) MaintenanceStatus {
 
 func getRecentEvents(ctx context.Context) []EventInfo {
 	events := []EventInfo{}
-	
+
 	// Read events from event log file
 	eventFile := "/var/lib/nos/events.jsonl"
 	if runtime.GOOS == "windows" {
 		eventFile = `C:\ProgramData\NithronOS\events.jsonl`
 	}
-	
+
 	// Try to read actual events
 	if file, err := os.Open(eventFile); err == nil {
 		defer file.Close()
 		scanner := bufio.NewScanner(file)
-		
+
 		// Read all events into memory to get the most recent ones
 		allEvents := []EventInfo{}
 		for scanner.Scan() {
@@ -341,7 +341,7 @@ func getRecentEvents(ctx context.Context) []EventInfo {
 				allEvents = append(allEvents, evt)
 			}
 		}
-		
+
 		// Return the last 10 events
 		start := 0
 		if len(allEvents) > 10 {
@@ -349,7 +349,7 @@ func getRecentEvents(ctx context.Context) []EventInfo {
 		}
 		events = allEvents[start:]
 	}
-	
+
 	// If no events found, add some default ones
 	if len(events) == 0 {
 		now := time.Now()
@@ -363,13 +363,13 @@ func getRecentEvents(ctx context.Context) []EventInfo {
 			},
 		}
 	}
-	
+
 	// Reverse to show newest first
 	for i := len(events)/2 - 1; i >= 0; i-- {
 		opp := len(events) - 1 - i
 		events[i], events[opp] = events[opp], events[i]
 	}
-	
+
 	return events
 }
 

@@ -18,22 +18,22 @@ type TimeSeriesStorage struct {
 	db       *sql.DB
 	dataPath string
 	mu       sync.RWMutex
-	
+
 	// Retention settings
-	rawRetention      time.Duration // Keep raw data for this long
-	minuteRetention   time.Duration // Keep 1-minute rollups
-	hourRetention     time.Duration // Keep 1-hour rollups
+	rawRetention    time.Duration // Keep raw data for this long
+	minuteRetention time.Duration // Keep 1-minute rollups
+	hourRetention   time.Duration // Keep 1-hour rollups
 }
 
 // NewTimeSeriesStorage creates a new time series storage
 func NewTimeSeriesStorage(logger zerolog.Logger, dataPath string) (*TimeSeriesStorage, error) {
 	dbPath := filepath.Join(dataPath, "metrics.db")
-	
+
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
-	
+
 	// Set pragmas for performance
 	pragmas := []string{
 		"PRAGMA synchronous = NORMAL",
@@ -41,30 +41,30 @@ func NewTimeSeriesStorage(logger zerolog.Logger, dataPath string) (*TimeSeriesSt
 		"PRAGMA cache_size = -64000", // 64MB cache
 		"PRAGMA temp_store = MEMORY",
 	}
-	
+
 	for _, pragma := range pragmas {
 		if _, err := db.Exec(pragma); err != nil {
 			return nil, fmt.Errorf("failed to set pragma: %w", err)
 		}
 	}
-	
+
 	s := &TimeSeriesStorage{
 		logger:          logger.With().Str("component", "timeseries-storage").Logger(),
 		db:              db,
 		dataPath:        dataPath,
-		rawRetention:    24 * time.Hour,     // Keep raw data for 24 hours
-		minuteRetention: 7 * 24 * time.Hour, // Keep 1-minute rollups for 7 days
+		rawRetention:    24 * time.Hour,      // Keep raw data for 24 hours
+		minuteRetention: 7 * 24 * time.Hour,  // Keep 1-minute rollups for 7 days
 		hourRetention:   30 * 24 * time.Hour, // Keep hourly rollups for 30 days
 	}
-	
+
 	if err := s.createTables(); err != nil {
 		return nil, err
 	}
-	
+
 	// Start background tasks
 	go s.downsampleLoop()
 	go s.cleanupLoop()
-	
+
 	return s, nil
 }
 
@@ -80,7 +80,7 @@ func (s *TimeSeriesStorage) createTables() error {
 			labels TEXT,
 			INDEX idx_metric_time (metric, timestamp)
 		)`,
-		
+
 		// 1-minute rollup table
 		`CREATE TABLE IF NOT EXISTS metrics_1m (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,7 +94,7 @@ func (s *TimeSeriesStorage) createTables() error {
 			UNIQUE(metric, timestamp, labels),
 			INDEX idx_metric_time_1m (metric, timestamp)
 		)`,
-		
+
 		// 1-hour rollup table
 		`CREATE TABLE IF NOT EXISTS metrics_1h (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,7 +108,7 @@ func (s *TimeSeriesStorage) createTables() error {
 			UNIQUE(metric, timestamp, labels),
 			INDEX idx_metric_time_1h (metric, timestamp)
 		)`,
-		
+
 		// Metadata table
 		`CREATE TABLE IF NOT EXISTS metrics_metadata (
 			metric TEXT PRIMARY KEY,
@@ -117,13 +117,13 @@ func (s *TimeSeriesStorage) createTables() error {
 			last_updated INTEGER
 		)`,
 	}
-	
+
 	for _, schema := range schemas {
 		if _, err := s.db.Exec(schema); err != nil {
 			return fmt.Errorf("failed to create table: %w", err)
 		}
 	}
-	
+
 	// Create indexes
 	indexes := []string{
 		"CREATE INDEX IF NOT EXISTS idx_raw_metric_time ON metrics_raw(metric, timestamp)",
@@ -133,13 +133,13 @@ func (s *TimeSeriesStorage) createTables() error {
 		"CREATE INDEX IF NOT EXISTS idx_1h_metric_time ON metrics_1h(metric, timestamp)",
 		"CREATE INDEX IF NOT EXISTS idx_1h_timestamp ON metrics_1h(timestamp)",
 	}
-	
+
 	for _, index := range indexes {
 		if _, err := s.db.Exec(index); err != nil {
 			return fmt.Errorf("failed to create index: %w", err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -147,7 +147,7 @@ func (s *TimeSeriesStorage) createTables() error {
 func (s *TimeSeriesStorage) Store(metric MetricType, timestamp time.Time, value float64, labels map[string]string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	var labelsJSON []byte
 	if len(labels) > 0 {
 		var err error
@@ -156,14 +156,14 @@ func (s *TimeSeriesStorage) Store(metric MetricType, timestamp time.Time, value 
 			return fmt.Errorf("failed to marshal labels: %w", err)
 		}
 	}
-	
+
 	query := `INSERT INTO metrics_raw (metric, timestamp, value, labels) VALUES (?, ?, ?, ?)`
 	_, err := s.db.Exec(query, string(metric), timestamp.Unix(), value, string(labelsJSON))
-	
+
 	if err != nil {
 		return fmt.Errorf("failed to store metric: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -171,14 +171,14 @@ func (s *TimeSeriesStorage) Store(metric MetricType, timestamp time.Time, value 
 func (s *TimeSeriesStorage) Query(q TimeSeriesQuery) (*TimeSeries, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	// Determine which table to query based on time range and step
 	table := s.selectTable(q.StartTime, q.EndTime, q.Step)
-	
+
 	// Build query
 	var query string
 	var args []interface{}
-	
+
 	if table == "metrics_raw" {
 		query = `SELECT timestamp, value, labels FROM metrics_raw 
 				WHERE metric = ? AND timestamp >= ? AND timestamp <= ?`
@@ -186,81 +186,82 @@ func (s *TimeSeriesStorage) Query(q TimeSeriesQuery) (*TimeSeries, error) {
 	} else {
 		// Use rollup tables
 		valueCol := "value_avg"
-		if q.Aggregate == "min" {
+		switch q.Aggregate {
+		case "min":
 			valueCol = "value_min"
-		} else if q.Aggregate == "max" {
+		case "max":
 			valueCol = "value_max"
 		}
-		
+
 		query = fmt.Sprintf(`SELECT timestamp, %s, labels FROM %s 
 				WHERE metric = ? AND timestamp >= ? AND timestamp <= ?`,
 			valueCol, table)
 		args = []interface{}{string(q.Metric), q.StartTime.Unix(), q.EndTime.Unix()}
 	}
-	
+
 	// Add label filters if specified
 	if len(q.Filters) > 0 {
 		filterJSON, _ := json.Marshal(q.Filters)
 		query += " AND labels LIKE ?"
 		args = append(args, "%"+string(filterJSON)+"%")
 	}
-	
+
 	query += " ORDER BY timestamp ASC"
-	
+
 	rows, err := s.db.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query metrics: %w", err)
 	}
 	defer rows.Close()
-	
+
 	ts := &TimeSeries{
 		Metric:     q.Metric,
 		DataPoints: []DataPoint{},
 	}
-	
+
 	for rows.Next() {
 		var timestamp int64
 		var value float64
 		var labelsJSON sql.NullString
-		
+
 		if err := rows.Scan(&timestamp, &value, &labelsJSON); err != nil {
 			continue
 		}
-		
+
 		dp := DataPoint{
 			Timestamp: time.Unix(timestamp, 0),
 			Value:     value,
 		}
-		
+
 		if labelsJSON.Valid {
 			_ = json.Unmarshal([]byte(labelsJSON.String), &dp.Labels)
 		}
-		
+
 		ts.DataPoints = append(ts.DataPoints, dp)
 	}
-	
+
 	// Apply step aggregation if needed
 	if q.Step > 0 {
 		ts.DataPoints = s.aggregateByStep(ts.DataPoints, q.Step, q.Aggregate)
 	}
-	
+
 	return ts, nil
 }
 
 // selectTable determines which table to query based on the time range
 func (s *TimeSeriesStorage) selectTable(start, end time.Time, step time.Duration) string {
 	duration := end.Sub(start)
-	
+
 	// Use raw data for recent queries or high resolution
 	if duration <= 24*time.Hour && step < time.Minute {
 		return "metrics_raw"
 	}
-	
+
 	// Use 1-minute rollups for medium range
 	if duration <= 7*24*time.Hour && step < time.Hour {
 		return "metrics_1m"
 	}
-	
+
 	// Use hourly rollups for long range
 	return "metrics_1h"
 }
@@ -270,13 +271,13 @@ func (s *TimeSeriesStorage) aggregateByStep(points []DataPoint, step time.Durati
 	if len(points) == 0 {
 		return points
 	}
-	
+
 	var result []DataPoint
 	var bucket []DataPoint
-	
+
 	bucketStart := points[0].Timestamp.Truncate(step)
 	bucketEnd := bucketStart.Add(step)
-	
+
 	for _, p := range points {
 		if p.Timestamp.Before(bucketEnd) {
 			bucket = append(bucket, p)
@@ -285,19 +286,19 @@ func (s *TimeSeriesStorage) aggregateByStep(points []DataPoint, step time.Durati
 			if len(bucket) > 0 {
 				result = append(result, s.aggregateBucket(bucket, bucketStart, aggregate))
 			}
-			
+
 			// Start new bucket
 			bucketStart = p.Timestamp.Truncate(step)
 			bucketEnd = bucketStart.Add(step)
 			bucket = []DataPoint{p}
 		}
 	}
-	
+
 	// Process last bucket
 	if len(bucket) > 0 {
 		result = append(result, s.aggregateBucket(bucket, bucketStart, aggregate))
 	}
-	
+
 	return result
 }
 
@@ -306,7 +307,7 @@ func (s *TimeSeriesStorage) aggregateBucket(bucket []DataPoint, timestamp time.T
 	if len(bucket) == 0 {
 		return DataPoint{Timestamp: timestamp, Value: 0}
 	}
-	
+
 	switch aggregate {
 	case "min":
 		min := bucket[0].Value
@@ -316,7 +317,7 @@ func (s *TimeSeriesStorage) aggregateBucket(bucket []DataPoint, timestamp time.T
 			}
 		}
 		return DataPoint{Timestamp: timestamp, Value: min, Labels: bucket[0].Labels}
-		
+
 	case "max":
 		max := bucket[0].Value
 		for _, p := range bucket[1:] {
@@ -325,14 +326,14 @@ func (s *TimeSeriesStorage) aggregateBucket(bucket []DataPoint, timestamp time.T
 			}
 		}
 		return DataPoint{Timestamp: timestamp, Value: max, Labels: bucket[0].Labels}
-		
+
 	case "sum":
 		sum := 0.0
 		for _, p := range bucket {
 			sum += p.Value
 		}
 		return DataPoint{Timestamp: timestamp, Value: sum, Labels: bucket[0].Labels}
-		
+
 	default: // avg
 		sum := 0.0
 		for _, p := range bucket {
@@ -346,7 +347,7 @@ func (s *TimeSeriesStorage) aggregateBucket(bucket []DataPoint, timestamp time.T
 func (s *TimeSeriesStorage) downsampleLoop() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		s.downsample()
 	}
@@ -355,10 +356,10 @@ func (s *TimeSeriesStorage) downsampleLoop() {
 // downsample creates rollup data
 func (s *TimeSeriesStorage) downsample() {
 	now := time.Now()
-	
+
 	// Create 1-minute rollups from raw data
 	s.createRollups("metrics_raw", "metrics_1m", time.Minute, now.Add(-s.rawRetention))
-	
+
 	// Create 1-hour rollups from 1-minute data
 	s.createRollups("metrics_1m", "metrics_1h", time.Hour, now.Add(-s.minuteRetention))
 }
@@ -379,7 +380,7 @@ func (s *TimeSeriesStorage) createRollups(sourceTable, destTable string, interva
 		WHERE timestamp >= ?
 		GROUP BY metric, bucket, labels
 	`, destTable, int64(interval.Seconds()), int64(interval.Seconds()), sourceTable)
-	
+
 	if _, err := s.db.Exec(query, since.Unix()); err != nil {
 		s.logger.Error().Err(err).Msg("Failed to create rollups")
 	}
@@ -389,7 +390,7 @@ func (s *TimeSeriesStorage) createRollups(sourceTable, destTable string, interva
 func (s *TimeSeriesStorage) cleanupLoop() {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		s.cleanup()
 	}
@@ -398,25 +399,25 @@ func (s *TimeSeriesStorage) cleanupLoop() {
 // cleanup removes old data based on retention policies
 func (s *TimeSeriesStorage) cleanup() {
 	now := time.Now()
-	
+
 	// Clean raw data
 	cutoff := now.Add(-s.rawRetention).Unix()
 	if _, err := s.db.Exec("DELETE FROM metrics_raw WHERE timestamp < ?", cutoff); err != nil {
 		s.logger.Error().Err(err).Msg("Failed to cleanup raw metrics")
 	}
-	
+
 	// Clean 1-minute rollups
 	cutoff = now.Add(-s.minuteRetention).Unix()
 	if _, err := s.db.Exec("DELETE FROM metrics_1m WHERE timestamp < ?", cutoff); err != nil {
 		s.logger.Error().Err(err).Msg("Failed to cleanup 1m metrics")
 	}
-	
+
 	// Clean 1-hour rollups
 	cutoff = now.Add(-s.hourRetention).Unix()
 	if _, err := s.db.Exec("DELETE FROM metrics_1h WHERE timestamp < ?", cutoff); err != nil {
 		s.logger.Error().Err(err).Msg("Failed to cleanup 1h metrics")
 	}
-	
+
 	// Vacuum database occasionally
 	if now.Hour() == 3 && now.Minute() < 5 {
 		if _, err := s.db.Exec("VACUUM"); err != nil {
@@ -433,7 +434,7 @@ func (s *TimeSeriesStorage) Close() error {
 // GetStorageStats returns storage statistics
 func (s *TimeSeriesStorage) GetStorageStats() (map[string]interface{}, error) {
 	stats := make(map[string]interface{})
-	
+
 	// Get table sizes
 	tables := []string{"metrics_raw", "metrics_1m", "metrics_1h"}
 	for _, table := range tables {
@@ -443,12 +444,12 @@ func (s *TimeSeriesStorage) GetStorageStats() (map[string]interface{}, error) {
 			stats[table+"_count"] = count
 		}
 	}
-	
+
 	// Get database size
 	var pageCount, pageSize int64
 	_ = s.db.QueryRow("PRAGMA page_count").Scan(&pageCount)
 	_ = s.db.QueryRow("PRAGMA page_size").Scan(&pageSize)
 	stats["db_size_bytes"] = pageCount * pageSize
-	
+
 	return stats, nil
 }

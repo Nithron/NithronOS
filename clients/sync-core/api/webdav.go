@@ -429,7 +429,7 @@ func (w *WebDAVClient) List(ctx context.Context, shareID, remotePath string) ([]
 	// Parse responses (simplified)
 	var items []RemoteFileInfo
 	bodyStr := string(body)
-	
+
 	// Split by response elements
 	responses := strings.Split(bodyStr, "<D:response>")
 	if len(responses) == 1 {
@@ -437,7 +437,7 @@ func (w *WebDAVClient) List(ctx context.Context, shareID, remotePath string) ([]
 	}
 
 	baseURL := w.buildURL(shareID, remotePath)
-	
+
 	for i, respStr := range responses {
 		if i == 0 {
 			continue // Skip header
@@ -477,4 +477,3 @@ func (w *WebDAVClient) List(ctx context.Context, shareID, remotePath string) ([]
 
 	return items, nil
 }
-

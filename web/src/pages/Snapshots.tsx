@@ -264,7 +264,7 @@ function CreateSnapshotDialog({
       await backupApi.snapshots.create({ subvolumes, tag: tag || undefined });
       toast.success('Snapshot creation started');
       onSuccess();
-    } catch (error) {
+    } catch {
       toast.error('Failed to create snapshot');
     } finally {
       setIsCreating(false);
@@ -370,7 +370,7 @@ function RestoreDialog({
         target_path: targetPath,
       });
       setPlan(result);
-    } catch (error) {
+    } catch {
       toast.error('Failed to create restore plan');
     } finally {
       setIsCreatingPlan(false);
@@ -389,7 +389,7 @@ function RestoreDialog({
       });
       toast.success('Restore started');
       onClose();
-    } catch (error) {
+    } catch {
       toast.error('Failed to start restore');
     }
   };

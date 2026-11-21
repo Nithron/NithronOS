@@ -16,16 +16,16 @@ import (
 
 // Job represents a background job
 type Job struct {
-	ID          string    `json:"id"`
-	Type        string    `json:"type"` // scrub, balance, snapshot, backup, etc.
-	Status      string    `json:"status"` // pending, running, completed, failed, cancelled
-	Progress    float64   `json:"progress,omitempty"` // 0-100
-	StartTime   time.Time `json:"start_time"`
-	EndTime     *time.Time `json:"end_time,omitempty"`
-	Duration    int64     `json:"duration_seconds,omitempty"`
-	Message     string    `json:"message,omitempty"`
-	Error       string    `json:"error,omitempty"`
-	Details     map[string]any `json:"details,omitempty"`
+	ID        string         `json:"id"`
+	Type      string         `json:"type"`               // scrub, balance, snapshot, backup, etc.
+	Status    string         `json:"status"`             // pending, running, completed, failed, cancelled
+	Progress  float64        `json:"progress,omitempty"` // 0-100
+	StartTime time.Time      `json:"start_time"`
+	EndTime   *time.Time     `json:"end_time,omitempty"`
+	Duration  int64          `json:"duration_seconds,omitempty"`
+	Message   string         `json:"message,omitempty"`
+	Error     string         `json:"error,omitempty"`
+	Details   map[string]any `json:"details,omitempty"`
 }
 
 // JobsStore manages job history
@@ -42,12 +42,12 @@ func InitJobsStore(cfg config.Config) {
 	if runtime.GOOS == "windows" {
 		jobsPath = filepath.Join(`C:\ProgramData\NithronOS`, "jobs.json")
 	}
-	
+
 	jobsStore = &JobsStore{
 		path: jobsPath,
 		jobs: []Job{},
 	}
-	
+
 	// Load existing jobs
 	if data, err := os.ReadFile(jobsPath); err == nil {
 		_ = json.Unmarshal(data, &jobsStore.jobs)
@@ -59,14 +59,14 @@ func (s *JobsStore) AddJob(job Job) {
 	if s == nil {
 		return
 	}
-	
+
 	s.jobs = append(s.jobs, job)
-	
+
 	// Keep only the last 100 jobs
 	if len(s.jobs) > 100 {
 		s.jobs = s.jobs[len(s.jobs)-100:]
 	}
-	
+
 	// Save to disk (best effort)
 	if data, err := json.MarshalIndent(s.jobs, "", "  "); err == nil {
 		_ = os.WriteFile(s.path, data, 0644)
@@ -78,14 +78,14 @@ func (s *JobsStore) GetRecentJobs(limit int) []Job {
 	if s == nil || len(s.jobs) == 0 {
 		return []Job{}
 	}
-	
+
 	// Sort by start time descending
 	sorted := make([]Job, len(s.jobs))
 	copy(sorted, s.jobs)
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].StartTime.After(sorted[j].StartTime)
 	})
-	
+
 	if limit > 0 && limit < len(sorted) {
 		return sorted[:limit]
 	}
@@ -97,7 +97,7 @@ func (s *JobsStore) GetJob(id string) (*Job, bool) {
 	if s == nil {
 		return nil, false
 	}
-	
+
 	for _, job := range s.jobs {
 		if job.ID == id {
 			return &job, true
@@ -111,11 +111,11 @@ func (s *JobsStore) UpdateJob(id string, updates func(*Job)) {
 	if s == nil {
 		return
 	}
-	
+
 	for i := range s.jobs {
 		if s.jobs[i].ID == id {
 			updates(&s.jobs[i])
-			
+
 			// Save to disk (best effort)
 			if data, err := json.MarshalIndent(s.jobs, "", "  "); err == nil {
 				_ = os.WriteFile(s.path, data, 0644)
@@ -134,13 +134,13 @@ func handleJobsRecent(cfg config.Config) http.HandlerFunc {
 				limit = parsed
 			}
 		}
-		
+
 		jobs := []Job{}
-		
+
 		if jobsStore != nil {
 			jobs = jobsStore.GetRecentJobs(limit)
 		}
-		
+
 		// If no jobs in store, return some example jobs
 		if len(jobs) == 0 {
 			now := time.Now()
@@ -189,7 +189,7 @@ func handleJobsRecent(cfg config.Config) http.HandlerFunc {
 				},
 			}
 		}
-		
+
 		writeJSON(w, jobs)
 	}
 }
@@ -202,14 +202,14 @@ func handleJobGet(cfg config.Config) http.HandlerFunc {
 			httpx.WriteTypedError(w, http.StatusBadRequest, "job.id.required", "Job ID is required", 0)
 			return
 		}
-		
+
 		if jobsStore != nil {
 			if job, found := jobsStore.GetJob(jobID); found {
 				writeJSON(w, job)
 				return
 			}
 		}
-		
+
 		// If not found, return a mock job for demo
 		if jobID == "example" {
 			now := time.Now()
@@ -230,7 +230,7 @@ func handleJobGet(cfg config.Config) http.HandlerFunc {
 			writeJSON(w, job)
 			return
 		}
-		
+
 		httpx.WriteTypedError(w, http.StatusNotFound, "job.not_found", "Job not found", 0)
 	}
 }
@@ -245,11 +245,11 @@ func CreateJob(jobType, message string, details map[string]any) *Job {
 		Message:   message,
 		Details:   details,
 	}
-	
+
 	if jobsStore != nil {
 		jobsStore.AddJob(job)
 	}
-	
+
 	return &job
 }
 
@@ -303,4 +303,3 @@ func FailJob(jobID string, errorMsg string) {
 		})
 	}
 }
-

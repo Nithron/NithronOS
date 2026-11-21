@@ -13,10 +13,10 @@ import (
 // Config represents the sync client configuration.
 type Config struct {
 	// Server settings
-	ServerURL   string `json:"server_url"`
-	DeviceID    string `json:"device_id"`
-	DeviceToken string `json:"device_token"`
-	AccessToken string `json:"access_token,omitempty"`
+	ServerURL    string `json:"server_url"`
+	DeviceID     string `json:"device_id"`
+	DeviceToken  string `json:"device_token"`
+	AccessToken  string `json:"access_token,omitempty"`
 	RefreshToken string `json:"refresh_token,omitempty"`
 
 	// Local settings
@@ -25,17 +25,17 @@ type Config struct {
 	ExcludePatterns []string `json:"exclude_patterns"`
 
 	// Sync behavior
-	SyncEnabled       bool  `json:"sync_enabled"`
-	SyncOnMetered     bool  `json:"sync_on_metered"`
-	BandwidthLimitKBps int   `json:"bandwidth_limit_kbps"`
-	PollIntervalSecs  int   `json:"poll_interval_secs"`
+	SyncEnabled        bool `json:"sync_enabled"`
+	SyncOnMetered      bool `json:"sync_on_metered"`
+	BandwidthLimitKBps int  `json:"bandwidth_limit_kbps"`
+	PollIntervalSecs   int  `json:"poll_interval_secs"`
 
 	// Advanced
-	DebugLogging    bool   `json:"debug_logging"`
-	MaxConcurrent   int    `json:"max_concurrent"`
-	ConflictPolicy  string `json:"conflict_policy"` // "keep_both", "keep_local", "keep_remote"
-	RetryAttempts   int    `json:"retry_attempts"`
-	RetryDelaySecs  int    `json:"retry_delay_secs"`
+	DebugLogging   bool   `json:"debug_logging"`
+	MaxConcurrent  int    `json:"max_concurrent"`
+	ConflictPolicy string `json:"conflict_policy"` // "keep_both", "keep_local", "keep_remote"
+	RetryAttempts  int    `json:"retry_attempts"`
+	RetryDelaySecs int    `json:"retry_delay_secs"`
 
 	// Internal
 	configPath string
@@ -45,15 +45,15 @@ type Config struct {
 // DefaultConfig returns a configuration with sensible defaults.
 func DefaultConfig() *Config {
 	return &Config{
-		SyncEnabled:       true,
-		SyncOnMetered:     false,
+		SyncEnabled:        true,
+		SyncOnMetered:      false,
 		BandwidthLimitKBps: 0, // Unlimited
-		PollIntervalSecs:  30,
-		DebugLogging:      false,
-		MaxConcurrent:     4,
-		ConflictPolicy:    "keep_both",
-		RetryAttempts:     3,
-		RetryDelaySecs:    5,
+		PollIntervalSecs:   30,
+		DebugLogging:       false,
+		MaxConcurrent:      4,
+		ConflictPolicy:     "keep_both",
+		RetryAttempts:      3,
+		RetryDelaySecs:     5,
 		ExcludePatterns: []string{
 			"*.tmp",
 			"*.temp",
@@ -284,4 +284,3 @@ func (c *Config) SetTokens(accessToken, refreshToken string) error {
 		cfg.RefreshToken = refreshToken
 	})
 }
-

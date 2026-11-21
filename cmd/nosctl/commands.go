@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -21,35 +20,43 @@ func newLoginCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fmt.Print("Enter API token: ")
 			var inputToken string
-			fmt.Scanln(&inputToken)
-			
+			if _, err := fmt.Scanln(&inputToken); err != nil {
+				return fmt.Errorf("read token: %w", err)
+			}
+
 			if inputToken == "" {
 				return fmt.Errorf("token cannot be empty")
 			}
-			
+
 			// Test the token
 			client := newAPIClient(baseURL, inputToken)
 			if err := client.testConnection(); err != nil {
 				return fmt.Errorf("authentication failed: %w", err)
 			}
-			
+
 			// Save to config
 			viper.Set("token", inputToken)
 			viper.Set("url", baseURL)
-			
+
 			configPath := filepath.Join(os.Getenv("HOME"), ".config", "nos", "cli.yaml")
-			os.MkdirAll(filepath.Dir(configPath), 0755)
-			
+			if err := os.MkdirAll(filepath.Dir(configPath), 0o700); err != nil {
+				return fmt.Errorf("failed to create config dir: %w", err)
+			}
+
 			if err := viper.WriteConfigAs(configPath); err != nil {
 				return fmt.Errorf("failed to save config: %w", err)
 			}
-			
+			// The file holds the API token: keep it private to the user.
+			if err := os.Chmod(configPath, 0o600); err != nil {
+				return fmt.Errorf("failed to restrict config permissions: %w", err)
+			}
+
 			fmt.Println("✓ Authentication successful")
 			fmt.Printf("✓ Configuration saved to %s\n", configPath)
 			return nil
 		},
 	}
-	
+
 	return cmd
 }
 
@@ -61,12 +68,12 @@ func newStatusCmd() *cobra.Command {
 		Long:  `Display the current status of the NithronOS system.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient(baseURL, token)
-			
+
 			status, err := client.getSystemStatus()
 			if err != nil {
 				return err
 			}
-			
+
 			if outputJSON {
 				printJSON(status)
 			} else {
@@ -76,8 +83,8 @@ func newStatusCmd() *cobra.Command {
 				fmt.Printf("Uptime:      %s\n", status.Uptime)
 				fmt.Printf("Load:        %.2f, %.2f, %.2f\n", status.Load1, status.Load5, status.Load15)
 				fmt.Printf("CPU:         %.1f%%\n", status.CPUUsage)
-				fmt.Printf("Memory:      %s / %s (%.1f%%)\n", 
-					formatBytes(status.MemoryUsed), 
+				fmt.Printf("Memory:      %s / %s (%.1f%%)\n",
+					formatBytes(status.MemoryUsed),
 					formatBytes(status.MemoryTotal),
 					status.MemoryPercent)
 				fmt.Printf("Storage:     %s / %s (%.1f%%)\n",
@@ -86,20 +93,18 @@ func newStatusCmd() *cobra.Command {
 					status.StoragePercent)
 				fmt.Printf("\nServices:\n")
 				for _, service := range status.Services {
-					status := "●"
+					mark := "✗"
 					if service.Active {
-						status = "✓"
-					} else {
-						status = "✗"
+						mark = "✓"
 					}
-					fmt.Printf("  %s %s - %s\n", status, service.Name, service.State)
+					fmt.Printf("  %s %s - %s\n", mark, service.Name, service.State)
 				}
 			}
-			
+
 			return nil
 		},
 	}
-	
+
 	return cmd
 }
 
@@ -110,7 +115,7 @@ func newSystemCmd() *cobra.Command {
 		Short: "System management commands",
 		Long:  `Commands for managing system configuration and information.`,
 	}
-	
+
 	// Add subcommands
 	cmd.AddCommand(
 		&cobra.Command{
@@ -122,7 +127,7 @@ func newSystemCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				
+
 				if outputJSON {
 					printJSON(info)
 				} else {
@@ -136,12 +141,12 @@ func newSystemCmd() *cobra.Command {
 					fmt.Printf("Memory:      %s\n", formatBytes(info.Memory))
 					fmt.Printf("NOS Version: %s\n", info.NOSVersion)
 				}
-				
+
 				return nil
 			},
 		},
 	)
-	
+
 	return cmd
 }
 
@@ -152,13 +157,13 @@ func newStorageCmd() *cobra.Command {
 		Short: "Storage management commands",
 		Long:  `Commands for managing storage pools and snapshots.`,
 	}
-	
+
 	// Snapshots subcommand
 	snapshotsCmd := &cobra.Command{
 		Use:   "snapshots",
 		Short: "Manage snapshots",
 	}
-	
+
 	snapshotsCmd.AddCommand(
 		&cobra.Command{
 			Use:   "list",
@@ -169,7 +174,7 @@ func newStorageCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				
+
 				if outputJSON {
 					printJSON(snapshots)
 				} else {
@@ -185,7 +190,7 @@ func newStorageCmd() *cobra.Command {
 					}
 					printTable(headers, rows)
 				}
-				
+
 				return nil
 			},
 		},
@@ -195,21 +200,21 @@ func newStorageCmd() *cobra.Command {
 			Args:  cobra.MinimumNArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				client := newAPIClient(baseURL, token)
-				
+
 				tag, _ := cmd.Flags().GetString("tag")
-				
+
 				job, err := client.createSnapshot(args, tag)
 				if err != nil {
 					return err
 				}
-				
+
 				if outputJSON {
 					printJSON(job)
 				} else {
 					fmt.Printf("✓ Snapshot creation started\n")
 					fmt.Printf("  Job ID: %s\n", job.ID)
 				}
-				
+
 				return nil
 			},
 		},
@@ -219,21 +224,21 @@ func newStorageCmd() *cobra.Command {
 			Args:  cobra.ExactArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				client := newAPIClient(baseURL, token)
-				
+
 				if err := client.deleteSnapshot(args[0]); err != nil {
 					return err
 				}
-				
+
 				fmt.Printf("✓ Snapshot deleted\n")
 				return nil
 			},
 		},
 	)
-	
+
 	snapshotsCmd.Flags().StringP("tag", "t", "", "snapshot tag")
-	
+
 	cmd.AddCommand(snapshotsCmd)
-	
+
 	return cmd
 }
 
@@ -244,7 +249,7 @@ func newAppsCmd() *cobra.Command {
 		Short: "Application management commands",
 		Long:  `Commands for managing applications.`,
 	}
-	
+
 	cmd.AddCommand(
 		&cobra.Command{
 			Use:   "list",
@@ -255,7 +260,7 @@ func newAppsCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				
+
 				if outputJSON {
 					printJSON(apps)
 				} else {
@@ -272,7 +277,7 @@ func newAppsCmd() *cobra.Command {
 					}
 					printTable(headers, rows)
 				}
-				
+
 				return nil
 			},
 		},
@@ -282,11 +287,11 @@ func newAppsCmd() *cobra.Command {
 			Args:  cobra.ExactArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				client := newAPIClient(baseURL, token)
-				
+
 				// Read params from file or stdin
 				paramsFile, _ := cmd.Flags().GetString("params")
 				params := make(map[string]interface{})
-				
+
 				if paramsFile != "" {
 					data, err := os.ReadFile(paramsFile)
 					if err != nil {
@@ -296,11 +301,11 @@ func newAppsCmd() *cobra.Command {
 						return err
 					}
 				}
-				
+
 				if err := client.installApp(args[0], params); err != nil {
 					return err
 				}
-				
+
 				fmt.Printf("✓ Application installation started\n")
 				return nil
 			},
@@ -311,13 +316,13 @@ func newAppsCmd() *cobra.Command {
 			Args:  cobra.ExactArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				client := newAPIClient(baseURL, token)
-				
+
 				keepData, _ := cmd.Flags().GetBool("keep-data")
-				
+
 				if err := client.uninstallApp(args[0], keepData); err != nil {
 					return err
 				}
-				
+
 				fmt.Printf("✓ Application uninstalled\n")
 				return nil
 			},
@@ -328,20 +333,20 @@ func newAppsCmd() *cobra.Command {
 			Args:  cobra.ExactArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				client := newAPIClient(baseURL, token)
-				
+
 				if err := client.restartApp(args[0]); err != nil {
 					return err
 				}
-				
+
 				fmt.Printf("✓ Application restarted\n")
 				return nil
 			},
 		},
 	)
-	
+
 	cmd.Flags().String("params", "", "parameters file (YAML)")
 	cmd.Flags().Bool("keep-data", false, "keep application data when uninstalling")
-	
+
 	return cmd
 }
 
@@ -352,7 +357,7 @@ func newBackupsCmd() *cobra.Command {
 		Short: "Backup management commands",
 		Long:  `Commands for managing backups and restoration.`,
 	}
-	
+
 	cmd.AddCommand(
 		&cobra.Command{
 			Use:   "run [schedule-id]",
@@ -360,19 +365,19 @@ func newBackupsCmd() *cobra.Command {
 			Args:  cobra.ExactArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				client := newAPIClient(baseURL, token)
-				
+
 				job, err := client.runBackup(args[0])
 				if err != nil {
 					return err
 				}
-				
+
 				if outputJSON {
 					printJSON(job)
 				} else {
 					fmt.Printf("✓ Backup started\n")
 					fmt.Printf("  Job ID: %s\n", job.ID)
 				}
-				
+
 				return nil
 			},
 		},
@@ -384,25 +389,25 @@ func newBackupsCmd() *cobra.Command {
 				sourceID, _ := cmd.Flags().GetString("source-id")
 				restoreType, _ := cmd.Flags().GetString("restore-type")
 				targetPath, _ := cmd.Flags().GetString("target")
-				
+
 				if sourceType == "" || sourceID == "" || restoreType == "" || targetPath == "" {
 					return fmt.Errorf("all flags are required: --source-type, --source-id, --restore-type, --target")
 				}
-				
+
 				client := newAPIClient(baseURL, token)
-				
+
 				job, err := client.restore(sourceType, sourceID, restoreType, targetPath)
 				if err != nil {
 					return err
 				}
-				
+
 				if outputJSON {
 					printJSON(job)
 				} else {
 					fmt.Printf("✓ Restore started\n")
 					fmt.Printf("  Job ID: %s\n", job.ID)
 				}
-				
+
 				return nil
 			},
 		},
@@ -412,12 +417,12 @@ func newBackupsCmd() *cobra.Command {
 			Args:  cobra.ExactArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				client := newAPIClient(baseURL, token)
-				
+
 				job, err := client.getBackupJob(args[0])
 				if err != nil {
 					return err
 				}
-				
+
 				if outputJSON {
 					printJSON(job)
 				} else {
@@ -431,17 +436,17 @@ func newBackupsCmd() *cobra.Command {
 						fmt.Printf("Error:    %s\n", job.Error)
 					}
 				}
-				
+
 				return nil
 			},
 		},
 	)
-	
+
 	cmd.Flags().String("source-type", "", "source type (local, ssh, rclone)")
 	cmd.Flags().String("source-id", "", "source ID")
 	cmd.Flags().String("restore-type", "", "restore type (full, files)")
 	cmd.Flags().String("target", "", "target path")
-	
+
 	return cmd
 }
 
@@ -452,12 +457,12 @@ func newAlertsCmd() *cobra.Command {
 		Short: "Alert management commands",
 		Long:  `Commands for managing alert rules and notifications.`,
 	}
-	
+
 	rulesCmd := &cobra.Command{
 		Use:   "rules",
 		Short: "Manage alert rules",
 	}
-	
+
 	rulesCmd.AddCommand(
 		&cobra.Command{
 			Use:   "list",
@@ -468,7 +473,7 @@ func newAlertsCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				
+
 				if outputJSON {
 					printJSON(rules)
 				} else {
@@ -494,7 +499,7 @@ func newAlertsCmd() *cobra.Command {
 					}
 					printTable(headers, rows)
 				}
-				
+
 				return nil
 			},
 		},
@@ -508,39 +513,39 @@ func newAlertsCmd() *cobra.Command {
 				threshold, _ := cmd.Flags().GetFloat64("threshold")
 				duration, _ := cmd.Flags().GetInt("duration")
 				severity, _ := cmd.Flags().GetString("severity")
-				
+
 				if name == "" || metric == "" || operator == "" {
 					return fmt.Errorf("required flags: --name, --metric, --operator, --threshold")
 				}
-				
+
 				client := newAPIClient(baseURL, token)
-				
+
 				rule, err := client.createAlertRule(name, metric, operator, threshold, duration, severity)
 				if err != nil {
 					return err
 				}
-				
+
 				if outputJSON {
 					printJSON(rule)
 				} else {
 					fmt.Printf("✓ Alert rule created\n")
 					fmt.Printf("  ID: %s\n", rule.ID)
 				}
-				
+
 				return nil
 			},
 		},
 	)
-	
+
 	rulesCmd.Flags().String("name", "", "rule name")
 	rulesCmd.Flags().String("metric", "", "metric to monitor")
 	rulesCmd.Flags().String("operator", ">", "comparison operator")
 	rulesCmd.Flags().Float64("threshold", 0, "threshold value")
 	rulesCmd.Flags().Int("duration", 60, "duration in seconds")
 	rulesCmd.Flags().String("severity", "warning", "severity level")
-	
+
 	cmd.AddCommand(rulesCmd)
-	
+
 	return cmd
 }
 
@@ -551,7 +556,7 @@ func newTokensCmd() *cobra.Command {
 		Short: "API token management",
 		Long:  `Commands for managing API tokens.`,
 	}
-	
+
 	cmd.AddCommand(
 		&cobra.Command{
 			Use:   "list",
@@ -562,7 +567,7 @@ func newTokensCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				
+
 				if outputJSON {
 					printJSON(tokens)
 				} else {
@@ -583,7 +588,7 @@ func newTokensCmd() *cobra.Command {
 					}
 					printTable(headers, rows)
 				}
-				
+
 				return nil
 			},
 		},
@@ -594,18 +599,18 @@ func newTokensCmd() *cobra.Command {
 			RunE: func(cmd *cobra.Command, args []string) error {
 				scopes, _ := cmd.Flags().GetStringSlice("scopes")
 				expires, _ := cmd.Flags().GetString("expires")
-				
+
 				if len(scopes) == 0 {
 					return fmt.Errorf("at least one scope is required")
 				}
-				
+
 				client := newAPIClient(baseURL, token)
-				
+
 				newToken, tokenValue, err := client.createToken(args[0], scopes, expires)
 				if err != nil {
 					return err
 				}
-				
+
 				if outputJSON {
 					// Include token value in JSON output
 					output := map[string]interface{}{
@@ -620,7 +625,7 @@ func newTokensCmd() *cobra.Command {
 					fmt.Printf("  Token: %s\n", tokenValue)
 					fmt.Printf("\n⚠ Save this token now. You won't be able to see it again.\n")
 				}
-				
+
 				return nil
 			},
 		},
@@ -630,20 +635,20 @@ func newTokensCmd() *cobra.Command {
 			Args:  cobra.ExactArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				client := newAPIClient(baseURL, token)
-				
+
 				if err := client.deleteToken(args[0]); err != nil {
 					return err
 				}
-				
+
 				fmt.Printf("✓ Token deleted\n")
 				return nil
 			},
 		},
 	)
-	
+
 	cmd.Flags().StringSlice("scopes", []string{}, "token scopes")
 	cmd.Flags().String("expires", "", "expiration (e.g., 30d, 1y)")
-	
+
 	return cmd
 }
 
@@ -653,7 +658,7 @@ func newOpenapiCmd() *cobra.Command {
 		Use:   "openapi",
 		Short: "OpenAPI specification commands",
 	}
-	
+
 	cmd.AddCommand(
 		&cobra.Command{
 			Use:   "pull [output-file]",
@@ -661,12 +666,12 @@ func newOpenapiCmd() *cobra.Command {
 			Args:  cobra.MaximumNArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				client := newAPIClient(baseURL, token)
-				
+
 				spec, err := client.getOpenAPISpec()
 				if err != nil {
 					return err
 				}
-				
+
 				var output io.Writer = os.Stdout
 				if len(args) > 0 {
 					file, err := os.Create(args[0])
@@ -676,20 +681,20 @@ func newOpenapiCmd() *cobra.Command {
 					defer file.Close()
 					output = file
 				}
-				
+
 				if _, err := output.Write(spec); err != nil {
 					return err
 				}
-				
+
 				if len(args) > 0 {
 					fmt.Printf("✓ OpenAPI spec saved to %s\n", args[0])
 				}
-				
+
 				return nil
 			},
 		},
 	)
-	
+
 	return cmd
 }
 
@@ -704,7 +709,7 @@ func newVersionCmd() *cobra.Command {
 			fmt.Printf("  Git commit: %s\n", GitCommit)
 		},
 	}
-	
+
 	return cmd
 }
 
@@ -755,7 +760,7 @@ PowerShell:
 			}
 		},
 	}
-	
+
 	return cmd
 }
 

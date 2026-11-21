@@ -31,67 +31,67 @@ const (
 type HydrationPriority int
 
 const (
-	PriorityLow      HydrationPriority = 0
-	PriorityNormal   HydrationPriority = 50
-	PriorityHigh     HydrationPriority = 100
-	PriorityUrgent   HydrationPriority = 200
+	PriorityLow    HydrationPriority = 0
+	PriorityNormal HydrationPriority = 50
+	PriorityHigh   HydrationPriority = 100
+	PriorityUrgent HydrationPriority = 200
 )
 
 // PlaceholderFile represents a placeholder (cloud-only) file
 type PlaceholderFile struct {
-	ShareID       string            `json:"share_id"`
-	Path          string            `json:"path"`
-	Name          string            `json:"name"`
-	Size          int64             `json:"size"`
-	Hash          string            `json:"hash"`
-	ModifiedAt    time.Time         `json:"modified_at"`
-	State         PlaceholderState  `json:"state"`
-	IsPinned      bool              `json:"is_pinned"`
-	LastAccessed  *time.Time        `json:"last_accessed,omitempty"`
-	HydrationProgress float64       `json:"hydration_progress,omitempty"`
-	Metadata      map[string]string `json:"metadata,omitempty"`
+	ShareID           string            `json:"share_id"`
+	Path              string            `json:"path"`
+	Name              string            `json:"name"`
+	Size              int64             `json:"size"`
+	Hash              string            `json:"hash"`
+	ModifiedAt        time.Time         `json:"modified_at"`
+	State             PlaceholderState  `json:"state"`
+	IsPinned          bool              `json:"is_pinned"`
+	LastAccessed      *time.Time        `json:"last_accessed,omitempty"`
+	HydrationProgress float64           `json:"hydration_progress,omitempty"`
+	Metadata          map[string]string `json:"metadata,omitempty"`
 }
 
 // HydrationRequest represents a request to download a file
 type HydrationRequest struct {
-	ShareID      string            `json:"share_id"`
-	Path         string            `json:"path"`
-	Priority     HydrationPriority `json:"priority"`
-	RequestedAt  time.Time         `json:"requested_at"`
-	RequestedBy  string            `json:"requested_by,omitempty"`
-	Callback     func(error)       `json:"-"`
+	ShareID     string            `json:"share_id"`
+	Path        string            `json:"path"`
+	Priority    HydrationPriority `json:"priority"`
+	RequestedAt time.Time         `json:"requested_at"`
+	RequestedBy string            `json:"requested_by,omitempty"`
+	Callback    func(error)       `json:"-"`
 }
 
 // DehydrationPolicy defines when files should be dehydrated (converted to placeholders)
 type DehydrationPolicy struct {
-	Enabled            bool          `json:"enabled"`
-	MaxLocalSize       int64         `json:"max_local_size"`        // Max total size of local files
-	MaxFileAge         time.Duration `json:"max_file_age"`          // Max age before dehydration
-	MinFreeSpace       int64         `json:"min_free_space"`        // Min free disk space to maintain
-	ExcludePatterns    []string      `json:"exclude_patterns"`      // Patterns to never dehydrate
-	PinnedAlwaysLocal  bool          `json:"pinned_always_local"`   // Keep pinned files local
+	Enabled           bool          `json:"enabled"`
+	MaxLocalSize      int64         `json:"max_local_size"`      // Max total size of local files
+	MaxFileAge        time.Duration `json:"max_file_age"`        // Max age before dehydration
+	MinFreeSpace      int64         `json:"min_free_space"`      // Min free disk space to maintain
+	ExcludePatterns   []string      `json:"exclude_patterns"`    // Patterns to never dehydrate
+	PinnedAlwaysLocal bool          `json:"pinned_always_local"` // Keep pinned files local
 }
 
 // SmartSyncManager manages on-demand file synchronization
 type SmartSyncManager struct {
-	dataDir           string
-	placeholders      map[string]*PlaceholderFile
-	hydrationQueue    []*HydrationRequest
-	policy            DehydrationPolicy
-	totalLocalSize    int64
-	
+	dataDir        string
+	placeholders   map[string]*PlaceholderFile
+	hydrationQueue []*HydrationRequest
+	policy         DehydrationPolicy
+	totalLocalSize int64
+
 	// Callbacks
 	onHydrationStart    func(file *PlaceholderFile)
 	onHydrationProgress func(file *PlaceholderFile, progress float64)
 	onHydrationComplete func(file *PlaceholderFile, err error)
 	onDehydrate         func(file *PlaceholderFile)
-	
+
 	// Download function (to be provided by caller)
 	downloadFunc func(shareID, path string, dest string) error
-	
+
 	ctx    context.Context
 	cancel context.CancelFunc
-	
+
 	logger zerolog.Logger
 	mu     sync.RWMutex
 }
@@ -99,7 +99,7 @@ type SmartSyncManager struct {
 // NewSmartSyncManager creates a new smart sync manager
 func NewSmartSyncManager(dataDir string, logger zerolog.Logger) (*SmartSyncManager, error) {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	m := &SmartSyncManager{
 		dataDir:      dataDir,
 		placeholders: make(map[string]*PlaceholderFile),
@@ -712,4 +712,3 @@ func (m *SmartSyncManager) SetOnDehydrate(fn func(file *PlaceholderFile)) {
 	defer m.mu.Unlock()
 	m.onDehydrate = fn
 }
-

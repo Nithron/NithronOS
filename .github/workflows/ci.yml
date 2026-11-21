@@ -12,6 +12,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Supported Go release (1.24 is end-of-life and fails govulncheck on stdlib advisories).
+  GO_VERSION: '1.27.x'
+  # Active Node LTS (Node 20 reached end-of-life in April 2026).
+  NODE_VERSION: '24'
+
 jobs:
   lint:
     name: Lint & Static Analysis
@@ -20,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24.x'
+          go-version: ${{ env.GO_VERSION }}
           check-latest: true
           cache: true
           cache-dependency-path: |
@@ -28,61 +34,88 @@ jobs:
             agent/nos-agent/go.sum
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - name: Install linters
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Version strings match VERSION
+        run: bash scripts/check-version.sh
+      - name: Install linters (pinned)
         run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
-          go install honnef.co/go/tools/cmd/staticcheck@latest
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-      - name: Tidy and download Go modules
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
+          go install honnef.co/go/tools/cmd/staticcheck@v0.8.2
+          go install golang.org/x/vuln/cmd/govulncheck@v1.10.0
+      - name: go.mod is tidy
         run: |
-          (cd backend/nosd && go mod tidy && go mod download)
-          (cd agent/nos-agent && go mod tidy && go mod download)
-      - name: Go linters (backend)
-        id: lint-backend
+          (cd backend/nosd && go mod tidy -diff)
+          (cd agent/nos-agent && go mod tidy -diff)
+      # One step per tool and module, so the failing check is visible in the run summary.
+      - name: golangci-lint (backend)
         working-directory: backend/nosd
-        run: |
-          set +e  # Don't exit on error
-          echo "Running golangci-lint..."
-          golangci-lint run ./... --max-issues-per-linter=0 --max-same-issues=0
-          GOLANGCI_EXIT=$?
-          echo "Running staticcheck..."
-          staticcheck ./...
-          STATIC_EXIT=$?
-          echo "Running govulncheck..."
-          govulncheck ./...
-          GOVULN_EXIT=$?
-          if [ $GOLANGCI_EXIT -ne 0 ] || [ $STATIC_EXIT -ne 0 ] || [ $GOVULN_EXIT -ne 0 ]; then
-            echo "::error::Lint issues found in backend"
-            exit 1
-          fi
-      - name: Go linters (agent)
-        id: lint-agent
+        run: golangci-lint run ./... --max-issues-per-linter=0 --max-same-issues=0
+      - name: golangci-lint (agent)
         working-directory: agent/nos-agent
-        run: |
-          set +e  # Don't exit on error
-          echo "Running golangci-lint..."
-          golangci-lint run ./... --max-issues-per-linter=0 --max-same-issues=0
-          GOLANGCI_EXIT=$?
-          echo "Running staticcheck..."
-          staticcheck ./...
-          STATIC_EXIT=$?
-          echo "Running govulncheck..."
-          govulncheck ./...
-          GOVULN_EXIT=$?
-          if [ $GOLANGCI_EXIT -ne 0 ] || [ $STATIC_EXIT -ne 0 ] || [ $GOVULN_EXIT -ne 0 ]; then
-            echo "::error::Lint issues found in agent"
-            exit 1
-          fi
-      - name: Web typecheck + audit
+        run: golangci-lint run ./... --max-issues-per-linter=0 --max-same-issues=0
+      - name: staticcheck (backend)
+        working-directory: backend/nosd
+        run: staticcheck ./...
+      - name: staticcheck (agent)
+        working-directory: agent/nos-agent
+        run: staticcheck ./...
+      - name: govulncheck (backend)
+        working-directory: backend/nosd
+        run: govulncheck ./...
+      - name: govulncheck (agent)
+        working-directory: agent/nos-agent
+        run: govulncheck ./...
+      - name: Web install
         working-directory: web
-        run: |
-          npm install
-          npm run typecheck
-          npm audit --omit=dev --audit-level=high
+        run: npm ci
+      - name: Web lint
+        working-directory: web
+        run: npm run lint
+      - name: Web typecheck
+        working-directory: web
+        run: npm run typecheck
+      - name: Web audit (runtime deps)
+        working-directory: web
+        run: npm audit --omit=dev --audit-level=high
       - name: Property test (TOTP window)
         run: |
           cd backend/nosd && go test ./pkg/auth -run TestTOTPWindowPlusMinusOne -v
+
+  go-modules:
+    name: Go modules (sync-core, nosctl)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache: true
+          cache-dependency-path: |
+            clients/sync-core/go.sum
+            cmd/nosctl/go.sum
+      - name: Install linters (pinned)
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
+          go install golang.org/x/vuln/cmd/govulncheck@v1.10.0
+      - name: sync-core build, vet, test
+        working-directory: clients/sync-core
+        run: |
+          go mod tidy -diff
+          go build ./...
+          go vet ./...
+          go test -count=1 ./...
+          govulncheck ./...
+      # sync-core still has unchecked errors in the sync engine; golangci-lint
+      # becomes blocking for it with the phase 7 rework (docs/dev/revision-plan.md).
+      - name: nosctl build, lint, test
+        working-directory: cmd/nosctl
+        run: |
+          go mod tidy -diff
+          go build ./...
+          golangci-lint run ./...
+          go test -count=1 ./...
+          govulncheck ./...
 
   build:
     name: Build (backend, agent, web)
@@ -100,7 +133,7 @@ jobs:
       - name: Set up Go (with cache for both modules)
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.x'
+          go-version: ${{ env.GO_VERSION }}
           check-latest: true
           cache: true
           cache-dependency-path: |
@@ -110,16 +143,9 @@ jobs:
       - name: Set up Node (with npm cache for /web)
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: web/package-lock.json
-
-      - name: Normalize go.mod and tidy
-        run: |
-          sed -i 's/^go 1\.24\.0$/go 1.24/' backend/nosd/go.mod || true
-          sed -i 's/^go 1\.24\.0$/go 1.24/' agent/nos-agent/go.mod || true
-          (cd backend/nosd && go mod tidy)
-          (cd agent/nos-agent && go mod tidy)
 
       - name: Build backend & agent
         run: |
@@ -127,16 +153,15 @@ jobs:
           cd agent/nos-agent && CGO_ENABLED=0 go build ./... && cd -
 
       - name: Web install & build
+        working-directory: web
         run: |
-          cd web
-          npm install
+          npm ci
           npm run build
-          cd -
 
       - name: Upload web build (artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: NithronOS - Web UI - ${{ github.event.release.tag_name || github.ref_name }}
+          name: NithronOS - Web UI - ${{ github.event.release.tag_name || github.sha }}
           path: web/dist
           if-no-files-found: ignore
 
@@ -151,7 +176,7 @@ jobs:
       - name: Set up Go (with cache for both modules)
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.x'
+          go-version: ${{ env.GO_VERSION }}
           check-latest: true
           cache: true
           cache-dependency-path: |
@@ -161,28 +186,24 @@ jobs:
       - name: Set up Node (with npm cache for /web)
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: web/package-lock.json
 
-      - name: Test backend & agent
-        run: |
-          cd backend/nosd && go test ./... -v && cd -
-          if [ -d agent/nos-agent ]; then (cd agent/nos-agent && go test ./... -v && cd -); else echo "agent module missing; skipping"; fi
+      - name: Test backend
+        working-directory: backend/nosd
+        run: go test -count=1 ./...
 
-      - name: Web tests (if configured)
-        run: |
-          cd web
-          npm install
-          npm test -- --run || echo "no web tests configured"
-          cd -
+      - name: Test agent
+        working-directory: agent/nos-agent
+        run: go test -count=1 ./...
 
-      - name: Go tests (incl. combined metrics)
-        shell: bash
+      - name: Web tests
+        working-directory: web
         run: |
-          set -euo pipefail
-          if [ -d backend/nosd ]; then (cd backend/nosd && go test ./... -v); fi
-          if [ -d agent/nos-agent ]; then (cd agent/nos-agent && go test ./... -v); else echo "agent module missing; skipping"; fi
+          npm ci
+          npm run test:run
+
       - name: Systemd sandbox smoke for nosd (Linux only)
         if: runner.os == 'Linux'
         run: |
@@ -213,7 +234,7 @@ jobs:
       - name: Set up Go (with cache for both modules)
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.x'
+          go-version: ${{ env.GO_VERSION }}
           check-latest: true
           cache: true
           cache-dependency-path: |
@@ -223,7 +244,7 @@ jobs:
       - name: Set up Node (with npm cache for /web)
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: web/package-lock.json
 
@@ -258,7 +279,7 @@ jobs:
       - name: Upload .deb artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: NithronOS - Debian Packages - ${{ github.event.release.tag_name || github.ref_name }}
+          name: NithronOS - Debian Packages - ${{ github.event.release.tag_name || github.sha }}
           path: |
             dist/deb/*.deb
 
@@ -291,7 +312,7 @@ jobs:
       - name: Download .deb artifacts from this workflow
         uses: actions/download-artifact@v4
         with:
-          name: NithronOS - Debian Packages - ${{ github.event.release.tag_name || github.ref_name }}
+          name: NithronOS - Debian Packages - ${{ github.event.release.tag_name || github.sha }}
           path: dist/deb
 
       - name: Stage debs for ISO
@@ -302,7 +323,7 @@ jobs:
       - name: Build ISO
         env:
           DEBIAN_FRONTEND: noninteractive
-          ISO_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+          ISO_TAG: ${{ github.event.release.tag_name || github.sha }}
           ISO_ARCH: amd64
         run: |
           chmod +x packaging/iso/build.sh
@@ -432,7 +453,7 @@ jobs:
       - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NithronOS - ISO - amd64 - ${{ github.event.release.tag_name || github.ref_name }}
+          name: NithronOS - ISO - amd64 - ${{ github.event.release.tag_name || github.sha }}
           path: |
             dist/iso/*.iso
           if-no-files-found: error
@@ -455,18 +476,18 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.x'
+          go-version: ${{ env.GO_VERSION }}
           cache: true
           cache-dependency-path: |
             backend/nosd/go.sum
             agent/nos-agent/go.sum
       - name: Install web deps
         working-directory: web
-        run: npm install
+        run: npm ci
       - name: Extract FE contract
         run: node web/scripts/extract-nos-contract.mjs
       - name: Dump backend routes
@@ -486,7 +507,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           
       - name: Check if Playwright tests exist
         id: check-tests
@@ -706,7 +727,7 @@ jobs:
         if: steps.check-docs.outputs.docs_exist == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: NithronOS - Docs - ${{ github.ref_name || github.sha }}
+          name: NithronOS - Docs - ${{ github.event.release.tag_name || github.sha }}
           path: docs-site/site/
         continue-on-error: true
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"nithronos/backend/nosd/internal/version"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -58,7 +59,7 @@ func (h *HealthHandler) Routes() chi.Router {
 	// Root health endpoint
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "version": "0.9.5-pre-alpha"})
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "version": version.Version})
 	})
 
 	r.Get("/smart/summary", h.GetSmartSummary)

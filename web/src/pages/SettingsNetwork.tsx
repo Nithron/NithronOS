@@ -360,7 +360,7 @@ function DNSConfig() {
   const [servers, setServers] = useState<string[]>(['8.8.8.8', '8.8.4.4'])
   const queryClient = useQueryClient()
 
-  const { } = useQuery({
+  useQuery({
     queryKey: ['dns-config'],
     queryFn: async () => {
       const response = await api.get<any>('/api/v1/network/dns')

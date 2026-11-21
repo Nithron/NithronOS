@@ -362,10 +362,10 @@ func (h *WebSocketHandler) handleCursorMove(client *Client, msg *Message) {
 
 	// Broadcast to channel
 	broadcastPayload, _ := json.Marshal(map[string]interface{}{
-		"user_id":   client.UserID,
-		"username":  client.Username,
-		"color":     client.Color,
-		"position":  payload.Position,
+		"user_id":  client.UserID,
+		"username": client.Username,
+		"color":    client.Color,
+		"position": payload.Position,
 	})
 
 	h.hub.Broadcast(&Message{
@@ -684,4 +684,3 @@ func (cm *ConnectionManager) Shutdown(ctx context.Context) error {
 	cm.hub.Stop()
 	return nil
 }
-

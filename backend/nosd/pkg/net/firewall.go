@@ -449,13 +449,13 @@ func (fm *FirewallManager) generateNFTablesScript(state *FirewallState, dryRun b
 
 		// Build rule string
 		if rule.Protocol != "" {
-			buf.WriteString(fmt.Sprintf("ip protocol %s ", rule.Protocol))
+			fmt.Fprintf(&buf, "ip protocol %s ", rule.Protocol)
 		}
 		if rule.SourceCIDR != "" && rule.SourceCIDR != "127.0.0.0/8" {
-			buf.WriteString(fmt.Sprintf("ip saddr %s ", rule.SourceCIDR))
+			fmt.Fprintf(&buf, "ip saddr %s ", rule.SourceCIDR)
 		}
 		if rule.DestPort != "" {
-			buf.WriteString(fmt.Sprintf("tcp dport { %s } ", rule.DestPort))
+			fmt.Fprintf(&buf, "tcp dport { %s } ", rule.DestPort)
 		}
 
 		// Special handling for established connections
@@ -463,7 +463,7 @@ func (fm *FirewallManager) generateNFTablesScript(state *FirewallState, dryRun b
 			buf.WriteString("ct state established,related ")
 		}
 
-		buf.WriteString(fmt.Sprintf("%s comment \"%s\"\n", rule.Action, rule.Description))
+		fmt.Fprintf(&buf, "%s comment \"%s\"\n", rule.Action, rule.Description)
 	}
 
 	buf.WriteString("    }\n")
@@ -589,7 +589,7 @@ func (fm *FirewallManager) calculateChecksum(data []byte) string {
 func (fm *FirewallManager) calculateRulesChecksum(rules []FirewallRule) string {
 	var data bytes.Buffer
 	for _, rule := range rules {
-		data.WriteString(fmt.Sprintf("%v", rule))
+		fmt.Fprintf(&data, "%v", rule)
 	}
 	hash := sha256.Sum256(data.Bytes())
 	return hex.EncodeToString(hash[:])

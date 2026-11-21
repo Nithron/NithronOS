@@ -77,7 +77,7 @@ func main() {
 	// Handle initial setup via command line
 	if *serverURL != "" && *deviceToken != "" {
 		log.Info().Msg("Setting up from command line arguments...")
-		
+
 		folder := *syncFolder
 		if folder == "" {
 			folder, _ = config.GetDefaultSyncFolder()
@@ -180,4 +180,3 @@ func main() {
 		log.Warn().Msg("Shutdown timed out")
 	}
 }
-

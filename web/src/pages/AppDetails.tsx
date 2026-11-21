@@ -136,7 +136,7 @@ export function AppDetails() {
         };
         
         wsRef.current = ws;
-      } catch (error) {
+      } catch {
         // Fallback to HTTP
         fetchLogs();
       }

@@ -15,9 +15,9 @@ import (
 type SyncMode string
 
 const (
-	ModeOnline   SyncMode = "online"
-	ModeOffline  SyncMode = "offline"
-	ModeSyncing  SyncMode = "syncing"
+	ModeOnline  SyncMode = "online"
+	ModeOffline SyncMode = "offline"
+	ModeSyncing SyncMode = "syncing"
 )
 
 // NetworkStatus represents the network connectivity status
@@ -37,20 +37,20 @@ type OfflineManager struct {
 	networkStatus NetworkStatus
 	lastSync      time.Time
 	syncInterval  time.Duration
-	
+
 	// Local state tracking
-	localState    map[string]*LocalFileState
-	localStateMu  sync.RWMutex
-	
+	localState   map[string]*LocalFileState
+	localStateMu sync.RWMutex
+
 	// Callbacks
 	onModeChange    func(mode SyncMode)
 	onNetworkChange func(status NetworkStatus)
 	onSyncComplete  func(stats SyncStats)
-	
+
 	// Context for shutdown
 	ctx    context.Context
 	cancel context.CancelFunc
-	
+
 	logger zerolog.Logger
 	mu     sync.RWMutex
 }
@@ -74,12 +74,12 @@ type LocalFileState struct {
 
 // SyncStats contains sync statistics
 type SyncStats struct {
-	FilesUploaded   int   `json:"files_uploaded"`
-	FilesDownloaded int   `json:"files_downloaded"`
-	BytesUploaded   int64 `json:"bytes_uploaded"`
-	BytesDownloaded int64 `json:"bytes_downloaded"`
-	Conflicts       int   `json:"conflicts"`
-	Errors          int   `json:"errors"`
+	FilesUploaded   int           `json:"files_uploaded"`
+	FilesDownloaded int           `json:"files_downloaded"`
+	BytesUploaded   int64         `json:"bytes_uploaded"`
+	BytesDownloaded int64         `json:"bytes_downloaded"`
+	Conflicts       int           `json:"conflicts"`
+	Errors          int           `json:"errors"`
 	Duration        time.Duration `json:"duration"`
 }
 
@@ -570,4 +570,3 @@ type OfflineStatus struct {
 	QueueStats    QueueStats    `json:"queue_stats"`
 	ConflictCount int           `json:"conflict_count"`
 }
-

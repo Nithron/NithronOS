@@ -33,11 +33,11 @@ func NewClient(cfg *config.Config) *Client {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 			Transport: &http.Transport{
-				MaxIdleConns:        10,
-				IdleConnTimeout:     90 * time.Second,
-				DisableCompression:  false,
-				DisableKeepAlives:   false,
-				MaxConnsPerHost:     10,
+				MaxIdleConns:       10,
+				IdleConnTimeout:    90 * time.Second,
+				DisableCompression: false,
+				DisableKeepAlives:  false,
+				MaxConnsPerHost:    10,
 			},
 		},
 		baseURL: cfg.GetServerURL(),
@@ -145,7 +145,7 @@ func (c *Client) refreshToken(ctx context.Context) error {
 	var resp TokenRefreshResponse
 	// Use device token for refresh request
 	fullURL := c.cfg.GetServerURL() + "/api/v1/sync/devices/refresh"
-	
+
 	data, err := json.Marshal(req)
 	if err != nil {
 		return err
@@ -190,13 +190,13 @@ func (c *Client) refreshToken(ctx context.Context) error {
 
 // APIError represents an API error response.
 type APIError struct {
-	Error   string `json:"error"`
+	Message string `json:"error"`
 	Code    string `json:"code"`
 	Details any    `json:"details,omitempty"`
 }
 
 func (e *APIError) Error() string {
-	return fmt.Sprintf("%s: %s", e.Code, e.Error)
+	return fmt.Sprintf("%s: %s", e.Code, e.Message)
 }
 
 // Request/Response types
@@ -235,27 +235,27 @@ type DeviceRegistrationResponse struct {
 
 // SyncShare represents a sync-enabled share.
 type SyncShare struct {
-	ID           string   `json:"id"`
-	Name         string   `json:"name"`
-	Path         string   `json:"path"`
-	SyncEnabled  bool     `json:"sync_enabled"`
-	SyncMaxSize  int64    `json:"sync_max_size"`
-	SyncExclude  []string `json:"sync_exclude"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Path        string   `json:"path"`
+	SyncEnabled bool     `json:"sync_enabled"`
+	SyncMaxSize int64    `json:"sync_max_size"`
+	SyncExclude []string `json:"sync_exclude"`
 }
 
 // SyncConfig represents device sync configuration.
 type SyncConfig struct {
-	DeviceID        string   `json:"device_id"`
-	Enabled         bool     `json:"enabled"`
-	SyncShares      []string `json:"sync_shares"`
-	BandwidthLimit  int      `json:"bandwidth_limit_kbps"`
-	SyncOnMetered   bool     `json:"sync_on_metered"`
+	DeviceID       string   `json:"device_id"`
+	Enabled        bool     `json:"enabled"`
+	SyncShares     []string `json:"sync_shares"`
+	BandwidthLimit int      `json:"bandwidth_limit_kbps"`
+	SyncOnMetered  bool     `json:"sync_on_metered"`
 }
 
 // FileChange represents a file change from the server.
 type FileChange struct {
 	Path         string `json:"path"`
-	Type         string `json:"type"` // "file" or "dir"
+	Type         string `json:"type"`   // "file" or "dir"
 	Action       string `json:"action"` // "created", "modified", "deleted", "moved"
 	Size         int64  `json:"size"`
 	ModTime      string `json:"mod_time"`
@@ -332,7 +332,7 @@ func (c *Client) UpdateSyncConfig(ctx context.Context, cfg *SyncConfig) error {
 
 // GetChanges returns file changes since the given cursor.
 func (c *Client) GetChanges(ctx context.Context, shareID, cursor string, limit int) (*ChangesResponse, error) {
-	path := fmt.Sprintf("/api/v1/sync/changes?share_id=%s&limit=%d", 
+	path := fmt.Sprintf("/api/v1/sync/changes?share_id=%s&limit=%d",
 		url.QueryEscape(shareID), limit)
 	if cursor != "" {
 		path += "&cursor=" + url.QueryEscape(cursor)
@@ -356,7 +356,7 @@ func (c *Client) GetFileMetadata(ctx context.Context, shareID, path string, incl
 // GetBlockHashes returns block hashes for delta sync.
 func (c *Client) GetBlockHashes(ctx context.Context, shareID, path string, blockSize int) (*BlockHashResponse, error) {
 	reqPath := fmt.Sprintf("/api/v1/sync/files/%s/hash", url.QueryEscape(shareID))
-	
+
 	body := map[string]interface{}{
 		"path":       path,
 		"block_size": blockSize,
@@ -370,7 +370,7 @@ func (c *Client) GetBlockHashes(ctx context.Context, shareID, path string, block
 // GetSyncState returns the sync state for a share.
 func (c *Client) GetSyncState(ctx context.Context, shareID string) (*SyncState, error) {
 	path := fmt.Sprintf("/api/v1/sync/state/%s", url.QueryEscape(shareID))
-	
+
 	var state SyncState
 	err := c.request(ctx, "GET", path, nil, &state)
 	return &state, err
@@ -379,12 +379,12 @@ func (c *Client) GetSyncState(ctx context.Context, shareID string) (*SyncState, 
 // UpdateSyncState updates the sync state for a share.
 func (c *Client) UpdateSyncState(ctx context.Context, shareID string, cursor, status string) error {
 	path := fmt.Sprintf("/api/v1/sync/state/%s", url.QueryEscape(shareID))
-	
+
 	body := map[string]string{
 		"cursor":      cursor,
 		"sync_status": status,
 	}
-	
+
 	return c.request(ctx, "PUT", path, body, nil)
 }
 
@@ -392,4 +392,3 @@ func (c *Client) UpdateSyncState(ctx context.Context, shareID string, cursor, st
 func (c *Client) HealthCheck(ctx context.Context) error {
 	return c.request(ctx, "GET", "/api/v1/health", nil, nil)
 }
-

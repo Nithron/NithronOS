@@ -1,5 +1,22 @@
-* text eol=lf
+# Normalise text to LF; let git detect binary content instead of forcing
+# every file to text (the old "* text eol=lf" rewrote committed binaries).
+* text=auto eol=lf
 
 *.sh linguist-language=Shell
 
-
+# Binary assets
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.otf  binary
+*.pdf  binary
+*.zip  binary
+*.gz   binary
+*.iso  binary
+*.deb  binary

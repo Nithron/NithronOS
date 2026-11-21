@@ -262,13 +262,13 @@ func (s *ActivityStore) GetActivityStats(deviceID, shareID string) map[string]in
 	defer s.mu.RUnlock()
 
 	stats := map[string]int64{
-		"total":       0,
-		"uploads":     0,
-		"downloads":   0,
-		"deletes":     0,
-		"conflicts":   0,
-		"completed":   0,
-		"failed":      0,
+		"total":        0,
+		"uploads":      0,
+		"downloads":    0,
+		"deletes":      0,
+		"conflicts":    0,
+		"completed":    0,
+		"failed":       0,
 		"bytes_synced": 0,
 	}
 
@@ -293,10 +293,11 @@ func (s *ActivityStore) GetActivityStats(deviceID, shareID string) map[string]in
 			stats["conflicts"]++
 		}
 
-		if a.Status == StatusCompleted {
+		switch a.Status {
+		case StatusCompleted:
 			stats["completed"]++
 			stats["bytes_synced"] += a.Size
-		} else if a.Status == StatusFailed {
+		case StatusFailed:
 			stats["failed"]++
 		}
 	}
@@ -390,4 +391,3 @@ func (s *ActivityStore) save() error {
 	filePath := filepath.Join(s.dataDir, "activity", "activities.json")
 	return os.WriteFile(filePath, data, 0640)
 }
-
