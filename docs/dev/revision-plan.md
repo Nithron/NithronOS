@@ -99,6 +99,8 @@ Goal: a clean, reproducible starting point so every later PR is judged on green 
 | S13 | TOTP secret "encryption" in `pkg/net/totp.go` is a TODO. Reuse the XChaCha20 helper used by the user store. | `pkg/net/totp.go:320` |
 | S14 | nosd `signal.Notify(ch)` without a signal list catches **every** signal, including the runtime's SIGURG, so config hot-reload fires constantly. Use `syscall.SIGHUP`. | `main.go` |
 
+| S15 | `generateUUID()` is not random: it is built from `time.Now().UnixNano()` with the last 8 bytes always zero. It mints **per-agent auth tokens** (`/agents/register`), user IDs, session record IDs and transaction IDs, so tokens are guessable from the registration time. Use `crypto/rand` (`github.com/google/uuid` is already a dependency). | `router.go:1887` |
+
 Add regression tests for each (auth flow tests exist in `router_flow_test.go` to extend).
 
 ---
