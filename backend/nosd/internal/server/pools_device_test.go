@@ -11,7 +11,6 @@ import (
 )
 
 func TestApplyDeviceConfirmValidation(t *testing.T) {
-	t.Setenv("NOS_TEST_DISABLE_STORE_LOCK", "1")
 	t.Setenv("NOS_TEST_FAST_POLL", "1")
 	r := NewRouter(config.FromEnv())
 	// wrong confirm

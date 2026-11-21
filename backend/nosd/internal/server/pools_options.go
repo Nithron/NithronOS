@@ -37,8 +37,17 @@ func loadPoolOptions(cfg config.Config) (poolOptionsStore, error) {
 	return st, nil
 }
 
-func savePoolOptions(cfg config.Config, st poolOptionsStore) error {
+// updatePoolOptions loads the pool options store, applies mutate and saves it,
+// all under one exclusive lock. Never call it while already holding the
+// pools.json lock: flock locks are per open file, so a nested lock from the
+// same process blocks forever.
+func updatePoolOptions(cfg config.Config, mutate func(st *poolOptionsStore)) error {
 	return fsatomic.WithLock(poolsStorePath(cfg), func() error {
+		var st poolOptionsStore
+		if _, err := fsatomic.LoadJSON(poolsStorePath(cfg), &st); err != nil {
+			return err
+		}
+		mutate(&st)
 		return fsatomic.SaveJSON(context.TODO(), poolsStorePath(cfg), st, 0o600)
 	})
 }
@@ -183,22 +192,17 @@ func handlePoolOptionsPost(cfg config.Config) http.HandlerFunc {
 			}
 			return
 		}
-		// Load existing
-		st, _ := loadPoolOptions(cfg)
 		old := ""
-		updated := false
-		for i := range st.Records {
-			if st.Records[i].Mount == mount {
-				old = st.Records[i].MountOptions
-				st.Records[i].MountOptions = body.MountOptions
-				updated = true
-				break
+		_ = updatePoolOptions(cfg, func(st *poolOptionsStore) {
+			for i := range st.Records {
+				if st.Records[i].Mount == mount {
+					old = st.Records[i].MountOptions
+					st.Records[i].MountOptions = body.MountOptions
+					return
+				}
 			}
-		}
-		if !updated {
 			st.Records = append(st.Records, poolOptionsRecord{Mount: mount, MountOptions: body.MountOptions})
-		}
-		_ = savePoolOptions(cfg, st)
+		})
 
 		// Try remount; if fails, update fstab and require reboot
 		rebootRequired := false

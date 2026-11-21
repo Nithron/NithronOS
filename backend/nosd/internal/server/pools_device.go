@@ -310,27 +310,22 @@ func handleApplyDevice(cfg config.Config) http.HandlerFunc {
 							devices = append(devices, d.Path)
 						}
 					}
-					st, _ := loadPoolOptions(cfg)
-					updated := false
-					for i := range st.Records {
-						if st.Records[i].Mount == mount {
-							st.Records[i].Devices = devices
-							updated = true
-							break
+					_ = updatePoolOptions(cfg, func(st *poolOptionsStore) {
+						for i := range st.Records {
+							if st.Records[i].Mount == mount {
+								st.Records[i].Devices = devices
+								return
+							}
 						}
-					}
-					if !updated {
 						st.Records = append(st.Records, poolOptionsRecord{Mount: mount, Devices: devices})
-					}
-					_ = savePoolOptions(cfg, st)
+					})
 				}
 				return nil
 			}
-			if os.Getenv("NOS_TEST_DISABLE_STORE_LOCK") == "1" {
-				_ = fn()
-			} else {
-				_ = fsatomic.WithLock(poolsStorePath(cfg), fn)
-			}
+			// fn runs the whole transaction (possibly minutes of balance/replace
+			// polling), so it must not hold the pools.json lock; the store update at
+			// the end takes the lock itself via updatePoolOptions.
+			_ = fn()
 			// Metrics + log finished
 			observeBtrfsTxDuration(start)
 			Logger(cfg).Info().Str("event", "pool.device."+action+".finished").Str("txId", tx.ID).Strs("devices", extractDevices(body.Steps)).Msg("")
