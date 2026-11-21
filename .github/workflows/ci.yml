@@ -161,7 +161,7 @@ jobs:
       - name: Upload web build (artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: NithronOS - Web UI - ${{ github.event.release.tag_name || github.ref_name }}
+          name: NithronOS - Web UI - ${{ github.event.release.tag_name || github.sha }}
           path: web/dist
           if-no-files-found: ignore
 
@@ -279,7 +279,7 @@ jobs:
       - name: Upload .deb artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: NithronOS - Debian Packages - ${{ github.event.release.tag_name || github.ref_name }}
+          name: NithronOS - Debian Packages - ${{ github.event.release.tag_name || github.sha }}
           path: |
             dist/deb/*.deb
 
@@ -312,7 +312,7 @@ jobs:
       - name: Download .deb artifacts from this workflow
         uses: actions/download-artifact@v4
         with:
-          name: NithronOS - Debian Packages - ${{ github.event.release.tag_name || github.ref_name }}
+          name: NithronOS - Debian Packages - ${{ github.event.release.tag_name || github.sha }}
           path: dist/deb
 
       - name: Stage debs for ISO
@@ -323,7 +323,7 @@ jobs:
       - name: Build ISO
         env:
           DEBIAN_FRONTEND: noninteractive
-          ISO_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+          ISO_TAG: ${{ github.event.release.tag_name || github.sha }}
           ISO_ARCH: amd64
         run: |
           chmod +x packaging/iso/build.sh
@@ -453,7 +453,7 @@ jobs:
       - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NithronOS - ISO - amd64 - ${{ github.event.release.tag_name || github.ref_name }}
+          name: NithronOS - ISO - amd64 - ${{ github.event.release.tag_name || github.sha }}
           path: |
             dist/iso/*.iso
           if-no-files-found: error
@@ -727,7 +727,7 @@ jobs:
         if: steps.check-docs.outputs.docs_exist == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: NithronOS - Docs - ${{ github.ref_name || github.sha }}
+          name: NithronOS - Docs - ${{ github.event.release.tag_name || github.sha }}
           path: docs-site/site/
         continue-on-error: true
 
