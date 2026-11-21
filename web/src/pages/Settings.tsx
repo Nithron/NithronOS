@@ -572,7 +572,7 @@ function AboutSection() {
             <ChevronRight className="h-4 w-4" />
           </a>
           
-          <a href="https://github.com/Nithronverse/NithronOS" target="_blank" rel="noopener noreferrer"
+          <a href="https://github.com/Nithron/NithronOS" target="_blank" rel="noopener noreferrer"
              className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50">
             <div className="flex items-center gap-3">
               <Globe className="h-5 w-5 text-muted-foreground" />

@@ -328,11 +328,11 @@ When reporting issues, include:
 6. **Log files** (with sensitive info redacted)
 7. **Screenshots** if applicable
 
-Submit issues at: https://github.com/Nithronverse/NithronOS/issues
+Submit issues at: https://github.com/Nithron/NithronOS/issues
 
 ## Getting Help
 
 1. **Documentation** — [docs/sync/](./overview.md)
 2. **Community Discord** — https://discord.gg/qzB37WS5AT
-3. **GitHub Issues** — https://github.com/Nithronverse/NithronOS/issues
+3. **GitHub Issues** — https://github.com/Nithron/NithronOS/issues
 

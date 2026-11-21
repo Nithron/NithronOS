@@ -293,5 +293,5 @@ Use your device access token as the password:
 
 1. Check [Troubleshooting Guide](./troubleshooting.md)
 2. Visit [Community Discord](https://discord.gg/qzB37WS5AT)
-3. Report issues on [GitHub](https://github.com/Nithronverse/NithronOS/issues)
+3. Report issues on [GitHub](https://github.com/Nithron/NithronOS/issues)
 
