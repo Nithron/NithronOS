@@ -14,7 +14,7 @@ This plan covers what is broken, half-built or badly structured, in priority ord
 | Agent (`nos-agent`) | Builds, tests pass. systemd sandbox blocks its own job (deb unit) or exposes it to every local user (ISO unit). |
 | Web UI | Unit tests pass, `tsc` fails (3 errors). Calls **~79 API paths that don't exist** in the backend. 8 orphan pages, 4–5 overlapping API client layers, mock data in Apps / Install wizard / Monitoring. |
 | First boot / OTP | Broken end to end (see Phase 1). |
-| Installer / ISO | The Debian Installer **does not install the NithronOS packages** onto the target disk. Three different preseeds. |
+| Installer / ISO | BIOS and UEFI boot different preseeds (one interactive), package install failures are ignored, no security mirror. Four preseed files. |
 | Sync clients | Desktop is a skeleton. Mobile has no native projects (cannot build). QR scanner is a mock. README marks all of this "Complete". |
 | CI | Last run on `main` failed in backend lint. Lockfile out of sync (`npm ci` fails). |
 
@@ -40,8 +40,14 @@ Goal: a clean, reproducible starting point so every later PR is judged on green 
 
 ### Root causes found
 
-1. **Installed systems have no nosd at all.** `packaging/iso/debian/config/includes.binary/preseed.cfg` (the one the boot menu uses via `preseed/file=/cdrom/preseed.cfg`) only creates directories and a `nos` user in `late_command`. It never installs the `nosd`, `nos-agent`, `nos-web` or `nithronos` debs. `97-copy-deb-packages.chroot` writes a `pool/` inside the *live chroot*, not onto the ISO, so the installer couldn't find them anyway. Result: after a disk install, nothing generates or shows an OTP.
-2. **The preseed `pkgsel/include` can't succeed on stock Debian**: `docker-ce*`, `containerd.io`, `docker-compose-plugin` and `caddy` aren't in Debian repos, `zfs-dkms` needs contrib, and `linux-headers-$(uname -r)` isn't shell-expanded in preseed. It also pulls `build-essential nodejs npm python3-pip`, which an appliance doesn't need.
+1. **The installer path is inconsistent and its result is unverified.** (Corrected after re-reading `build.sh`: an earlier draft said installed systems get no nosd at all, which is probably wrong.) `build.sh` runs live-build with `--debian-installer live`, so the installer copies the *live filesystem*, which has the NithronOS debs installed by the `20-install-local-debs` hook, onto the disk. What can still go wrong:
+   - That hook ends in `|| true`, so if `dpkg -i` of nosd fails the ISO still builds, without nosd.
+   - **BIOS and UEFI use different preseeds**: isolinux uses `preseed/nithronos.cfg` with `priority=critical`; GRUB (UEFI) uses `/cdrom/preseed.cfg` with `priority=low`, i.e. an interactive install with different `late_command` and `pkgsel` settings. Two more preseeds (`includes.installer/preseed.cfg`, `debian-installer/preseed.cfg`) are not referenced by any boot entry.
+   - `auto/config` and `build.sh` both configure live-build; `auto/config` adds the Docker repo and a 100-package list (nginx, golang, nodejs, npm, build-essential, aide, rkhunter, cloud-init, ...).
+   - `build.sh` disables the Debian **security** mirror (`LB_SECURITY=false`), so installed systems get no security updates unless something else adds `bookworm-security`.
+
+   The first Phase 1 step is therefore to build the ISO and do a BIOS and a UEFI install in QEMU, and record what the target actually has (nosd installed and enabled, units present, OTP on console).
+2. **`pkgsel/include` in the preseeds is broken**: `linux-headers-$(uname -r)` isn't shell-expanded in preseed, so the install step gets an invalid package name. `docker-ce*`/`containerd.io` only resolve because the live image already contains them. It also pulls `build-essential nodejs npm python3-pip`, which an appliance doesn't need.
 3. **The OTP expires and is never regenerated.** nosd creates it only once, at process start (`backend/nosd/main.go`), with a 15-minute TTL. `firstboot.Store.Load()` deletes the file once it's expired. After that, `/setup/state` reports `otpRequired:false`, the UI says "Waiting for OTP generation…" forever, and `/otp/verify` says "Invalid". The only recovery is `systemctl restart nosd`, which a fresh-install user can't know about.
 4. **Seven competing OTP mechanisms** with different formats and paths:
    | Mechanism | Format | Writes to |
@@ -59,8 +65,7 @@ Goal: a clean, reproducible starting point so every later PR is judged on green 
 6. **The console print is wiped.** nosd prints the OTP to `journal+console` early in boot, then `getty@tty1` clears the screen (agetty default) and the code is gone.
 7. **The setup UI gives the wrong instructions**: "OTP is valid for 10 minutes. If expired, restart nosd" (`Setup.tsx:336`); the real TTL is 15 minutes.
 8. nosd generates and prints an OTP on **every** start, even after setup is complete (`main.go` calls `NewOrReuse` unconditionally).
-9. There is a fourth preseed, `includes.binary/preseed/nithronos.cfg`, which does copy debs from `/cdrom/pool`; check which boot entries use it and fold it into the single preseed.
-10. Installed and live systems still claim `NithronOS 1.0` (`/etc/os-release`, `/etc/issue`, `finish-install.d/10nithronos-setup`, the preseeds). Generate these from `VERSION` at ISO build time.
+9. Installed and live systems still claim `NithronOS 1.0` (`/etc/os-release`, `/etc/issue`, `finish-install.d/10nithronos-setup`, the preseeds). Generate these from `VERSION` at ISO build time.
 
 ### Fix design
 
@@ -69,7 +74,7 @@ Goal: a clean, reproducible starting point so every later PR is judged on green 
 - **Auto-rotate**: a background goroutine in nosd regenerates the OTP when it expires, for as long as no admin exists. `/setup/state` returns `otpRequired:true` plus `expiresAt`, so the UI can show a countdown and "a new code is on the server console".
 - **Console display that survives getty**: nosd writes `/run/nos/issue` (OTP, IP URLs, expiry). A tmpfiles symlink exposes it as `/etc/issue.d/50-nithronos.issue`, and nosd runs `agetty --reload` (or `systemctl kill -s HUP getty@*`) after each rotation. agetty also refreshes the IP itself via `\4` escapes. The same text goes to the journal and `/dev/ttyS0` for serial/headless installs. Remove the issue file when setup completes.
 - Mark the OTP consumed on a successful first-admin. Lock out after N wrong attempts (on top of the existing per-IP limit).
-- **Installer**: one preseed. It ships the NithronOS debs in an on-ISO apt repo (`includes.binary/pool` + `dists`, built in `build.sh`) and installs them with `in-target apt-get install -y nithronos` (a meta package). Docker and Caddy come either from their official apt repos added via `apt-setup/local*` or from Debian packages (`docker.io`, `caddy` in bookworm-backports). Fix `pkgsel`. `late_command` enables `nosd`, `nos-agent` and `caddy`.
+- **Installer**: one preseed for BIOS and UEFI, one live-build config (fold `auto/config` into `build.sh` or the reverse). Keep the live-installer approach, but make the deb install hook fail the build when a NithronOS package doesn't install, and verify in `late_command` that `nosd`, `nos-agent` and `caddy` are installed and enabled on the target. Trim the package list to what an appliance needs. Restore the Debian security mirror. Docker from Docker's apt repo (kept in the target's sources), Caddy from Debian. Fix `pkgsel`.
 - Fix the Setup UI copy and add an expiry countdown.
 - **QEMU acceptance test** (`tests/smoke/iso-boot-test.sh`): install to a virtual disk, reboot, assert that the serial console shows a 6-digit OTP and that `/api/v1/setup/otp/verify` accepts it. Run it in CI.
 
@@ -102,7 +107,7 @@ Add regression tests for each (auth flow tests exist in `router_flow_test.go` to
 
 The backend grew by adding parallel implementations instead of finishing one. Consolidate before adding features, so features land once.
 
-1. **Delete dead packages** (no non-test importers): `internal/backup`, `internal/firewall`, `internal/https`, `internal/wireguard`, `internal/observability`, `pkg/appsdk`, `pkg/validate`, `pkg/webhooks`. Decide on `pkg/updates` (1.7k LOC, unused) and `pkg/snapcfg` (unused, although the README advertises "snapshots on update, enabled by default"): wire them in Phase 4 or delete them.
+1. **Dead packages**: the duplicates `internal/{backup,firewall,https,wireguard,observability}` were deleted in phase 0. Still unused: `pkg/appsdk` (app manifests, README A9), `pkg/validate` (share names and path checks; reuse it for input validation), `pkg/webhooks` (reuse it for notification delivery). Wire or delete each. Decide on `pkg/updates` (1.7k LOC, unused) and `pkg/snapcfg` (unused, although the README advertises "snapshots on update, enabled by default"): wire them in Phase 4 or delete them.
 2. **One user store**: today `auth.NewStore` (`pkg/auth`), `userstore` (`internal/auth/store`) and `pkg/auth.UserManager` all read and write `/etc/nos/users.json`. Keep `internal/auth/store` and port the TOTP and recovery logic into it.
 3. **One session system**: `internal/sessions`, `internal/auth/session` and `pkg/auth/session_manager.go`, plus a legacy `SessionCodec` cookie. Pick opaque server-side sessions, and make `requireAuth` verify them (today the binding middleware explicitly "does not enforce").
 4. **One shares implementation**: `internal/shares`, `pkg/shares`, `SharesHandlerV1` (mock fallback) and `SharesHandlerV2`.
