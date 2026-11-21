@@ -94,7 +94,9 @@ func TestApplyDevice_BalanceRunningToDone(t *testing.T) {
 	deadline := time.Now().Add(30 * time.Second)
 	for {
 		if time.Now().After(deadline) {
-			t.Fatal("timeout waiting for tx finish")
+			txJSON, _ := os.ReadFile(txPath(txID))
+			logTail, _ := os.ReadFile(txLogPath(txID))
+			t.Fatalf("timeout waiting for tx finish\ntx file %s:\n%s\ntx log:\n%s", txPath(txID), txJSON, logTail)
 		}
 		var cur pools.Tx
 		_, _ = fsatomic.LoadJSON(txPath(txID), &cur)
