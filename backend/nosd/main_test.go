@@ -1,50 +1,47 @@
 package main
 
 import (
-	"bytes"
+	"context"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
+	"time"
 
 	"nithronos/backend/nosd/internal/config"
+	"nithronos/backend/nosd/internal/server"
 )
 
-func TestEnsureFirstBootOTP_PrintsAndPersists(t *testing.T) {
+// On a fresh install nosd must create a setup code, print it (stdout goes to
+// the journal and the console) and write the console banner.
+func TestFirstBootCodeIsCreatedAndShown(t *testing.T) {
 	dir := t.TempDir()
-	users := filepath.Join(dir, "users.json")
-	first := filepath.Join(dir, "firstboot.json")
-	t.Setenv("NOS_USERS_PATH", users)
-	t.Setenv("NOS_FIRSTBOOT_PATH", first)
+	t.Setenv("NOS_USERS_PATH", filepath.Join(dir, "users.json"))
+	t.Setenv("NOS_FIRSTBOOT_PATH", filepath.Join(dir, "state", "firstboot.json"))
+	t.Setenv("NOS_FIRSTBOOT_ISSUE_PATH", filepath.Join(dir, "run", "firstboot.issue"))
 
-	// Capture stdout
 	old := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 	defer func() { os.Stdout = old }()
 
 	cfg := config.FromEnv()
-	ensureFirstBootOTP(cfg)
+	fb := server.FirstBootManager(cfg)
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	fb.Run(ctx, time.Hour, func(err error) { t.Errorf("run: %v", err) })
 	_ = w.Close()
 	out, _ := io.ReadAll(r)
-	if !regexp.MustCompile(`First-boot OTP: \d{6}`).Match(out) {
-		t.Fatalf("expected OTP line in stdout, got: %s", string(out))
-	}
-	if _, err := os.Stat(first); err != nil {
-		t.Fatalf("firstboot.json not created: %v", err)
-	}
 
-	// Simulate restart: recapture stdout and force regeneration by removing file
-	_ = os.Remove(first)
-	r2, w2, _ := os.Pipe()
-	os.Stdout = w2
-	ensureFirstBootOTP(cfg)
-	_ = w2.Close()
-	out2, _ := io.ReadAll(r2)
-	if !bytes.Contains(out2, []byte("First-boot OTP:")) {
-		t.Fatalf("expected OTP printed again on restart")
+	if !regexp.MustCompile(`setup code: \d{6}`).Match(out) {
+		t.Fatalf("expected the code on stdout, got: %s", out)
+	}
+	if _, err := os.Stat(cfg.FirstBootPath); err != nil {
+		t.Fatalf("state not created: %v", err)
+	}
+	banner, err := os.ReadFile(cfg.FirstBootIssuePath)
+	if err != nil || !regexp.MustCompile(`One-time setup code: +\d{3} \d{3}`).Match(banner) {
+		t.Fatalf("console banner: %v\n%s", err, banner)
 	}
 }
-
-// no extra helpers

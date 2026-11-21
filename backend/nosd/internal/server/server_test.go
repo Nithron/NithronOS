@@ -26,16 +26,17 @@ func TestMain(m *testing.M) {
 		"NOS_RATE_OTP_WINDOW_SEC":   "1",
 		"NOS_RATE_LOGIN_WINDOW_SEC": "1",
 		// Isolated state
-		"NOS_USERS_PATH":       filepath.Join(dir, "etc", "users.json"),
-		"NOS_SESSIONS_PATH":    filepath.Join(dir, "lib", "sessions.json"),
-		"NOS_SECRET_PATH":      filepath.Join(dir, "etc", "secret.key"),
-		"NOS_FIRSTBOOT_PATH":   filepath.Join(dir, "lib", "state", "firstboot.json"),
-		"NOS_RL_PATH":          filepath.Join(dir, "lib", "ratelimit.json"),
-		"NOS_SHARES_PATH":      filepath.Join(dir, "etc", "shares.json"),
-		"NOS_ETC_DIR":          filepath.Join(dir, "etc"),
-		"NOS_APPS_STATE":       filepath.Join(dir, "lib", "apps.json"),
-		"NOS_APPS_DATA_DIR":    filepath.Join(dir, "lib", "apps"),
-		"NOS_APPS_INSTALL_DIR": filepath.Join(dir, "srv", "apps"),
+		"NOS_USERS_PATH":           filepath.Join(dir, "etc", "users.json"),
+		"NOS_SESSIONS_PATH":        filepath.Join(dir, "lib", "sessions.json"),
+		"NOS_SECRET_PATH":          filepath.Join(dir, "etc", "secret.key"),
+		"NOS_FIRSTBOOT_PATH":       filepath.Join(dir, "lib", "state", "firstboot.json"),
+		"NOS_FIRSTBOOT_ISSUE_PATH": filepath.Join(dir, "run", "firstboot.issue"),
+		"NOS_RL_PATH":              filepath.Join(dir, "lib", "ratelimit.json"),
+		"NOS_SHARES_PATH":          filepath.Join(dir, "etc", "shares.json"),
+		"NOS_ETC_DIR":              filepath.Join(dir, "etc"),
+		"NOS_APPS_STATE":           filepath.Join(dir, "lib", "apps.json"),
+		"NOS_APPS_DATA_DIR":        filepath.Join(dir, "lib", "apps"),
+		"NOS_APPS_INSTALL_DIR":     filepath.Join(dir, "srv", "apps"),
 	}
 	for k, v := range env {
 		if err := os.Setenv(k, v); err != nil {

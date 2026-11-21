@@ -10,11 +10,14 @@ import (
 )
 
 type Config struct {
-	Port               int
-	LogLevel           zerolog.Level
-	UsersPath          string
-	SecretPath         string
-	FirstBootPath      string
+	Port          int
+	LogLevel      zerolog.Level
+	UsersPath     string
+	SecretPath    string
+	FirstBootPath string
+	// FirstBootIssuePath is the console banner (agetty issue snippet) that
+	// shows the setup code; empty disables it.
+	FirstBootIssuePath string
 	SessionsPath       string
 	RateLimitPath      string
 	SharesPath         string
@@ -76,6 +79,7 @@ func Defaults() Config {
 		UsersPath:                "/etc/nos/users.json",
 		SecretPath:               "/etc/nos/secret.key",
 		FirstBootPath:            "/var/lib/nos/state/firstboot.json",
+		FirstBootIssuePath:       "/run/nos/firstboot.issue",
 		SessionsPath:             "/var/lib/nos/sessions.json",
 		RateLimitPath:            "/var/lib/nos/ratelimit.json",
 		SharesPath:               "/etc/nos/shares.json",
@@ -181,6 +185,9 @@ func applyEnv(cfg Config) Config {
 	}
 	if v := os.Getenv("NOS_FIRSTBOOT_PATH"); v != "" {
 		cfg.FirstBootPath = v
+	}
+	if v, ok := os.LookupEnv("NOS_FIRSTBOOT_ISSUE_PATH"); ok {
+		cfg.FirstBootIssuePath = v
 	}
 	if v := os.Getenv("NOS_RL_PATH"); v != "" {
 		cfg.RateLimitPath = v
