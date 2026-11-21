@@ -74,6 +74,7 @@ logs/
 # Build outputs (built by Makefile / debian/rules, never committed)
 /agent/nos-agent/nos-agent
 /backend/nosd/nosd
+/cmd/nosctl/nosctl
 packaging/deb/*/deb-build/
 *.tsbuildinfo
 

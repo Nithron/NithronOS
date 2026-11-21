@@ -603,4 +603,3 @@ func (d *Database) PruneActivityLog(olderThan time.Duration) error {
 	_, err := d.db.Exec(query, int(olderThan.Seconds()))
 	return err
 }
-

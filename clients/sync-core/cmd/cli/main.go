@@ -280,4 +280,3 @@ func cmdResume() {
 	// This would send a signal to the daemon to resume
 	fmt.Println("Use 'nithron-sync-daemon' to control the sync service.")
 }
-

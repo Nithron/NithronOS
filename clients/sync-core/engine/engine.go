@@ -62,17 +62,17 @@ type Engine struct {
 	watchers  map[string]*watcher.Watcher // shareID -> watcher
 	logger    zerolog.Logger
 
-	state      atomic.Int32
-	lastError  atomic.Value
-	syncMu     sync.Mutex
-	shares     []api.SyncShare
-	sharesMu   sync.RWMutex
+	state     atomic.Int32
+	lastError atomic.Value
+	syncMu    sync.Mutex
+	shares    []api.SyncShare
+	sharesMu  sync.RWMutex
 
 	// Progress tracking
-	currentFile    atomic.Value
-	uploadedBytes  atomic.Int64
-	downloadedBytes atomic.Int64
-	pendingUploads  atomic.Int64
+	currentFile      atomic.Value
+	uploadedBytes    atomic.Int64
+	downloadedBytes  atomic.Int64
+	pendingUploads   atomic.Int64
 	pendingDownloads atomic.Int64
 
 	// Control
@@ -82,10 +82,10 @@ type Engine struct {
 	resumeChan chan struct{}
 
 	// Event callbacks
-	onStateChange   func(State)
-	onProgress      func(Progress)
-	onError         func(error)
-	onConflict      func(Conflict)
+	onStateChange func(State)
+	onProgress    func(Progress)
+	onError       func(error)
+	onConflict    func(Conflict)
 }
 
 // Progress represents sync progress.
@@ -496,7 +496,7 @@ func (e *Engine) processRemoteChange(shareID, shareName string, change api.FileC
 		// Check for conflicts
 		if info, err := os.Stat(localPath); err == nil {
 			localHash, _ := hash.QuickHash(localPath)
-			
+
 			// Check if local file was modified
 			entry, _ := e.database.GetFile(shareID, change.Path)
 			if entry != nil && entry.LocalHash != localHash {
@@ -757,7 +757,7 @@ func (e *Engine) uploadFile(ctx context.Context, shareID, shareName, remotePath,
 	// Regular upload
 	if err := e.webdav.Upload(ctx, shareID, localPath, remotePath); err != nil {
 		e.database.LogActivity(shareID, remotePath, "upload", "error", err.Error(), 0)
-		
+
 		if retryCount < e.cfg.RetryAttempts {
 			e.database.RequeueOperation(shareID, remotePath, "upload", err.Error(), retryCount+1, time.Duration(e.cfg.RetryDelaySecs)*time.Second)
 		}
@@ -839,31 +839,31 @@ func (e *Engine) handleConflict(shareID, path string, localModTime time.Time, lo
 		ext := filepath.Ext(path)
 		base := strings.TrimSuffix(path, ext)
 		conflictPath := fmt.Sprintf("%s (Conflict %s)%s", base, time.Now().Format("2006-01-02 15-04-05"), ext)
-		
+
 		conflictLocalPath := filepath.Join(sharePath, conflictPath)
 		os.Rename(localPath, conflictLocalPath)
-		
+
 		// Download remote version
 		e.downloadFile(shareID, shareName, path, localPath)
-		
+
 		// Upload the conflict copy
 		e.database.EnqueueOperation(shareID, conflictPath, "upload", 0)
 	}
 
 	// Record conflict
 	e.database.AddConflict(&db.Conflict{
-		ShareID:       shareID,
-		Path:          path,
-		LocalHash:     localHash,
-		RemoteHash:    remote.ContentHash,
-		LocalModTime:  localModTime,
+		ShareID:      shareID,
+		Path:         path,
+		LocalHash:    localHash,
+		RemoteHash:   remote.ContentHash,
+		LocalModTime: localModTime,
 	})
 
 	if e.onConflict != nil {
 		e.onConflict(Conflict{
-			ShareID:       shareID,
-			Path:          path,
-			LocalModTime:  localModTime,
+			ShareID:      shareID,
+			Path:         path,
+			LocalModTime: localModTime,
 		})
 	}
 }
@@ -871,7 +871,7 @@ func (e *Engine) handleConflict(shareID, path string, localModTime time.Time, lo
 func (e *Engine) getShareName(shareID string) string {
 	e.sharesMu.RLock()
 	defer e.sharesMu.RUnlock()
-	
+
 	for _, share := range e.shares {
 		if share.ID == shareID {
 			return share.Name
@@ -893,4 +893,3 @@ func convertAPIBlockHashes(blocks []api.BlockHash) []hash.BlockHash {
 	}
 	return result
 }
-
