@@ -2,8 +2,7 @@
 # Core services that must run for NithronOS to function
 enable nos-agent.service
 enable nosd.service
-enable nithronos-otp-gen.service
-enable nithronos-issue-gen.service
+enable nos-issue-reload.path
 enable nithronos-runtime-enable.service
 
 # Services enabled conditionally or later

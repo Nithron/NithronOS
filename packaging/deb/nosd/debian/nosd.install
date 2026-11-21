@@ -1,6 +1,5 @@
 ../../../deploy/systemd/nosd.service  lib/systemd/system/
 debian/sysusers.d/nosd.conf  usr/lib/sysusers.d/
 debian/tmpfiles.d/nosd.conf  usr/lib/tmpfiles.d/
-../../../packaging/iso/debian/config/includes.chroot/usr/lib/nithronos/otp-notify  usr/lib/nithronos/
-../../../packaging/iso/debian/config/includes.chroot/etc/systemd/system/otp-announce.service  etc/systemd/system/
-../../../packaging/iso/debian/config/includes.chroot/etc/update-motd.d/50-nithronos-otp  etc/update-motd.d/
+../../../deploy/systemd/nos-issue-reload.path  lib/systemd/system/
+../../../deploy/systemd/nos-issue-reload.service  lib/systemd/system/

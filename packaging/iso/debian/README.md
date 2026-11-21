@@ -16,7 +16,7 @@ sudo lb build
 
 The resulting ISO will be in the current directory.
 
-On first boot, `nithronos-firstboot.service` will:
-- Generate a self-signed TLS cert into `/etc/nos/tls`
-- Ensure services (`caddy`, `nftables`, `fail2ban`, `nosd`, `nos-agent`) are enabled
-- Print the UI URL and an OTP to the console
+Use `packaging/iso/build.sh` (it stages the .debs and generates the branding files from `VERSION`).
+
+On first boot `nosd` shows the web UI address and a one-time setup code above the
+login prompt (see `docs/admin/first-boot.md`).

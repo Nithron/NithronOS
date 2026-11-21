@@ -16,11 +16,6 @@ else
     echo "[98-setup-installer] Warning: /usr/lib/nithronos/installer-welcome not found"
 fi
 
-# Make firstboot banner script executable
-if [ -f /usr/lib/nithronos/show-firstboot-banner ]; then
-    chmod +x /usr/lib/nithronos/show-firstboot-banner
-fi
-
 # Make nos-agent executable
 if [ -f /usr/sbin/nos-agent ]; then
     chmod +x /usr/sbin/nos-agent
@@ -28,10 +23,5 @@ fi
 
 # Enable installer welcome service
 systemctl enable nithronos-installer-welcome.service || true
-
-# Enable firstboot banner if the service exists
-if [ -f /etc/systemd/system/nithronos-firstboot-banner.service ]; then
-    systemctl enable nithronos-firstboot-banner.service || true
-fi
 
 echo "[98-setup-installer] Setup complete"

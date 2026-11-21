@@ -1,10 +1,16 @@
-### First-boot OTP and Recovery
+### First-boot setup code
 
-During initial setup, the system generates a one-time setup OTP stored at `/var/lib/nos/state/firstboot.json`. The backend exposes `/api/setup/*` endpoints during first-boot. Once an admin user exists, these endpoints return 410 Gone with a typed error `{ "error": { "code": "setup.complete", "message": "Setup already completed" } }`.
+Until the first administrator exists, `nosd` keeps one valid 6-digit setup code. It is the only component that creates, shows or removes it.
 
-At service start, if in first-boot and the OTP exists and is not expired (15 minutes), the code is logged to the journal and console as:
+- **Where it is shown**: above the login prompt on the machine's screen and serial console (nosd writes `/run/nos/firstboot.issue`, which `/etc/issue.d/50-nithronos-setup.issue` links to; `nos-issue-reload.path` refreshes the prompts), and once per code in the nosd journal:
 
-`First-boot OTP: <code> (valid 15m)`
+  ```
+  sudo journalctl -u nosd | grep 'setup code' | tail -n 1
+  ```
+
+- **Lifetime**: 15 minutes. When it expires, or after 5 wrong guesses, nosd issues a new code and the screen updates by itself. No restart is needed.
+- **State file**: `/var/lib/nos/state/firstboot.json` (0600, owned by `nos`). It is removed when the first administrator is created, and the console banner goes away.
+- **API**: `GET /api/v1/setup/state` returns `{ "firstBoot", "otpRequired", "expiresAt" }`. Once an administrator exists, the `/api/v1/setup/*` endpoints return 410 Gone with `{ "error": { "code": "setup.complete" } }`.
 
 ### HTTPS on first boot (self-signed)
 
@@ -14,14 +20,7 @@ The console shows a banner after services start:
 
 `NithronOS UI → https://<this-ip>/  (self-signed)`
 
-Use the OTP printed above to proceed through Setup.
-
-To regenerate the OTP:
-
-```
-rm -f /var/lib/nos/state/firstboot.json
-systemctl restart nosd
-```
+To get a new code right away (local recovery mode only): `POST /api/v1/recovery/generate-otp`.
 
 Where the local cert lives: `/etc/nithronos/tls`.
 
@@ -46,22 +45,21 @@ Access is restricted to localhost (127.0.0.1/::1).
 
 - Setup is considered complete only if the users database loads and contains at least one user (admin).
 - If the users file is missing, empty, or invalid, setup remains in first-boot.
-- OTP is considered required if `firstboot.json` contains a valid non-expired code.
+- While no administrator exists, a valid code always exists; an expired code is replaced on the next check.
 
 # First Boot (Admin)
 
-On first boot, `nosd` ensures a one-time 6‑digit OTP exists and prints it to both console and logs on every `nosd` start while in first‑boot mode (unit uses `StandardOutput=journal+console`). The web UI detects setup state and routes to `/setup`.
+On first boot, `nosd` keeps a one-time 6-digit setup code (see above) and shows it on the console. The web UI detects setup state and routes to `/setup`.
 
 ## Flow
-1) OTP: Enter the OTP (valid ~15 minutes). The UI receives a temporary setup token (memory only).
+1) Setup code: enter the code from the server screen (valid 15 minutes). The UI receives a temporary setup token (memory only).
 2) Create Admin: Choose a username and a strong password.
 3) Optional 2FA: Enroll TOTP, confirm a 6‑digit code, and save recovery codes securely.
 4) Finish: You can now sign in at `/login`.
 
 After the first admin is created, `/api/setup/*` endpoints return `410 Gone`.
 
-Regenerate OTP:
-- Delete `/var/lib/nos/state/firstboot.json` and restart `nosd`. A new OTP will be generated, saved atomically, and printed again on startup.
+New code: wait for the current one to expire (the screen shows the new one), or use the local recovery endpoint above.
 
 ## Data paths
 - Users: `/etc/nos/users.json`
@@ -73,4 +71,4 @@ To rerun first‑boot on next start, remove the users DB:
 ```bash
 sudo rm -f /etc/nos/users.json
 ```
-Reboot `nosd` and repeat the OTP + admin creation.
+Restart `nosd`; a new setup code appears on the console. Repeat setup.

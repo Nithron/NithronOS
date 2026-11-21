@@ -9,7 +9,6 @@ nos-fstrim.service lib/systemd/system/
 nos-fstrim.timer lib/systemd/system/
 ../../../deploy/scripts/gen-local-cert.sh usr/lib/nithronos/
 nithronos-certgen.service etc/systemd/system/
-../../../deploy/systemd/nithronos-firstboot-banner.service etc/systemd/system/
 # no longer install Caddyfile to avoid dpkg conflict with distro caddy
 # OTP announcement moved to nosd package
 

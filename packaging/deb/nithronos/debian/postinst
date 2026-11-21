@@ -45,7 +45,6 @@ EOF
         systemctl daemon-reload || true
         systemctl enable nosd.service || true
         systemctl enable nos-agent.service || true
-        systemctl enable nithronos-firstboot-banner.service || true
         # OTP announcer moved to nosd package
         chmod 0755 /usr/lib/nithronos/smart-scan.sh || true
         systemctl enable --now nos-smart-scan.timer || true

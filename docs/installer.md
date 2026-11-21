@@ -95,15 +95,15 @@ GRUB is installed with:
 
 After installation and reboot:
 
-1. **OTP Display**: A one-time password will be displayed on the console after the login prompt
+1. **Setup code**: a one-time 6-digit setup code and the address to open are shown above the login prompt
 2. **Web Setup**: Navigate to `https://<server-ip>` in a web browser
-3. **Setup Wizard**: Complete the first-boot setup wizard using the OTP
+3. **Setup Wizard**: Complete the first-boot setup wizard using the setup code
 
 ### First-Boot Setup Wizard
 
 The web-based setup wizard includes:
 
-1. **OTP Verification**: Enter the 6-digit code from the console
+1. **Setup code**: Enter the 6-digit code from the server screen
 2. **Admin Account**: Create the administrator account
 3. **System Configuration**: Set hostname, timezone, and NTP
 4. **Network Configuration**: Configure network interfaces (DHCP or static)
@@ -155,11 +155,11 @@ mount /var/lib/docker
 
 ### First-Boot Issues
 
-#### OTP Not Displayed
+#### Setup Code Not Displayed
 
-- Check service status: `systemctl status nos-firstboot-otp`
-- View logs: `journalctl -u nos-firstboot-otp`
-- Manually view OTP: `cat /var/lib/nos/firstboot-otp`
+- Read it from the log: `sudo journalctl -u nosd | grep 'setup code' | tail -n 1`
+- Check the services: `systemctl status nosd nos-issue-reload.path`
+- Check the banner file: `cat /run/nos/firstboot.issue`
 
 #### Cannot Access Web Interface
 
@@ -170,7 +170,7 @@ mount /var/lib/docker
 #### Setup Wizard Errors
 
 - Backend not reachable: Check `nosd` service
-- OTP expired: Restart `nosd` to generate new OTP
+- Code expired: use the new code shown on the screen (codes are replaced automatically)
 - Permission errors: Verify `/etc/nos` permissions
 
 ### Secure Boot

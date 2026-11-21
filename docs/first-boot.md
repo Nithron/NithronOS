@@ -11,33 +11,23 @@ After installing NithronOS, the first-boot process guides you through initial sy
 When the system boots for the first time after installation:
 
 1. All services start automatically (nosd, nos-agent, caddy)
-2. The system generates a one-time password (OTP)
-3. The OTP is displayed on the console after the login prompt appears
+2. nosd creates a one-time 6-digit setup code
+3. The code and the address to open are shown above the login prompt on the machine's screen (and serial console)
 
-### 2. OTP Display
+### 2. Setup code
 
-The OTP display includes:
-- System IP addresses for web access
-- 6-digit one-time password
-- Expiration time (30 minutes)
-
-Example console output:
 ```
-╔═══════════════════════════════════════════════════════════════╗
-║                  NithronOS First-Boot Setup                   ║
-╠═══════════════════════════════════════════════════════════════╣
-║                                                                ║
-║  Welcome! Please complete the initial setup via web browser:  ║
-║                                                                ║
-║  Access URLs:                                                  ║
-║  - 192.168.1.100                                              ║
-║  - 10.0.0.50                                                  ║
-║                                                                ║
-║  One-Time Password (OTP): 123456                              ║
-║                                                                ║
-║  This OTP expires in 30 minutes and is required for setup.    ║
-║                                                                ║
-╚═══════════════════════════════════════════════════════════════╝
+  NithronOS first-boot setup
+  --------------------------
+  Open in a browser:     https://192.168.1.100/
+  One-time setup code:   123 456
+  Valid until:           14:35 CET (a new code appears here when it expires)
+```
+
+Each code is valid for 15 minutes. When it expires, or after 5 wrong tries, a new code replaces it on the screen automatically. Without a screen, read it over SSH:
+
+```bash
+sudo journalctl -u nosd | grep 'setup code' | tail -n 1
 ```
 
 ### 3. Web Access
@@ -50,13 +40,13 @@ Open a web browser and navigate to:
 
 ### Step 1: OTP Verification
 
-- Enter the 6-digit OTP from the console
-- The OTP expires after 30 minutes
-- Failed attempts are rate-limited
+- Enter the 6-digit code from the server screen
+- Codes are valid for 15 minutes and are replaced automatically after that or after 5 wrong tries
+- Attempts are also rate-limited per IP
 
 **Troubleshooting**:
-- If OTP expired: Wait 10-15 seconds after reboot for new OTP
-- If OTP not displayed: Check `journalctl -u nos-firstboot-otp`
+- If the code expired: use the new code now shown on the screen
+- If no code is shown: `systemctl status nosd nos-issue-reload.path` and `journalctl -u nosd`
 
 ### Step 2: Create Administrator Account
 
@@ -251,23 +241,17 @@ DHCP=yes
 
 ### OTP Issues
 
-**OTP not displayed**:
+**Setup code not shown on the screen**:
 ```bash
-# Check if first-boot is pending
-cat /var/lib/nos/firstboot.json
+# The code nosd logged most recently
+sudo journalctl -u nosd | grep 'setup code' | tail -n 1
 
-# View OTP directly
-cat /var/lib/nos/firstboot-otp
-
-# Check service logs
-journalctl -u nos-firstboot-otp
+# The console banner and the unit that refreshes the login prompts
+cat /run/nos/firstboot.issue
+systemctl status nos-issue-reload.path
 ```
 
-**Generate new OTP**:
-```bash
-# Restart nosd to generate new OTP
-systemctl restart nosd
-```
+**Need a new code**: wait for the current one to expire; the new one appears on the screen by itself.
 
 ### Setup Wizard Errors
 
@@ -280,7 +264,6 @@ systemctl restart nosd
 - To reset (WARNING: removes all users):
   ```bash
   rm /etc/nos/users.json
-  rm /var/lib/nos/firstboot.json
   systemctl restart nosd
   ```
 
@@ -303,8 +286,8 @@ In VMs, multiple network interfaces may be detected:
 ### Console Access
 
 For headless VMs:
-- Use VM console to view OTP
-- Or SSH to VM and run: `cat /var/lib/nos/firstboot-otp`
+- Use the VM console to read the setup code
+- Or SSH to the VM and run: `sudo journalctl -u nosd | grep 'setup code' | tail -n 1`
 
 ### Time Sync
 

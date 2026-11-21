@@ -85,6 +85,9 @@ chmod +x "$FORCE_SOURCES_HOOK"
 echo "[iso] using debs from: $DEB_DIR"
 mkdir -p "$OUT_DIR"
 
+# Branding files (os-release, issue, motd) from the repo's VERSION
+bash "$SCRIPT_DIR/scripts/gen-branding.sh" "$REPO_ROOT/VERSION" "$PROFILE_DIR/config/includes.chroot"
+
 # Prepare live-build working dir
 mkdir -p "$PROFILE_DIR/config/includes.chroot/root/debs"
 mkdir -p "$PROFILE_DIR/config/hooks/normal"

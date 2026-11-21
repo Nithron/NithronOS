@@ -4,6 +4,11 @@ After=network.target
 ConditionPathExists=/usr/bin/nosd
 
 [Service]
+# /run/nos holds the first-boot console banner; keep it across restarts
+# and readable by agetty.
+RuntimeDirectory=nos
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
 User=nos
 Group=nos
 ExecStart=/usr/bin/nosd

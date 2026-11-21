@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh login prompts when the NithronOS setup banner changes
+Documentation=file:///usr/share/doc/nosd/README
+
+[Path]
+# nosd writes the first-boot setup code here; /etc/issue.d links to it.
+PathChanged=/run/nos/firstboot.issue
+
+[Install]
+WantedBy=multi-user.target
