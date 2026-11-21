@@ -343,7 +343,7 @@ export default function MonitoringDashboard() {
                         backgroundColor: 'hsl(var(--background))',
                         border: '1px solid hsl(var(--border))'
                       }}
-                      formatter={(value: number) => `${toFixedSafe(value, 1, '0.0')}%`}
+                      formatter={(value) => `${toFixedSafe(Number(value), 1, '0.0')}%`}
                     />
                     <Legend />
                     <Line 
@@ -392,7 +392,7 @@ export default function MonitoringDashboard() {
                         backgroundColor: 'hsl(var(--background))',
                         border: '1px solid hsl(var(--border))'
                       }}
-                      formatter={(value: number) => formatBytes(value) + '/s'}
+                      formatter={(value) => formatBytes(Number(value)) + '/s'}
                     />
                     <Legend />
                     <Area 
@@ -454,7 +454,7 @@ export default function MonitoringDashboard() {
                         backgroundColor: 'hsl(var(--background))',
                         border: '1px solid hsl(var(--border))'
                       }}
-                      formatter={(value: number) => formatBytes(value) + '/s'}
+                      formatter={(value) => formatBytes(Number(value)) + '/s'}
                     />
                     <Legend />
                     <Area 

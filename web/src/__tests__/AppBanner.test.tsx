@@ -6,7 +6,6 @@ import App from '../App'
 describe('Global banner on proxy misconfig', () => {
   it('shows banner when /api/v1/setup/state returns HTML', async () => {
     // HTML response for setup state
-    // @ts-ignore
     global.fetch = vi.fn().mockImplementation((url: string) => {
       if (url === '/api/v1/setup/state') {
         return Promise.resolve({

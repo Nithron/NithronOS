@@ -321,7 +321,7 @@ export default function SyncDevices() {
       toast.success('Device renamed successfully');
       setEditDevice(null);
       loadDevices();
-    } catch (err) {
+    } catch {
       toast.error('Failed to rename device');
     }
   };
@@ -335,7 +335,7 @@ export default function SyncDevices() {
       toast.success('Device access revoked');
       setRevokeDeviceTarget(null);
       loadDevices();
-    } catch (err) {
+    } catch {
       toast.error('Failed to revoke device');
     }
   };

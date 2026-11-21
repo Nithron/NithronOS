@@ -85,8 +85,7 @@ export default function NewShareWizard({ open, onClose }:{open:boolean; onClose:
                 <label key={u} className="flex items-center gap-2">
                   <input type="checkbox" checked={watch('users')?.includes(u)} onChange={(e)=>{
                     const cur = new Set(watch('users')||[]);
-                    e.target.checked ? cur.add(u) : cur.delete(u);
-                    // @ts-ignore
+                    if (e.target.checked) cur.add(u); else cur.delete(u);
                     setValue('users', Array.from(cur));
                   }}/>
                   <span className="font-mono">{u}</span>

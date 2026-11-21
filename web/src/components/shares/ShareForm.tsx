@@ -130,7 +130,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 			if (mode === 'create') {
 				await onSubmit(data as CreateShareRequest)
 			} else {
-				const { name, ...updateData } = data
+				const { name: _name, ...updateData } = data
 				await onSubmit(updateData as UpdateShareRequest)
 			}
 			navigate('/shares')

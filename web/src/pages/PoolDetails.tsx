@@ -217,7 +217,7 @@ function DevicesWizards({ id }: { id: string }) {
       setError(msg)
       // pool busy UX: surface link when possible
       if (typeof msg === 'string' && msg.includes('pool.busy')) {
-        const txIdMatch = msg.match(/txId\":\"([^\"]+)/)
+        const txIdMatch = msg.match(/txId":"([^"]+)/)
         const txId = txIdMatch?.[1]
         try {
           const { toast } = await import('@/components/ui/toast')

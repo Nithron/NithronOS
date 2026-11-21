@@ -61,7 +61,7 @@ export default function BackupSchedules() {
         tag: `manual-${schedule.name}`
       });
       toast.success('Backup started');
-    } catch (error) {
+    } catch {
       toast.error('Failed to start backup');
     }
   };
@@ -72,9 +72,10 @@ export default function BackupSchedules() {
         return `Every hour at :${String(freq.minute || 0).padStart(2, '0')}`;
       case 'daily':
         return `Daily at ${String(freq.hour || 0).padStart(2, '0')}:${String(freq.minute || 0).padStart(2, '0')}`;
-      case 'weekly':
+      case 'weekly': {
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         return `Weekly on ${days[freq.weekday || 0]} at ${String(freq.hour || 0).padStart(2, '0')}:${String(freq.minute || 0).padStart(2, '0')}`;
+      }
       case 'monthly':
         return `Monthly on day ${freq.day || 1} at ${String(freq.hour || 0).padStart(2, '0')}:${String(freq.minute || 0).padStart(2, '0')}`;
       case 'cron':
@@ -289,7 +290,7 @@ function ScheduleDialog({
         toast.success('Schedule created');
       }
       onSuccess();
-    } catch (error) {
+    } catch {
       toast.error(schedule ? 'Failed to update schedule' : 'Failed to create schedule');
     } finally {
       setIsSaving(false);
