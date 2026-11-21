@@ -208,9 +208,10 @@ func applyEnv(cfg Config) Config {
 		cfg.AppsInstallDir = v
 	}
 	if v := os.Getenv("NOS_TRUST_PROXY"); v != "" {
-		if v == "1" || v == "true" || v == "yes" {
+		switch v {
+		case "1", "true", "yes":
 			cfg.TrustProxy = true
-		} else if v == "0" || v == "false" || v == "no" {
+		case "0", "false", "no":
 			cfg.TrustProxy = false
 		}
 	}

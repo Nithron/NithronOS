@@ -23,21 +23,21 @@ type Manager struct {
 	eventQueue chan Event
 	httpClient *http.Client
 	mu         sync.RWMutex
-	
+
 	// Configuration
-	maxRetries     int
-	retryDelay     time.Duration
-	timeout        time.Duration
-	maxQueueSize   int
+	maxRetries   int
+	retryDelay   time.Duration
+	timeout      time.Duration
+	maxQueueSize int
 }
 
 // NewManager creates a new webhook manager
 func NewManager(logger zerolog.Logger) *Manager {
 	m := &Manager{
-		logger:       logger.With().Str("component", "webhook-manager").Logger(),
-		webhooks:     make(map[string]*Webhook),
-		deliveries:   make(map[string][]*Delivery),
-		eventQueue:   make(chan Event, 1000),
+		logger:     logger.With().Str("component", "webhook-manager").Logger(),
+		webhooks:   make(map[string]*Webhook),
+		deliveries: make(map[string][]*Delivery),
+		eventQueue: make(chan Event, 1000),
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -46,15 +46,15 @@ func NewManager(logger zerolog.Logger) *Manager {
 		timeout:      30 * time.Second,
 		maxQueueSize: 1000,
 	}
-	
+
 	// Start delivery workers
 	for i := 0; i < 5; i++ {
 		go m.deliveryWorker()
 	}
-	
+
 	// Start cleanup routine
 	go m.cleanupRoutine()
-	
+
 	return m
 }
 
@@ -62,12 +62,12 @@ func NewManager(logger zerolog.Logger) *Manager {
 func (m *Manager) CreateWebhook(req CreateWebhookRequest) (*Webhook, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	// Validate events
 	if err := m.validateEvents(req.Events); err != nil {
 		return nil, err
 	}
-	
+
 	// Create webhook
 	webhook := &Webhook{
 		ID:          uuid.New().String(),
@@ -84,16 +84,16 @@ func (m *Manager) CreateWebhook(req CreateWebhookRequest) (*Webhook, error) {
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-	
+
 	// Store webhook
 	m.webhooks[webhook.ID] = webhook
-	
+
 	m.logger.Info().
 		Str("webhook_id", webhook.ID).
 		Str("name", webhook.Name).
 		Str("url", webhook.URL).
 		Msg("Webhook created")
-	
+
 	return webhook, nil
 }
 
@@ -101,12 +101,12 @@ func (m *Manager) CreateWebhook(req CreateWebhookRequest) (*Webhook, error) {
 func (m *Manager) UpdateWebhook(id string, req UpdateWebhookRequest) (*Webhook, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	webhook, exists := m.webhooks[id]
 	if !exists {
 		return nil, fmt.Errorf("webhook not found")
 	}
-	
+
 	// Update fields
 	if req.URL != nil {
 		webhook.URL = *req.URL
@@ -132,14 +132,14 @@ func (m *Manager) UpdateWebhook(id string, req UpdateWebhookRequest) (*Webhook, 
 	if req.Enabled != nil {
 		webhook.Enabled = *req.Enabled
 	}
-	
+
 	webhook.UpdatedAt = time.Now()
-	
+
 	m.logger.Info().
 		Str("webhook_id", webhook.ID).
 		Str("name", webhook.Name).
 		Msg("Webhook updated")
-	
+
 	return webhook, nil
 }
 
@@ -147,23 +147,23 @@ func (m *Manager) UpdateWebhook(id string, req UpdateWebhookRequest) (*Webhook, 
 func (m *Manager) DeleteWebhook(id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	webhook, exists := m.webhooks[id]
 	if !exists {
 		return fmt.Errorf("webhook not found")
 	}
-	
+
 	// Delete webhook
 	delete(m.webhooks, id)
-	
+
 	// Delete delivery history
 	delete(m.deliveries, id)
-	
+
 	m.logger.Info().
 		Str("webhook_id", id).
 		Str("name", webhook.Name).
 		Msg("Webhook deleted")
-	
+
 	return nil
 }
 
@@ -171,16 +171,16 @@ func (m *Manager) DeleteWebhook(id string) error {
 func (m *Manager) GetWebhook(id string) (*Webhook, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	webhook, exists := m.webhooks[id]
 	if !exists {
 		return nil, fmt.Errorf("webhook not found")
 	}
-	
+
 	// Return copy without secret
 	webhookCopy := *webhook
 	webhookCopy.Secret = ""
-	
+
 	return &webhookCopy, nil
 }
 
@@ -188,7 +188,7 @@ func (m *Manager) GetWebhook(id string) (*Webhook, error) {
 func (m *Manager) ListWebhooks() []*Webhook {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	webhooks := make([]*Webhook, 0, len(m.webhooks))
 	for _, webhook := range m.webhooks {
 		// Copy without secret
@@ -196,7 +196,7 @@ func (m *Manager) ListWebhooks() []*Webhook {
 		webhookCopy.Secret = ""
 		webhooks = append(webhooks, &webhookCopy)
 	}
-	
+
 	return webhooks
 }
 
@@ -209,7 +209,7 @@ func (m *Manager) PublishEvent(event Event) error {
 	if event.Timestamp.IsZero() {
 		event.Timestamp = time.Now()
 	}
-	
+
 	// Queue event
 	select {
 	case m.eventQueue <- event:
@@ -230,11 +230,11 @@ func (m *Manager) TestWebhook(id string) error {
 	m.mu.RLock()
 	webhook, exists := m.webhooks[id]
 	m.mu.RUnlock()
-	
+
 	if !exists {
 		return fmt.Errorf("webhook not found")
 	}
-	
+
 	// Create test event
 	event := Event{
 		ID:        uuid.New().String(),
@@ -247,10 +247,10 @@ func (m *Manager) TestWebhook(id string) error {
 			"test": true,
 		},
 	}
-	
+
 	// Deliver directly
 	delivery := m.deliver(webhook, event, 1)
-	
+
 	// Update webhook status
 	m.mu.Lock()
 	webhook.LastDelivery = &delivery.AttemptedAt
@@ -261,11 +261,11 @@ func (m *Manager) TestWebhook(id string) error {
 		webhook.LastError = ""
 	}
 	m.mu.Unlock()
-	
+
 	if delivery.Status >= 200 && delivery.Status < 300 {
 		return nil
 	}
-	
+
 	return fmt.Errorf("test delivery failed: %s", delivery.Error)
 }
 
@@ -273,25 +273,25 @@ func (m *Manager) TestWebhook(id string) error {
 func (m *Manager) GetDeliveries(webhookID string, limit int) []*Delivery {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	deliveries := m.deliveries[webhookID]
 	if len(deliveries) == 0 {
 		return []*Delivery{}
 	}
-	
+
 	// Return most recent deliveries
 	if limit <= 0 || limit > len(deliveries) {
 		limit = len(deliveries)
 	}
-	
+
 	start := len(deliveries) - limit
 	if start < 0 {
 		start = 0
 	}
-	
+
 	result := make([]*Delivery, limit)
 	copy(result, deliveries[start:])
-	
+
 	return result
 }
 
@@ -299,25 +299,25 @@ func (m *Manager) GetDeliveries(webhookID string, limit int) []*Delivery {
 func (m *Manager) GetDeliveryStatus(webhookID string) (*DeliveryStatus, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	webhook, exists := m.webhooks[webhookID]
 	if !exists {
 		return nil, fmt.Errorf("webhook not found")
 	}
-	
+
 	status := &DeliveryStatus{
-		WebhookID:       webhookID,
-		TotalDeliveries: webhook.DeliveryCount,
+		WebhookID:            webhookID,
+		TotalDeliveries:      webhook.DeliveryCount,
 		SuccessfulDeliveries: webhook.SuccessCount,
-		FailedDeliveries: webhook.FailureCount,
+		FailedDeliveries:     webhook.FailureCount,
 	}
-	
+
 	// Get delivery history
 	deliveries := m.deliveries[webhookID]
 	if len(deliveries) > 0 {
 		lastDelivery := deliveries[len(deliveries)-1]
 		status.LastDelivery = &lastDelivery.AttemptedAt
-		
+
 		// Find last success and failure
 		for i := len(deliveries) - 1; i >= 0; i-- {
 			if deliveries[i].Status >= 200 && deliveries[i].Status < 300 {
@@ -325,7 +325,7 @@ func (m *Manager) GetDeliveryStatus(webhookID string) (*DeliveryStatus, error) {
 				break
 			}
 		}
-		
+
 		for i := len(deliveries) - 1; i >= 0; i-- {
 			if deliveries[i].Status < 200 || deliveries[i].Status >= 300 {
 				status.LastFailure = &deliveries[i].AttemptedAt
@@ -333,10 +333,10 @@ func (m *Manager) GetDeliveryStatus(webhookID string) (*DeliveryStatus, error) {
 			}
 		}
 	}
-	
+
 	// Count queued events (approximate)
 	status.QueuedEvents = len(m.eventQueue)
-	
+
 	return status, nil
 }
 
@@ -352,12 +352,12 @@ func (m *Manager) processEvent(event Event) {
 	m.mu.RLock()
 	webhooks := m.getMatchingWebhooks(event.Type)
 	m.mu.RUnlock()
-	
+
 	for _, webhook := range webhooks {
 		if !webhook.Enabled {
 			continue
 		}
-		
+
 		// Deliver with retries
 		m.deliverWithRetry(webhook, event)
 	}
@@ -365,7 +365,7 @@ func (m *Manager) processEvent(event Event) {
 
 func (m *Manager) getMatchingWebhooks(eventType EventType) []*Webhook {
 	var matching []*Webhook
-	
+
 	for _, webhook := range m.webhooks {
 		for _, subscribedEvent := range webhook.Events {
 			if subscribedEvent == eventType {
@@ -374,75 +374,75 @@ func (m *Manager) getMatchingWebhooks(eventType EventType) []*Webhook {
 			}
 		}
 	}
-	
+
 	return matching
 }
 
 func (m *Manager) deliverWithRetry(webhook *Webhook, event Event) {
 	var delivery *Delivery
-	
+
 	for attempt := 1; attempt <= webhook.MaxRetries; attempt++ {
 		delivery = m.deliver(webhook, event, attempt)
-		
+
 		// Update webhook stats
 		m.mu.Lock()
 		webhook.DeliveryCount++
 		webhook.LastDelivery = &delivery.AttemptedAt
 		webhook.LastStatus = delivery.Status
-		
+
 		if delivery.Status >= 200 && delivery.Status < 300 {
 			webhook.SuccessCount++
 			webhook.LastError = ""
 			m.mu.Unlock()
-			
+
 			// Store successful delivery
 			m.storeDelivery(webhook.ID, delivery)
-			
+
 			m.logger.Debug().
 				Str("webhook_id", webhook.ID).
 				Str("event_id", event.ID).
 				Int("status", delivery.Status).
 				Msg("Webhook delivered successfully")
-			
+
 			return
 		}
-		
+
 		webhook.FailureCount++
 		webhook.LastError = delivery.Error
 		m.mu.Unlock()
-		
+
 		// Store failed delivery
 		m.storeDelivery(webhook.ID, delivery)
-		
+
 		m.logger.Warn().
 			Str("webhook_id", webhook.ID).
 			Str("event_id", event.ID).
 			Int("attempt", attempt).
 			Str("error", delivery.Error).
 			Msg("Webhook delivery failed")
-		
+
 		// Wait before retry
 		if attempt < webhook.MaxRetries {
 			time.Sleep(webhook.RetryDelay * time.Duration(attempt))
 		}
 	}
-	
+
 	// All retries failed, log to dead letter
 	m.logDeadLetter(event, fmt.Sprintf("webhook %s failed after %d attempts", webhook.ID, webhook.MaxRetries))
 }
 
 func (m *Manager) deliver(webhook *Webhook, event Event, attempt int) *Delivery {
 	delivery := &Delivery{
-		ID:        uuid.New().String(),
-		WebhookID: webhook.ID,
-		EventID:   event.ID,
-		URL:       webhook.URL,
-		Method:    "POST",
-		Headers:   make(map[string]string),
-		Attempt:   attempt,
+		ID:          uuid.New().String(),
+		WebhookID:   webhook.ID,
+		EventID:     event.ID,
+		URL:         webhook.URL,
+		Method:      "POST",
+		Headers:     make(map[string]string),
+		Attempt:     attempt,
 		AttemptedAt: time.Now(),
 	}
-	
+
 	// Build payload
 	payload := WebhookPayload{
 		Event: event,
@@ -452,22 +452,22 @@ func (m *Manager) deliver(webhook *Webhook, event Event, attempt int) *Delivery 
 		},
 		Timestamp: time.Now(),
 	}
-	
+
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		delivery.Error = fmt.Sprintf("failed to marshal payload: %v", err)
 		return delivery
 	}
-	
+
 	delivery.Payload = payloadBytes
-	
+
 	// Create request
 	req, err := http.NewRequest("POST", webhook.URL, bytes.NewReader(payloadBytes))
 	if err != nil {
 		delivery.Error = fmt.Sprintf("failed to create request: %v", err)
 		return delivery
 	}
-	
+
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "NithronOS-Webhook/1.0")
@@ -475,43 +475,43 @@ func (m *Manager) deliver(webhook *Webhook, event Event, attempt int) *Delivery 
 	req.Header.Set("X-NOS-Event-ID", event.ID)
 	req.Header.Set("X-NOS-Webhook-ID", webhook.ID)
 	req.Header.Set("X-NOS-Delivery-ID", delivery.ID)
-	
+
 	// Add HMAC signature if secret is configured
 	if webhook.Secret != "" {
 		signature := m.generateSignature(webhook.Secret, payloadBytes)
 		req.Header.Set("X-NOS-Signature", signature)
 		delivery.Headers["X-NOS-Signature"] = signature
 	}
-	
+
 	// Add custom headers
 	for key, value := range webhook.Headers {
 		req.Header.Set(key, value)
 		delivery.Headers[key] = value
 	}
-	
+
 	// Send request
 	start := time.Now()
 	resp, err := m.httpClient.Do(req)
 	delivery.Duration = time.Since(start)
-	
+
 	if err != nil {
 		delivery.Error = fmt.Sprintf("request failed: %v", err)
 		return delivery
 	}
 	defer resp.Body.Close()
-	
+
 	delivery.Status = resp.StatusCode
-	
+
 	// Read response (limited)
 	responseBytes := make([]byte, 1024)
 	n, _ := resp.Body.Read(responseBytes)
 	delivery.Response = responseBytes[:n]
-	
+
 	// Check status
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		delivery.Error = fmt.Sprintf("unexpected status: %d", resp.StatusCode)
 	}
-	
+
 	return delivery
 }
 
@@ -524,13 +524,13 @@ func (m *Manager) generateSignature(secret string, payload []byte) string {
 func (m *Manager) storeDelivery(webhookID string, delivery *Delivery) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.deliveries[webhookID] == nil {
 		m.deliveries[webhookID] = []*Delivery{}
 	}
-	
+
 	m.deliveries[webhookID] = append(m.deliveries[webhookID], delivery)
-	
+
 	// Keep only last 100 deliveries per webhook
 	if len(m.deliveries[webhookID]) > 100 {
 		m.deliveries[webhookID] = m.deliveries[webhookID][len(m.deliveries[webhookID])-100:]
@@ -542,13 +542,13 @@ func (m *Manager) validateEvents(events []EventType) error {
 	for _, event := range GetAllEventTypes() {
 		validEvents[event] = true
 	}
-	
+
 	for _, event := range events {
 		if !validEvents[event] {
 			return fmt.Errorf("invalid event type: %s", event)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -558,14 +558,14 @@ func (m *Manager) logDeadLetter(event Event, reason string) {
 		Str("type", string(event.Type)).
 		Str("reason", reason).
 		Msg("Event sent to dead letter queue")
-	
+
 	// TODO: Write to dead letter file
 }
 
 func (m *Manager) cleanupRoutine() {
 	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		m.cleanup()
 	}
@@ -574,10 +574,10 @@ func (m *Manager) cleanupRoutine() {
 func (m *Manager) cleanup() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	// Clean old deliveries (keep last 7 days)
 	cutoff := time.Now().Add(-7 * 24 * time.Hour)
-	
+
 	for webhookID, deliveries := range m.deliveries {
 		newDeliveries := []*Delivery{}
 		for _, delivery := range deliveries {
@@ -585,7 +585,7 @@ func (m *Manager) cleanup() {
 				newDeliveries = append(newDeliveries, delivery)
 			}
 		}
-		
+
 		if len(newDeliveries) == 0 {
 			delete(m.deliveries, webhookID)
 		} else {

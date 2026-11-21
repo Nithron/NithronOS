@@ -19,18 +19,18 @@ import (
 
 // UserManager handles user management
 type UserManager struct {
-	logger       zerolog.Logger
-	dataPath     string
-	users        map[string]*User
-	sessions     map[string]*Session
-	resetTokens  map[string]*PasswordResetToken
-	lockouts     map[string]*Lockout
-	auditLog     *AuditLogger
-	mu           sync.RWMutex
-	
+	logger      zerolog.Logger
+	dataPath    string
+	users       map[string]*User
+	sessions    map[string]*Session
+	resetTokens map[string]*PasswordResetToken
+	lockouts    map[string]*Lockout
+	auditLog    *AuditLogger
+	mu          sync.RWMutex
+
 	// Password policy
 	passwordPolicy PasswordPolicy
-	
+
 	// Rate limiting
 	loginAttempts []LoginAttempt
 	attemptsMu    sync.RWMutex
@@ -39,12 +39,12 @@ type UserManager struct {
 // NewUserManager creates a new user manager
 func NewUserManager(logger zerolog.Logger, dataPath string) *UserManager {
 	um := &UserManager{
-		logger:       logger.With().Str("component", "user-manager").Logger(),
-		dataPath:     dataPath,
-		users:        make(map[string]*User),
-		sessions:     make(map[string]*Session),
-		resetTokens:  make(map[string]*PasswordResetToken),
-		lockouts:     make(map[string]*Lockout),
+		logger:        logger.With().Str("component", "user-manager").Logger(),
+		dataPath:      dataPath,
+		users:         make(map[string]*User),
+		sessions:      make(map[string]*Session),
+		resetTokens:   make(map[string]*PasswordResetToken),
+		lockouts:      make(map[string]*Lockout),
 		loginAttempts: []LoginAttempt{},
 		passwordPolicy: PasswordPolicy{
 			MinLength:        12,
@@ -60,21 +60,21 @@ func NewUserManager(logger zerolog.Logger, dataPath string) *UserManager {
 			WarnAge:          14,
 		},
 	}
-	
+
 	// Initialize audit logger
 	um.auditLog = NewAuditLogger(logger, filepath.Join(dataPath, "audit"))
-	
+
 	// Load existing data
 	um.loadData()
-	
+
 	// Create default admin if no users exist
 	if len(um.users) == 0 {
 		um.createDefaultAdmin()
 	}
-	
+
 	// Start cleanup routine
 	go um.cleanupRoutine()
-	
+
 	return um
 }
 
@@ -84,7 +84,7 @@ func NewUserManager(logger zerolog.Logger, dataPath string) *UserManager {
 func (um *UserManager) CreateUser(req UserCreateRequest, actorID string) (*User, error) {
 	um.mu.Lock()
 	defer um.mu.Unlock()
-	
+
 	// Check if username already exists
 	for _, u := range um.users {
 		if strings.EqualFold(u.Username, req.Username) {
@@ -94,15 +94,15 @@ func (um *UserManager) CreateUser(req UserCreateRequest, actorID string) (*User,
 			return nil, fmt.Errorf("email already in use")
 		}
 	}
-	
+
 	// Validate password
 	if err := um.validatePassword(req.Password, req.Username); err != nil {
 		return nil, err
 	}
-	
+
 	// Hash password
 	hashedPassword := um.hashPassword(req.Password)
-	
+
 	// Create user
 	user := &User{
 		ID:                uuid.New().String(),
@@ -116,32 +116,32 @@ func (um *UserManager) CreateUser(req UserCreateRequest, actorID string) (*User,
 		PasswordChangedAt: time.Now(),
 		FailedLogins:      0,
 	}
-	
+
 	// Store user
 	um.users[user.ID] = user
-	
+
 	// Store password separately
 	um.storePassword(user.ID, hashedPassword)
-	
+
 	// Audit log
 	um.auditLog.LogEvent(&AuditEvent{
-		UserID:    actorID,
-		Code:      AuditUserCreate,
-		Category:  "user",
-		Severity:  "info",
-		Success:   true,
-		Target:    user.Username,
-		Message:   fmt.Sprintf("Created user %s with role %s", user.Username, user.Role),
+		UserID:   actorID,
+		Code:     AuditUserCreate,
+		Category: "user",
+		Severity: "info",
+		Success:  true,
+		Target:   user.Username,
+		Message:  fmt.Sprintf("Created user %s with role %s", user.Username, user.Role),
 		NewValues: map[string]interface{}{
 			"username": user.Username,
 			"role":     user.Role,
 			"email":    user.Email,
 		},
 	})
-	
+
 	// Save data
 	um.saveData()
-	
+
 	return user, nil
 }
 
@@ -149,12 +149,12 @@ func (um *UserManager) CreateUser(req UserCreateRequest, actorID string) (*User,
 func (um *UserManager) GetUser(userID string) (*User, error) {
 	um.mu.RLock()
 	defer um.mu.RUnlock()
-	
+
 	user, exists := um.users[userID]
 	if !exists {
 		return nil, fmt.Errorf("user not found")
 	}
-	
+
 	return user, nil
 }
 
@@ -162,13 +162,13 @@ func (um *UserManager) GetUser(userID string) (*User, error) {
 func (um *UserManager) GetUserByUsername(username string) (*User, error) {
 	um.mu.RLock()
 	defer um.mu.RUnlock()
-	
+
 	for _, user := range um.users {
 		if strings.EqualFold(user.Username, username) {
 			return user, nil
 		}
 	}
-	
+
 	return nil, fmt.Errorf("user not found")
 }
 
@@ -176,33 +176,33 @@ func (um *UserManager) GetUserByUsername(username string) (*User, error) {
 func (um *UserManager) UpdateUser(userID string, req UserUpdateRequest, actorID string) (*User, error) {
 	um.mu.Lock()
 	defer um.mu.Unlock()
-	
+
 	user, exists := um.users[userID]
 	if !exists {
 		return nil, fmt.Errorf("user not found")
 	}
-	
+
 	oldValues := make(map[string]interface{})
 	newValues := make(map[string]interface{})
-	
+
 	// Update fields
 	if req.Email != nil {
 		oldValues["email"] = user.Email
 		user.Email = *req.Email
 		newValues["email"] = *req.Email
 	}
-	
+
 	if req.Role != nil {
 		oldValues["role"] = user.Role
 		user.Role = *req.Role
 		newValues["role"] = *req.Role
 	}
-	
+
 	if req.Enabled != nil {
 		oldValues["enabled"] = user.Enabled
 		user.Enabled = *req.Enabled
 		newValues["enabled"] = *req.Enabled
-		
+
 		// Log enable/disable event
 		if *req.Enabled {
 			um.auditLog.LogEvent(&AuditEvent{
@@ -224,14 +224,14 @@ func (um *UserManager) UpdateUser(userID string, req UserUpdateRequest, actorID 
 				Target:   user.Username,
 				Message:  fmt.Sprintf("Disabled user %s", user.Username),
 			})
-			
+
 			// Revoke all sessions when disabling user
 			um.revokeUserSessionsInternal(userID)
 		}
 	}
-	
+
 	user.UpdatedAt = time.Now()
-	
+
 	// Audit log
 	if len(oldValues) > 0 {
 		um.auditLog.LogEvent(&AuditEvent{
@@ -246,10 +246,10 @@ func (um *UserManager) UpdateUser(userID string, req UserUpdateRequest, actorID 
 			NewValues: newValues,
 		})
 	}
-	
+
 	// Save data
 	um.saveData()
-	
+
 	return user, nil
 }
 
@@ -257,12 +257,12 @@ func (um *UserManager) UpdateUser(userID string, req UserUpdateRequest, actorID 
 func (um *UserManager) DeleteUser(userID string, actorID string) error {
 	um.mu.Lock()
 	defer um.mu.Unlock()
-	
+
 	user, exists := um.users[userID]
 	if !exists {
 		return fmt.Errorf("user not found")
 	}
-	
+
 	// Prevent deleting last admin
 	if user.Role == RoleAdmin {
 		adminCount := 0
@@ -275,16 +275,16 @@ func (um *UserManager) DeleteUser(userID string, actorID string) error {
 			return fmt.Errorf("cannot delete last admin user")
 		}
 	}
-	
+
 	// Revoke all sessions
 	um.revokeUserSessionsInternal(userID)
-	
+
 	// Delete user
 	delete(um.users, userID)
-	
+
 	// Delete password
 	um.deletePassword(userID)
-	
+
 	// Audit log
 	um.auditLog.LogEvent(&AuditEvent{
 		UserID:   actorID,
@@ -295,10 +295,10 @@ func (um *UserManager) DeleteUser(userID string, actorID string) error {
 		Target:   user.Username,
 		Message:  fmt.Sprintf("Deleted user %s", user.Username),
 	})
-	
+
 	// Save data
 	um.saveData()
-	
+
 	return nil
 }
 
@@ -306,12 +306,12 @@ func (um *UserManager) DeleteUser(userID string, actorID string) error {
 func (um *UserManager) ListUsers() []*User {
 	um.mu.RLock()
 	defer um.mu.RUnlock()
-	
+
 	users := make([]*User, 0, len(um.users))
 	for _, user := range um.users {
 		users = append(users, user)
 	}
-	
+
 	return users
 }
 
@@ -321,12 +321,12 @@ func (um *UserManager) ListUsers() []*User {
 func (um *UserManager) ChangePassword(userID string, req PasswordChangeRequest) error {
 	um.mu.Lock()
 	defer um.mu.Unlock()
-	
+
 	user, exists := um.users[userID]
 	if !exists {
 		return fmt.Errorf("user not found")
 	}
-	
+
 	// Verify current password
 	if !um.verifyPassword(userID, req.CurrentPassword) {
 		um.auditLog.LogEvent(&AuditEvent{
@@ -340,20 +340,20 @@ func (um *UserManager) ChangePassword(userID string, req PasswordChangeRequest) 
 		})
 		return fmt.Errorf("current password is incorrect")
 	}
-	
+
 	// Validate new password
 	if err := um.validatePassword(req.NewPassword, user.Username); err != nil {
 		return err
 	}
-	
+
 	// Hash and store new password
 	hashedPassword := um.hashPassword(req.NewPassword)
 	um.storePassword(userID, hashedPassword)
-	
+
 	// Update user
 	user.PasswordChangedAt = time.Now()
 	user.ForcePasswordChange = false
-	
+
 	// Audit log
 	um.auditLog.LogEvent(&AuditEvent{
 		UserID:   userID,
@@ -364,10 +364,10 @@ func (um *UserManager) ChangePassword(userID string, req PasswordChangeRequest) 
 		Target:   user.Username,
 		Message:  "Password changed successfully",
 	})
-	
+
 	// Save data
 	um.saveData()
-	
+
 	return nil
 }
 
@@ -375,22 +375,22 @@ func (um *UserManager) ChangePassword(userID string, req PasswordChangeRequest) 
 func (um *UserManager) RequestPasswordReset(req PasswordResetRequest, ip string) error {
 	um.mu.Lock()
 	defer um.mu.Unlock()
-	
+
 	// Find user
 	var user *User
 	for _, u := range um.users {
 		if strings.EqualFold(u.Username, req.UsernameOrEmail) ||
-		   strings.EqualFold(u.Email, req.UsernameOrEmail) {
+			strings.EqualFold(u.Email, req.UsernameOrEmail) {
 			user = u
 			break
 		}
 	}
-	
+
 	if user == nil {
 		// Don't reveal if user exists
 		return nil
 	}
-	
+
 	// Check for existing unexpired token
 	for _, token := range um.resetTokens {
 		if token.UserID == user.ID && token.ExpiresAt.After(time.Now()) && token.UsedAt == nil {
@@ -398,12 +398,12 @@ func (um *UserManager) RequestPasswordReset(req PasswordResetRequest, ip string)
 			return nil
 		}
 	}
-	
+
 	// Generate token
 	tokenBytes := make([]byte, 32)
 	_, _ = rand.Read(tokenBytes)
 	tokenStr := base64.URLEncoding.EncodeToString(tokenBytes)
-	
+
 	// Create reset token
 	resetToken := &PasswordResetToken{
 		ID:        uuid.New().String(),
@@ -414,9 +414,9 @@ func (um *UserManager) RequestPasswordReset(req PasswordResetRequest, ip string)
 		ExpiresAt: time.Now().Add(30 * time.Minute),
 		RequestIP: ip,
 	}
-	
+
 	um.resetTokens[resetToken.ID] = resetToken
-	
+
 	// Audit log
 	um.auditLog.LogEvent(&AuditEvent{
 		UserID:   user.ID,
@@ -428,10 +428,10 @@ func (um *UserManager) RequestPasswordReset(req PasswordResetRequest, ip string)
 		Message:  fmt.Sprintf("Password reset requested via %s", req.Method),
 		IP:       ip,
 	})
-	
+
 	// Save data
 	um.saveData()
-	
+
 	// Return token for console method
 	if req.Method == "console" {
 		// Log token to console
@@ -440,9 +440,9 @@ func (um *UserManager) RequestPasswordReset(req PasswordResetRequest, ip string)
 			Str("token", tokenStr).
 			Msg("Password reset token (valid for 30 minutes)")
 	}
-	
+
 	// TODO: Send email for email method
-	
+
 	return nil
 }
 
@@ -450,49 +450,49 @@ func (um *UserManager) RequestPasswordReset(req PasswordResetRequest, ip string)
 func (um *UserManager) VerifyPasswordReset(req PasswordResetVerify, ip string) error {
 	um.mu.Lock()
 	defer um.mu.Unlock()
-	
+
 	// Find valid token
 	var resetToken *PasswordResetToken
 	for _, token := range um.resetTokens {
-		if token.UsedAt == nil && 
-		   token.ExpiresAt.After(time.Now()) &&
-		   um.verifyPasswordHash(token.Token, req.Token) {
+		if token.UsedAt == nil &&
+			token.ExpiresAt.After(time.Now()) &&
+			um.verifyPasswordHash(token.Token, req.Token) {
 			resetToken = token
 			break
 		}
 	}
-	
+
 	if resetToken == nil {
 		return fmt.Errorf("invalid or expired token")
 	}
-	
+
 	// Get user
 	user, exists := um.users[resetToken.UserID]
 	if !exists {
 		return fmt.Errorf("user not found")
 	}
-	
+
 	// Validate new password
 	if err := um.validatePassword(req.NewPassword, user.Username); err != nil {
 		return err
 	}
-	
+
 	// Update password
 	hashedPassword := um.hashPassword(req.NewPassword)
 	um.storePassword(user.ID, hashedPassword)
-	
+
 	// Mark token as used
 	now := time.Now()
 	resetToken.UsedAt = &now
 	resetToken.ResetIP = ip
-	
+
 	// Update user
 	user.PasswordChangedAt = time.Now()
 	user.ForcePasswordChange = false
-	
+
 	// Revoke all sessions (force re-login)
 	um.revokeUserSessionsInternal(user.ID)
-	
+
 	// Audit log
 	um.auditLog.LogEvent(&AuditEvent{
 		UserID:   user.ID,
@@ -504,10 +504,10 @@ func (um *UserManager) VerifyPasswordReset(req PasswordResetVerify, ip string) e
 		Message:  "Password reset completed",
 		IP:       ip,
 	})
-	
+
 	// Save data
 	um.saveData()
-	
+
 	return nil
 }
 
@@ -517,17 +517,17 @@ func (um *UserManager) VerifyPasswordReset(req PasswordResetVerify, ip string) e
 func (um *UserManager) EnrollTwoFactor(userID string, password string) (*TOTPSecret, error) {
 	um.mu.Lock()
 	defer um.mu.Unlock()
-	
+
 	user, exists := um.users[userID]
 	if !exists {
 		return nil, fmt.Errorf("user not found")
 	}
-	
+
 	// Verify password
 	if !um.verifyPassword(userID, password) {
 		return nil, fmt.Errorf("incorrect password")
 	}
-	
+
 	// Generate TOTP secret
 	key, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      "NithronOS",
@@ -538,10 +538,10 @@ func (um *UserManager) EnrollTwoFactor(userID string, password string) (*TOTPSec
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Generate recovery codes
 	recoveryCodes := um.generateRecoveryCodes()
-	
+
 	// Store temporarily (not verified yet)
 	totpSecret := &TOTPSecret{
 		Secret:      key.Secret(),
@@ -549,10 +549,10 @@ func (um *UserManager) EnrollTwoFactor(userID string, password string) (*TOTPSec
 		Verified:    false,
 		BackupCodes: recoveryCodes,
 	}
-	
+
 	// Store in temp location
 	um.storeTempTOTP(userID, totpSecret)
-	
+
 	return &TOTPSecret{
 		URL:         key.URL(),
 		BackupCodes: recoveryCodes, // Return codes once
@@ -563,36 +563,36 @@ func (um *UserManager) EnrollTwoFactor(userID string, password string) (*TOTPSec
 func (um *UserManager) VerifyTwoFactor(userID string, code string) error {
 	um.mu.Lock()
 	defer um.mu.Unlock()
-	
+
 	user, exists := um.users[userID]
 	if !exists {
 		return fmt.Errorf("user not found")
 	}
-	
+
 	// Get temp TOTP
 	totpSecret := um.getTempTOTP(userID)
 	if totpSecret == nil {
 		return fmt.Errorf("no pending 2FA enrollment")
 	}
-	
+
 	// Verify code
 	valid := totp.Validate(code, totpSecret.Secret)
 	if !valid {
 		return fmt.Errorf("invalid code")
 	}
-	
+
 	// Enable 2FA
 	user.TwoFactorEnabled = true
 	now := time.Now()
 	user.TwoFactorSetupAt = &now
 	user.UpdatedAt = now
-	
+
 	// Store TOTP secret permanently
 	um.storeTOTPSecret(userID, totpSecret)
-	
+
 	// Clear temp
 	um.clearTempTOTP(userID)
-	
+
 	// Audit log
 	um.auditLog.LogEvent(&AuditEvent{
 		UserID:   userID,
@@ -603,10 +603,10 @@ func (um *UserManager) VerifyTwoFactor(userID string, code string) error {
 		Target:   user.Username,
 		Message:  "Two-factor authentication enabled",
 	})
-	
+
 	// Save data
 	um.saveData()
-	
+
 	return nil
 }
 
@@ -614,31 +614,31 @@ func (um *UserManager) VerifyTwoFactor(userID string, code string) error {
 func (um *UserManager) DisableTwoFactor(userID string, password string, code string) error {
 	um.mu.Lock()
 	defer um.mu.Unlock()
-	
+
 	user, exists := um.users[userID]
 	if !exists {
 		return fmt.Errorf("user not found")
 	}
-	
+
 	// Verify password
 	if !um.verifyPassword(userID, password) {
 		return fmt.Errorf("incorrect password")
 	}
-	
+
 	// Verify TOTP or recovery code if provided
 	if code != "" {
 		if !um.verifyTOTP(userID, code) && !um.verifyRecoveryCode(userID, code) {
 			return fmt.Errorf("invalid verification code")
 		}
 	}
-	
+
 	// Disable 2FA
 	user.TwoFactorEnabled = false
 	user.UpdatedAt = time.Now()
-	
+
 	// Remove TOTP secret
 	um.deleteTOTPSecret(userID)
-	
+
 	// Audit log
 	um.auditLog.LogEvent(&AuditEvent{
 		UserID:   userID,
@@ -649,10 +649,10 @@ func (um *UserManager) DisableTwoFactor(userID string, password string, code str
 		Target:   user.Username,
 		Message:  "Two-factor authentication disabled",
 	})
-	
+
 	// Save data
 	um.saveData()
-	
+
 	return nil
 }
 
@@ -660,21 +660,21 @@ func (um *UserManager) DisableTwoFactor(userID string, password string, code str
 func (um *UserManager) GetRecoveryCodes(userID string) ([]RecoveryCode, error) {
 	um.mu.RLock()
 	defer um.mu.RUnlock()
-	
+
 	user, exists := um.users[userID]
 	if !exists {
 		return nil, fmt.Errorf("user not found")
 	}
-	
+
 	if !user.TwoFactorEnabled {
 		return nil, fmt.Errorf("2FA not enabled")
 	}
-	
+
 	totpSecret := um.getTOTPSecret(userID)
 	if totpSecret == nil {
 		return nil, fmt.Errorf("TOTP secret not found")
 	}
-	
+
 	return totpSecret.BackupCodes, nil
 }
 
@@ -682,34 +682,34 @@ func (um *UserManager) GetRecoveryCodes(userID string) ([]RecoveryCode, error) {
 func (um *UserManager) RegenerateRecoveryCodes(userID string, password string) ([]RecoveryCode, error) {
 	um.mu.Lock()
 	defer um.mu.Unlock()
-	
+
 	user, exists := um.users[userID]
 	if !exists {
 		return nil, fmt.Errorf("user not found")
 	}
-	
+
 	// Verify password
 	if !um.verifyPassword(userID, password) {
 		return nil, fmt.Errorf("incorrect password")
 	}
-	
+
 	if !user.TwoFactorEnabled {
 		return nil, fmt.Errorf("2FA not enabled")
 	}
-	
+
 	// Generate new codes
 	recoveryCodes := um.generateRecoveryCodes()
-	
+
 	// Update TOTP secret
 	totpSecret := um.getTOTPSecret(userID)
 	if totpSecret != nil {
 		totpSecret.BackupCodes = recoveryCodes
 		um.storeTOTPSecret(userID, totpSecret)
 	}
-	
+
 	// Save data
 	um.saveData()
-	
+
 	return recoveryCodes, nil
 }
 
@@ -718,13 +718,13 @@ func (um *UserManager) RegenerateRecoveryCodes(userID string, password string) (
 func (um *UserManager) hashPassword(password string) string {
 	salt := make([]byte, 16)
 	_, _ = rand.Read(salt)
-	
+
 	hash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
-	
+
 	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
 	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
-	
-	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s", 
+
+	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
 		argon2.Version, 64*1024, 1, 4, b64Salt, b64Hash)
 }
 
@@ -734,13 +734,13 @@ func (um *UserManager) verifyPasswordHash(hash, password string) bool {
 	if len(parts) != 6 {
 		return false
 	}
-	
+
 	salt, _ := base64.RawStdEncoding.DecodeString(parts[4])
 	expectedHash, _ := base64.RawStdEncoding.DecodeString(parts[5])
-	
+
 	// Compute hash
 	computedHash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
-	
+
 	// Compare
 	return string(expectedHash) == string(computedHash)
 }
@@ -758,14 +758,14 @@ func (um *UserManager) validatePassword(password, username string) error {
 	if len(password) < um.passwordPolicy.MinLength {
 		return fmt.Errorf("password must be at least %d characters", um.passwordPolicy.MinLength)
 	}
-	
+
 	// Check username similarity
 	if um.passwordPolicy.ProhibitUsername {
 		if strings.Contains(strings.ToLower(password), strings.ToLower(username)) {
 			return fmt.Errorf("password cannot contain username")
 		}
 	}
-	
+
 	// Check character requirements
 	var hasUpper, hasLower, hasNumber, hasSpecial bool
 	for _, ch := range password {
@@ -780,7 +780,7 @@ func (um *UserManager) validatePassword(password, username string) error {
 			hasSpecial = true
 		}
 	}
-	
+
 	if um.passwordPolicy.RequireUppercase && !hasUpper {
 		return fmt.Errorf("password must contain uppercase letter")
 	}
@@ -793,7 +793,7 @@ func (um *UserManager) validatePassword(password, username string) error {
 	if um.passwordPolicy.RequireSpecial && !hasSpecial {
 		return fmt.Errorf("password must contain special character")
 	}
-	
+
 	return nil
 }
 
@@ -824,7 +824,7 @@ func (um *UserManager) verifyRecoveryCode(userID, code string) bool {
 	if totpSecret == nil {
 		return false
 	}
-	
+
 	for i, rc := range totpSecret.BackupCodes {
 		if rc.Code == code && rc.UsedAt == nil {
 			// Mark as used
@@ -834,7 +834,7 @@ func (um *UserManager) verifyRecoveryCode(userID, code string) bool {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -852,31 +852,31 @@ func (um *UserManager) createDefaultAdmin() {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
 	password := base64.URLEncoding.EncodeToString(b)
-	
+
 	// Create admin user
 	user := &User{
-		ID:                uuid.New().String(),
-		Username:          "admin",
-		Role:              RoleAdmin,
-		Enabled:           true,
-		CreatedAt:         time.Now(),
-		UpdatedAt:         time.Now(),
-		PasswordChangedAt: time.Now(),
+		ID:                  uuid.New().String(),
+		Username:            "admin",
+		Role:                RoleAdmin,
+		Enabled:             true,
+		CreatedAt:           time.Now(),
+		UpdatedAt:           time.Now(),
+		PasswordChangedAt:   time.Now(),
 		ForcePasswordChange: true,
 	}
-	
+
 	um.users[user.ID] = user
-	
+
 	// Store password
 	hashedPassword := um.hashPassword(password)
 	um.storePassword(user.ID, hashedPassword)
-	
+
 	// Log credentials
 	um.logger.Warn().
 		Str("username", "admin").
 		Str("password", password).
 		Msg("Default admin user created. CHANGE THIS PASSWORD IMMEDIATELY!")
-	
+
 	// Save data
 	um.saveData()
 }
@@ -884,7 +884,7 @@ func (um *UserManager) createDefaultAdmin() {
 func (um *UserManager) cleanupRoutine() {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		um.cleanup()
 	}
@@ -893,30 +893,30 @@ func (um *UserManager) cleanupRoutine() {
 func (um *UserManager) cleanup() {
 	um.mu.Lock()
 	defer um.mu.Unlock()
-	
+
 	now := time.Now()
-	
+
 	// Clean expired sessions
 	for id, session := range um.sessions {
 		if session.ExpiresAt.Before(now) {
 			delete(um.sessions, id)
 		}
 	}
-	
+
 	// Clean expired reset tokens
 	for id, token := range um.resetTokens {
 		if token.ExpiresAt.Before(now) {
 			delete(um.resetTokens, id)
 		}
 	}
-	
+
 	// Clean expired lockouts
 	for id, lockout := range um.lockouts {
 		if lockout.LockedUntil.Before(now) {
 			delete(um.lockouts, id)
 		}
 	}
-	
+
 	// Clean old login attempts
 	um.attemptsMu.Lock()
 	cutoff := now.Add(-24 * time.Hour)
@@ -938,19 +938,19 @@ func (um *UserManager) loadData() {
 	if data, err := os.ReadFile(usersPath); err == nil {
 		_ = json.Unmarshal(data, &um.users)
 	}
-	
+
 	// Load sessions
 	sessionsPath := filepath.Join(um.dataPath, "sessions.json")
 	if data, err := os.ReadFile(sessionsPath); err == nil {
 		_ = json.Unmarshal(data, &um.sessions)
 	}
-	
+
 	// Load reset tokens
 	tokensPath := filepath.Join(um.dataPath, "reset_tokens.json")
 	if data, err := os.ReadFile(tokensPath); err == nil {
 		_ = json.Unmarshal(data, &um.resetTokens)
 	}
-	
+
 	// Load lockouts
 	lockoutsPath := filepath.Join(um.dataPath, "lockouts.json")
 	if data, err := os.ReadFile(lockoutsPath); err == nil {
@@ -961,25 +961,25 @@ func (um *UserManager) loadData() {
 func (um *UserManager) saveData() {
 	// Create directory if needed
 	_ = os.MkdirAll(um.dataPath, 0700)
-	
+
 	// Save users
 	if data, err := json.MarshalIndent(um.users, "", "  "); err == nil {
 		usersPath := filepath.Join(um.dataPath, "users.json")
 		_ = os.WriteFile(usersPath, data, 0600)
 	}
-	
+
 	// Save sessions
 	if data, err := json.MarshalIndent(um.sessions, "", "  "); err == nil {
 		sessionsPath := filepath.Join(um.dataPath, "sessions.json")
 		_ = os.WriteFile(sessionsPath, data, 0600)
 	}
-	
+
 	// Save reset tokens
 	if data, err := json.MarshalIndent(um.resetTokens, "", "  "); err == nil {
 		tokensPath := filepath.Join(um.dataPath, "reset_tokens.json")
 		_ = os.WriteFile(tokensPath, data, 0600)
 	}
-	
+
 	// Save lockouts
 	if data, err := json.MarshalIndent(um.lockouts, "", "  "); err == nil {
 		lockoutsPath := filepath.Join(um.dataPath, "lockouts.json")
@@ -992,13 +992,13 @@ func (um *UserManager) saveData() {
 func (um *UserManager) storePassword(userID, hash string) {
 	passwordsPath := filepath.Join(um.dataPath, "passwords.json")
 	passwords := make(map[string]string)
-	
+
 	if data, err := os.ReadFile(passwordsPath); err == nil {
 		_ = json.Unmarshal(data, &passwords)
 	}
-	
+
 	passwords[userID] = hash
-	
+
 	if data, err := json.Marshal(passwords); err == nil {
 		_ = os.WriteFile(passwordsPath, data, 0600)
 	}
@@ -1007,24 +1007,24 @@ func (um *UserManager) storePassword(userID, hash string) {
 func (um *UserManager) getPassword(userID string) string {
 	passwordsPath := filepath.Join(um.dataPath, "passwords.json")
 	passwords := make(map[string]string)
-	
+
 	if data, err := os.ReadFile(passwordsPath); err == nil {
 		_ = json.Unmarshal(data, &passwords)
 	}
-	
+
 	return passwords[userID]
 }
 
 func (um *UserManager) deletePassword(userID string) {
 	passwordsPath := filepath.Join(um.dataPath, "passwords.json")
 	passwords := make(map[string]string)
-	
+
 	if data, err := os.ReadFile(passwordsPath); err == nil {
 		_ = json.Unmarshal(data, &passwords)
 	}
-	
+
 	delete(passwords, userID)
-	
+
 	if data, err := json.Marshal(passwords); err == nil {
 		_ = os.WriteFile(passwordsPath, data, 0600)
 	}
@@ -1035,13 +1035,13 @@ func (um *UserManager) deletePassword(userID string) {
 func (um *UserManager) storeTOTPSecret(userID string, secret *TOTPSecret) {
 	totpPath := filepath.Join(um.dataPath, "totp.json")
 	secrets := make(map[string]*TOTPSecret)
-	
+
 	if data, err := os.ReadFile(totpPath); err == nil {
 		_ = json.Unmarshal(data, &secrets)
 	}
-	
+
 	secrets[userID] = secret
-	
+
 	if data, err := json.Marshal(secrets); err == nil {
 		_ = os.WriteFile(totpPath, data, 0600)
 	}
@@ -1050,24 +1050,24 @@ func (um *UserManager) storeTOTPSecret(userID string, secret *TOTPSecret) {
 func (um *UserManager) getTOTPSecret(userID string) *TOTPSecret {
 	totpPath := filepath.Join(um.dataPath, "totp.json")
 	secrets := make(map[string]*TOTPSecret)
-	
+
 	if data, err := os.ReadFile(totpPath); err == nil {
 		_ = json.Unmarshal(data, &secrets)
 	}
-	
+
 	return secrets[userID]
 }
 
 func (um *UserManager) deleteTOTPSecret(userID string) {
 	totpPath := filepath.Join(um.dataPath, "totp.json")
 	secrets := make(map[string]*TOTPSecret)
-	
+
 	if data, err := os.ReadFile(totpPath); err == nil {
 		_ = json.Unmarshal(data, &secrets)
 	}
-	
+
 	delete(secrets, userID)
-	
+
 	if data, err := json.Marshal(secrets); err == nil {
 		_ = os.WriteFile(totpPath, data, 0600)
 	}
@@ -1076,13 +1076,13 @@ func (um *UserManager) deleteTOTPSecret(userID string) {
 func (um *UserManager) storeTempTOTP(userID string, secret *TOTPSecret) {
 	tempPath := filepath.Join(um.dataPath, "totp_temp.json")
 	secrets := make(map[string]*TOTPSecret)
-	
+
 	if data, err := os.ReadFile(tempPath); err == nil {
 		_ = json.Unmarshal(data, &secrets)
 	}
-	
+
 	secrets[userID] = secret
-	
+
 	if data, err := json.Marshal(secrets); err == nil {
 		_ = os.WriteFile(tempPath, data, 0600)
 	}
@@ -1091,24 +1091,24 @@ func (um *UserManager) storeTempTOTP(userID string, secret *TOTPSecret) {
 func (um *UserManager) getTempTOTP(userID string) *TOTPSecret {
 	tempPath := filepath.Join(um.dataPath, "totp_temp.json")
 	secrets := make(map[string]*TOTPSecret)
-	
+
 	if data, err := os.ReadFile(tempPath); err == nil {
 		_ = json.Unmarshal(data, &secrets)
 	}
-	
+
 	return secrets[userID]
 }
 
 func (um *UserManager) clearTempTOTP(userID string) {
 	tempPath := filepath.Join(um.dataPath, "totp_temp.json")
 	secrets := make(map[string]*TOTPSecret)
-	
+
 	if data, err := os.ReadFile(tempPath); err == nil {
 		_ = json.Unmarshal(data, &secrets)
 	}
-	
+
 	delete(secrets, userID)
-	
+
 	if data, err := json.Marshal(secrets); err == nil {
 		_ = os.WriteFile(tempPath, data, 0600)
 	}

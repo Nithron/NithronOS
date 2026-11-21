@@ -242,4 +242,3 @@ func (f *WrappedFile) ETag(ctx context.Context) (string, error) {
 func (f *WrappedFile) Readdir(count int) ([]fs.FileInfo, error) {
 	return f.File.Readdir(count)
 }
-

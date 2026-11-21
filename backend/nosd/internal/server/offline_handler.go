@@ -310,4 +310,3 @@ func (h *OfflineHandler) Shutdown() {
 func (h *OfflineHandler) GetManager() *offline.OfflineManager {
 	return h.manager
 }
-

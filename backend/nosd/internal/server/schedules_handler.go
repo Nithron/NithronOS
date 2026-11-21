@@ -13,13 +13,13 @@ import (
 
 // Schedule represents a scheduled task
 type Schedule struct {
-	ID       string  `json:"id"`
-	Type     string  `json:"type"` // smart_scan, btrfs_scrub, snapshot, backup
-	Cron     string  `json:"cron"`
-	Enabled  bool    `json:"enabled"`
-	Target   string  `json:"target,omitempty"` // Pool ID or device for targeted schedules
-	LastRun  *string `json:"lastRun,omitempty"`
-	NextRun  *string `json:"nextRun,omitempty"`
+	ID      string  `json:"id"`
+	Type    string  `json:"type"` // smart_scan, btrfs_scrub, snapshot, backup
+	Cron    string  `json:"cron"`
+	Enabled bool    `json:"enabled"`
+	Target  string  `json:"target,omitempty"` // Pool ID or device for targeted schedules
+	LastRun *string `json:"lastRun,omitempty"`
+	NextRun *string `json:"nextRun,omitempty"`
 }
 
 // SchedulesHandler handles schedule-related endpoints
@@ -34,7 +34,7 @@ func NewSchedulesHandler() *SchedulesHandler {
 	now := time.Now()
 	lastRun := now.Add(-24 * time.Hour).Format(time.RFC3339)
 	nextRun := now.Add(24 * time.Hour).Format(time.RFC3339)
-	
+
 	return &SchedulesHandler{
 		schedules: []Schedule{
 			{
@@ -61,13 +61,13 @@ func NewSchedulesHandler() *SchedulesHandler {
 // Routes registers the schedules routes
 func (h *SchedulesHandler) Routes() chi.Router {
 	r := chi.NewRouter()
-	
+
 	r.Get("/", h.GetSchedules)
 	r.Post("/", h.CreateSchedule)
 	r.Get("/{id}", h.GetSchedule)
 	r.Put("/{id}", h.UpdateSchedule)
 	r.Delete("/{id}", h.DeleteSchedule)
-	
+
 	return r
 }
 
@@ -85,7 +85,7 @@ func (h *SchedulesHandler) GetSchedules(w http.ResponseWriter, r *http.Request) 
 // GET /api/v1/schedules/{id}
 func (h *SchedulesHandler) GetSchedule(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	
+
 	for _, schedule := range h.schedules {
 		if schedule.ID == id {
 			w.Header().Set("Content-Type", "application/json")
@@ -95,7 +95,7 @@ func (h *SchedulesHandler) GetSchedule(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	
+
 	http.Error(w, "Schedule not found", http.StatusNotFound)
 }
 
@@ -107,31 +107,31 @@ func (h *SchedulesHandler) CreateSchedule(w http.ResponseWriter, r *http.Request
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	
+
 	// Generate ID if not provided
 	if schedule.ID == "" {
 		schedule.ID = "schedule-" + uuid.New().String()[:8]
 	}
-	
+
 	// Validate schedule type
 	validTypes := map[string]bool{
-		"smart_scan":   true,
-		"btrfs_scrub":  true,
-		"snapshot":     true,
-		"backup":       true,
+		"smart_scan":  true,
+		"btrfs_scrub": true,
+		"snapshot":    true,
+		"backup":      true,
 	}
-	
+
 	if !validTypes[schedule.Type] {
 		http.Error(w, "Invalid schedule type", http.StatusBadRequest)
 		return
 	}
-	
+
 	// Add to schedules
 	h.schedules = append(h.schedules, schedule)
-	
+
 	// In real implementation, this would register with cron scheduler
 	log.Info().Str("id", schedule.ID).Str("type", schedule.Type).Msg("Created schedule")
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(schedule); err != nil {
@@ -143,13 +143,13 @@ func (h *SchedulesHandler) CreateSchedule(w http.ResponseWriter, r *http.Request
 // PUT /api/v1/schedules/{id}
 func (h *SchedulesHandler) UpdateSchedule(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	
+
 	var updates Schedule
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	
+
 	for i, schedule := range h.schedules {
 		if schedule.ID == id {
 			// Update fields
@@ -163,10 +163,10 @@ func (h *SchedulesHandler) UpdateSchedule(w http.ResponseWriter, r *http.Request
 			if updates.Target != "" {
 				h.schedules[i].Target = updates.Target
 			}
-			
+
 			// In real implementation, this would update cron scheduler
 			log.Info().Str("id", id).Msg("Updated schedule")
-			
+
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(h.schedules[i]); err != nil {
 				fmt.Printf("Failed to write response: %v\n", err)
@@ -174,7 +174,7 @@ func (h *SchedulesHandler) UpdateSchedule(w http.ResponseWriter, r *http.Request
 			return
 		}
 	}
-	
+
 	http.Error(w, "Schedule not found", http.StatusNotFound)
 }
 
@@ -182,19 +182,19 @@ func (h *SchedulesHandler) UpdateSchedule(w http.ResponseWriter, r *http.Request
 // DELETE /api/v1/schedules/{id}
 func (h *SchedulesHandler) DeleteSchedule(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	
+
 	for i, schedule := range h.schedules {
 		if schedule.ID == id {
 			// Remove from slice
 			h.schedules = append(h.schedules[:i], h.schedules[i+1:]...)
-			
+
 			// In real implementation, this would unregister from cron scheduler
 			log.Info().Str("id", id).Msg("Deleted schedule")
-			
+
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 	}
-	
+
 	http.Error(w, "Schedule not found", http.StatusNotFound)
 }

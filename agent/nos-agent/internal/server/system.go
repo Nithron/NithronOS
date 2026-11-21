@@ -225,21 +225,21 @@ func handleConfigureNetwork(w http.ResponseWriter, params map[string]interface{}
 
 		var config strings.Builder
 		config.WriteString("[Match]\n")
-		config.WriteString(fmt.Sprintf("Name=%s\n\n", iface))
+		fmt.Fprintf(&config, "Name=%s\n\n", iface)
 		config.WriteString("[Network]\n")
 
 		if dhcp {
 			config.WriteString("DHCP=yes\n")
 		} else {
 			if ipv4Address != "" {
-				config.WriteString(fmt.Sprintf("Address=%s\n", ipv4Address))
+				fmt.Fprintf(&config, "Address=%s\n", ipv4Address)
 			}
 			if ipv4Gateway != "" {
-				config.WriteString(fmt.Sprintf("Gateway=%s\n", ipv4Gateway))
+				fmt.Fprintf(&config, "Gateway=%s\n", ipv4Gateway)
 			}
 			for _, dns := range dnsServers {
 				if str, ok := dns.(string); ok {
-					config.WriteString(fmt.Sprintf("DNS=%s\n", str))
+					fmt.Fprintf(&config, "DNS=%s\n", str)
 				}
 			}
 		}
@@ -280,7 +280,7 @@ func handleConfigureNetwork(w http.ResponseWriter, params map[string]interface{}
 					var resolvConf strings.Builder
 					for _, dns := range dnsServers {
 						if str, ok := dns.(string); ok {
-							resolvConf.WriteString(fmt.Sprintf("nameserver %s\n", str))
+							fmt.Fprintf(&resolvConf, "nameserver %s\n", str)
 						}
 					}
 					_ = os.WriteFile("/etc/resolv.conf", []byte(resolvConf.String()), 0644)

@@ -22,7 +22,7 @@ import (
 type ChangeTracker struct {
 	logger zerolog.Logger
 	mu     sync.RWMutex
-	
+
 	// Configuration
 	excludePatterns []string
 	maxFileSize     int64
@@ -65,9 +65,9 @@ func NewChangeTracker(logger zerolog.Logger, config ChangeTrackerConfig) *Change
 
 // Cursor represents a sync cursor containing the last known state
 type Cursor struct {
-	Timestamp   time.Time `json:"timestamp"`
+	Timestamp   time.Time         `json:"timestamp"`
 	FileHashes  map[string]string `json:"file_hashes"` // path -> hash
-	LastScanned time.Time `json:"last_scanned"`
+	LastScanned time.Time         `json:"last_scanned"`
 }
 
 // EncodeCursor encodes a cursor to a string
@@ -102,11 +102,11 @@ func DecodeCursor(s string) (*Cursor, error) {
 func (ct *ChangeTracker) GetChanges(sharePath, cursorStr string, limit int) (*ChangesResponse, error) {
 	ct.mu.RLock()
 	defer ct.mu.RUnlock()
-	
+
 	if limit <= 0 || limit > MaxChangesPerRequest {
 		limit = MaxChangesPerRequest
 	}
-	
+
 	// Validate share path exists
 	info, err := os.Stat(sharePath)
 	if err != nil {
@@ -115,13 +115,13 @@ func (ct *ChangeTracker) GetChanges(sharePath, cursorStr string, limit int) (*Ch
 	if !info.IsDir() {
 		return nil, fmt.Errorf("share path is not a directory")
 	}
-	
+
 	// Decode cursor
 	cursor, err := DecodeCursor(cursorStr)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// If no cursor, return all files
 	if cursor == nil {
 		cursor = &Cursor{
@@ -129,28 +129,28 @@ func (ct *ChangeTracker) GetChanges(sharePath, cursorStr string, limit int) (*Ch
 			FileHashes: make(map[string]string),
 		}
 	}
-	
+
 	// Scan directory for changes
 	currentFiles := make(map[string]FileMetadata)
 	err = ct.scanDirectory(sharePath, "", currentFiles)
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan directory: %w", err)
 	}
-	
+
 	// Compute changes
 	changes := ct.computeChanges(cursor.FileHashes, currentFiles)
-	
+
 	// Sort changes by modification time
 	sort.Slice(changes, func(i, j int) bool {
 		return changes[i].MTime.Before(changes[j].MTime)
 	})
-	
+
 	// Limit results
 	hasMore := len(changes) > limit
 	if hasMore {
 		changes = changes[:limit]
 	}
-	
+
 	// Create new cursor with current state
 	newFileHashes := make(map[string]string, len(currentFiles))
 	for path, meta := range currentFiles {
@@ -161,7 +161,7 @@ func (ct *ChangeTracker) GetChanges(sharePath, cursorStr string, limit int) (*Ch
 		FileHashes:  newFileHashes,
 		LastScanned: time.Now(),
 	}
-	
+
 	return &ChangesResponse{
 		Changes: changes,
 		Cursor:  EncodeCursor(newCursor),
@@ -175,31 +175,31 @@ func (ct *ChangeTracker) scanDirectory(basePath, relativePath string, files map[
 	if relativePath != "" {
 		currentPath = filepath.Join(basePath, relativePath)
 	}
-	
+
 	entries, err := os.ReadDir(currentPath)
 	if err != nil {
 		return err
 	}
-	
+
 	for _, entry := range entries {
 		name := entry.Name()
 		relPath := name
 		if relativePath != "" {
 			relPath = filepath.Join(relativePath, name)
 		}
-		
+
 		// Check exclusions
 		if ct.shouldExclude(name, relPath) {
 			continue
 		}
-		
+
 		fullPath := filepath.Join(basePath, relPath)
 		info, err := entry.Info()
 		if err != nil {
 			ct.logger.Warn().Err(err).Str("path", relPath).Msg("Failed to get file info")
 			continue
 		}
-		
+
 		if entry.IsDir() {
 			// Add directory entry
 			files[relPath] = FileMetadata{
@@ -222,14 +222,14 @@ func (ct *ChangeTracker) scanDirectory(basePath, relativePath string, files map[
 					Msg("Skipping file (too large)")
 				continue
 			}
-			
+
 			// Compute file hash
 			hash, err := ct.computeFileHash(fullPath)
 			if err != nil {
 				ct.logger.Warn().Err(err).Str("path", relPath).Msg("Failed to compute file hash")
 				continue
 			}
-			
+
 			files[relPath] = FileMetadata{
 				Path:  relPath,
 				Size:  info.Size(),
@@ -240,14 +240,14 @@ func (ct *ChangeTracker) scanDirectory(basePath, relativePath string, files map[
 			}
 		}
 	}
-	
+
 	return nil
 }
 
 // computeChanges computes the differences between old and new file states
 func (ct *ChangeTracker) computeChanges(oldHashes map[string]string, currentFiles map[string]FileMetadata) []FileChange {
 	var changes []FileChange
-	
+
 	// Check for new and modified files
 	for path, meta := range currentFiles {
 		oldHash, existed := oldHashes[path]
@@ -273,7 +273,7 @@ func (ct *ChangeTracker) computeChanges(oldHashes map[string]string, currentFile
 			})
 		}
 	}
-	
+
 	// Check for deleted files
 	for path := range oldHashes {
 		if _, exists := currentFiles[path]; !exists {
@@ -284,7 +284,7 @@ func (ct *ChangeTracker) computeChanges(oldHashes map[string]string, currentFile
 			})
 		}
 	}
-	
+
 	return changes
 }
 
@@ -295,12 +295,12 @@ func (ct *ChangeTracker) computeFileHash(path string) (string, error) {
 		return "", err
 	}
 	defer f.Close()
-	
+
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		return "", err
 	}
-	
+
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
@@ -315,20 +315,20 @@ func (ct *ChangeTracker) shouldExclude(name, relPath string) bool {
 			}
 			continue
 		}
-		
+
 		// Handle glob patterns
 		matched, _ := filepath.Match(pattern, name)
 		if matched {
 			return true
 		}
-		
+
 		// Also check the full relative path
 		matched, _ = filepath.Match(pattern, relPath)
 		if matched {
 			return true
 		}
 	}
-	
+
 	// Check for hidden files (Unix convention)
 	if strings.HasPrefix(name, ".") && name != "." && name != ".." {
 		// Allow some hidden files
@@ -340,14 +340,14 @@ func (ct *ChangeTracker) shouldExclude(name, relPath string) bool {
 			return exclude
 		}
 	}
-	
+
 	return false
 }
 
 // GetFileMetadata returns metadata for a specific file
 func (ct *ChangeTracker) GetFileMetadata(sharePath, filePath string) (*FileMetadata, error) {
 	fullPath := filepath.Join(sharePath, filePath)
-	
+
 	// Ensure the path is within the share
 	cleanPath, err := filepath.Abs(fullPath)
 	if err != nil {
@@ -357,7 +357,7 @@ func (ct *ChangeTracker) GetFileMetadata(sharePath, filePath string) (*FileMetad
 	if !strings.HasPrefix(cleanPath, cleanSharePath) {
 		return nil, fmt.Errorf("path escapes share directory")
 	}
-	
+
 	info, err := os.Stat(fullPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -365,7 +365,7 @@ func (ct *ChangeTracker) GetFileMetadata(sharePath, filePath string) (*FileMetad
 		}
 		return nil, err
 	}
-	
+
 	meta := &FileMetadata{
 		Path:  filePath,
 		Size:  info.Size(),
@@ -373,21 +373,21 @@ func (ct *ChangeTracker) GetFileMetadata(sharePath, filePath string) (*FileMetad
 		IsDir: info.IsDir(),
 		Mode:  uint32(info.Mode()),
 	}
-	
+
 	if !info.IsDir() && info.Size() <= ct.maxFileSize {
 		hash, err := ct.computeFileHash(fullPath)
 		if err == nil {
 			meta.Hash = hash
 		}
 	}
-	
+
 	return meta, nil
 }
 
 // GetFilesMetadata returns metadata for multiple files
 func (ct *ChangeTracker) GetFilesMetadata(sharePath string, filePaths []string) ([]FileMetadata, error) {
 	results := make([]FileMetadata, 0, len(filePaths))
-	
+
 	for _, filePath := range filePaths {
 		meta, err := ct.GetFileMetadata(sharePath, filePath)
 		if err != nil {
@@ -397,43 +397,43 @@ func (ct *ChangeTracker) GetFilesMetadata(sharePath string, filePaths []string) 
 		}
 		results = append(results, *meta)
 	}
-	
+
 	return results, nil
 }
 
 // WalkShare walks a share directory and returns all files
 func (ct *ChangeTracker) WalkShare(sharePath string) ([]FileMetadata, error) {
 	var files []FileMetadata
-	
+
 	err := filepath.WalkDir(sharePath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil // Skip errors
 		}
-		
+
 		relPath, err := filepath.Rel(sharePath, path)
 		if err != nil || relPath == "." {
 			return nil
 		}
-		
+
 		if ct.shouldExclude(d.Name(), relPath) {
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		
+
 		info, err := d.Info()
 		if err != nil {
 			return nil
 		}
-		
+
 		meta := FileMetadata{
 			Path:  relPath,
 			IsDir: d.IsDir(),
 			MTime: info.ModTime(),
 			Mode:  uint32(info.Mode()),
 		}
-		
+
 		if !d.IsDir() {
 			meta.Size = info.Size()
 			if info.Size() <= ct.maxFileSize {
@@ -443,11 +443,11 @@ func (ct *ChangeTracker) WalkShare(sharePath string) ([]FileMetadata, error) {
 				}
 			}
 		}
-		
+
 		files = append(files, meta)
 		return nil
 	})
-	
+
 	return files, err
 }
 
@@ -457,30 +457,30 @@ func (ct *ChangeTracker) ShareStats(sharePath string) (totalFiles int64, totalSi
 		if err != nil {
 			return nil
 		}
-		
+
 		if d.IsDir() {
 			return nil
 		}
-		
+
 		relPath, err := filepath.Rel(sharePath, path)
 		if err != nil {
 			return nil
 		}
-		
+
 		if ct.shouldExclude(d.Name(), relPath) {
 			return nil
 		}
-		
+
 		info, err := d.Info()
 		if err != nil {
 			return nil
 		}
-		
+
 		totalFiles++
 		totalSize += info.Size()
 		return nil
 	})
-	
+
 	return totalFiles, totalSize, err
 }
 
@@ -499,4 +499,3 @@ func (ct *ChangeTracker) GetExcludePatterns() []string {
 	copy(result, ct.excludePatterns)
 	return result
 }
-

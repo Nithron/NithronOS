@@ -41,12 +41,12 @@ func (n *Notifier) Send(channel *NotificationChannel, msg NotificationMessage) e
 		n.logger.Debug().Str("channel", channel.Name).Msg("Skipping notification during quiet hours")
 		return nil
 	}
-	
+
 	// Check rate limit
 	if !n.checkRateLimit(channel) {
 		return fmt.Errorf("rate limit exceeded")
 	}
-	
+
 	// Send based on channel type
 	var err error
 	switch channel.Type {
@@ -59,7 +59,7 @@ func (n *Notifier) Send(channel *NotificationChannel, msg NotificationMessage) e
 	default:
 		err = fmt.Errorf("unsupported channel type: %s", channel.Type)
 	}
-	
+
 	// Update channel metadata
 	now := time.Now()
 	channel.LastUsed = &now
@@ -68,7 +68,7 @@ func (n *Notifier) Send(channel *NotificationChannel, msg NotificationMessage) e
 	} else {
 		channel.LastError = ""
 	}
-	
+
 	return err
 }
 
@@ -78,15 +78,15 @@ func (n *Notifier) sendEmail(channel *NotificationChannel, msg NotificationMessa
 	if err := n.mapConfig(channel.Config, &config); err != nil {
 		return fmt.Errorf("invalid email config: %w", err)
 	}
-	
+
 	// Build email
 	subject := config.Subject
 	if subject == "" {
 		subject = msg.Title
 	}
-	
+
 	body := n.formatEmailBody(msg)
-	
+
 	// Build message
 	var message bytes.Buffer
 	message.WriteString("From: " + config.From + "\r\n")
@@ -96,15 +96,15 @@ func (n *Notifier) sendEmail(channel *NotificationChannel, msg NotificationMessa
 	message.WriteString("Content-Type: text/html; charset=\"UTF-8\"\r\n")
 	message.WriteString("\r\n")
 	message.WriteString(body)
-	
+
 	// Connect to SMTP server
 	addr := fmt.Sprintf("%s:%d", config.SMTPHost, config.SMTPPort)
-	
+
 	var auth smtp.Auth
 	if config.SMTPUser != "" && config.SMTPPassword != "" {
 		auth = smtp.PlainAuth("", config.SMTPUser, config.SMTPPassword, config.SMTPHost)
 	}
-	
+
 	// Send email
 	var err error
 	if config.UseTLS || config.SMTPPort == 465 {
@@ -117,7 +117,7 @@ func (n *Notifier) sendEmail(channel *NotificationChannel, msg NotificationMessa
 		// Plain SMTP
 		err = smtp.SendMail(addr, nil, config.From, config.To, message.Bytes())
 	}
-	
+
 	return err
 }
 
@@ -126,66 +126,67 @@ func (n *Notifier) sendEmailTLS(addr string, auth smtp.Auth, from string, to []s
 	tlsConfig := &tls.Config{
 		ServerName: strings.Split(addr, ":")[0],
 	}
-	
+
 	conn, err := tls.Dial("tcp", addr, tlsConfig)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	
+
 	client, err := smtp.NewClient(conn, tlsConfig.ServerName)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
-	
+
 	if auth != nil {
 		if err := client.Auth(auth); err != nil {
 			return err
 		}
 	}
-	
+
 	if err := client.Mail(from); err != nil {
 		return err
 	}
-	
+
 	for _, recipient := range to {
 		if err := client.Rcpt(recipient); err != nil {
 			return err
 		}
 	}
-	
+
 	w, err := client.Data()
 	if err != nil {
 		return err
 	}
-	
+
 	if _, err := w.Write(msg); err != nil {
 		return err
 	}
-	
+
 	if err := w.Close(); err != nil {
 		return err
 	}
-	
+
 	return client.Quit()
 }
 
 // formatEmailBody formats the email body
 func (n *Notifier) formatEmailBody(msg NotificationMessage) string {
 	severityColor := "#17a2b8" // info
-	if msg.Severity == SeverityWarning {
+	switch msg.Severity {
+	case SeverityWarning:
 		severityColor = "#ffc107"
-	} else if msg.Severity == SeverityCritical {
+	case SeverityCritical:
 		severityColor = "#dc3545"
 	}
-	
+
 	stateIcon := "⚠️"
 	if msg.State == "cleared" {
 		stateIcon = "✅"
 		severityColor = "#28a745"
 	}
-	
+
 	htmlTemplate := `
 <!DOCTYPE html>
 <html>
@@ -233,12 +234,12 @@ func (n *Notifier) formatEmailBody(msg NotificationMessage) string {
 </body>
 </html>
 `
-	
+
 	tmpl, err := template.New("email").Parse(htmlTemplate)
 	if err != nil {
 		return msg.Body
 	}
-	
+
 	data := map[string]interface{}{
 		"StateIcon":     stateIcon,
 		"SeverityColor": severityColor,
@@ -250,12 +251,12 @@ func (n *Notifier) formatEmailBody(msg NotificationMessage) string {
 		"Hostname":      msg.Hostname,
 		"Timestamp":     msg.Timestamp.Format(time.RFC3339),
 	}
-	
+
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
 		return msg.Body
 	}
-	
+
 	return buf.String()
 }
 
@@ -265,23 +266,23 @@ func (n *Notifier) sendWebhook(channel *NotificationChannel, msg NotificationMes
 	if err := n.mapConfig(channel.Config, &config); err != nil {
 		return fmt.Errorf("invalid webhook config: %w", err)
 	}
-	
+
 	// Prepare payload
 	var payload []byte
 	var err error
-	
+
 	if config.Template != "" {
 		// Use custom template
 		tmpl, err := template.New("webhook").Parse(config.Template)
 		if err != nil {
 			return fmt.Errorf("invalid template: %w", err)
 		}
-		
+
 		var buf bytes.Buffer
 		if err := tmpl.Execute(&buf, msg); err != nil {
 			return fmt.Errorf("template execution failed: %w", err)
 		}
-		
+
 		payload = buf.Bytes()
 	} else {
 		// Default JSON payload
@@ -290,24 +291,24 @@ func (n *Notifier) sendWebhook(channel *NotificationChannel, msg NotificationMes
 			return fmt.Errorf("failed to marshal payload: %w", err)
 		}
 	}
-	
+
 	// Create request
 	method := config.Method
 	if method == "" {
 		method = "POST"
 	}
-	
+
 	req, err := http.NewRequest(method, config.URL, bytes.NewReader(payload))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	for k, v := range config.Headers {
 		req.Header.Set(k, v)
 	}
-	
+
 	// Add HMAC signature if secret is provided
 	if config.Secret != "" {
 		h := hmac.New(sha256.New, []byte(config.Secret))
@@ -315,18 +316,18 @@ func (n *Notifier) sendWebhook(channel *NotificationChannel, msg NotificationMes
 		signature := hex.EncodeToString(h.Sum(nil))
 		req.Header.Set("X-Signature", signature)
 	}
-	
+
 	// Send request
 	resp, err := n.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("webhook request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("webhook returned status %d", resp.StatusCode)
 	}
-	
+
 	return nil
 }
 
@@ -336,19 +337,19 @@ func (n *Notifier) sendNtfy(channel *NotificationChannel, msg NotificationMessag
 	if err := n.mapConfig(channel.Config, &config); err != nil {
 		return fmt.Errorf("invalid ntfy config: %w", err)
 	}
-	
+
 	// Build URL
 	url := fmt.Sprintf("%s/%s", strings.TrimRight(config.ServerURL, "/"), config.Topic)
-	
+
 	// Create request
 	req, err := http.NewRequest("POST", url, strings.NewReader(msg.Body))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	// Set headers
 	req.Header.Set("Title", msg.Title)
-	
+
 	// Priority
 	priority := config.Priority
 	if priority == 0 {
@@ -362,7 +363,7 @@ func (n *Notifier) sendNtfy(channel *NotificationChannel, msg NotificationMessag
 		}
 	}
 	req.Header.Set("Priority", strconv.Itoa(priority))
-	
+
 	// Tags
 	tags := config.Tags
 	if len(tags) == 0 {
@@ -374,25 +375,25 @@ func (n *Notifier) sendNtfy(channel *NotificationChannel, msg NotificationMessag
 		}
 	}
 	req.Header.Set("Tags", strings.Join(tags, ","))
-	
+
 	// Authentication
 	if config.Token != "" {
 		req.Header.Set("Authorization", "Bearer "+config.Token)
 	} else if config.Username != "" && config.Password != "" {
 		req.SetBasicAuth(config.Username, config.Password)
 	}
-	
+
 	// Send request
 	resp, err := n.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("ntfy request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("ntfy returned status %d", resp.StatusCode)
 	}
-	
+
 	return nil
 }
 
@@ -401,9 +402,9 @@ func (n *Notifier) isQuietHours(qh *QuietHours) bool {
 	if qh == nil || !qh.Enabled {
 		return false
 	}
-	
+
 	now := time.Now()
-	
+
 	// Check weekends
 	if qh.Weekends {
 		weekday := now.Weekday()
@@ -411,30 +412,30 @@ func (n *Notifier) isQuietHours(qh *QuietHours) bool {
 			return false // Not quiet on weekends
 		}
 	}
-	
+
 	// Parse quiet hours
 	startTime, err := time.Parse("15:04", qh.StartTime)
 	if err != nil {
 		return false
 	}
-	
+
 	endTime, err := time.Parse("15:04", qh.EndTime)
 	if err != nil {
 		return false
 	}
-	
+
 	// Adjust to today's date
 	startTime = time.Date(now.Year(), now.Month(), now.Day(),
 		startTime.Hour(), startTime.Minute(), 0, 0, now.Location())
 	endTime = time.Date(now.Year(), now.Month(), now.Day(),
 		endTime.Hour(), endTime.Minute(), 0, 0, now.Location())
-	
+
 	// Handle overnight quiet hours
 	if endTime.Before(startTime) {
 		// Quiet hours span midnight
 		return now.After(startTime) || now.Before(endTime)
 	}
-	
+
 	return now.After(startTime) && now.Before(endTime)
 }
 
@@ -443,17 +444,17 @@ func (n *Notifier) checkRateLimit(channel *NotificationChannel) bool {
 	if channel.RateLimit <= 0 {
 		return true // No rate limit
 	}
-	
+
 	// Simple rate limit check based on last used time
 	if channel.LastUsed != nil {
 		timeSinceLastUse := time.Since(*channel.LastUsed)
 		minInterval := time.Hour / time.Duration(channel.RateLimit)
-		
+
 		if timeSinceLastUse < minInterval {
 			return false
 		}
 	}
-	
+
 	return true
 }
 
@@ -463,6 +464,6 @@ func (n *Notifier) mapConfig(src map[string]interface{}, dst interface{}) error 
 	if err != nil {
 		return err
 	}
-	
+
 	return json.Unmarshal(data, dst)
 }

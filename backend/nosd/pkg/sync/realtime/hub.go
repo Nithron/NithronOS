@@ -28,22 +28,22 @@ const (
 	MsgTypePresenceList   MessageType = "presence.list"
 
 	// File messages
-	MsgTypeFileChange  MessageType = "file.change"
-	MsgTypeFileCreate  MessageType = "file.create"
-	MsgTypeFileDelete  MessageType = "file.delete"
-	MsgTypeFileRename  MessageType = "file.rename"
-	MsgTypeFileLock    MessageType = "file.lock"
-	MsgTypeFileUnlock  MessageType = "file.unlock"
+	MsgTypeFileChange MessageType = "file.change"
+	MsgTypeFileCreate MessageType = "file.create"
+	MsgTypeFileDelete MessageType = "file.delete"
+	MsgTypeFileRename MessageType = "file.rename"
+	MsgTypeFileLock   MessageType = "file.lock"
+	MsgTypeFileUnlock MessageType = "file.unlock"
 
 	// Cursor messages
 	MsgTypeCursorMove   MessageType = "cursor.move"
 	MsgTypeCursorSelect MessageType = "cursor.select"
 
 	// Collaboration messages
-	MsgTypeEditStart  MessageType = "edit.start"
-	MsgTypeEditOp     MessageType = "edit.op"
-	MsgTypeEditEnd    MessageType = "edit.end"
-	MsgTypeEditSync   MessageType = "edit.sync"
+	MsgTypeEditStart MessageType = "edit.start"
+	MsgTypeEditOp    MessageType = "edit.op"
+	MsgTypeEditEnd   MessageType = "edit.end"
+	MsgTypeEditSync  MessageType = "edit.sync"
 
 	// Subscription messages
 	MsgTypeSubscribe   MessageType = "subscribe"
@@ -121,17 +121,17 @@ const (
 
 // Client represents a connected WebSocket client
 type Client struct {
-	ID           string
-	UserID       string
-	Username     string
-	DeviceID     string
-	DeviceName   string
-	Color        string
-	Presence     *PresenceInfo
+	ID            string
+	UserID        string
+	Username      string
+	DeviceID      string
+	DeviceName    string
+	Color         string
+	Presence      *PresenceInfo
 	Subscriptions map[string]bool
-	Send         chan *Message
-	hub          *Hub
-	mu           sync.RWMutex
+	Send          chan *Message
+	hub           *Hub
+	mu            sync.RWMutex
 }
 
 // Hub manages all WebSocket connections and message routing
@@ -699,4 +699,3 @@ type HubStats struct {
 	TotalChannels  int `json:"total_channels"`
 	TotalFileLocks int `json:"total_file_locks"`
 }
-

@@ -12,16 +12,16 @@ import (
 type Manifest struct {
 	// Meta contains app metadata
 	Meta AppMeta `yaml:"meta" json:"meta"`
-	
+
 	// Runtime defines runtime configuration
 	Runtime RuntimeConfig `yaml:"runtime" json:"runtime"`
-	
+
 	// Permissions defines required permissions
 	Permissions PermissionsConfig `yaml:"permissions" json:"permissions"`
-	
+
 	// Backup defines backup configuration
 	Backup BackupConfig `yaml:"backup" json:"backup"`
-	
+
 	// WebUI defines web UI configuration
 	WebUI *WebUIConfig `yaml:"webui,omitempty" json:"webui,omitempty"`
 }
@@ -44,22 +44,22 @@ type AppMeta struct {
 type RuntimeConfig struct {
 	// DockerComposePath is the path to docker-compose.yaml
 	DockerComposePath string `yaml:"docker_compose_path" json:"docker_compose_path"`
-	
+
 	// EnvSchema is the JSON Schema for environment variables
 	EnvSchema map[string]interface{} `yaml:"env_schema,omitempty" json:"env_schema,omitempty"`
-	
+
 	// Mounts defines volume mounts
 	Mounts []Mount `yaml:"mounts,omitempty" json:"mounts,omitempty"`
-	
+
 	// Ports defines exposed ports
 	Ports []Port `yaml:"ports,omitempty" json:"ports,omitempty"`
-	
+
 	// HealthChecks defines health checks
 	HealthChecks []HealthCheck `yaml:"health_checks,omitempty" json:"health_checks,omitempty"`
-	
+
 	// UpdateStrategy defines update strategy
 	UpdateStrategy UpdateStrategy `yaml:"update_strategy,omitempty" json:"update_strategy,omitempty"`
-	
+
 	// Resources defines resource limits
 	Resources ResourceLimits `yaml:"resources,omitempty" json:"resources,omitempty"`
 }
@@ -83,13 +83,13 @@ type Port struct {
 
 // HealthCheck defines a health check
 type HealthCheck struct {
-	Type        string `yaml:"type" json:"type"` // container, http, tcp
-	Container   string `yaml:"container,omitempty" json:"container,omitempty"`
-	URL         string `yaml:"url,omitempty" json:"url,omitempty"`
-	Port        int    `yaml:"port,omitempty" json:"port,omitempty"`
-	Interval    int    `yaml:"interval,omitempty" json:"interval,omitempty"` // seconds
-	Timeout     int    `yaml:"timeout,omitempty" json:"timeout,omitempty"`   // seconds
-	Retries     int    `yaml:"retries,omitempty" json:"retries,omitempty"`
+	Type      string `yaml:"type" json:"type"` // container, http, tcp
+	Container string `yaml:"container,omitempty" json:"container,omitempty"`
+	URL       string `yaml:"url,omitempty" json:"url,omitempty"`
+	Port      int    `yaml:"port,omitempty" json:"port,omitempty"`
+	Interval  int    `yaml:"interval,omitempty" json:"interval,omitempty"` // seconds
+	Timeout   int    `yaml:"timeout,omitempty" json:"timeout,omitempty"`   // seconds
+	Retries   int    `yaml:"retries,omitempty" json:"retries,omitempty"`
 }
 
 // UpdateStrategy defines update strategy
@@ -123,19 +123,19 @@ type MemoryLimits struct {
 type PermissionsConfig struct {
 	// APIScopes defines required API scopes
 	APIScopes []string `yaml:"api_scopes,omitempty" json:"api_scopes,omitempty"`
-	
+
 	// AgentOps defines required agent operations
 	AgentOps []string `yaml:"agent_ops,omitempty" json:"agent_ops,omitempty"`
-	
+
 	// Privileged indicates if privileged mode is required
 	Privileged bool `yaml:"privileged,omitempty" json:"privileged,omitempty"`
-	
+
 	// HostNetwork indicates if host network is required
 	HostNetwork bool `yaml:"host_network,omitempty" json:"host_network,omitempty"`
-	
+
 	// HostPID indicates if host PID namespace is required
 	HostPID bool `yaml:"host_pid,omitempty" json:"host_pid,omitempty"`
-	
+
 	// Capabilities defines required Linux capabilities
 	Capabilities []string `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
 }
@@ -144,13 +144,13 @@ type PermissionsConfig struct {
 type BackupConfig struct {
 	// IncludePaths defines paths to include in backups
 	IncludePaths []string `yaml:"include_paths,omitempty" json:"include_paths,omitempty"`
-	
+
 	// ExcludePaths defines paths to exclude from backups
 	ExcludePaths []string `yaml:"exclude_paths,omitempty" json:"exclude_paths,omitempty"`
-	
+
 	// QuiesceHooks defines quiesce hooks for consistent backups
 	QuiesceHooks *QuiesceHooks `yaml:"quiesce_hooks,omitempty" json:"quiesce_hooks,omitempty"`
-	
+
 	// BackupSize provides size hints for backup planning
 	BackupSize string `yaml:"backup_size,omitempty" json:"backup_size,omitempty"` // e.g., "100MB", "5GB"
 }
@@ -166,35 +166,35 @@ type QuiesceHooks struct {
 type WebUIConfig struct {
 	// Path defines the reverse proxy path
 	Path string `yaml:"path" json:"path"` // e.g., "/apps/myapp"
-	
+
 	// Port defines the internal port to proxy to
 	Port int `yaml:"port" json:"port"`
-	
+
 	// AuthMode defines authentication mode
 	AuthMode string `yaml:"auth_mode,omitempty" json:"auth_mode,omitempty"` // none, inherit, custom
-	
+
 	// StripPath indicates if the path should be stripped
 	StripPath bool `yaml:"strip_path,omitempty" json:"strip_path,omitempty"`
-	
+
 	// Headers defines additional headers to set
 	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
 }
 
 // Hooks defines lifecycle hooks
 type Hooks struct {
-	PreInstall   *Hook `yaml:"pre_install,omitempty" json:"pre_install,omitempty"`
-	PostInstall  *Hook `yaml:"post_install,omitempty" json:"post_install,omitempty"`
-	PreUpdate    *Hook `yaml:"pre_update,omitempty" json:"pre_update,omitempty"`
-	PostUpdate   *Hook `yaml:"post_update,omitempty" json:"post_update,omitempty"`
-	PreRemove    *Hook `yaml:"pre_remove,omitempty" json:"pre_remove,omitempty"`
-	PostRemove   *Hook `yaml:"post_remove,omitempty" json:"post_remove,omitempty"`
+	PreInstall  *Hook `yaml:"pre_install,omitempty" json:"pre_install,omitempty"`
+	PostInstall *Hook `yaml:"post_install,omitempty" json:"post_install,omitempty"`
+	PreUpdate   *Hook `yaml:"pre_update,omitempty" json:"pre_update,omitempty"`
+	PostUpdate  *Hook `yaml:"post_update,omitempty" json:"post_update,omitempty"`
+	PreRemove   *Hook `yaml:"pre_remove,omitempty" json:"pre_remove,omitempty"`
+	PostRemove  *Hook `yaml:"post_remove,omitempty" json:"post_remove,omitempty"`
 }
 
 // Hook defines a lifecycle hook
 type Hook struct {
-	Script  string `yaml:"script" json:"script"`                            // Script path or inline script
-	Timeout int    `yaml:"timeout,omitempty" json:"timeout,omitempty"`      // Timeout in seconds
-	OnError string `yaml:"on_error,omitempty" json:"on_error,omitempty"`   // continue, fail
+	Script  string `yaml:"script" json:"script"`                         // Script path or inline script
+	Timeout int    `yaml:"timeout,omitempty" json:"timeout,omitempty"`   // Timeout in seconds
+	OnError string `yaml:"on_error,omitempty" json:"on_error,omitempty"` // continue, fail
 }
 
 // LoadManifest loads a manifest from a file
@@ -203,17 +203,17 @@ func LoadManifest(path string) (*Manifest, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read manifest: %w", err)
 	}
-	
+
 	var manifest Manifest
 	if err := yaml.Unmarshal(data, &manifest); err != nil {
 		return nil, fmt.Errorf("failed to parse manifest: %w", err)
 	}
-	
+
 	// Validate manifest
 	if err := manifest.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid manifest: %w", err)
 	}
-	
+
 	return &manifest, nil
 }
 
@@ -223,23 +223,23 @@ func (m *Manifest) SaveManifest(path string) error {
 	if err := m.Validate(); err != nil {
 		return fmt.Errorf("invalid manifest: %w", err)
 	}
-	
+
 	data, err := yaml.Marshal(m)
 	if err != nil {
 		return fmt.Errorf("failed to marshal manifest: %w", err)
 	}
-	
+
 	// Create directory if needed
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
-	
+
 	// Write file
 	if err := os.WriteFile(path, data, 0644); err != nil {
 		return fmt.Errorf("failed to write manifest: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -255,12 +255,12 @@ func (m *Manifest) Validate() error {
 	if m.Meta.Version == "" {
 		return fmt.Errorf("meta.version is required")
 	}
-	
+
 	// Validate runtime
 	if m.Runtime.DockerComposePath == "" {
 		return fmt.Errorf("runtime.docker_compose_path is required")
 	}
-	
+
 	// Validate ports
 	for _, port := range m.Runtime.Ports {
 		if port.Port <= 0 || port.Port > 65535 {
@@ -270,7 +270,7 @@ func (m *Manifest) Validate() error {
 			return fmt.Errorf("invalid protocol: %s", port.Protocol)
 		}
 	}
-	
+
 	// Validate health checks
 	for _, hc := range m.Runtime.HealthChecks {
 		switch hc.Type {
@@ -290,7 +290,7 @@ func (m *Manifest) Validate() error {
 			return fmt.Errorf("invalid health check type: %s", hc.Type)
 		}
 	}
-	
+
 	// Validate WebUI if present
 	if m.WebUI != nil {
 		if m.WebUI.Path == "" {
@@ -299,14 +299,14 @@ func (m *Manifest) Validate() error {
 		if m.WebUI.Port <= 0 || m.WebUI.Port > 65535 {
 			return fmt.Errorf("invalid webui.port: %d", m.WebUI.Port)
 		}
-		if m.WebUI.AuthMode != "" && 
-		   m.WebUI.AuthMode != "none" && 
-		   m.WebUI.AuthMode != "inherit" && 
-		   m.WebUI.AuthMode != "custom" {
+		if m.WebUI.AuthMode != "" &&
+			m.WebUI.AuthMode != "none" &&
+			m.WebUI.AuthMode != "inherit" &&
+			m.WebUI.AuthMode != "custom" {
 			return fmt.Errorf("invalid webui.auth_mode: %s", m.WebUI.AuthMode)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -328,16 +328,16 @@ func (m *Manifest) IsPrivileged() bool {
 // GetDataPaths returns all data paths that should be backed up
 func (m *Manifest) GetDataPaths() []string {
 	paths := []string{}
-	
+
 	// Add mounted paths
 	for _, mount := range m.Runtime.Mounts {
 		if mount.Persistent {
 			paths = append(paths, mount.Path)
 		}
 	}
-	
+
 	// Add explicit backup paths
 	paths = append(paths, m.Backup.IncludePaths...)
-	
+
 	return paths
 }

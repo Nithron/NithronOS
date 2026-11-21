@@ -30,8 +30,8 @@ import (
 	"nithronos/backend/nosd/internal/notifications"
 	"nithronos/backend/nosd/internal/pools"
 	"nithronos/backend/nosd/internal/ratelimit"
-	"nithronos/backend/nosd/internal/shares"
 	"nithronos/backend/nosd/internal/sessions"
+	"nithronos/backend/nosd/internal/shares"
 	"nithronos/backend/nosd/pkg/agentclient"
 	"nithronos/backend/nosd/pkg/auth"
 
@@ -88,7 +88,9 @@ func NewRouter(cfg config.Config) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.RealIP)
+	// TODO(revision phase 2, S4): RealIP trusts X-Forwarded-For from any client; replace with a trusted-proxy aware middleware.
+	//lint:ignore SA1019 tracked in docs/dev/revision-plan.md (S4)
+	r.Use(middleware.RealIP) //nolint:staticcheck // SA1019: tracked in docs/dev/revision-plan.md (S4)
 	r.Use(zerologMiddleware(Logger(cfg), cfg))
 	r.Use(securityHeaders)
 
@@ -127,8 +129,8 @@ func NewRouter(cfg config.Config) http.Handler {
 					total += p.Size
 					used += p.Used
 				}
-				b.WriteString(fmt.Sprintf("pool_total_bytes %d\n", total))
-				b.WriteString(fmt.Sprintf("pool_used_bytes %d\n", used))
+				fmt.Fprintf(&b, "pool_total_bytes %d\n", total)
+				fmt.Fprintf(&b, "pool_used_bytes %d\n", used)
 			}
 			// SMART metrics for common devices (best-effort)
 			for _, dev := range []string{"/dev/sda", "/dev/nvme0n1"} {
@@ -136,23 +138,23 @@ func NewRouter(cfg config.Config) http.Handler {
 				var out map[string]any
 				if err := client.GetJSON(r.Context(), "/v1/smart?device="+dev, &out); err == nil {
 					if t, ok := out["temperature_c"].(float64); ok {
-						b.WriteString(fmt.Sprintf("smart_disk_temp_celsius{dev=\"%s\"} %g\n", dev, t))
+						fmt.Fprintf(&b, "smart_disk_temp_celsius{dev=\"%s\"} %g\n", dev, t)
 					}
 					if st, ok := out["passed"].(bool); ok {
 						if st {
-							b.WriteString(fmt.Sprintf("smart_pass{dev=\"%s\"} 1\n", dev))
+							fmt.Fprintf(&b, "smart_pass{dev=\"%s\"} 1\n", dev)
 						} else {
-							b.WriteString(fmt.Sprintf("smart_pass{dev=\"%s\"} 0\n", dev))
+							fmt.Fprintf(&b, "smart_pass{dev=\"%s\"} 0\n", dev)
 						}
 					}
 				}
 			}
 			// Btrfs tx progress (best-effort gauges set by executor)
 			if p := currentBalancePercent(); p >= 0 {
-				b.WriteString(fmt.Sprintf("btrfs_balance_percent %g\n", p))
+				fmt.Fprintf(&b, "btrfs_balance_percent %g\n", p)
 			}
 			if p := currentReplacePercent(); p >= 0 {
-				b.WriteString(fmt.Sprintf("btrfs_replace_percent %g\n", p))
+				fmt.Fprintf(&b, "btrfs_replace_percent %g\n", p)
 			}
 			_, _ = w.Write([]byte(b.String()))
 		})
@@ -1415,11 +1417,11 @@ func NewRouter(cfg config.Config) http.Handler {
 		} else {
 			// Mount sync API routes
 			pr.Mount("/api/v1/sync", syncHandler.Routes())
-			
+
 			// Mount WebDAV endpoint for file access
 			webdavHandler := NewWebDAVHandler(syncSharesStore, syncHandler.DeviceManager(), *Logger(cfg))
 			r.Mount("/dav", webdavHandler)
-			
+
 			Logger(cfg).Info().Msg("NithronSync API initialized")
 		}
 
@@ -2015,7 +2017,7 @@ func clientIP(r *http.Request, cfg config.Config) string {
 	if i := strings.LastIndex(ip, ":"); i >= 0 {
 		ip = ip[:i]
 	}
-	if !(cfg.TrustProxy || RuntimeTrustProxy()) {
+	if !cfg.TrustProxy && !RuntimeTrustProxy() {
 		return ip
 	}
 	h := strings.TrimSpace(r.Header.Get("X-Forwarded-For"))

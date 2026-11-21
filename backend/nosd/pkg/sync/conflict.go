@@ -31,17 +31,17 @@ type FileVersion struct {
 
 // SyncConflict represents a file synchronization conflict
 type SyncConflict struct {
-	ID            string              `json:"id"`
-	ShareID       string              `json:"share_id"`
-	DeviceID      string              `json:"device_id"`
-	Path          string              `json:"path"`
-	LocalVersion  FileVersion         `json:"local_version"`
-	RemoteVersion FileVersion         `json:"remote_version"`
-	DetectedAt    time.Time           `json:"detected_at"`
-	Resolved      bool                `json:"resolved"`
-	Resolution    ConflictResolution  `json:"resolution,omitempty"`
-	ResolvedAt    *time.Time          `json:"resolved_at,omitempty"`
-	ResolvedBy    string              `json:"resolved_by,omitempty"`
+	ID            string             `json:"id"`
+	ShareID       string             `json:"share_id"`
+	DeviceID      string             `json:"device_id"`
+	Path          string             `json:"path"`
+	LocalVersion  FileVersion        `json:"local_version"`
+	RemoteVersion FileVersion        `json:"remote_version"`
+	DetectedAt    time.Time          `json:"detected_at"`
+	Resolved      bool               `json:"resolved"`
+	Resolution    ConflictResolution `json:"resolution,omitempty"`
+	ResolvedAt    *time.Time         `json:"resolved_at,omitempty"`
+	ResolvedBy    string             `json:"resolved_by,omitempty"`
 }
 
 // ConflictStore manages sync conflicts
@@ -191,7 +191,7 @@ func (s *ConflictStore) CountUnresolved(shareID, deviceID string) int {
 // load reads conflicts from disk
 func (s *ConflictStore) load() error {
 	filePath := filepath.Join(s.dataDir, "conflicts", "conflicts.json")
-	
+
 	data, err := os.ReadFile(filePath)
 	if os.IsNotExist(err) {
 		return nil
@@ -227,4 +227,3 @@ func (s *ConflictStore) save() error {
 	filePath := filepath.Join(s.dataDir, "conflicts", "conflicts.json")
 	return os.WriteFile(filePath, data, 0640)
 }
-

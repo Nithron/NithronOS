@@ -36,4 +36,3 @@ var (
 	// ErrRateLimited indicates the client is rate limited
 	ErrRateLimited = errors.New("rate limited")
 )
-

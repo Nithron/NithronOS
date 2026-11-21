@@ -42,11 +42,11 @@ func (r *Restorer) CreateRestorePlan(sourceType string, sourceID string, restore
 		DryRun:      dryRun,
 		Actions:     []RestoreAction{},
 	}
-	
+
 	// Validate source
 	var snapshot *Snapshot
 	var sourceSnapshot string
-	
+
 	switch sourceType {
 	case "local":
 		// Get local snapshot
@@ -61,47 +61,47 @@ func (r *Restorer) CreateRestorePlan(sourceType string, sourceID string, restore
 		if snapshot == nil {
 			return nil, fmt.Errorf("snapshot not found: %s", sourceID)
 		}
-		
+
 	case "ssh":
 		// For SSH restore, sourceID should be "destination:snapshot"
 		parts := strings.SplitN(sourceID, ":", 2)
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("invalid SSH source format, expected destination:snapshot")
 		}
-		
+
 		dest, err := r.replicator.GetDestination(parts[0])
 		if err != nil {
 			return nil, fmt.Errorf("destination not found: %w", err)
 		}
-		
+
 		if dest.Type != "ssh" {
 			return nil, fmt.Errorf("destination is not SSH type")
 		}
-		
+
 		sourceSnapshot = parts[1]
-		
+
 	case "rclone":
 		// Similar to SSH
 		parts := strings.SplitN(sourceID, ":", 2)
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("invalid rclone source format")
 		}
-		
+
 		dest, err := r.replicator.GetDestination(parts[0])
 		if err != nil {
 			return nil, fmt.Errorf("destination not found: %w", err)
 		}
-		
+
 		if dest.Type != "rclone" {
 			return nil, fmt.Errorf("destination is not rclone type")
 		}
-		
+
 		sourceSnapshot = parts[1]
-		
+
 	default:
 		return nil, fmt.Errorf("unsupported source type: %s", sourceType)
 	}
-	
+
 	// Build restore actions based on type
 	switch restoreType {
 	case "full":
@@ -111,7 +111,7 @@ func (r *Restorer) CreateRestorePlan(sourceType string, sourceID string, restore
 			Target:      targetPath,
 			Description: fmt.Sprintf("Create safety snapshot of %s", targetPath),
 		})
-		
+
 		// Determine services that need to be stopped
 		services := r.getAffectedServices(targetPath)
 		for _, service := range services {
@@ -122,14 +122,14 @@ func (r *Restorer) CreateRestorePlan(sourceType string, sourceID string, restore
 				Description: fmt.Sprintf("Stop service %s", service),
 			})
 		}
-		
+
 		// Main restore action
 		plan.Actions = append(plan.Actions, RestoreAction{
 			Type:        "rollback",
 			Target:      targetPath,
 			Description: fmt.Sprintf("Replace %s with snapshot %s", targetPath, sourceSnapshot),
 		})
-		
+
 		// Restart services
 		for _, service := range services {
 			plan.Actions = append(plan.Actions, RestoreAction{
@@ -138,9 +138,9 @@ func (r *Restorer) CreateRestorePlan(sourceType string, sourceID string, restore
 				Description: fmt.Sprintf("Start service %s", service),
 			})
 		}
-		
+
 		plan.EstimatedTime = 60 + len(services)*10
-		
+
 	case "files":
 		// File-level restore
 		plan.Actions = append(plan.Actions, RestoreAction{
@@ -148,25 +148,25 @@ func (r *Restorer) CreateRestorePlan(sourceType string, sourceID string, restore
 			Target:      sourceSnapshot,
 			Description: fmt.Sprintf("Mount snapshot %s read-only", sourceSnapshot),
 		})
-		
+
 		plan.Actions = append(plan.Actions, RestoreAction{
 			Type:        "copy",
 			Target:      targetPath,
 			Description: fmt.Sprintf("Copy files to %s", targetPath),
 		})
-		
+
 		plan.Actions = append(plan.Actions, RestoreAction{
 			Type:        "unmount",
 			Target:      sourceSnapshot,
 			Description: fmt.Sprintf("Unmount snapshot %s", sourceSnapshot),
 		})
-		
+
 		plan.EstimatedTime = 30
-		
+
 	default:
 		return nil, fmt.Errorf("unsupported restore type: %s", restoreType)
 	}
-	
+
 	return plan, nil
 }
 
@@ -176,7 +176,7 @@ func (r *Restorer) ExecuteRestore(plan *RestorePlan) (*BackupJob, error) {
 		// Don't actually execute, just return the plan
 		return nil, nil
 	}
-	
+
 	// Create job
 	job := &BackupJob{
 		ID:          uuid.New().String(),
@@ -187,20 +187,20 @@ func (r *Restorer) ExecuteRestore(plan *RestorePlan) (*BackupJob, error) {
 		RestorePath: plan.TargetPath,
 		StartedAt:   time.Now(),
 	}
-	
+
 	// Add to job manager
 	r.jobManager.AddJob(job)
-	
+
 	// Execute restore in background
 	go r.runRestore(job, plan)
-	
+
 	return job, nil
 }
 
 // ListRestorePoints returns available restore points
 func (r *Restorer) ListRestorePoints() ([]RestorePoint, error) {
 	var points []RestorePoint
-	
+
 	// Add local snapshots
 	snapshots := r.scheduler.ListSnapshots()
 	for _, snap := range snapshots {
@@ -213,14 +213,14 @@ func (r *Restorer) ListRestorePoints() ([]RestorePoint, error) {
 			Path:      snap.Path,
 		})
 	}
-	
+
 	// Add remote destinations as potential sources
 	destinations := r.replicator.ListDestinations()
 	for _, dest := range destinations {
 		if !dest.Enabled {
 			continue
 		}
-		
+
 		// For each destination, we would list available snapshots
 		// This would require querying the remote destination
 		// For now, we'll add a placeholder
@@ -231,7 +231,7 @@ func (r *Restorer) ListRestorePoints() ([]RestorePoint, error) {
 			Timestamp: time.Now(), // Would be actual snapshot time
 		})
 	}
-	
+
 	return points, nil
 }
 
@@ -241,16 +241,16 @@ func (r *Restorer) runRestore(job *BackupJob, plan *RestorePlan) {
 	// Update job state
 	job.State = JobStateRunning
 	r.jobManager.UpdateJob(job)
-	
+
 	// Execute each action
 	for i, action := range plan.Actions {
 		// Update progress
 		job.Progress = (i * 100) / len(plan.Actions)
 		r.jobManager.UpdateJob(job)
-		
+
 		// Log action
 		r.jobManager.AddLogEntry(job.ID, "info", fmt.Sprintf("Executing: %s", action.Description))
-		
+
 		// Execute action
 		var err error
 		switch action.Type {
@@ -271,7 +271,7 @@ func (r *Restorer) runRestore(job *BackupJob, plan *RestorePlan) {
 		default:
 			err = fmt.Errorf("unknown action type: %s", action.Type)
 		}
-		
+
 		if err != nil {
 			job.State = JobStateFailed
 			job.Error = fmt.Sprintf("Action failed: %v", err)
@@ -282,21 +282,21 @@ func (r *Restorer) runRestore(job *BackupJob, plan *RestorePlan) {
 			return
 		}
 	}
-	
+
 	// Mark as succeeded
 	job.State = JobStateSucceeded
 	job.Progress = 100
 	now := time.Now()
 	job.FinishedAt = &now
 	r.jobManager.UpdateJob(job)
-	
+
 	r.jobManager.AddLogEntry(job.ID, "info", "Restore completed successfully")
 	r.logger.Info().Str("job", job.ID).Msg("Restore completed")
 }
 
 func (r *Restorer) getAffectedServices(targetPath string) []string {
 	var services []string
-	
+
 	// Map of paths to services that use them
 	pathServices := map[string][]string{
 		"/":         {"nosd", "nos-agent", "caddy"},
@@ -305,14 +305,14 @@ func (r *Restorer) getAffectedServices(targetPath string) []string {
 		"/var/log":  {"rsyslog"},
 		"/srv/apps": {"docker"},
 	}
-	
+
 	// Find matching services
 	for path, svcs := range pathServices {
 		if strings.HasPrefix(targetPath, path) {
 			services = append(services, svcs...)
 		}
 	}
-	
+
 	// Remove duplicates
 	seen := make(map[string]bool)
 	unique := []string{}
@@ -322,7 +322,7 @@ func (r *Restorer) getAffectedServices(targetPath string) []string {
 			unique = append(unique, svc)
 		}
 	}
-	
+
 	return unique
 }
 
@@ -330,7 +330,7 @@ func (r *Restorer) createSafetySnapshot(targetPath string) error {
 	// Generate snapshot name
 	timestamp := time.Now().Format("20060102-150405")
 	snapshotPath := fmt.Sprintf("@snapshots/restore-safety/%s-%s", filepath.Base(targetPath), timestamp)
-	
+
 	// Create snapshot via agent
 	return r.agentClient.CreateSnapshot(targetPath, snapshotPath, true)
 }
@@ -360,47 +360,47 @@ func (r *Restorer) rollbackSubvolume(plan *RestorePlan, targetPath string) error
 		if snapshot == nil {
 			return fmt.Errorf("snapshot not found")
 		}
-		
+
 		// Perform atomic subvolume replacement
 		// 1. Move current subvolume to backup
 		backupPath := targetPath + ".backup." + time.Now().Format("20060102-150405")
 		if err := exec.Command("mv", targetPath, backupPath).Run(); err != nil {
 			return fmt.Errorf("failed to move current subvolume: %w", err)
 		}
-		
+
 		// 2. Create new subvolume from snapshot
 		if err := exec.Command("btrfs", "subvolume", "snapshot", snapshot.Path, targetPath).Run(); err != nil {
 			// Rollback on failure
 			_ = exec.Command("mv", backupPath, targetPath).Run()
 			return fmt.Errorf("failed to create subvolume from snapshot: %w", err)
 		}
-		
+
 		// 3. Delete backup after successful restore
 		go func() {
 			time.Sleep(5 * time.Minute)
 			_ = exec.Command("btrfs", "subvolume", "delete", backupPath).Run()
 		}()
-		
+
 		return nil
-		
+
 	case "ssh":
 		// Restore from SSH requires receiving the snapshot
 		parts := strings.SplitN(plan.SourceID, ":", 2)
 		if len(parts) != 2 {
 			return fmt.Errorf("invalid source ID")
 		}
-		
+
 		_, err := r.replicator.GetDestination(parts[0]) // dest will be used for SSH restore
 		if err != nil {
 			return err
 		}
-		
+
 		// Build SSH receive command
 		// This would be the inverse of replication
 		// Implementation would be similar to replicateSSH but in reverse
-		
+
 		return fmt.Errorf("SSH restore not yet implemented")
-		
+
 	default:
 		return fmt.Errorf("unsupported source type for rollback")
 	}
@@ -412,7 +412,7 @@ func (r *Restorer) mountSnapshot(snapshotPath string) error {
 	if err := os.MkdirAll(mountPoint, 0755); err != nil {
 		return err
 	}
-	
+
 	// Mount snapshot read-only
 	return exec.Command("mount", "-o", "ro,subvol="+snapshotPath, "/dev/mapper/nos-root", mountPoint).Run()
 }
@@ -420,7 +420,7 @@ func (r *Restorer) mountSnapshot(snapshotPath string) error {
 func (r *Restorer) copyFiles(plan *RestorePlan, targetPath string) error {
 	// Get mount point from previous mount action
 	mountPoint := "/tmp/restore-mount-*"
-	
+
 	// Use rsync to copy files preserving attributes
 	cmd := exec.Command("rsync", "-avHAX", "--progress", mountPoint+"/", targetPath+"/")
 	return cmd.Run()
@@ -433,7 +433,7 @@ func (r *Restorer) unmountSnapshot(snapshotPath string) error {
 	if err := cmd.Run(); err != nil {
 		return err
 	}
-	
+
 	// Clean up mount point
 	return os.RemoveAll(mountPoint)
 }
@@ -441,7 +441,7 @@ func (r *Restorer) unmountSnapshot(snapshotPath string) error {
 // RestorePoint represents an available restore point
 type RestorePoint struct {
 	ID        string    `json:"id"`
-	Type      string    `json:"type"`      // "local", "ssh", "rclone"
+	Type      string    `json:"type"` // "local", "ssh", "rclone"
 	Subvolume string    `json:"subvolume"`
 	Timestamp time.Time `json:"timestamp"`
 	Source    string    `json:"source"` // Source name (local, destination name)

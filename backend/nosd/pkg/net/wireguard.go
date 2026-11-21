@@ -329,9 +329,9 @@ func (wm *WireGuardManager) generateWireGuardConfig() string {
 
 	// Interface section
 	buf.WriteString("[Interface]\n")
-	buf.WriteString(fmt.Sprintf("PrivateKey = %s\n", wm.config.PrivateKey))
-	buf.WriteString(fmt.Sprintf("Address = %s\n", wm.config.ServerCIDR))
-	buf.WriteString(fmt.Sprintf("ListenPort = %d\n", wm.config.ListenPort))
+	fmt.Fprintf(&buf, "PrivateKey = %s\n", wm.config.PrivateKey)
+	fmt.Fprintf(&buf, "Address = %s\n", wm.config.ServerCIDR)
+	fmt.Fprintf(&buf, "ListenPort = %d\n", wm.config.ListenPort)
 	buf.WriteString("PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE\n")
 	buf.WriteString("PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE\n")
 	buf.WriteString("\n")
@@ -342,13 +342,13 @@ func (wm *WireGuardManager) generateWireGuardConfig() string {
 			continue
 		}
 
-		buf.WriteString(fmt.Sprintf("# %s\n", peer.Name))
+		fmt.Fprintf(&buf, "# %s\n", peer.Name)
 		buf.WriteString("[Peer]\n")
-		buf.WriteString(fmt.Sprintf("PublicKey = %s\n", peer.PublicKey))
+		fmt.Fprintf(&buf, "PublicKey = %s\n", peer.PublicKey)
 		if peer.PresharedKey != "" {
-			buf.WriteString(fmt.Sprintf("PresharedKey = %s\n", peer.PresharedKey))
+			fmt.Fprintf(&buf, "PresharedKey = %s\n", peer.PresharedKey)
 		}
-		buf.WriteString(fmt.Sprintf("AllowedIPs = %s\n", strings.Join(peer.AllowedIPs, ", ")))
+		fmt.Fprintf(&buf, "AllowedIPs = %s\n", strings.Join(peer.AllowedIPs, ", "))
 		buf.WriteString("\n")
 	}
 
@@ -373,13 +373,13 @@ func (wm *WireGuardManager) generateClientConfig(peer WireGuardPeer, privateKey,
 	// Generate config file content
 	var buf bytes.Buffer
 	buf.WriteString("[Interface]\n")
-	buf.WriteString(fmt.Sprintf("PrivateKey = %s\n", privateKey))
-	buf.WriteString(fmt.Sprintf("Address = %s/32\n", clientIP))
-	buf.WriteString(fmt.Sprintf("DNS = %s\n", strings.Join(wm.config.DNS, ", ")))
+	fmt.Fprintf(&buf, "PrivateKey = %s\n", privateKey)
+	fmt.Fprintf(&buf, "Address = %s/32\n", clientIP)
+	fmt.Fprintf(&buf, "DNS = %s\n", strings.Join(wm.config.DNS, ", "))
 	buf.WriteString("\n[Peer]\n")
-	buf.WriteString(fmt.Sprintf("PublicKey = %s\n", wm.config.PublicKey))
-	buf.WriteString(fmt.Sprintf("PresharedKey = %s\n", peer.PresharedKey))
-	buf.WriteString(fmt.Sprintf("Endpoint = %s:%d\n", wm.config.EndpointHostname, wm.config.ListenPort))
+	fmt.Fprintf(&buf, "PublicKey = %s\n", wm.config.PublicKey)
+	fmt.Fprintf(&buf, "PresharedKey = %s\n", peer.PresharedKey)
+	fmt.Fprintf(&buf, "Endpoint = %s:%d\n", wm.config.EndpointHostname, wm.config.ListenPort)
 	buf.WriteString("AllowedIPs = 0.0.0.0/0, ::/0\n")
 	buf.WriteString("PersistentKeepalive = 25\n")
 

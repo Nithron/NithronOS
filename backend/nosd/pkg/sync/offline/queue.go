@@ -28,12 +28,12 @@ const (
 type OperationStatus string
 
 const (
-	StatusPending   OperationStatus = "pending"
+	StatusPending    OperationStatus = "pending"
 	StatusInProgress OperationStatus = "in_progress"
-	StatusCompleted OperationStatus = "completed"
-	StatusFailed    OperationStatus = "failed"
-	StatusConflict  OperationStatus = "conflict"
-	StatusCancelled OperationStatus = "cancelled"
+	StatusCompleted  OperationStatus = "completed"
+	StatusFailed     OperationStatus = "failed"
+	StatusConflict   OperationStatus = "conflict"
+	StatusCancelled  OperationStatus = "cancelled"
 )
 
 // QueuedOperation represents an operation waiting to be synced
@@ -61,27 +61,27 @@ type QueuedOperation struct {
 type ConflictResolution string
 
 const (
-	ResolutionKeepLocal   ConflictResolution = "keep_local"
-	ResolutionKeepRemote  ConflictResolution = "keep_remote"
-	ResolutionKeepBoth    ConflictResolution = "keep_both"
-	ResolutionMerge       ConflictResolution = "merge"
-	ResolutionManual      ConflictResolution = "manual"
+	ResolutionKeepLocal  ConflictResolution = "keep_local"
+	ResolutionKeepRemote ConflictResolution = "keep_remote"
+	ResolutionKeepBoth   ConflictResolution = "keep_both"
+	ResolutionMerge      ConflictResolution = "merge"
+	ResolutionManual     ConflictResolution = "manual"
 )
 
 // SyncConflict represents a conflict between local and remote versions
 type SyncConflict struct {
-	ID               string                 `json:"id"`
-	ShareID          string                 `json:"share_id"`
-	Path             string                 `json:"path"`
-	LocalVersion     FileVersion            `json:"local_version"`
-	RemoteVersion    FileVersion            `json:"remote_version"`
-	BaseVersion      *FileVersion           `json:"base_version,omitempty"`
-	ConflictType     ConflictType           `json:"conflict_type"`
-	Resolution       *ConflictResolution    `json:"resolution,omitempty"`
-	ResolvedAt       *time.Time             `json:"resolved_at,omitempty"`
-	ResolvedBy       string                 `json:"resolved_by,omitempty"`
-	CreatedAt        time.Time              `json:"created_at"`
-	Metadata         map[string]interface{} `json:"metadata,omitempty"`
+	ID            string                 `json:"id"`
+	ShareID       string                 `json:"share_id"`
+	Path          string                 `json:"path"`
+	LocalVersion  FileVersion            `json:"local_version"`
+	RemoteVersion FileVersion            `json:"remote_version"`
+	BaseVersion   *FileVersion           `json:"base_version,omitempty"`
+	ConflictType  ConflictType           `json:"conflict_type"`
+	Resolution    *ConflictResolution    `json:"resolution,omitempty"`
+	ResolvedAt    *time.Time             `json:"resolved_at,omitempty"`
+	ResolvedBy    string                 `json:"resolved_by,omitempty"`
+	CreatedAt     time.Time              `json:"created_at"`
+	Metadata      map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // ConflictType represents the type of conflict
@@ -111,7 +111,7 @@ type OperationQueue struct {
 	operations map[string]*QueuedOperation
 	conflicts  map[string]*SyncConflict
 	mu         sync.RWMutex
-	
+
 	// Callbacks
 	onStatusChange func(op *QueuedOperation)
 	onConflict     func(conflict *SyncConflict)
@@ -509,4 +509,3 @@ func (q *OperationQueue) RetryAll() error {
 
 	return q.save()
 }
-

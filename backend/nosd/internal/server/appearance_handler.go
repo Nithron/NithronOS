@@ -13,17 +13,17 @@ import (
 
 // AppearanceSettings represents UI appearance configuration
 type AppearanceSettings struct {
-	Theme           string            `json:"theme"` // light, dark, auto
-	AccentColor     string            `json:"accent_color"` // hex color
-	FontSize        string            `json:"font_size"` // small, medium, large
-	ReducedMotion   bool              `json:"reduced_motion"`
-	HighContrast    bool              `json:"high_contrast"`
-	Language        string            `json:"language"` // en, es, fr, de, etc.
-	DateFormat      string            `json:"date_format"` // MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD
-	TimeFormat      string            `json:"time_format"` // 12h, 24h
-	FirstDayOfWeek  int               `json:"first_day_of_week"` // 0=Sunday, 1=Monday
-	CustomCSS       string            `json:"custom_css"`
-	CustomColors    map[string]string `json:"custom_colors"`
+	Theme          string            `json:"theme"`        // light, dark, auto
+	AccentColor    string            `json:"accent_color"` // hex color
+	FontSize       string            `json:"font_size"`    // small, medium, large
+	ReducedMotion  bool              `json:"reduced_motion"`
+	HighContrast   bool              `json:"high_contrast"`
+	Language       string            `json:"language"`          // en, es, fr, de, etc.
+	DateFormat     string            `json:"date_format"`       // MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD
+	TimeFormat     string            `json:"time_format"`       // 12h, 24h
+	FirstDayOfWeek int               `json:"first_day_of_week"` // 0=Sunday, 1=Monday
+	CustomCSS      string            `json:"custom_css"`
+	CustomColors   map[string]string `json:"custom_colors"`
 }
 
 // AppearanceHandler handles appearance settings

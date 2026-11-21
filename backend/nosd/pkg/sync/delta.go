@@ -35,31 +35,31 @@ func (ds *DeltaSync) ComputeBlockHashes(filePath string) (*BlockHashResponse, er
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer f.Close()
-	
+
 	// Get file size
 	info, err := f.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("failed to stat file: %w", err)
 	}
 	fileSize := info.Size()
-	
+
 	// Compute full file hash
 	fullHash := sha256.New()
 	if _, err := io.Copy(fullHash, f); err != nil {
 		return nil, fmt.Errorf("failed to compute file hash: %w", err)
 	}
 	fileHash := hex.EncodeToString(fullHash.Sum(nil))
-	
+
 	// Seek back to start
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return nil, fmt.Errorf("failed to seek: %w", err)
 	}
-	
+
 	// Compute block hashes
 	var blocks []BlockHash
 	buffer := make([]byte, ds.blockSize)
 	offset := int64(0)
-	
+
 	for {
 		n, err := f.Read(buffer)
 		if err == io.EOF {
@@ -68,25 +68,25 @@ func (ds *DeltaSync) ComputeBlockHashes(filePath string) (*BlockHashResponse, er
 		if err != nil {
 			return nil, fmt.Errorf("failed to read block: %w", err)
 		}
-		
+
 		block := buffer[:n]
-		
+
 		// Compute strong hash (SHA-256)
 		strongHash := sha256.Sum256(block)
-		
+
 		// Compute weak hash (Adler-32 for rolling checksum)
 		weakHash := adler32.Checksum(block)
-		
+
 		blocks = append(blocks, BlockHash{
 			Offset: offset,
 			Size:   int64(n),
 			Hash:   hex.EncodeToString(strongHash[:]),
 			Weak:   weakHash,
 		})
-		
+
 		offset += int64(n)
 	}
-	
+
 	return &BlockHashResponse{
 		Path:      filePath,
 		Size:      fileSize,
@@ -114,7 +114,7 @@ func (ds *DeltaSync) DiffBlocks(localBlocks, remoteBlocks []BlockHash) []BlockHa
 	for _, b := range remoteBlocks {
 		remoteMap[b.Hash] = b
 	}
-	
+
 	// Find blocks that differ
 	var diffBlocks []BlockHash
 	for _, local := range localBlocks {
@@ -122,7 +122,7 @@ func (ds *DeltaSync) DiffBlocks(localBlocks, remoteBlocks []BlockHash) []BlockHa
 			diffBlocks = append(diffBlocks, local)
 		}
 	}
-	
+
 	return diffBlocks
 }
 
@@ -176,28 +176,28 @@ func (ds *DeltaSync) FindMatchingBlocks(filePath string, remoteBlocks []BlockHas
 	for i, b := range remoteBlocks {
 		weakMap[b.Weak] = append(weakMap[b.Weak], i)
 	}
-	
+
 	strongMap := make(map[string]int) // strong hash -> index
 	for i, b := range remoteBlocks {
 		strongMap[b.Hash] = i
 	}
-	
+
 	f, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	
+
 	var matches []int // Indices of matching remote blocks
 	matchedBlocks := make(map[int]bool)
-	
+
 	buffer := make([]byte, ds.blockSize)
 	window := make([]byte, ds.blockSize)
 	windowPos := 0
 	windowFull := false
-	
+
 	roller := NewRollingChecksumUpdate(int(ds.blockSize))
-	
+
 	// Read file and find matches
 	for {
 		n, err := f.Read(buffer)
@@ -207,7 +207,7 @@ func (ds *DeltaSync) FindMatchingBlocks(filePath string, remoteBlocks []BlockHas
 		if err != nil {
 			return nil, err
 		}
-		
+
 		for i := 0; i < n; i++ {
 			// Add byte to window
 			if windowFull {
@@ -225,7 +225,7 @@ func (ds *DeltaSync) FindMatchingBlocks(filePath string, remoteBlocks []BlockHas
 					continue
 				}
 			}
-			
+
 			// Compute weak hash
 			var weak uint32
 			if windowPos == 0 && !windowFull {
@@ -234,13 +234,13 @@ func (ds *DeltaSync) FindMatchingBlocks(filePath string, remoteBlocks []BlockHas
 				// This is simplified - in production, use proper rolling update
 				weak = ComputeRollingChecksum(window)
 			}
-			
+
 			// Check for potential matches
 			if candidates, ok := weakMap[weak]; ok {
 				// Compute strong hash
 				strong := sha256.Sum256(window)
 				strongStr := hex.EncodeToString(strong[:])
-				
+
 				if idx, ok := strongMap[strongStr]; ok && !matchedBlocks[idx] {
 					matches = append(matches, idx)
 					matchedBlocks[idx] = true
@@ -256,20 +256,20 @@ func (ds *DeltaSync) FindMatchingBlocks(filePath string, remoteBlocks []BlockHas
 			}
 		}
 	}
-	
+
 	return matches, nil
 }
 
 // BlockTransferPlan describes which blocks need to be transferred
 type BlockTransferPlan struct {
-	FilePath        string       `json:"file_path"`
-	FileSize        int64        `json:"file_size"`
-	BlockSize       int64        `json:"block_size"`
-	TotalBlocks     int          `json:"total_blocks"`
-	BlocksToSend    []BlockHash  `json:"blocks_to_send"`
-	BlocksToReceive []int        `json:"blocks_to_receive"` // Indices in the target's block list
-	BytesToTransfer int64        `json:"bytes_to_transfer"`
-	Savings         float64      `json:"savings_percent"`
+	FilePath        string      `json:"file_path"`
+	FileSize        int64       `json:"file_size"`
+	BlockSize       int64       `json:"block_size"`
+	TotalBlocks     int         `json:"total_blocks"`
+	BlocksToSend    []BlockHash `json:"blocks_to_send"`
+	BlocksToReceive []int       `json:"blocks_to_receive"` // Indices in the target's block list
+	BytesToTransfer int64       `json:"bytes_to_transfer"`
+	Savings         float64     `json:"savings_percent"`
 }
 
 // CreateTransferPlan creates a plan for transferring a file using delta sync
@@ -287,18 +287,18 @@ func (ds *DeltaSync) CreateTransferPlan(localHashes, remoteHashes *BlockHashResp
 			Savings:         100.0,
 		}
 	}
-	
+
 	// Build remote block map
 	remoteBlockMap := make(map[string]int) // hash -> index
 	for i, b := range remoteHashes.Blocks {
 		remoteBlockMap[b.Hash] = i
 	}
-	
+
 	// Find blocks that need to be sent
 	var blocksToSend []BlockHash
 	var blocksToReceive []int
 	var bytesToTransfer int64
-	
+
 	for _, local := range localHashes.Blocks {
 		if idx, exists := remoteBlockMap[local.Hash]; exists {
 			// Block already exists on remote
@@ -309,12 +309,12 @@ func (ds *DeltaSync) CreateTransferPlan(localHashes, remoteHashes *BlockHashResp
 			bytesToTransfer += local.Size
 		}
 	}
-	
+
 	savings := 0.0
 	if localHashes.Size > 0 {
 		savings = float64(localHashes.Size-bytesToTransfer) / float64(localHashes.Size) * 100
 	}
-	
+
 	return &BlockTransferPlan{
 		FilePath:        localHashes.Path,
 		FileSize:        localHashes.Size,
@@ -334,11 +334,11 @@ func (ds *DeltaSync) ReadBlock(filePath string, offset, size int64) ([]byte, err
 		return nil, err
 	}
 	defer f.Close()
-	
+
 	if _, err := f.Seek(offset, io.SeekStart); err != nil {
 		return nil, err
 	}
-	
+
 	data := make([]byte, size)
 	n, err := io.ReadFull(f, data)
 	if err == io.EOF || err == io.ErrUnexpectedEOF {
@@ -347,7 +347,7 @@ func (ds *DeltaSync) ReadBlock(filePath string, offset, size int64) ([]byte, err
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return data, nil
 }
 
@@ -358,12 +358,11 @@ func (ds *DeltaSync) WriteBlock(filePath string, offset int64, data []byte) erro
 		return err
 	}
 	defer f.Close()
-	
+
 	if _, err := f.Seek(offset, io.SeekStart); err != nil {
 		return err
 	}
-	
+
 	_, err = f.Write(data)
 	return err
 }
-

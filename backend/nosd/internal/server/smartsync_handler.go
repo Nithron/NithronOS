@@ -121,7 +121,7 @@ func (h *SmartSyncHandler) UpdatePolicy(w http.ResponseWriter, r *http.Request) 
 // ListPlaceholders returns all placeholder files
 func (h *SmartSyncHandler) ListPlaceholders(w http.ResponseWriter, r *http.Request) {
 	shareID := r.URL.Query().Get("share_id")
-	
+
 	var placeholders []*smartsync.PlaceholderFile
 	if shareID != "" {
 		placeholders = h.manager.ListPlaceholders(shareID)
@@ -266,7 +266,7 @@ func (h *SmartSyncHandler) UnpinFile(w http.ResponseWriter, r *http.Request) {
 // ListPinnedFiles returns all pinned files
 func (h *SmartSyncHandler) ListPinnedFiles(w http.ResponseWriter, r *http.Request) {
 	shareID := r.URL.Query().Get("share_id")
-	
+
 	stats := h.manager.GetStats()
 	writeJSON(w, map[string]interface{}{
 		"share_id":     shareID,
@@ -346,4 +346,3 @@ func (h *SmartSyncHandler) RegisterPlaceholder(shareID, path, name string, size 
 	}
 	return h.manager.RegisterPlaceholder(placeholder)
 }
-

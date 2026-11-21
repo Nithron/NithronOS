@@ -15,35 +15,35 @@ const (
 
 // AlertRule defines a monitoring alert rule
 type AlertRule struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Description string            `json:"description,omitempty"`
-	Enabled     bool              `json:"enabled"`
-	
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Enabled     bool   `json:"enabled"`
+
 	// Condition
-	Metric      string            `json:"metric"`
-	Operator    string            `json:"operator"` // >, <, ==, !=
-	Threshold   float64           `json:"threshold"`
-	Duration    time.Duration     `json:"duration"` // How long condition must be true
-	Filters     map[string]string `json:"filters,omitempty"`
-	
+	Metric    string            `json:"metric"`
+	Operator  string            `json:"operator"` // >, <, ==, !=
+	Threshold float64           `json:"threshold"`
+	Duration  time.Duration     `json:"duration"` // How long condition must be true
+	Filters   map[string]string `json:"filters,omitempty"`
+
 	// Alert properties
-	Severity    Severity          `json:"severity"`
-	Cooldown    time.Duration     `json:"cooldown"` // Min time between alerts
-	Hysteresis  float64           `json:"hysteresis,omitempty"` // % change needed to clear
-	
+	Severity   Severity      `json:"severity"`
+	Cooldown   time.Duration `json:"cooldown"`             // Min time between alerts
+	Hysteresis float64       `json:"hysteresis,omitempty"` // % change needed to clear
+
 	// Notification
-	Channels    []string          `json:"channels"` // Channel IDs to notify
-	Template    string            `json:"template,omitempty"` // Custom message template
-	
+	Channels []string `json:"channels"`           // Channel IDs to notify
+	Template string   `json:"template,omitempty"` // Custom message template
+
 	// Metadata
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
-	LastFired   *time.Time        `json:"last_fired,omitempty"`
-	LastCleared *time.Time        `json:"last_cleared,omitempty"`
-	
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	LastFired   *time.Time `json:"last_fired,omitempty"`
+	LastCleared *time.Time `json:"last_cleared,omitempty"`
+
 	// State
-	CurrentState RuleState        `json:"current_state"`
+	CurrentState RuleState `json:"current_state"`
 }
 
 // RuleState represents the current state of a rule
@@ -56,21 +56,21 @@ type RuleState struct {
 
 // NotificationChannel defines a notification destination
 type NotificationChannel struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Type        string                 `json:"type"` // email, webhook, ntfy
-	Enabled     bool                   `json:"enabled"`
-	Config      map[string]interface{} `json:"config"`
-	
+	ID      string                 `json:"id"`
+	Name    string                 `json:"name"`
+	Type    string                 `json:"type"` // email, webhook, ntfy
+	Enabled bool                   `json:"enabled"`
+	Config  map[string]interface{} `json:"config"`
+
 	// Rate limiting
-	RateLimit   int                    `json:"rate_limit,omitempty"` // Max alerts per hour
-	QuietHours  *QuietHours            `json:"quiet_hours,omitempty"`
-	
+	RateLimit  int         `json:"rate_limit,omitempty"` // Max alerts per hour
+	QuietHours *QuietHours `json:"quiet_hours,omitempty"`
+
 	// Metadata
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
-	LastUsed    *time.Time             `json:"last_used,omitempty"`
-	LastError   string                 `json:"last_error,omitempty"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	LastUsed  *time.Time `json:"last_used,omitempty"`
+	LastError string     `json:"last_error,omitempty"`
 }
 
 // QuietHours defines when notifications should be suppressed
@@ -83,26 +83,26 @@ type QuietHours struct {
 
 // AlertEvent represents a fired alert
 type AlertEvent struct {
-	ID          string    `json:"id"`
-	RuleID      string    `json:"rule_id"`
-	RuleName    string    `json:"rule_name"`
-	Severity    Severity  `json:"severity"`
-	State       string    `json:"state"` // firing, cleared
-	
+	ID       string   `json:"id"`
+	RuleID   string   `json:"rule_id"`
+	RuleName string   `json:"rule_name"`
+	Severity Severity `json:"severity"`
+	State    string   `json:"state"` // firing, cleared
+
 	// Alert details
-	Metric      string    `json:"metric"`
-	Value       float64   `json:"value"`
-	Threshold   float64   `json:"threshold"`
-	Message     string    `json:"message"`
-	
+	Metric    string  `json:"metric"`
+	Value     float64 `json:"value"`
+	Threshold float64 `json:"threshold"`
+	Message   string  `json:"message"`
+
 	// Timestamps
-	FiredAt     time.Time `json:"fired_at"`
-	ClearedAt   *time.Time `json:"cleared_at,omitempty"`
-	
+	FiredAt   time.Time  `json:"fired_at"`
+	ClearedAt *time.Time `json:"cleared_at,omitempty"`
+
 	// Notification status
-	Notified    bool      `json:"notified"`
-	Channels    []string  `json:"channels,omitempty"`
-	NotifyError string    `json:"notify_error,omitempty"`
+	Notified    bool     `json:"notified"`
+	Channels    []string `json:"channels,omitempty"`
+	NotifyError string   `json:"notify_error,omitempty"`
 }
 
 // EmailConfig holds email channel configuration
@@ -120,42 +120,42 @@ type EmailConfig struct {
 
 // WebhookConfig holds webhook channel configuration
 type WebhookConfig struct {
-	URL         string            `json:"url"`
-	Method      string            `json:"method,omitempty"` // Default: POST
-	Headers     map[string]string `json:"headers,omitempty"`
-	Template    string            `json:"template,omitempty"` // JSON template
-	Secret      string            `json:"secret,omitempty"` // For HMAC signing
+	URL      string            `json:"url"`
+	Method   string            `json:"method,omitempty"` // Default: POST
+	Headers  map[string]string `json:"headers,omitempty"`
+	Template string            `json:"template,omitempty"` // JSON template
+	Secret   string            `json:"secret,omitempty"`   // For HMAC signing
 }
 
 // NtfyConfig holds ntfy channel configuration
 type NtfyConfig struct {
-	ServerURL   string   `json:"server_url"`
-	Topic       string   `json:"topic"`
-	Priority    int      `json:"priority,omitempty"` // 1-5
-	Tags        []string `json:"tags,omitempty"`
-	Username    string   `json:"username,omitempty"`
-	Password    string   `json:"password,omitempty"`
-	Token       string   `json:"token,omitempty"`
+	ServerURL string   `json:"server_url"`
+	Topic     string   `json:"topic"`
+	Priority  int      `json:"priority,omitempty"` // 1-5
+	Tags      []string `json:"tags,omitempty"`
+	Username  string   `json:"username,omitempty"`
+	Password  string   `json:"password,omitempty"`
+	Token     string   `json:"token,omitempty"`
 }
 
 // NotificationMessage represents a notification to be sent
 type NotificationMessage struct {
-	Title       string            `json:"title"`
-	Body        string            `json:"body"`
-	Severity    Severity          `json:"severity"`
-	Timestamp   time.Time         `json:"timestamp"`
-	
+	Title     string    `json:"title"`
+	Body      string    `json:"body"`
+	Severity  Severity  `json:"severity"`
+	Timestamp time.Time `json:"timestamp"`
+
 	// Alert details
-	RuleName    string            `json:"rule_name"`
-	Metric      string            `json:"metric"`
-	Value       float64           `json:"value"`
-	Threshold   float64           `json:"threshold"`
-	State       string            `json:"state"`
-	
+	RuleName  string  `json:"rule_name"`
+	Metric    string  `json:"metric"`
+	Value     float64 `json:"value"`
+	Threshold float64 `json:"threshold"`
+	State     string  `json:"state"`
+
 	// Additional context
-	Hostname    string            `json:"hostname"`
-	Labels      map[string]string `json:"labels,omitempty"`
-	URL         string            `json:"url,omitempty"`
+	Hostname string            `json:"hostname"`
+	Labels   map[string]string `json:"labels,omitempty"`
+	URL      string            `json:"url,omitempty"`
 }
 
 // PredefinedRules returns common alert rules

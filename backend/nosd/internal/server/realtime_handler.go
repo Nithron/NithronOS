@@ -106,4 +106,3 @@ func (h *RealtimeHandler) NotifyFileChange(shareID, path string, changeType stri
 func (h *RealtimeHandler) Shutdown() {
 	h.connMgr.GetHub().Stop()
 }
-

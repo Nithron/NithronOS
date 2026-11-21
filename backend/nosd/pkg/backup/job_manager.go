@@ -26,7 +26,7 @@ func NewJobManager(logger zerolog.Logger) *JobManager {
 func (jm *JobManager) AddJob(job *BackupJob) {
 	jm.mu.Lock()
 	defer jm.mu.Unlock()
-	
+
 	jm.jobs[job.ID] = job
 	jm.logger.Info().
 		Str("id", job.ID).
@@ -38,7 +38,7 @@ func (jm *JobManager) AddJob(job *BackupJob) {
 func (jm *JobManager) UpdateJob(job *BackupJob) {
 	jm.mu.Lock()
 	defer jm.mu.Unlock()
-	
+
 	jm.jobs[job.ID] = job
 }
 
@@ -46,7 +46,7 @@ func (jm *JobManager) UpdateJob(job *BackupJob) {
 func (jm *JobManager) GetJob(id string) (*BackupJob, bool) {
 	jm.mu.RLock()
 	defer jm.mu.RUnlock()
-	
+
 	job, ok := jm.jobs[id]
 	return job, ok
 }
@@ -55,12 +55,12 @@ func (jm *JobManager) GetJob(id string) (*BackupJob, bool) {
 func (jm *JobManager) ListJobs() []*BackupJob {
 	jm.mu.RLock()
 	defer jm.mu.RUnlock()
-	
+
 	jobs := make([]*BackupJob, 0, len(jm.jobs))
 	for _, job := range jm.jobs {
 		jobs = append(jobs, job)
 	}
-	
+
 	return jobs
 }
 
@@ -68,13 +68,13 @@ func (jm *JobManager) ListJobs() []*BackupJob {
 func (jm *JobManager) ListRecentJobs(limit int) []*BackupJob {
 	jm.mu.RLock()
 	defer jm.mu.RUnlock()
-	
+
 	// Get all jobs
 	jobs := make([]*BackupJob, 0, len(jm.jobs))
 	for _, job := range jm.jobs {
 		jobs = append(jobs, job)
 	}
-	
+
 	// Sort by start time (newest first)
 	for i := 0; i < len(jobs)-1; i++ {
 		for j := i + 1; j < len(jobs); j++ {
@@ -83,12 +83,12 @@ func (jm *JobManager) ListRecentJobs(limit int) []*BackupJob {
 			}
 		}
 	}
-	
+
 	// Return limited results
 	if limit > 0 && limit < len(jobs) {
 		return jobs[:limit]
 	}
-	
+
 	return jobs
 }
 
@@ -96,19 +96,19 @@ func (jm *JobManager) ListRecentJobs(limit int) []*BackupJob {
 func (jm *JobManager) CancelJob(id string) error {
 	jm.mu.Lock()
 	defer jm.mu.Unlock()
-	
+
 	job, ok := jm.jobs[id]
 	if !ok {
 		return nil
 	}
-	
+
 	if job.State == JobStateRunning || job.State == JobStatePending {
 		job.State = JobStateCanceled
 		now := time.Now()
 		job.FinishedAt = &now
 		jm.logger.Info().Str("id", id).Msg("Job canceled")
 	}
-	
+
 	return nil
 }
 
@@ -116,27 +116,27 @@ func (jm *JobManager) CancelJob(id string) error {
 func (jm *JobManager) CleanupOldJobs(maxAge time.Duration) int {
 	jm.mu.Lock()
 	defer jm.mu.Unlock()
-	
+
 	now := time.Now()
 	deleted := 0
-	
+
 	for id, job := range jm.jobs {
 		// Only clean up completed jobs
 		if job.State != JobStateSucceeded && job.State != JobStateFailed && job.State != JobStateCanceled {
 			continue
 		}
-		
+
 		// Check age
 		if job.FinishedAt != nil && now.Sub(*job.FinishedAt) > maxAge {
 			delete(jm.jobs, id)
 			deleted++
 		}
 	}
-	
+
 	if deleted > 0 {
 		jm.logger.Info().Int("count", deleted).Msg("Cleaned up old jobs")
 	}
-	
+
 	return deleted
 }
 
@@ -144,20 +144,20 @@ func (jm *JobManager) CleanupOldJobs(maxAge time.Duration) int {
 func (jm *JobManager) AddLogEntry(jobID string, level string, message string) {
 	jm.mu.Lock()
 	defer jm.mu.Unlock()
-	
+
 	job, ok := jm.jobs[jobID]
 	if !ok {
 		return
 	}
-	
+
 	entry := LogEntry{
 		Timestamp: time.Now(),
 		Level:     level,
 		Message:   message,
 	}
-	
+
 	job.LogEntries = append(job.LogEntries, entry)
-	
+
 	// Keep only last 100 entries
 	if len(job.LogEntries) > 100 {
 		job.LogEntries = job.LogEntries[len(job.LogEntries)-100:]
@@ -168,12 +168,12 @@ func (jm *JobManager) AddLogEntry(jobID string, level string, message string) {
 func (jm *JobManager) UpdateProgress(jobID string, progress int, bytesTotal, bytesDone int64) {
 	jm.mu.Lock()
 	defer jm.mu.Unlock()
-	
+
 	job, ok := jm.jobs[jobID]
 	if !ok {
 		return
 	}
-	
+
 	job.Progress = progress
 	job.BytesTotal = bytesTotal
 	job.BytesDone = bytesDone

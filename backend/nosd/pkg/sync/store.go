@@ -424,4 +424,3 @@ func (s *Store) DeviceCountByUser(userID string) int {
 	}
 	return count
 }
-

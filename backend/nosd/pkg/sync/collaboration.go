@@ -15,9 +15,9 @@ import (
 type SharePermission string
 
 const (
-	PermissionRead      SharePermission = "read"
-	PermissionWrite     SharePermission = "write"
-	PermissionAdmin     SharePermission = "admin"
+	PermissionRead  SharePermission = "read"
+	PermissionWrite SharePermission = "write"
+	PermissionAdmin SharePermission = "admin"
 )
 
 // ShareInviteStatus represents the status of a share invitation
@@ -32,23 +32,23 @@ const (
 
 // SharedFolder represents a folder shared between users
 type SharedFolder struct {
-	ID          string          `json:"id"`
-	ShareID     string          `json:"share_id"`
-	Path        string          `json:"path"`
-	Name        string          `json:"name"`
-	OwnerID     string          `json:"owner_id"`
-	OwnerName   string          `json:"owner_name"`
-	CreatedAt   time.Time       `json:"created_at"`
-	Members     []FolderMember  `json:"members"`
+	ID        string         `json:"id"`
+	ShareID   string         `json:"share_id"`
+	Path      string         `json:"path"`
+	Name      string         `json:"name"`
+	OwnerID   string         `json:"owner_id"`
+	OwnerName string         `json:"owner_name"`
+	CreatedAt time.Time      `json:"created_at"`
+	Members   []FolderMember `json:"members"`
 }
 
 // FolderMember represents a member with access to a shared folder
 type FolderMember struct {
-	UserID      string          `json:"user_id"`
-	Username    string          `json:"username"`
-	Permission  SharePermission `json:"permission"`
-	AddedAt     time.Time       `json:"added_at"`
-	AddedBy     string          `json:"added_by"`
+	UserID     string          `json:"user_id"`
+	Username   string          `json:"username"`
+	Permission SharePermission `json:"permission"`
+	AddedAt    time.Time       `json:"added_at"`
+	AddedBy    string          `json:"added_by"`
 }
 
 // ShareInvite represents an invitation to join a shared folder
@@ -474,4 +474,3 @@ func (s *CollaborationStore) save() error {
 	invitesPath := filepath.Join(s.dataDir, "collaboration", "invites.json")
 	return os.WriteFile(invitesPath, invitesData, 0640)
 }
-
