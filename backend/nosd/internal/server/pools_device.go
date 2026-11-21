@@ -25,6 +25,10 @@ var agentSocketPath = "/run/nos-agent.sock"
 // seam for tests
 var devicePollInterval = 3 * time.Second
 
+// txWorkers tracks running pool device transactions (tests wait on it so a
+// transaction never outlives the test that started it).
+var txWorkers sync.WaitGroup
+
 type agentAPI interface {
 	PostJSON(ctx context.Context, path string, body any, v any) error
 	BalanceStatus(ctx context.Context, mount string) (*agentclient.BalanceStatus, error)
@@ -187,12 +191,18 @@ func handleApplyDevice(cfg config.Config) http.HandlerFunc {
 		Logger(cfg).Info().Str("event", "pool.device."+action+".started").Str("txId", tx.ID).Strs("devices", extractDevices(body.Steps)).Msg("")
 		incBtrfsTx(action)
 		start := time.Now()
-		// Execute asynchronously
-		go func(txID string) {
+		// Execute asynchronously. Everything the transaction needs is taken
+		// now, not when the goroutine runs, and the pool lock is released when
+		// the transaction ends.
+		client := makeAgentClient()
+		pollEvery := devicePollInterval
+		txWorkers.Add(1)
+		go func(txID, poolID string) {
+			defer txWorkers.Done()
+			defer releasePoolLock(poolID)
 			fn := func() error {
 				var cur pools.Tx
 				_, _ = fsatomic.LoadJSON(txPath(txID), &cur)
-				client := makeAgentClient()
 				for i, st := range cur.Steps {
 					now := time.Now().UTC()
 					cur.Steps[i].Status = "running"
@@ -263,7 +273,7 @@ func handleApplyDevice(cfg config.Config) http.HandlerFunc {
 										break
 									}
 								}
-								time.Sleep(devicePollInterval)
+								time.Sleep(pollEvery)
 							}
 						}
 					}
@@ -292,7 +302,7 @@ func handleApplyDevice(cfg config.Config) http.HandlerFunc {
 										break
 									}
 								}
-								time.Sleep(devicePollInterval)
+								time.Sleep(pollEvery)
 							}
 						}
 					}
@@ -329,19 +339,8 @@ func handleApplyDevice(cfg config.Config) http.HandlerFunc {
 			// Metrics + log finished
 			observeBtrfsTxDuration(start)
 			Logger(cfg).Info().Str("event", "pool.device."+action+".finished").Str("txId", tx.ID).Strs("devices", extractDevices(body.Steps)).Msg("")
-		}(tx.ID)
+		}(tx.ID, id)
 		writeJSON(w, map[string]any{"ok": true, "tx_id": tx.ID})
-		// Release lock when tx finishes
-		go func(poolID, txID string) {
-			for {
-				var cur pools.Tx
-				if ok, _ := fsatomic.LoadJSON(txPath(txID), &cur); ok && cur.FinishedAt != nil {
-					break
-				}
-				time.Sleep(500 * time.Millisecond)
-			}
-			releasePoolLock(poolID)
-		}(id, tx.ID)
 	}
 }
 

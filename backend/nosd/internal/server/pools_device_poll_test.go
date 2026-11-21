@@ -53,6 +53,7 @@ func (f *fakeAgentPoll) ReplaceStatus(_ context.Context, _ string) (*agentclient
 func TestApplyDevice_BalanceRunningToDone(t *testing.T) {
 	t.Setenv("NOS_STATE_DIR", t.TempDir())
 	t.Setenv("NOS_TEST_FAST_POLL", "1")
+	t.Cleanup(txWorkers.Wait) // runs before the env vars above are restored
 	oldPoll := devicePollInterval
 	devicePollInterval = 1 * time.Millisecond
 	defer func() { devicePollInterval = oldPoll }()
@@ -116,6 +117,7 @@ func TestApplyDevice_BalanceRunningToDone(t *testing.T) {
 func TestApplyDevice_StepErrorStops(t *testing.T) {
 	t.Setenv("NOS_STATE_DIR", t.TempDir())
 	t.Setenv("NOS_TEST_FAST_POLL", "1")
+	t.Cleanup(txWorkers.Wait) // runs before the env vars above are restored
 	oldPoll := devicePollInterval
 	devicePollInterval = 1 * time.Millisecond
 	defer func() { devicePollInterval = oldPoll }()
@@ -154,7 +156,9 @@ func TestApplyDevice_StepErrorStops(t *testing.T) {
 	deadline := time.Now().Add(30 * time.Second)
 	for {
 		if time.Now().After(deadline) {
-			t.Fatal("timeout waiting for tx error")
+			txJSON, _ := os.ReadFile(txPath(txID))
+			logTail, _ := os.ReadFile(txLogPath(txID))
+			t.Fatalf("timeout waiting for tx error\ntx file %s:\n%s\ntx log:\n%s", txPath(txID), txJSON, logTail)
 		}
 		var cur pools.Tx
 		_, _ = fsatomic.LoadJSON(txPath(txID), &cur)

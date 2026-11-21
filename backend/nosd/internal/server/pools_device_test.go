@@ -12,6 +12,7 @@ import (
 
 func TestApplyDeviceConfirmValidation(t *testing.T) {
 	t.Setenv("NOS_TEST_FAST_POLL", "1")
+	t.Cleanup(txWorkers.Wait) // runs before the env vars above are restored
 	r := NewRouter(config.FromEnv())
 	// wrong confirm
 	body := map[string]any{
