@@ -3,7 +3,7 @@
 This document explains how companies, MSPs, and resellers can use NithronOS commercially and how Official Build Artifacts (ISOs, packages, update repos) are licensed.
 
 > **Summary**
-> - Source code: available under the NithronOS Community License (NCL) for **non-commercial** use and contributions.
+> - Source code: available under the Nithron Community License (NCL) for **non-commercial** use and contributions.
 > - Commercial use, hosting, resale, or binary redistribution requires a **Commercial License**.
 > - Official Build Artifacts are licensed under a **Binary EULA** and may not be mirrored or resold.
 
@@ -42,7 +42,7 @@ We offer:
 - Optional white-label branding rights.
 
 ## Trademarks & Branding
-“Nithron”, “NithronOS”, “nOS”, and associated logos are Nithron’s trademarks. No right to use them is granted except to truthfully describe the Software. Forks must remove all brand assets and use a distinct name (see `TRADEMARK_POLICY.md`).
+“Nithron”, “NithronOS”, “nOS”, “NithronAI”, “nAI”, and associated logos are Nithron’s trademarks. No right to use them is granted except to truthfully describe the Software. Forks must remove all brand assets and use a distinct name (see `TRADEMARK_POLICY.md`).
 
 ## Compliance Notes
 - Do not mirror or redistribute Official Build Artifacts, keys, or the update repo.

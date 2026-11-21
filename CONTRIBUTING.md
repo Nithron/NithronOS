@@ -5,7 +5,7 @@ Thanks for your interest in contributing! We welcome issues, docs, code, tests, 
 ## Ground Rules
 - Be respectful and constructive.
 - Security-impacting changes: follow `SECURITY.md`.
-- All contributions are made under the **NithronOS Community License (NCL)** and its contribution clause (see `LICENSE`).
+- All contributions are made under the **Nithron Community License (NCL)** and its contribution clause (see `LICENSE`).
 
 ## How to Contribute
 1. **Discuss**: Open an issue for bugs/features before large changes.

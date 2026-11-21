@@ -303,12 +303,12 @@ We welcome issues and PRs! Please read:
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 - [SECURITY.md](SECURITY.md)
 
-All contributions are made under the **NithronOS Community License (NCL)**; see [LICENSE](LICENSE).
+All contributions are made under the **Nithron Community License (NCL)**; see [LICENSE](LICENSE).
 
 ---
 
 ## Licensing & Commercial Use
-- **Source code:** [LICENSE](LICENSE) (NithronOS Community License — non-commercial, source-available)  
+- **Source code:** [LICENSE](LICENSE) (Nithron Community License — non-commercial, source-available)  
 - **Commercial & MSP terms:** [COMMERCIAL.md](COMMERCIAL.md)  
 - **Official builds (ISOs/packages/updates):** [BINARIES-EULA.md](BINARIES-EULA.md)  
 - **Trademarks:** [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md)

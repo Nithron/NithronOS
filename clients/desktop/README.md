@@ -207,5 +207,5 @@ clients/desktop/
 
 ## License
 
-NithronOS Community License. See LICENSE file.
+Nithron Community License (NCL). See LICENSE file.
 

@@ -157,5 +157,5 @@ See the main [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines.
 
 ## License
 
-NithronSync Mobile is part of NithronOS and is licensed under the NithronOS Community License (NCL).
+NithronSync Mobile is part of NithronOS and is licensed under the Nithron Community License (NCL).
 
