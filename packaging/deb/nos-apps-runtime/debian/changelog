@@ -1,3 +1,10 @@
+nos-apps-runtime (0.9.5~pre-alpha-1) unstable; urgency=medium
+
+  * Align the package version with the NithronOS release (0.9.5-pre-alpha); the
+    VERSION file at the repository root is now the single source.
+
+ -- Nithron Team <hello@nithron.com>  Sat, 21 Nov 2026 19:13:49 +0100
+
 nos-apps-runtime (0.3.0-1) unstable; urgency=medium
 
   * Initial release of NithronOS Apps Runtime

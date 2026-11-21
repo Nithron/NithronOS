@@ -7,7 +7,7 @@ export DEB_BUILD_MAINT_OPTIONS=hardening=+all
 	dh $@
 
 override_dh_auto_build:
-	cd ../../../agent/nos-agent && go mod tidy && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o ../../packaging/deb/nos-agent/deb-build/nos-agent .
+	cd ../../../agent/nos-agent && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o ../../packaging/deb/nos-agent/deb-build/nos-agent .
 
 override_dh_auto_install:
 	install -D -m0755 deb-build/nos-agent debian/nos-agent/usr/sbin/nos-agent
