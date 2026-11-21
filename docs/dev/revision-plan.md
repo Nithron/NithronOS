@@ -164,7 +164,8 @@ Grouped by feature. Each item lists the evidence.
 4. **Remove mock data**: `Apps.tsx:32` (marketplace), `AppInstallWizard.tsx:54` (schemas), `MonitoringDashboard.tsx:191` (service status); `AppShell.tsx:102` (health badge disabled); `SettingsNetwork.tsx:999` (WireGuard peer dialog TODO).
 5. **Setup wizard**: OTP countdown and regeneration messaging (Phase 1); handle the token expiry (10-minute setup token) gracefully mid-wizard.
 6. **Live UI pass**: run the app against a real nosd + agent in a VM and walk every nav entry (`config/nav.ts`), logging console errors, 404s, crashes and dead buttons. This is how the "broken UI elements" list gets made concrete; most aren't visible from static reading. Fix and add Playwright coverage (`tests/e2e/ui`) for each page.
-7. Error and empty states: every page should show a typed error (backend `httpx.WriteTypedError` codes), never a blank card or a crash when an endpoint 404s or 503s.
+7. `react-router-dom` 6 has a moderate advisory fixed only in 7 (major upgrade); do it with the routing cleanup.
+8. Error and empty states: every page should show a typed error (backend `httpx.WriteTypedError` codes), never a blank card or a crash when an endpoint 404s or 503s.
 
 ---
 
