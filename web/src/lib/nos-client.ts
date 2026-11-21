@@ -211,7 +211,8 @@ export const http = {
   
   // Setup endpoints
   setup: {
-    getState: () => httpCore.get<any>('/v1/setup/state'),
+    getState: () =>
+      httpCore.get<{ firstBoot: boolean; otpRequired: boolean; expiresAt?: string }>('/v1/setup/state'),
     verifyOTP: (otp: string) => httpCore.post('/v1/setup/otp/verify', { otp }),
     createAdmin: (token: string, data: any) => httpCore.post('/v1/setup/first-admin', { token, ...data }),
     complete: (token: string) => httpCore.post('/v1/setup/complete', { token }),
