@@ -28,6 +28,19 @@ deb http://security.debian.org/debian-security bookworm-security main contrib no
 EOF
 log "APT sources written"
 
+# 2b. Btrfs compression. The installer's Btrfs "compress" option is only an
+#     on/off switch (it means zlib), so set the algorithm the layout intends.
+if grep -q '[[:space:]]btrfs[[:space:]]' "$T/etc/fstab"; then
+	awk 'BEGIN { OFS = "\t" }
+	     $3 == "btrfs" && $4 !~ /compress=zstd/ {
+	         if ($4 ~ /compress(=[^,]*)?/) sub(/compress(=[^,]*)?/, "compress=zstd:3", $4)
+	         else $4 = $4 ",compress=zstd:3"
+	     }
+	     { print }' "$T/etc/fstab" > "$T/etc/fstab.nithronos" &&
+		mv "$T/etc/fstab.nithronos" "$T/etc/fstab"
+	log "Btrfs mounts use compress=zstd:3"
+fi
+
 # 3. Services that must start on first boot. nosd shows the first-boot setup
 #    code on the console; nos-issue-reload.path refreshes the login prompts.
 for unit in nosd.service nos-agent.service; do

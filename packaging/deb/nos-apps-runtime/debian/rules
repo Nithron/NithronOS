@@ -16,6 +16,9 @@ override_dh_auto_install:
 	install -d $(CURDIR)/debian/nos-apps-runtime/srv/apps/.snapshots
 	install -d $(CURDIR)/debian/nos-apps-runtime/var/lib/nos/apps/state
 	install -d $(CURDIR)/debian/nos-apps-runtime/usr/share/nithronos/apps
+	# debian/install can't rename: 'src etc/docker/daemon.json' there creates a
+	# directory named daemon.json, which stops Docker from starting.
+	install -D -m0644 $(CURDIR)/docker-daemon.json $(CURDIR)/debian/nos-apps-runtime/etc/docker/daemon.json
 
 override_dh_installsystemd:
 	dh_installsystemd --name=nos-apps --no-start --no-enable

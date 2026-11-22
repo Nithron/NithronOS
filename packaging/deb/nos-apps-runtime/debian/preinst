@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    install|upgrade)
+        # Packages before 0.9.5~pre-alpha-1 installed the Docker config as
+        # /etc/docker/daemon.json/docker-daemon.json (a directory named
+        # daemon.json), which stops Docker from starting. Remove it so the
+        # file can be installed in its place.
+        if [ -d /etc/docker/daemon.json ]; then
+            rm -rf /etc/docker/daemon.json
+        fi
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0
