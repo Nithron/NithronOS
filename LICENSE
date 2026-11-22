@@ -1,6 +1,6 @@
 Nithron Community License (NCL) v1.0
 Copyright (c) 2025-2026 Thiago Benkendorf & Nithron. All rights reserved.
-This License covers the Nithron software it is distributed with (for example NithronOS, NithronAI or Nithro); the NOTICE file names the product.
+This License covers the Nithron software it is distributed with (for example NithronOS, NithronAI or Niro); the NOTICE file names the product.
 https://nithron.com
 
 1. Definitions
@@ -8,7 +8,7 @@ https://nithron.com
 “Official Build Artifacts” means prebuilt ISOs, packages, update repositories, container images, and signing keys released by Nithron.
 “Non-Commercial Use” means use by an individual for personal, educational, research, or open-source contribution purposes, with no direct or indirect monetary compensation or consideration and not on behalf of any for-profit entity.
 “Commercial Use” means any use that is not Non-Commercial Use, including use by or on behalf of a for-profit entity, providing services to third parties, hosting, resale, paid support, consulting, or any monetized distribution.
-“Trademarks” means the names “Nithron”, “NithronOS”, “nOS”, “NithronAI”, “nAI”, “Nithro”, the names of other Nithron products, related logos, wordmarks, and brand assets.
+“Trademarks” means the names “Nithron”, “NithronOS”, “nOS”, “NithronAI”, “nAI”, “Niro”, the names of other Nithron products, related logos, wordmarks, and brand assets.
 
 2. License Grant (Non-Commercial)
 Subject to your full compliance with this License:
@@ -20,7 +20,7 @@ Subject to your full compliance with this License:
 3.1 No Commercial Use. You may not use, host, offer, sell, license, sublicense, monetize, or distribute the Software, derivative works, or compiled artifacts for Commercial Use without a separate commercial agreement with Nithron.
 3.2 No Competing Distribution. You may not publish or distribute prebuilt binaries, ISOs, container images, app catalogs, or update repositories derived from the Software, whether or not for consideration, without a commercial agreement.
 3.3 No Service Offering. You may not offer or provide the Software as a hosted or managed service to third parties without a commercial agreement.
-3.4 Trademarks. This License does not grant rights to the Trademarks. You may not use them, or confusingly similar names (including “NithronOS”, “Nithron OS”, “nOS”, “NOS”, “NithronAI”, “Nithron AI”, “nAI”, “NAI”, “Nithro”, “Nithro Bot”, or variants such as “BetterNOS”, “BetterNAI” or “BetterNithro”), except to truthfully describe your fork as a fork of the product it is based on (for example “a fork of NithronOS”) in plain text. Remove all brand assets in forks.
+3.4 Trademarks. This License does not grant rights to the Trademarks. You may not use them, or confusingly similar names (including “NithronOS”, “Nithron OS”, “nOS”, “NOS”, “NithronAI”, “Nithron AI”, “nAI”, “NAI”, “Niro”, “Niro Bot”, or variants such as “BetterNOS”, “BetterNAI” or “BetterNiro”), except to truthfully describe your fork as a fork of the product it is based on (for example “a fork of NithronOS”) in plain text. Remove all brand assets in forks.
 3.5 Notices. Do not remove or alter copyright, license, or attribution notices.
 3.6 No Sublicensing. You may not sublicense the Software.
 
