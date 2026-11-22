@@ -222,7 +222,8 @@ jobs:
 
   debs:
     name: Build Debian packages
-    if: ${{ github.event_name == 'push' || (github.event_name == 'release' && github.event.action == 'published') }}
+    # Also on manual runs, so a branch's ISO can be built and tested before merging.
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && github.event.action == 'published') }}
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -285,7 +286,8 @@ jobs:
 
   iso:
     name: Build ISO (amd64)
-    if: ${{ github.event_name == 'push' || (github.event_name == 'release' && github.event.action == 'published') }}
+    # Also on manual runs, so a branch's ISO can be built and tested before merging.
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && github.event.action == 'published') }}
     needs: debs
     runs-on: ubuntu-latest
     permissions:
