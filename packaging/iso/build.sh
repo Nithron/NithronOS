@@ -201,7 +201,7 @@ trap 'umount "$MNT_DIR" >/dev/null 2>&1 || true; rmdir "$MNT_DIR" >/dev/null 2>&
 ${SUDO_CMD} mount -o loop "$ISO_DST" "$MNT_DIR"
 
 missing=0
-for f in install/vmlinuz install/initrd.gz live/filesystem.packages live/filesystem.packages-remove; do
+for f in install/vmlinuz install/initrd.gz live/filesystem.packages; do
   if [ ! -f "$MNT_DIR/$f" ]; then
     echo "::error::Missing $f in ISO"
     missing=1
@@ -215,7 +215,8 @@ for pkg in $NOS_PACKAGES; do
     echo "::error::$pkg is not installed in the live system"
     missing=1
   fi
-  if tr ' ' '\n' < "$MNT_DIR/live/filesystem.packages-remove" | grep -qx "$pkg"; then
+  # (the removal list only exists when something is live-only)
+  if [ -f "$MNT_DIR/live/filesystem.packages-remove" ] && tr ' ' '\n' < "$MNT_DIR/live/filesystem.packages-remove" | grep -qx "$pkg"; then
     echo "::error::$pkg is in live/filesystem.packages-remove; the installer would remove it from installed systems"
     missing=1
   fi
