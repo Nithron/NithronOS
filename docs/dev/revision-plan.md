@@ -188,7 +188,8 @@ Grouped by feature. Each item lists the evidence.
    - add the capabilities it needs (`CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_NET_ADMIN CAP_SYS_RAWIO CAP_MKNOD`)
    - `RestrictAddressFamilies=AF_UNIX` blocks its own registration call to `127.0.0.1:9000` and docker compose networking
 3. nosd: `ProtectSystem=full` is fine with `ReadWritePaths=/etc/nos`. Add `RuntimeDirectory=nos` for `/run/nos`. Remove the writes to `/tmp` (it has `PrivateTmp`).
-4. Prune `hooks/normal/` (25 hooks, several overlapping: `10-enable-services`, `91-enable-nos-services`, `95-ensure-caddy-enabled`, `041-enable-otp-announce`, `96-setup-otp-generator`) and the preset file.
+4. Decide on `installer/nos-installer` (a Go installer that isn't built or shipped) and the placeholder `/usr/sbin/nos-installer` shell script on the ISO: delete both, or make the Go tool a supported alternative to the Debian installer.
+5. Prune `hooks/normal/` (25 hooks, several overlapping: `10-enable-services`, `91-enable-nos-services`, `95-ensure-caddy-enabled`, `041-enable-otp-announce`, `96-setup-otp-generator`) and the preset file.
 5. Caddy: verify the shipped Caddyfile serves the UI and proxies `/api` and WebDAV, with the self-signed TLS path (`nos-tls-gen`).
 6. Secure Boot: track shim signing as a known limitation.
 
