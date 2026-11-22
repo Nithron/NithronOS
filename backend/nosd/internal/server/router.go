@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -226,27 +225,9 @@ func NewRouter(cfg config.Config) http.Handler {
 	rlStore := ratelimit.New(cfg.RateLimitPath)
 	mgr := session.New(cfg.SessionsPath)
 
-	// On startup: if first boot and OTP exists/valid, log it
-	func() {
-		// Determine if setup complete by checking users on disk (fresh load)
-		us, _ := userstore.New(cfg.UsersPath)
-		if us == nil || !us.HasAdmin() {
-			// Load first-boot OTP state
-			var st struct {
-				OTP       string `json:"otp"`
-				CreatedAt string `json:"created_at"`
-				Used      bool   `json:"used"`
-			}
-			if b, err := os.ReadFile(cfg.FirstBootPath); err == nil {
-				_ = json.Unmarshal(b, &st)
-				if st.OTP != "" && !st.Used {
-					if t, err := time.Parse(time.RFC3339, st.CreatedAt); err == nil && time.Since(t) < 15*time.Minute {
-						Logger(cfg).Info().Msgf("First-boot OTP: %s (valid 15m)", st.OTP)
-					}
-				}
-			}
-		}
-	}()
+	// The first-boot setup code is owned by one manager per state file; main
+	// runs its rotation loop, these handlers use it on demand.
+	fb := FirstBootManager(cfg)
 
 	// Session verification middleware for server-side binding (non-enforcing)
 	r.Use(func(next http.Handler) http.Handler {
@@ -376,19 +357,17 @@ func NewRouter(cfg config.Config) http.Handler {
 				writeJSON(w, map[string]any{"ok": true})
 			})
 			rr.Post("/generate-otp", func(w http.ResponseWriter, r *http.Request) {
-				// Regenerate a one-time setup OTP (best-effort)
-				var st struct {
-					OTP       string `json:"otp"`
-					CreatedAt string `json:"created_at"`
-					Used      bool   `json:"used"`
+				// Issue a fresh setup code (only while no administrator exists).
+				st, err := fb.Rotate()
+				if err != nil {
+					httpx.WriteTypedError(w, http.StatusInternalServerError, "setup.otp.store", "Cannot write the setup code", 0)
+					return
 				}
-				st.OTP = genOTP6()
-				st.CreatedAt = time.Now().UTC().Format(time.RFC3339)
-				st.Used = false
-				_ = os.MkdirAll(filepath.Dir(cfg.FirstBootPath), 0o755)
-				_ = fsatomic.SaveJSON(r.Context(), cfg.FirstBootPath, st, 0o600)
-				_ = writeFirstBootOTPFile(st.OTP)
-				writeJSON(w, map[string]any{"otp": st.OTP})
+				if st == nil {
+					httpx.WriteTypedError(w, http.StatusConflict, "setup.complete", "Setup already completed", 0)
+					return
+				}
+				writeJSON(w, map[string]any{"otp": st.OTP, "expiresAt": st.ExpiresAt})
 			})
 		})
 	}
@@ -447,18 +426,19 @@ func NewRouter(cfg config.Config) http.Handler {
 			})
 		})
 		sr.Get("/state", func(w http.ResponseWriter, r *http.Request) {
-			// Compute firstBoot and whether an OTP is currently required (exists and valid)
-			firstBoot := true
-			if us, _ := userstore.New(cfg.UsersPath); us != nil && us.HasAdmin() {
-				firstBoot = false
+			// While no administrator exists a valid code always exists (a new one
+			// is issued here if the last one expired), so the UI never waits for one.
+			st, err := fb.Current()
+			if err != nil {
+				Logger(cfg).Error().Str("event", "setup.otp.store").Err(err).Msg("")
+				httpx.WriteTypedError(w, http.StatusInternalServerError, "setup.otp.store", "Cannot create the setup code", 0)
+				return
 			}
-			otpRequired := false
-			if st, err := firstboot.New(cfg.FirstBootPath).Load(); err == nil && st != nil {
-				if time.Now().Before(st.ExpiresAt) && st.OTP != "" {
-					otpRequired = true
-				}
+			resp := map[string]any{"firstBoot": st != nil, "otpRequired": st != nil}
+			if st != nil {
+				resp["expiresAt"] = st.ExpiresAt
 			}
-			writeJSON(w, map[string]any{"firstBoot": firstBoot, "otpRequired": otpRequired})
+			writeJSON(w, resp)
 		})
 
 		// Rate limiter (persisted): per-IP cfg.RateOTPPerMin per minute for setup endpoints
@@ -477,25 +457,31 @@ func NewRouter(cfg config.Config) http.Handler {
 			}
 			var body struct{ OTP string }
 			_ = json.NewDecoder(r.Body).Decode(&body)
-			if len(body.OTP) != 6 {
+			code := strings.ReplaceAll(strings.TrimSpace(body.OTP), " ", "")
+			if len(code) != firstboot.CodeLength {
 				httpx.WriteTypedError(w, http.StatusBadRequest, "setup.otp.invalid", "Enter the 6-digit code", 0)
 				return
 			}
-			st, err := firstboot.New(cfg.FirstBootPath).Load()
+			res, err := fb.Verify(code)
 			if err != nil {
+				Logger(cfg).Error().Str("event", "setup.otp.store").Err(err).Msg("")
 				if os.IsPermission(err) {
 					httpx.WriteTypedError(w, http.StatusInternalServerError, "storage_error", "setup storage not writable", 0)
 					return
 				}
-				w.WriteHeader(http.StatusInternalServerError)
+				httpx.WriteTypedError(w, http.StatusInternalServerError, "setup.otp.store", "Cannot read the setup code", 0)
 				return
 			}
-			if st == nil || st.OTP == "" || st.OTP != body.OTP {
+			switch res {
+			case firstboot.Valid:
+			case firstboot.Expired:
+				httpx.WriteTypedError(w, http.StatusGone, "setup.otp.expired", "That code expired. A new code is shown on the server console.", 0)
+				return
+			case firstboot.NotRequired:
+				httpx.WriteTypedError(w, http.StatusGone, "setup.complete", "Setup already completed", 0)
+				return
+			default:
 				httpx.WriteTypedError(w, http.StatusBadRequest, "setup.otp.invalid", "Invalid one-time code", 0)
-				return
-			}
-			if time.Now().After(st.ExpiresAt) {
-				httpx.WriteTypedError(w, http.StatusGone, "setup.otp.expired", "Your code expired. Request a new one.", 0)
 				return
 			}
 			payload := map[string]any{"purpose": "setup", "exp": time.Now().Add(10 * time.Minute).UTC().Format(time.RFC3339)}
@@ -505,8 +491,6 @@ func NewRouter(cfg config.Config) http.Handler {
 				httpx.WriteTypedError(w, http.StatusInternalServerError, "secret_unreadable", "secret.key not readable", 0)
 				return
 			}
-			// Announce/update OTP in runtime file for systemd announcer (best-effort)
-			_ = writeFirstBootOTPFile(st.OTP)
 			// Set setup session cookie under /api/v1/setup
 			secure := isSecureRequest(r, cfg)
 			writeSetupCookie(w, val, 10*time.Minute, secure)
@@ -562,14 +546,10 @@ func NewRouter(cfg config.Config) http.Handler {
 				httpx.WriteErrorWithDetails(w, http.StatusInternalServerError, code, "Service cannot write /etc/nos/users.json", map[string]any{"path": cfg.UsersPath})
 				return
 			}
-			// Success: remove first-boot state so OTP stops printing on restarts (best-effort)
-			_ = os.Remove(cfg.FirstBootPath)
-			// Remove OTP files (best-effort)
-			_ = os.Remove("/tmp/nos-otp")
-			_ = os.Remove("/etc/nos/otp")
-			_ = os.Remove("/run/nos/firstboot-otp")
-			// Remove MOTD hint if present (best-effort)
-			_ = os.Remove("/etc/motd.d/10-nithronos-otp")
+			// The administrator exists: the setup code and its console banner go away.
+			if err := fb.Consume(); err != nil {
+				Logger(cfg).Warn().Str("event", "setup.otp.consume").Err(err).Msg("")
+			}
 			// success; return 200 to advance UI reliably
 			w.WriteHeader(http.StatusOK)
 		})
@@ -597,11 +577,9 @@ func NewRouter(cfg config.Config) http.Handler {
 				return
 			}
 
-			// Also remove the firstboot state
-			_ = os.Remove(cfg.FirstBootPath)
-			_ = os.Remove("/tmp/nos-otp")
-			_ = os.Remove("/etc/nos/otp")
-			_ = os.Remove("/run/nos/firstboot-otp")
+			if err := fb.Consume(); err != nil {
+				Logger(cfg).Warn().Str("event", "setup.otp.consume").Err(err).Msg("")
+			}
 			// Clear setup cookie now that setup is complete
 			clearSetupCookie(w)
 			w.WriteHeader(http.StatusNoContent)
@@ -628,13 +606,14 @@ func NewRouter(cfg config.Config) http.Handler {
 			httpx.WriteTypedError(w, http.StatusPreconditionRequired, "confirm.required", "confirm=yes required", 0)
 			return
 		}
-		// Best-effort deletes
-		_ = os.Remove(cfg.FirstBootPath)
-		_ = os.Remove("/tmp/nos-otp")
-		_ = os.Remove("/etc/nos/otp")
-		_ = os.Remove("/run/nos/firstboot-otp")
 		if body.DeleteUsers {
 			_ = os.Remove(cfg.UsersPath)
+		}
+		// Drop the old code; with the users gone a new one is issued and shown
+		// on the console right away.
+		_ = fb.Consume()
+		if body.DeleteUsers {
+			_, _ = fb.Current()
 		}
 		writeJSON(w, map[string]any{"ok": true})
 	})
@@ -2038,16 +2017,6 @@ func clientIP(r *http.Request, cfg config.Config) string {
 		}
 	}
 	return ip
-}
-
-// genOTP6 generates a 6-digit OTP.
-func genOTP6() string {
-	var b [4]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "000000"
-	}
-	n := (uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3])) % 1000000
-	return fmt.Sprintf("%06d", n)
 }
 
 func dirPermInfo(path string) string {

@@ -14,7 +14,7 @@ This plan covers what is broken, half-built or badly structured, in priority ord
 | Agent (`nos-agent`) | Builds, tests pass. systemd sandbox blocks its own job (deb unit) or exposes it to every local user (ISO unit). |
 | Web UI | Unit tests pass, `tsc` fails (3 errors). Calls **~79 API paths that don't exist** in the backend. 8 orphan pages, 4–5 overlapping API client layers, mock data in Apps / Install wizard / Monitoring. |
 | First boot / OTP | Broken end to end (see Phase 1). |
-| Installer / ISO | BIOS and UEFI boot different preseeds (one interactive), package install failures are ignored, no security mirror. Four preseed files. |
+| Installer / ISO | Installed systems get **no NithronOS packages** (live-build marks them live-only and the installer removes them); the menus boot a stock Debian installer; live-build's own installer couldn't start. |
 | Sync clients | Desktop is a skeleton. Mobile has no native projects (cannot build). QR scanner is a mock. README marks all of this "Complete". |
 | CI | Last run on `main` failed in backend lint. Lockfile out of sync (`npm ci` fails). |
 
@@ -40,13 +40,12 @@ Goal: a clean, reproducible starting point so every later PR is judged on green 
 
 ### Root causes found
 
-1. **The installer path is inconsistent and its result is unverified.** (Corrected after re-reading `build.sh`: an earlier draft said installed systems get no nosd at all, which is probably wrong.) `build.sh` runs live-build with `--debian-installer live`, so the installer copies the *live filesystem*, which has the NithronOS debs installed by the `20-install-local-debs` hook, onto the disk. What can still go wrong:
-   - That hook ends in `|| true`, so if `dpkg -i` of nosd fails the ISO still builds, without nosd.
-   - **BIOS and UEFI use different preseeds**: isolinux uses `preseed/nithronos.cfg` with `priority=critical`; GRUB (UEFI) uses `/cdrom/preseed.cfg` with `priority=low`, i.e. an interactive install with different `late_command` and `pkgsel` settings. Two more preseeds (`includes.installer/preseed.cfg`, `debian-installer/preseed.cfg`) are not referenced by any boot entry.
-   - `auto/config` and `build.sh` both configure live-build; `auto/config` adds the Docker repo and a 100-package list (nginx, golang, nodejs, npm, build-essential, aide, rkhunter, cloud-init, ...).
-   - `build.sh` disables the Debian **security** mirror (`LB_SECURITY=false`), so installed systems get no security updates unless something else adds `bookworm-security`.
+1. **Installed systems get no NithronOS packages.** Confirmed with a QEMU install of the ISO built from `main` @ `518bbed`: after installing, `/usr/bin/nosd`, `nos-agent` and the web UI are missing, so nothing generates or shows a setup code. Three layered causes:
+   - The NithronOS debs were installed by a chroot hook *after* live-build recorded its package list, so live-build listed them all in `live/filesystem.packages-remove`, and `live-installer` **removes** them from every installed system.
+   - Every "Install NithronOS" boot entry (BIOS and UEFI) booted `/install.amd/`, a stock Debian installer initrd downloaded by `scripts/fetch-di.sh`, with `priority=low` and no preseed. live-build's own installer under `/install/` (with the embedded preseed and `live-installer`) was unreachable.
+   - That installer couldn't start anyway: `debian-installer-startup.d/S10nithronos-branding` is *sourced* by the startup script and ends in `exit 0`, so the installer never launched. Its preseed then used the reserved username `admin`, an unusable password hash, no swap answer, `partman-auto/disk /dev/sda` (could erase a data disk on a multi-disk NAS) and a `late_command` that failed on its own quoting.
 
-   The first Phase 1 step is therefore to build the ISO and do a BIOS and a UEFI install in QEMU, and record what the target actually has (nosd installed and enabled, units present, OTP on console).
+   Also: `auto/config` and `build.sh` both configure live-build, the package list ships `docker.io` with Compose v1 and no ZFS, and `build.sh` disables the Debian **security** mirror at build time (`LB_SECURITY=false`).
 2. **`pkgsel/include` in the preseeds is broken**: `linux-headers-$(uname -r)` isn't shell-expanded in preseed, so the install step gets an invalid package name. `docker-ce*`/`containerd.io` only resolve because the live image already contains them. It also pulls `build-essential nodejs npm python3-pip`, which an appliance doesn't need.
 3. **The OTP expires and is never regenerated.** nosd creates it only once, at process start (`backend/nosd/main.go`), with a 15-minute TTL. `firstboot.Store.Load()` deletes the file once it's expired. After that, `/setup/state` reports `otpRequired:false`, the UI says "Waiting for OTP generation…" forever, and `/otp/verify` says "Invalid". The only recovery is `systemctl restart nosd`, which a fresh-install user can't know about.
 4. **Seven competing OTP mechanisms** with different formats and paths:
@@ -74,9 +73,9 @@ Goal: a clean, reproducible starting point so every later PR is judged on green 
 - **Auto-rotate**: a background goroutine in nosd regenerates the OTP when it expires, for as long as no admin exists. `/setup/state` returns `otpRequired:true` plus `expiresAt`, so the UI can show a countdown and "a new code is on the server console".
 - **Console display that survives getty**: nosd writes `/run/nos/issue` (OTP, IP URLs, expiry). A tmpfiles symlink exposes it as `/etc/issue.d/50-nithronos.issue`, and nosd runs `agetty --reload` (or `systemctl kill -s HUP getty@*`) after each rotation. agetty also refreshes the IP itself via `\4` escapes. The same text goes to the journal and `/dev/ttyS0` for serial/headless installs. Remove the issue file when setup completes.
 - Mark the OTP consumed on a successful first-admin. Lock out after N wrong attempts (on top of the existing per-IP limit).
-- **Installer**: one preseed for BIOS and UEFI, one live-build config (fold `auto/config` into `build.sh` or the reverse). Keep the live-installer approach, but make the deb install hook fail the build when a NithronOS package doesn't install, and verify in `late_command` that `nosd`, `nos-agent` and `caddy` are installed and enabled on the target. Trim the package list to what an appliance needs. Restore the Debian security mirror. Docker from Docker's apt repo (kept in the target's sources), Caddy from Debian. Fix `pkgsel`.
+- **Installer** (done in phase 1): the .debs are staged as live-build local packages (`config/packages.chroot` + a generated package list) and the build fails if any of them lands in `filesystem.packages-remove`; boot menus (BIOS and UEFI) start live-build's installer from `/install/` with `auto=true priority=high`; one embedded preseed that asks only for the console password, the disk and the erase confirmation; `late-command.sh` checks nosd/nos-agent/web UI are on the disk (fails the install otherwise), writes APT sources incl. security and enables the services. Removed `fetch-di.sh`, the broken startup script, three unused preseeds, the placeholder and deb hooks and two dead build scripts. Moved to phase 6: one live-build config, Docker from Docker's repo (Compose v2), ZFS in the image, package-list trim, the GRUB memtest and "boot from disk" entries.
 - Fix the Setup UI copy and add an expiry countdown.
-- **QEMU acceptance test** (`tests/smoke/iso-boot-test.sh`): install to a virtual disk, reboot, assert that the serial console shows a 6-digit OTP and that `/api/v1/setup/otp/verify` accepts it. Run it in CI.
+- **QEMU acceptance test** (done in phase 1, `tests/smoke/iso-install-test.sh`, BIOS and UEFI in CI): install to a virtual disk, reboot, read the 6-digit code from the serial console, and check that `/api/v1/setup/otp/verify` rejects a wrong code and accepts it.
 
 ---
 
@@ -140,6 +139,15 @@ Grouped by feature. Each item lists the evidence.
 
 **Apps**: log streaming (`internal/apps/manager.go:292`, `apps_handler.go:306`), `/apps/schema/{id}` (the UI uses hard-coded `mockSchemas`), and git catalog sources (`pkg/apps/catalog.go:173`).
 
+**Apps (found by the NithronAI session, see `NAI_INTEGRATION.md`)**:
+- App data ownership: `setAppOwnership` chowns `/srv/apps/<id>` to `nos:nos`, but containers run as `PUID:PGID` (1000:1000), so apps may not be able to write their data dir. Chown the data dir to the app's PUID:PGID, or give templates `NOS_UID`/`NOS_GID`.
+- Relative `./data` volumes (code-server, jellyfin, n8n, nextcloud) resolve to `/srv/apps/<id>/config/data` because `nos-app@.service` runs compose with `--project-directory /srv/apps/%i/config`, outside the snapshotted data subvolume.
+- jellyfin's `container_name` (`nos-app-jellyfin-jellyfin-1`) doesn't match the Caddy snippet (`nos-app-jellyfin-app-1`).
+- The renderer ignores catalog `defaults.resources` and caps every template without `deploy` at 2 CPUs / 1024M.
+- `AppCatalog.tsx` maps capitalised category keys while the catalog uses lowercase, so every app shows the generic icon.
+- Confirm Caddy and nosd can reach app containers by name (shared Docker network) or proxy to the published host port instead; confirm the source network of Caddy's traffic for `X-Forwarded-For` trust.
+- Read access to shares for indexing apps (nAI): a dedicated group added to share readers, passed via `group_add`/`PGID`.
+
 **Users / RBAC**: `/v1/groups` and `/v1/policy` are called by the UI but don't exist. Decide scope (README A4) and either implement minimal groups or remove them from the UI.
 
 **System**: `/system/config` and `/settings/advanced` (used by `SettingsConnected.tsx`); real service CPU/log data (`services_health_handler.go:276,322`, `system_handler.go:142,154`).
@@ -180,7 +188,8 @@ Grouped by feature. Each item lists the evidence.
    - add the capabilities it needs (`CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_NET_ADMIN CAP_SYS_RAWIO CAP_MKNOD`)
    - `RestrictAddressFamilies=AF_UNIX` blocks its own registration call to `127.0.0.1:9000` and docker compose networking
 3. nosd: `ProtectSystem=full` is fine with `ReadWritePaths=/etc/nos`. Add `RuntimeDirectory=nos` for `/run/nos`. Remove the writes to `/tmp` (it has `PrivateTmp`).
-4. Prune `hooks/normal/` (25 hooks, several overlapping: `10-enable-services`, `91-enable-nos-services`, `95-ensure-caddy-enabled`, `041-enable-otp-announce`, `96-setup-otp-generator`) and the preset file.
+4. Decide on `installer/nos-installer` (a Go installer that isn't built or shipped) and the placeholder `/usr/sbin/nos-installer` shell script on the ISO: delete both, or make the Go tool a supported alternative to the Debian installer.
+5. Prune `hooks/normal/` (25 hooks, several overlapping: `10-enable-services`, `91-enable-nos-services`, `95-ensure-caddy-enabled`, `041-enable-otp-announce`, `96-setup-otp-generator`) and the preset file.
 5. Caddy: verify the shipped Caddyfile serves the UI and proxies `/api` and WebDAV, with the self-signed TLS path (`nos-tls-gen`).
 6. Secure Boot: track shim signing as a known limitation.
 

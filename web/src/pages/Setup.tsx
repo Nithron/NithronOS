@@ -91,8 +91,9 @@ export default function Setup() {
         toast.info('Setup already completed. Please sign in.')
         setTimeout(() => navigate('/login'), 2000)
       } else if (!state.otpRequired) {
-        // First boot but no OTP available yet
-        setError('Waiting for OTP generation. If you just started the server, please wait 10-15 seconds.')
+        // nosd keeps a valid code while setup is pending, so this means it
+        // could not create one (for example an unwritable state directory).
+        setError('The server could not create a setup code. Check the nosd service log on the server.')
       }
     } catch (err) {
       if (err instanceof APIError && err.status === 410) {
@@ -169,7 +170,6 @@ export default function Setup() {
                   setSetupToken(token)
                   setStep('admin')
                 }}
-                onRetry={checkSetupState}
               />
             )}
             
@@ -311,32 +311,23 @@ function StepWelcome({ onContinue }: { onContinue: () => void }) {
       </div>
       
       <div className="border border-muted rounded p-4 space-y-3">
-        <h3 className="font-medium">Getting Your One-Time Password (OTP)</h3>
+        <h3 className="font-medium">Find your one-time setup code</h3>
         <p className="text-sm text-muted-foreground">
-          To begin setup, you'll need the OTP that was generated when the system started.
+          The 6-digit code is shown on the server's own screen (monitor or serial console),
+          above the login prompt, together with the address to open.
         </p>
-        
-        <div className="space-y-2">
-          <div className="bg-card rounded p-3">
-            <p className="text-xs text-muted-foreground mb-1">View OTP via SSH:</p>
-            <code className="block bg-background rounded p-2 text-xs font-mono">
-              ssh user@your-server-ip "cat /tmp/nos-otp"
-            </code>
-          </div>
-          
-          <div className="bg-card rounded p-3">
-            <p className="text-xs text-muted-foreground mb-1">Or console access:</p>
-            <code className="block bg-background rounded p-2 text-xs font-mono">
-              cat /tmp/nos-otp
-            </code>
-          </div>
+        <div className="bg-card rounded p-3">
+          <p className="text-xs text-muted-foreground mb-1">No screen attached? Over SSH:</p>
+          <code className="block bg-background rounded p-2 text-xs font-mono">
+            sudo journalctl -u nosd | grep 'setup code' | tail -n 1
+          </code>
         </div>
-        
         <div className="text-xs text-muted-foreground">
-          <strong>Note:</strong> OTP is valid for 10 minutes. If expired, restart nosd service.
+          Each code is valid for 15 minutes. When it expires, or after 5 wrong tries, a new
+          code replaces it on the server screen automatically.
         </div>
       </div>
-      
+
       <div className="flex gap-2 text-xs">
         <a href="https://docs.nithron.com" target="_blank" rel="noopener noreferrer" 
            className="text-primary hover:underline flex-1 text-center">
@@ -356,7 +347,7 @@ function StepWelcome({ onContinue }: { onContinue: () => void }) {
         className="btn bg-primary text-primary-foreground w-full py-3"
         onClick={onContinue}
       >
-        I Have My OTP - Continue
+        I have the code - Continue
       </button>
     </div>
   )
@@ -366,16 +357,46 @@ function StepWelcome({ onContinue }: { onContinue: () => void }) {
 // Step 1: OTP Verification
 // ============================================================================
 
-function StepOTP({ 
-  onSuccess, 
-  onRetry 
-}: { 
-  onSuccess: (token: string) => void
-  onRetry: () => void
-}) {
+function StepOTP({ onSuccess }: { onSuccess: (token: string) => void }) {
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [expiresAt, setExpiresAt] = useState<Date | null>(null)
+  const [now, setNow] = useState(() => Date.now())
+
+  // Show when the current code expires; refresh after it does, because the
+  // server then issues a new code on its screen.
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const st = await api.setup.getState()
+        if (!cancelled && st?.expiresAt) setExpiresAt(new Date(st.expiresAt))
+      } catch {
+        // the submit path reports errors
+      }
+    }
+    void load()
+    const tick = setInterval(() => setNow(Date.now()), 1000)
+    return () => {
+      cancelled = true
+      clearInterval(tick)
+    }
+  }, [])
+  useEffect(() => {
+    if (!expiresAt || now < expiresAt.getTime()) return
+    let cancelled = false
+    api.setup
+      .getState()
+      .then((st) => {
+        if (!cancelled && st?.expiresAt) setExpiresAt(new Date(st.expiresAt))
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [expiresAt, now])
+  const secondsLeft = expiresAt ? Math.max(0, Math.round((expiresAt.getTime() - now) / 1000)) : null
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -393,13 +414,22 @@ function StepOTP({
       const response = await api.setup.verifyOTP(cleanOtp) as any
       
       if (response?.token) {
-        toast.success('OTP verified successfully')
+        toast.success('Code verified')
         onSuccess(response.token)
       }
     } catch (err) {
       if (err instanceof APIError) {
-        if (err.status === 401 || err.status === 403) {
-          setError('OTP invalid or expired. If you just rebooted, wait 10-15s and retry.')
+        if (err.code === 'setup.otp.expired') {
+          setError('That code expired. A new code is now shown on the server screen.')
+          setOtp('')
+          api.setup
+            .getState()
+            .then((st) => st?.expiresAt && setExpiresAt(new Date(st.expiresAt)))
+            .catch(() => {})
+        } else if (err.code === 'setup.complete') {
+          setError('Setup was already completed. Please sign in.')
+        } else if (err.status === 400 || err.status === 401 || err.status === 403) {
+          setError("That code isn't correct. Check the code on the server screen; after 5 wrong tries it is replaced with a new one.")
         } else if (err.status === 429) {
           const retryMsg = err.retryAfterSec 
             ? `Too many attempts. Try again in ${err.retryAfterSec}s`
@@ -420,7 +450,7 @@ function StepOTP({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label htmlFor="otp" className="block text-sm font-medium mb-2">
-          One-Time Password (OTP)
+          One-time setup code
         </label>
         <input
           id="otp"
@@ -435,22 +465,17 @@ function StepOTP({
           disabled={loading}
         />
         <p className="text-xs text-muted-foreground mt-1">
-          Enter the 6-digit code shown on the server console
+          Enter the 6-digit code shown on the server screen
+          {secondsLeft !== null && secondsLeft > 0 && (
+            <> (valid for {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')} more)</>
+          )}
+          {secondsLeft === 0 && <> (expired; a new code is on the server screen)</>}
         </p>
       </div>
       
       {error && (
         <div className="text-sm text-red-400">
           {error}
-          {error.includes('expired') && (
-            <button
-              type="button"
-              className="block mt-2 text-xs underline"
-              onClick={onRetry}
-            >
-              Check for new OTP
-            </button>
-          )}
         </div>
       )}
       
@@ -459,7 +484,7 @@ function StepOTP({
         className="btn bg-primary text-primary-foreground w-full py-3"
         disabled={loading}
       >
-        {loading ? 'Verifying...' : 'Verify OTP'}
+        {loading ? 'Verifying...' : 'Verify code'}
       </button>
     </form>
   )

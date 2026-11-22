@@ -1,0 +1,8 @@
+[Unit]
+Description=Refresh login prompts (agetty --reload)
+
+[Service]
+Type=oneshot
+# Tells running agetty instances (tty and serial) to redraw their prompt with
+# the current /etc/issue and /etc/issue.d contents.
+ExecStart=/sbin/agetty --reload

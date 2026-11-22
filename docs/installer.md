@@ -2,92 +2,46 @@
 
 ## Overview
 
-NithronOS provides a guided installer (`nos-installer`) that creates a fully configured system with Btrfs subvolumes, proper mount options, and all necessary system components.
+The NithronOS ISO boots into a menu with **NithronOS Live** and **Install NithronOS**. The installer is the Debian
+installer, preconfigured for NithronOS: it copies the complete NithronOS system from the ISO to the disk (no
+downloads needed) and asks only what a person has to decide.
 
 ## Requirements
 
-- **Disk Space**: Minimum 20 GB, recommended 50 GB or more
-- **Memory**: Minimum 2 GB RAM, recommended 4 GB or more
-- **Boot Mode**: UEFI (Legacy BIOS not supported)
-- **Network**: Internet connection for package downloads (optional if using offline installer)
+- **Disk**: one disk for the system, at least 20 GB (50 GB or more recommended). Keep your data disks separate;
+  they are set up later from the web UI.
+- **Memory**: at least 2 GB RAM, 4 GB or more recommended.
+- **Firmware**: UEFI or legacy BIOS. Secure Boot must be disabled for now (the ISO isn't shim-signed yet).
+- **Network**: optional during the install; DHCP is used when available.
 
-## Installation Process
+## Installing
 
-### 1. Boot the Live ISO
+1. Boot the ISO and choose **Install NithronOS**. Use **Install NithronOS (Serial console @ttyS0)** for machines
+   without a screen, and **Safe graphics** if the screen stays blank.
+2. **Console password**: choose the password for `nosadmin`, the console/SSH administrator account (it has `sudo`;
+   there is no root password). This is not the web UI login; that account is created in the setup wizard.
+3. **Disk**: if the machine has more than one disk, choose the system disk. Check the size and model carefully:
+   device names such as `sda` and `sdb` can change between boots.
+4. **Confirm**: the installer lists the partitions it will write and asks before erasing the disk (default: No).
+5. The installer copies the system, installs the boot loader on the disk you chose, and restarts.
 
-Boot the NithronOS live ISO on your target system. The installer will be available from the console.
+### Disk layout
 
-### 2. Run the Installer
+GPT, so the same disk boots on UEFI and BIOS machines:
 
-```bash
-sudo nos-installer
-```
+| Partition | Size | Use |
+|---|---|---|
+| BIOS boot | 1 MB | GRUB on BIOS machines |
+| EFI system partition | 512 MB | GRUB on UEFI machines |
+| swap | 2 to 4 GB | |
+| Btrfs | rest of the disk | `/`, mounted with `noatime,compress=zstd:3` |
 
-The installer must be run as root to perform system operations.
+### What the installer sets up
 
-### 3. Installation Steps
-
-#### Step 1: Disk Selection
-
-- The installer will detect all available disks
-- Select the target disk for installation
-- **WARNING**: All data on the selected disk will be destroyed
-
-#### Step 2: Confirmation
-
-- Confirm the destructive operation
-- Type `DESTROY` to proceed with installation
-
-#### Step 3: Disk Partitioning
-
-The installer creates a GPT partition table with:
-- **ESP (EFI System Partition)**: 512 MiB, FAT32
-- **Root Partition**: Remaining space, Btrfs
-
-#### Step 4: Btrfs Layout
-
-The following subvolumes are created automatically:
-
-| Subvolume | Mount Point | Purpose |
-|-----------|------------|---------|
-| @ | / | Root filesystem |
-| @home | /home | User home directories |
-| @var | /var | Variable data |
-| @log | /var/log | System logs |
-| @snapshots | /snapshots | Snapshot storage |
-
-**Mount Options**:
-- Base: `defaults,noatime,compress=zstd:3`
-- SSD additions: `ssd,discard=async`
-
-#### Step 5: System Bootstrap
-
-The installer will:
-1. Copy base system from live image or use debootstrap
-2. Install kernel and bootloader
-3. Install NithronOS packages (nosd, nos-agent, nos-web, caddy)
-4. Configure networking and services
-
-#### Step 6: Bootloader Installation
-
-GRUB is installed with:
-- EFI boot support
-- NithronOS branding (if available)
-- Proper Btrfs subvolume configuration
-
-#### Step 7: System Configuration
-
-- `/etc/fstab` generation with UUID-based mounts
-- Hostname configuration (default: `nithronos`)
-- Timezone setup (default: `UTC`)
-- Service user creation
-- Service enablement
-
-#### Step 8: Finalization
-
-- Update initramfs
-- Copy installation log to target system
-- Unmount filesystems
+- The NithronOS services (`nosd`, `nos-agent`, `caddy`, the web UI) are installed and enabled; the install stops
+  with an error if they are missing from the ISO.
+- APT sources for Debian, its updates and **security updates**.
+- Hostname `nithronos`, time zone UTC (both can be changed in the setup wizard).
 
 ## Post-Installation
 
@@ -95,15 +49,15 @@ GRUB is installed with:
 
 After installation and reboot:
 
-1. **OTP Display**: A one-time password will be displayed on the console after the login prompt
+1. **Setup code**: a one-time 6-digit setup code and the address to open are shown above the login prompt
 2. **Web Setup**: Navigate to `https://<server-ip>` in a web browser
-3. **Setup Wizard**: Complete the first-boot setup wizard using the OTP
+3. **Setup Wizard**: Complete the first-boot setup wizard using the setup code
 
 ### First-Boot Setup Wizard
 
 The web-based setup wizard includes:
 
-1. **OTP Verification**: Enter the 6-digit code from the console
+1. **Setup code**: Enter the 6-digit code from the server screen
 2. **Admin Account**: Create the administrator account
 3. **System Configuration**: Set hostname, timezone, and NTP
 4. **Network Configuration**: Configure network interfaces (DHCP or static)
@@ -122,7 +76,7 @@ To modify Btrfs mount options after installation:
 
 Example:
 ```
-UUID=xxx / btrfs defaults,noatime,compress=zstd:3,subvol=@ 0 1
+UUID=xxx / btrfs noatime,compress=zstd:3,subvol=@rootfs 0 0
 ```
 
 ### Additional Subvolumes
@@ -131,7 +85,7 @@ To create additional subvolumes:
 
 ```bash
 # Mount the root Btrfs filesystem
-mount /dev/sdX2 /mnt
+mount /dev/sdX4 /mnt
 
 # Create new subvolume
 btrfs subvolume create /mnt/@docker
@@ -148,18 +102,18 @@ mount /var/lib/docker
 
 ### Installation Fails
 
-- **Check logs**: `/var/log/nithronos-installer.log`
+- **Installer log**: press Alt+F4 during the install, or read `/var/log/installer/syslog` on the installed system
 - **Verify disk health**: `smartctl -a /dev/sdX`
 - **Check available space**: Ensure at least 20 GB free
 - **Network issues**: Check connectivity if packages fail to download
 
 ### First-Boot Issues
 
-#### OTP Not Displayed
+#### Setup Code Not Displayed
 
-- Check service status: `systemctl status nos-firstboot-otp`
-- View logs: `journalctl -u nos-firstboot-otp`
-- Manually view OTP: `cat /var/lib/nos/firstboot-otp`
+- Read it from the log: `sudo journalctl -u nosd | grep 'setup code' | tail -n 1`
+- Check the services: `systemctl status nosd nos-issue-reload.path`
+- Check the banner file: `cat /run/nos/firstboot.issue`
 
 #### Cannot Access Web Interface
 
@@ -170,44 +124,32 @@ mount /var/lib/docker
 #### Setup Wizard Errors
 
 - Backend not reachable: Check `nosd` service
-- OTP expired: Restart `nosd` to generate new OTP
+- Code expired: use the new code shown on the screen (codes are replaced automatically)
 - Permission errors: Verify `/etc/nos` permissions
 
 ### Secure Boot
 
 NithronOS currently does not support Secure Boot. If you encounter boot issues:
 
-1. Disable Secure Boot in UEFI/BIOS settings
-2. Ensure CSM/Legacy mode is disabled
-3. Boot in UEFI mode only
+1. Disable Secure Boot in the UEFI settings
+2. Boot in UEFI mode, or in legacy/CSM mode; both are supported
 
 ## Advanced Installation
 
 ### Unattended Installation
 
-For automated deployments, create an answer file:
+The installer reads its answers from `config/includes.installer/preseed.cfg` (embedded in the ISO). For a fully
+unattended install, also answer the three questions it leaves open, for example in a preseed served over HTTP and
+passed on the installer's boot line as `url=http://<server>/nithronos.cfg`:
 
-```bash
-nos-installer --unattended --config install.yaml
+```
+d-i passwd/user-password-crypted password <hash from: mkpasswd -m sha-512>
+d-i partman-auto/disk string /dev/disk/by-id/<the system disk>
+d-i partman/confirm_nooverwrite boolean true
+d-i partman/confirm boolean true
 ```
 
-Example `install.yaml`:
-```yaml
-disk: /dev/sda
-hostname: nas01
-timezone: America/New_York
-network:
-  interface: eth0
-  dhcp: true
-```
-
-### Custom Package Selection
-
-To include additional packages during installation:
-
-```bash
-nos-installer --packages "htop,vim,tmux"
-```
+Use a `/dev/disk/by-id/...` path: names such as `/dev/sda` can point at a different disk on the next boot.
 
 ### Installation from Network
 
@@ -218,7 +160,7 @@ PXE boot support is planned for future releases.
 If the system becomes unbootable:
 
 1. Boot from live ISO
-2. Mount the root subvolume: `mount -o subvol=@ /dev/sdX2 /mnt`
+2. Mount the root subvolume: `mount -o subvol=@rootfs /dev/sdX4 /mnt`
 3. Chroot into the system: `chroot /mnt`
 4. Repair as needed
 5. Update GRUB: `update-grub`

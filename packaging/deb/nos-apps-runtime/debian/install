@@ -1,4 +1,3 @@
-docker-daemon.json etc/docker/daemon.json
 nos-app@.service lib/systemd/system/
 nos-apps.target lib/systemd/system/
 nos-app-helper.sh usr/lib/nos/apps/

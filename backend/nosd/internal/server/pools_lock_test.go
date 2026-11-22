@@ -14,6 +14,7 @@ import (
 func TestApplyDevice_ParallelOneBusy(t *testing.T) {
 	// Ensure no prior lock
 	releasePoolLock("p1")
+	t.Cleanup(txWorkers.Wait)
 
 	r := NewRouter(config.FromEnv())
 	body := map[string]any{

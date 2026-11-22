@@ -9,8 +9,6 @@ enable systemd-networkd.service
 # Essential NithronOS services (must run for setup)
 enable nos-agent.service
 enable nosd.service
-enable nithronos-otp-gen.service
-enable nithronos-issue-gen.service
 
 # Runtime enabler (enables other services after boot)
 enable nithronos-runtime-enable.service
@@ -18,6 +16,8 @@ enable nithronos-runtime-enable.service
 # Services that start conditionally or later
 disable caddy.service
 disable nos-tls-gen.service
-disable otp-announce.service
 disable nos-snapshot-prune.service
 disable nos-snapshot-prune.timer
+
+# nosd shows the first-boot setup code on the console through this path unit
+enable nos-issue-reload.path

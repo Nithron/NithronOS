@@ -51,7 +51,11 @@ func handleApplyCreate(cfg config.Config) http.HandlerFunc {
 			return
 		}
 		// Execute asynchronously
-		go executePlan(tx.ID, req, cfg)
+		txWorkers.Add(1)
+		go func() {
+			defer txWorkers.Done()
+			executePlan(tx.ID, req, cfg)
+		}()
 		writeJSON(w, map[string]any{"ok": true, "tx_id": tx.ID})
 	}
 }

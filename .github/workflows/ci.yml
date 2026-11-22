@@ -222,7 +222,8 @@ jobs:
 
   debs:
     name: Build Debian packages
-    if: ${{ github.event_name == 'push' || (github.event_name == 'release' && github.event.action == 'published') }}
+    # Also on manual runs, so a branch's ISO can be built and tested before merging.
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && github.event.action == 'published') }}
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -285,7 +286,8 @@ jobs:
 
   iso:
     name: Build ISO (amd64)
-    if: ${{ github.event_name == 'push' || (github.event_name == 'release' && github.event.action == 'published') }}
+    # Also on manual runs, so a branch's ISO can be built and tested before merging.
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && github.event.action == 'published') }}
     needs: debs
     runs-on: ubuntu-latest
     permissions:
@@ -589,53 +591,51 @@ jobs:
         continue-on-error: true
 
   iso-smoke-test:
-    name: ISO Boot Smoke Test
+    name: ISO install test (${{ matrix.firmware }})
     needs: iso
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    timeout-minutes: 15
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch' }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        firmware: [bios, uefi]
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Download ISO artifact
         uses: actions/download-artifact@v4
         with:
           pattern: NithronOS - ISO - amd64 - *
-          
-      - name: Install QEMU
+
+      - name: Install QEMU and tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 expect jq curl
-          
-      - name: Check if smoke test exists
-        id: check-test
+          sudo apt-get install -y qemu-system-x86 qemu-utils ovmf libarchive-tools curl
+
+      - name: Enable KVM
         run: |
-          if [ -f "tests/smoke/iso-boot-test.sh" ]; then
-            echo "test_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "test_exists=false" >> $GITHUB_OUTPUT
-          fi
-          
-      - name: Run ISO smoke test
-        if: steps.check-test.outputs.test_exists == 'true'
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+
+      # Installs the ISO unattended, boots the installed disk, reads the
+      # one-time setup code from the serial console and checks that the web
+      # API accepts it (and rejects a wrong one).
+      - name: Install, boot and verify the first-boot setup code
         run: |
-          chmod +x tests/smoke/iso-boot-test.sh
-          # Find the ISO file
-          ISO_FILE=$(find . -name "*.iso" -type f | head -1)
-          if [ -n "$ISO_FILE" ]; then
-            ./tests/smoke/iso-boot-test.sh "$ISO_FILE" || echo "ISO smoke test not yet implemented"
-          else
-            echo "No ISO file found"
-          fi
-        continue-on-error: true
-          
+          ISO_FILE="$(find . -name '*.iso' -type f | head -1)"
+          [ -n "$ISO_FILE" ] || { echo "::error::No ISO artifact found"; exit 1; }
+          WORK_DIR="tests/smoke/logs/${{ matrix.firmware }}" bash tests/smoke/iso-install-test.sh "$ISO_FILE" ${{ matrix.firmware }}
+
       - name: Upload test logs
-        if: always() && steps.check-test.outputs.test_exists == 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: iso-smoke-logs-${{ github.sha }}
-          path: tests/smoke/logs/
-        continue-on-error: true
+          name: iso-install-logs-${{ matrix.firmware }}-${{ github.sha }}
+          path: tests/smoke/logs/${{ matrix.firmware }}/*.log
+          if-no-files-found: ignore
 
   sign-and-sbom:
     name: Sign Packages & Generate SBOMs
