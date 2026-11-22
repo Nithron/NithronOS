@@ -75,7 +75,7 @@ Goal: a clean, reproducible starting point so every later PR is judged on green 
 - Mark the OTP consumed on a successful first-admin. Lock out after N wrong attempts (on top of the existing per-IP limit).
 - **Installer** (done in phase 1): the .debs are staged as live-build local packages (`config/packages.chroot` + a generated package list) and the build fails if any of them lands in `filesystem.packages-remove`; boot menus (BIOS and UEFI) start live-build's installer from `/install/` with `auto=true priority=high`; one embedded preseed that asks only for the console password, the disk and the erase confirmation; `late-command.sh` checks nosd/nos-agent/web UI are on the disk (fails the install otherwise), writes APT sources incl. security and enables the services. Removed `fetch-di.sh`, the broken startup script, three unused preseeds, the placeholder and deb hooks and two dead build scripts. Moved to phase 6: one live-build config, Docker from Docker's repo (Compose v2), ZFS in the image, package-list trim, the GRUB memtest and "boot from disk" entries.
 - Fix the Setup UI copy and add an expiry countdown.
-- **QEMU acceptance test** (`tests/smoke/iso-boot-test.sh`): install to a virtual disk, reboot, assert that the serial console shows a 6-digit OTP and that `/api/v1/setup/otp/verify` accepts it. Run it in CI.
+- **QEMU acceptance test** (done in phase 1, `tests/smoke/iso-install-test.sh`, BIOS and UEFI in CI): install to a virtual disk, reboot, read the 6-digit code from the serial console, and check that `/api/v1/setup/otp/verify` rejects a wrong code and accepts it.
 
 ---
 
