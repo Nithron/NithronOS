@@ -19,6 +19,7 @@ func TestApplyCreatePersistsMountOptions(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("NOS_ETC_DIR", dir)
 	t.Setenv("NOS_DISABLE_APP_EVENTS", "1")
+	t.Cleanup(txWorkers.Wait) // the async transaction writes into dir
 	r := NewRouter(config.FromEnv())
 	reqBody := applyCreateRequest{
 		Plan:    CreateSimplePlanForTest(),
