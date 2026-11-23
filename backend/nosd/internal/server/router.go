@@ -89,9 +89,11 @@ func NewRouter(cfg config.Config) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
-	// TODO(revision phase 2, S4): RealIP trusts X-Forwarded-For from any client; replace with a trusted-proxy aware middleware.
-	//lint:ignore SA1019 tracked in docs/dev/revision-plan.md (S4)
-	r.Use(middleware.RealIP) //nolint:staticcheck // SA1019: tracked in docs/dev/revision-plan.md (S4)
+	// No RealIP middleware: it replaced RemoteAddr with the client-supplied
+	// X-Forwarded-For, which let remote clients pass the localhost-only checks
+	// and dodge per-IP rate limits. RemoteAddr stays the real peer; clientIP()
+	// honours X-Forwarded-For only from a trusted proxy, and isLocalRequest()
+	// guards the local-only endpoints.
 	r.Use(zerologMiddleware(Logger(cfg), cfg))
 	r.Use(securityHeaders)
 
@@ -168,11 +170,7 @@ func NewRouter(cfg config.Config) http.Handler {
 	if cfg.PprofEnabled {
 		// Guard pprof: localhost only
 		r.Mount("/debug/pprof", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip := r.RemoteAddr
-			if i := strings.LastIndex(ip, ":"); i >= 0 {
-				ip = ip[:i]
-			}
-			if ip != "127.0.0.1" && ip != "::1" {
+			if !isLocalRequest(r) {
 				w.WriteHeader(http.StatusForbidden)
 				return
 			}
@@ -251,7 +249,11 @@ func NewRouter(cfg config.Config) http.Handler {
 	// SessionContext middleware (parse cookies only; no auth enforcement)
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// parse nos_session; ignore failures
+			// X-UID/X-SID carry the signed-in identity to handlers. Never take
+			// them from the client: drop whatever came in, then set them only
+			// from a valid session cookie.
+			r.Header.Del("X-UID")
+			r.Header.Del("X-SID")
 			uid, sid, ok := decodeSessionParts(r, cfg)
 			if ok {
 				// attach to context via headers (lightweight)
@@ -295,11 +297,7 @@ func NewRouter(cfg config.Config) http.Handler {
 		r.Route("/api/v1/recovery", func(rr chi.Router) {
 			rr.Use(func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					ip := r.RemoteAddr
-					if i := strings.LastIndex(ip, ":"); i >= 0 {
-						ip = ip[:i]
-					}
-					if ip != "127.0.0.1" && ip != "::1" {
+					if !isLocalRequest(r) {
 						w.WriteHeader(http.StatusForbidden)
 						return
 					}
@@ -589,11 +587,7 @@ func NewRouter(cfg config.Config) http.Handler {
 	// Recovery: local-only endpoint to clear first-boot state and optionally users
 	r.Post("/api/v1/setup/recover", func(w http.ResponseWriter, r *http.Request) {
 		// Guard: localhost only
-		ip := r.RemoteAddr
-		if i := strings.LastIndex(ip, ":"); i >= 0 {
-			ip = ip[:i]
-		}
-		if ip != "127.0.0.1" && ip != "::1" {
+		if !isLocalRequest(r) {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
@@ -1954,28 +1948,6 @@ func mustJSON(v any) []byte {
 }
 
 // clientIP extracts client IP. If TrustProxy is true, use last untrusted hop from X-Forwarded-For; otherwise use RemoteAddr.
-func clientIP(r *http.Request, cfg config.Config) string {
-	ip := r.RemoteAddr
-	if i := strings.LastIndex(ip, ":"); i >= 0 {
-		ip = ip[:i]
-	}
-	if !cfg.TrustProxy && !RuntimeTrustProxy() {
-		return ip
-	}
-	h := strings.TrimSpace(r.Header.Get("X-Forwarded-For"))
-	if h == "" {
-		return ip
-	}
-	parts := strings.Split(h, ",")
-	// take the last non-empty token
-	for i := len(parts) - 1; i >= 0; i-- {
-		p := strings.TrimSpace(parts[i])
-		if p != "" {
-			return p
-		}
-	}
-	return ip
-}
 
 func dirPermInfo(path string) string {
 	fi, err := os.Stat(path)
