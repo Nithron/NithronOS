@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	pwhash "nithronos/backend/nosd/internal/auth/hash"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,7 +36,7 @@ func TestLoginThrottleLockUnlock(t *testing.T) {
 	// Use isolated users DB for this test to avoid cross-test interference
 	dir := t.TempDir()
 	up := filepath.Join(dir, "users.json")
-	seed := `{"version":1,"users":[{"id":"u1","username":"admin@example.com","password_hash":"plain:admin123","roles":["admin"],"created_at":"","updated_at":""}]}`
+	seed := adminSeed(t)
 	if err := os.WriteFile(up, []byte(seed), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +77,7 @@ func TestDisksShape(t *testing.T) {
 	// Seed minimal users db for new auth store
 	if up := os.Getenv("NOS_USERS_PATH"); up != "" {
 		_ = os.MkdirAll(filepath.Dir(up), 0o755)
-		_ = os.WriteFile(up, []byte(`{"version":1,"users":[{"id":"u1","username":"admin@example.com","password_hash":"plain:admin123","roles":["admin"],"created_at":"","updated_at":""}]}`), 0o600)
+		_ = os.WriteFile(up, []byte(adminSeed(t)), 0o600)
 	}
 	// Mark setup as complete for this test
 	dir := t.TempDir()
@@ -148,7 +149,7 @@ func TestDeleteShareReturnsNoContent(t *testing.T) {
 	// Seed minimal users db for new auth store
 	if up := os.Getenv("NOS_USERS_PATH"); up != "" {
 		_ = os.MkdirAll(filepath.Dir(up), 0o755)
-		_ = os.WriteFile(up, []byte(`{"version":1,"users":[{"id":"u1","username":"admin@example.com","password_hash":"plain:admin123","roles":["admin"],"created_at":"","updated_at":""}]}`), 0o600)
+		_ = os.WriteFile(up, []byte(adminSeed(t)), 0o600)
 	}
 	// Mark setup as complete for this test
 	etcDir := t.TempDir()
@@ -192,4 +193,15 @@ func TestDeleteShareReturnsNoContent(t *testing.T) {
 	if res.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 for non-existent share, got %d", res.Code)
 	}
+}
+
+// adminSeed returns a users.json with admin@example.com / admin123, stored as a
+// real Argon2id hash (login no longer accepts plaintext "plain:" hashes).
+func adminSeed(t *testing.T) string {
+	t.Helper()
+	h, err := pwhash.HashPassword("admin123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return `{"version":1,"users":[{"id":"u1","username":"admin@example.com","password_hash":"` + h + `","roles":["admin"],"created_at":"","updated_at":""}]}`
 }

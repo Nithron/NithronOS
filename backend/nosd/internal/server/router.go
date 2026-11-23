@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"nithronos/backend/nosd/internal/version"
@@ -180,7 +181,6 @@ func NewRouter(cfg config.Config) http.Handler {
 	}
 
 	// Init stores
-	store, _ := auth.NewStore(cfg.UsersPath)
 	users, _ := userstore.New(cfg.UsersPath)
 	codec := auth.NewSessionCodec(cfg.SessionHashKey, cfg.SessionBlockKey)
 	InitJobsStore(cfg)
@@ -685,23 +685,32 @@ func NewRouter(cfg config.Config) http.Handler {
 				return
 			}
 		}
-		ph := u.PasswordHash
-		ok := false
-		if strings.HasPrefix(ph, "dev:") || strings.HasPrefix(ph, "plain:") {
-			ok = strings.TrimPrefix(strings.TrimPrefix(ph, "dev:"), "plain:") == pass
-		} else {
-			ok = pwhash.VerifyPassword(ph, pass)
-		}
-		if !ok {
-			// increment failure; lock after 10
+		// Only real password hashes are accepted (no "plain:"/"dev:" shortcuts).
+		recordFailure := func() {
+			// lock after 10 failed attempts (password or second factor)
 			u.FailedAttempts++
 			if u.FailedAttempts >= 10 {
 				u.FailedAttempts = 0
 				u.LockedUntil = time.Now().Add(15 * time.Minute).UTC().Format(time.RFC3339)
 			}
 			_ = users.UpsertUser(u)
+		}
+		if !pwhash.VerifyPassword(u.PasswordHash, pass) {
+			recordFailure()
 			w.WriteHeader(http.StatusUnauthorized)
 			return
+		}
+		// Second factor: required whenever the user has enabled 2FA.
+		if userHasTOTP(u) {
+			if strings.TrimSpace(body.Code) == "" {
+				httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.totp.required", "Two-factor code required", 0)
+				return
+			}
+			if !verifySecondFactor(cfg, &u, body.Code) {
+				recordFailure()
+				httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.totp.invalid", "Invalid two-factor code", 0)
+				return
+			}
 		}
 		// success: reset counters
 		u.FailedAttempts = 0
@@ -724,24 +733,43 @@ func NewRouter(cfg config.Config) http.Handler {
 
 	// Record refresh events in sessions store (best-effort)
 	r.Post("/api/v1/auth/refresh", func(w http.ResponseWriter, r *http.Request) {
-		if uid, ok := decodeRefreshUID(r, cfg); ok {
-			// rotate refresh; revoke all if reuse detected
-			old := r.Header.Get("X-Refresh-ID")
-			newID, reuse, _ := mgr.RotateRefresh(uid, strings.TrimSpace(old))
+		uid, rid, iat, ok := decodeRefresh(r, cfg)
+		if !ok || !mgr.RefreshAllowed(uid, iat) {
+			// expired, malformed, or issued before the user's sessions were
+			// revoked (logout, reuse detection)
+			clearAuthCookies(w)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		// Each refresh token is spent once. A token that was already spent
+		// means it was copied: revoke all of the user's sessions.
+		newRID := generateUUID()
+		if rid != "" {
+			next, reuse, err := mgr.RotateRefresh(uid, rid)
+			if err != nil {
+				httpx.WriteError(w, http.StatusInternalServerError, "session error")
+				return
+			}
 			if reuse {
+				Logger(cfg).Warn().Str("event", "auth.refresh.reuse").Str("uid", uid).Msg("refresh token reused; revoking all sessions")
 				_ = mgr.RevokeAll(uid)
+				_ = sessStore.DeleteByUserID(uid)
 				clearAuthCookies(w)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			_ = sessStore.Upsert(sessions.Session{ID: generateUUID(), UserID: uid, Roles: []string{"refresh"}, ExpiresAt: time.Now().Add(7 * 24 * time.Hour).UTC().Format(time.RFC3339)})
-			if err := issueSessionCookies(w, cfg, uid, true); err == nil {
-				w.Header().Set("X-Refresh-ID", newID)
-				writeJSON(w, map[string]any{"ok": true})
-				return
-			}
+			newRID = next
 		}
-		w.WriteHeader(http.StatusUnauthorized)
+		_ = sessStore.Upsert(sessions.Session{ID: generateUUID(), UserID: uid, Roles: []string{"refresh"}, ExpiresAt: time.Now().Add(7 * 24 * time.Hour).UTC().Format(time.RFC3339)})
+		if err := issueSessionCookies(w, cfg, uid, false); err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, "session error")
+			return
+		}
+		if err := issueRefreshCookie(w, cfg, uid, newRID); err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, "session error")
+			return
+		}
+		writeJSON(w, map[string]any{"ok": true})
 	})
 
 	// Logout: clear cookies and remove persisted sessions for this user (best-effort)
@@ -871,61 +899,9 @@ func NewRouter(cfg config.Config) http.Handler {
 		w.WriteHeader(http.StatusUnauthorized)
 	})
 
-	r.Post("/api/v1/auth/refresh", func(w http.ResponseWriter, r *http.Request) {
-		if uid, ok := decodeRefreshUID(r, cfg); ok {
-			if err := issueSessionCookies(w, cfg, uid, true); err == nil {
-				writeJSON(w, map[string]any{"ok": true})
-				return
-			}
-		}
-		w.WriteHeader(http.StatusUnauthorized)
-	})
-
-	// TOTP setup & confirm
-	r.Post("/api/v1/auth/totp/setup", func(w http.ResponseWriter, r *http.Request) {
-		var body struct{ Email, Password string }
-		_ = json.NewDecoder(r.Body).Decode(&body)
-		u, err := store.GetByEmail(body.Email)
-		// TODO: Fix password verification - UserManager should handle this
-		if err != nil /*|| !auth.VerifyPassword(auth.DefaultParams, u.PasswordHash, body.Password)*/ {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		// TODO: Check if TOTP is enabled via UserManager
-		if false /*u.TOTPSecret != ""*/ {
-			w.WriteHeader(http.StatusConflict)
-			if err := json.NewEncoder(w).Encode(map[string]any{"error": "totp_already_enabled"}); err != nil {
-				fmt.Printf("Failed to write response: %v\n", err)
-			}
-			return
-		}
-		secret, uri, err := auth.GenerateTOTPSecret("NithronOS", u.Email)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		// TODO: Store TOTP secret via UserManager
-		// u.TOTPSecret = secret
-		_ = store.UpdateUser(u)
-		writeJSON(w, map[string]any{"secret": secret, "otpauth": uri})
-	})
-
-	r.Post("/api/v1/auth/totp/confirm", func(w http.ResponseWriter, r *http.Request) {
-		var body struct{ Email, Code string }
-		_ = json.NewDecoder(r.Body).Decode(&body)
-		_, err := store.GetByEmail(body.Email)
-		// TODO: Check TOTP secret via UserManager
-		if err != nil /*|| u.TOTPSecret == ""*/ {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		// TODO: Verify TOTP via UserManager
-		if false /*!auth.VerifyTOTP(u.TOTPSecret, body.Code)*/ {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		writeJSON(w, map[string]any{"ok": true})
-	})
+	// (POST /api/v1/auth/totp/setup and /totp/confirm were removed: they were
+	// reachable without signing in and never checked the password. TOTP is
+	// enrolled through the authenticated /api/v1/auth/totp/enroll and /verify.)
 
 	// Protected routes
 	r.Group(func(pr chi.Router) {
@@ -1884,29 +1860,11 @@ func hasCommand(name string) bool {
 	return err == nil
 }
 
-func generateUUID() string {
-	const hex = "0123456789abcdef"
-	var b [16]byte
-	n := time.Now().UnixNano()
-	for i := 0; i < 16; i++ {
-		b[i] = byte(n >> (i * 8))
-	}
-	b[6] = (b[6] & 0x0f) | 0x40
-	b[8] = (b[8] & 0x3f) | 0x80
-	out := make([]byte, 36)
-	idx := 0
-	for i := 0; i < 16; i++ {
-		if i == 4 || i == 6 || i == 8 || i == 10 {
-			out[idx] = '-'
-			idx++
-		}
-		out[idx] = hex[b[i]>>4]
-		idx++
-		out[idx] = hex[b[i]&0x0f]
-		idx++
-	}
-	return string(out)
-}
+// generateUUID returns a random (version 4) UUID from crypto/rand. It is used
+// for IDs that must not be guessable: per-agent auth tokens, session records,
+// user IDs. (It used to be derived from the clock, with the last 8 bytes always
+// zero, so agent tokens could be predicted from the registration time.)
+func generateUUID() string { return uuid.NewString() }
 
 func errString(err error) string {
 	if err == nil {

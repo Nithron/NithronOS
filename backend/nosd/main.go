@@ -60,8 +60,11 @@ func main() {
 	go func() {
 		// SIGHUP hot reload (Unix only)
 		if runtime.GOOS != "windows" {
+			// Only SIGHUP reloads the config. signal.Notify without a signal
+			// list relays every signal, including the SIGURG the Go runtime
+			// sends itself for preemption, so the config was reloaded constantly.
 			ch := make(chan os.Signal, 1)
-			signal.Notify(ch)
+			signal.Notify(ch, syscall.SIGHUP)
 			for range ch {
 				old := cfg
 				cfg = config.Load("/etc/nos/config.yaml")

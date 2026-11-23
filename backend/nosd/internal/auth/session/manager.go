@@ -26,18 +26,22 @@ type diskFile struct {
 	Version     int                 `json:"version"`
 	Sessions    []Record            `json:"sessions"`
 	UsedRefresh map[string][]string `json:"used_refresh"`
+	// RevokedBefore is, per user, the time (Unix ms) of the last "revoke all";
+	// refresh tokens issued before it are no longer accepted.
+	RevokedBefore map[string]int64 `json:"revoked_before,omitempty"`
 }
 
 type Manager struct {
-	path        string
-	mu          sync.RWMutex
-	sidToRec    map[string]Record
-	userToSids  map[string]map[string]struct{}
-	usedRefresh map[string]map[string]struct{} // uid -> rtid set
+	path          string
+	mu            sync.RWMutex
+	sidToRec      map[string]Record
+	userToSids    map[string]map[string]struct{}
+	usedRefresh   map[string]map[string]struct{} // uid -> rtid set
+	revokedBefore map[string]int64               // uid -> unix ms of last RevokeAll
 }
 
 func New(path string) *Manager {
-	m := &Manager{path: path, sidToRec: map[string]Record{}, userToSids: map[string]map[string]struct{}{}, usedRefresh: map[string]map[string]struct{}{}}
+	m := &Manager{path: path, sidToRec: map[string]Record{}, userToSids: map[string]map[string]struct{}{}, usedRefresh: map[string]map[string]struct{}{}, revokedBefore: map[string]int64{}}
 	_ = m.load()
 	return m
 }
@@ -67,6 +71,10 @@ func (m *Manager) load() error {
 		}
 		m.usedRefresh[uid] = set
 	}
+	m.revokedBefore = map[string]int64{}
+	for uid, t := range df.RevokedBefore {
+		m.revokedBefore[uid] = t
+	}
 	return nil
 }
 
@@ -83,7 +91,7 @@ func (m *Manager) persistLocked() error {
 		}
 		used[uid] = ids
 	}
-	return fsatomic.SaveJSON(context.TODO(), m.path, diskFile{Version: 1, Sessions: sessions, UsedRefresh: used}, 0o600)
+	return fsatomic.SaveJSON(context.TODO(), m.path, diskFile{Version: 1, Sessions: sessions, UsedRefresh: used, RevokedBefore: m.revokedBefore}, 0o600)
 }
 
 func (m *Manager) Create(uid, ua, ip string, ttl time.Duration) (Record, error) {
@@ -143,6 +151,8 @@ func (m *Manager) RevokeSID(sid string) error {
 
 func (m *Manager) RevokeAll(uid string) error {
 	m.mu.Lock()
+	// Refresh tokens issued until now stop working too.
+	m.revokedBefore[uid] = time.Now().UnixMilli()
 	if set := m.userToSids[uid]; set != nil {
 		for sid := range set {
 			delete(m.sidToRec, sid)
@@ -249,4 +259,12 @@ func generateULID() string {
 		out[idx] = alphabet[(v<<(5-bits))&0x1f]
 	}
 	return string(out)
+}
+
+// RefreshAllowed reports whether a refresh token for uid issued at issuedAtMs
+// (Unix ms) is still valid, i.e. was issued after the user's last RevokeAll.
+func (m *Manager) RefreshAllowed(uid string, issuedAtMs int64) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return issuedAtMs > m.revokedBefore[uid]
 }
