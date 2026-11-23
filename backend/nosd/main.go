@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -149,11 +150,15 @@ func dirOf(p string) string {
 	return "."
 }
 
+// ensureAgentToken makes sure the agent bootstrap token exists as 64 hex
+// characters. Earlier versions wrote 32 raw bytes, which the agent sends in a
+// JSON string (invalid UTF-8 gets replaced), so registration rarely matched;
+// such tokens are replaced.
 func ensureAgentToken(path string) {
 	if path == "" {
 		return
 	}
-	if _, err := os.Stat(path); err == nil {
+	if b, err := os.ReadFile(path); err == nil && isHexToken(strings.TrimSpace(string(b))) {
 		return
 	}
 	if dir := dirOf(path); dir != "" {
@@ -163,5 +168,13 @@ func ensureAgentToken(path string) {
 	if _, err := rand.Read(b[:]); err != nil {
 		return
 	}
-	_ = os.WriteFile(path, b[:], 0o600)
+	_ = os.WriteFile(path, []byte(hex.EncodeToString(b[:])+"\n"), 0o600)
+}
+
+func isHexToken(s string) bool {
+	if len(s) != 64 {
+		return false
+	}
+	_, err := hex.DecodeString(s)
+	return err == nil
 }

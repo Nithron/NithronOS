@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
@@ -385,7 +386,8 @@ func NewRouter(cfg config.Config) http.Handler {
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		// compare against bootstrap token
 		bootTok, _ := os.ReadFile("/etc/nos/agent-token")
-		if len(bootTok) == 0 || strings.TrimSpace(body.Token) != strings.TrimSpace(string(bootTok)) {
+		want := strings.TrimSpace(string(bootTok))
+		if want == "" || subtle.ConstantTimeCompare([]byte(strings.TrimSpace(body.Token)), []byte(want)) != 1 {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}

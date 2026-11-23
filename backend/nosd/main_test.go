@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,5 +44,24 @@ func TestFirstBootCodeIsCreatedAndShown(t *testing.T) {
 	banner, err := os.ReadFile(cfg.FirstBootIssuePath)
 	if err != nil || !regexp.MustCompile(`One-time setup code: +\d{3} \d{3}`).Match(banner) {
 		t.Fatalf("console banner: %v\n%s", err, banner)
+	}
+}
+
+// Regression (S9): the agent bootstrap token was 32 raw bytes, which the agent
+// sends inside a JSON string, so registration rarely matched.
+func TestEnsureAgentTokenIsHex(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "agent-token")
+	if err := os.WriteFile(p, []byte{0xff, 0x00, 0x81, '\n', 0x7f}, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ensureAgentToken(p)
+	b, _ := os.ReadFile(p)
+	tok := strings.TrimSpace(string(b))
+	if !isHexToken(tok) {
+		t.Fatalf("binary token not replaced: %q", b)
+	}
+	ensureAgentToken(p)
+	if b2, _ := os.ReadFile(p); strings.TrimSpace(string(b2)) != tok {
+		t.Fatal("a valid token must be kept")
 	}
 }
