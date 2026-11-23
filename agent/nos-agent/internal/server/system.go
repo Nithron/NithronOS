@@ -51,6 +51,12 @@ func handleSetHostname(w http.ResponseWriter, params map[string]interface{}) {
 		writeErr(w, http.StatusBadRequest, "hostname required")
 		return
 	}
+	// It is written to /etc/hostname and /etc/hosts: reject anything that is
+	// not a plain host name (a newline would add arbitrary hosts entries).
+	if !validHostname(hostname) {
+		writeErr(w, http.StatusBadRequest, "invalid hostname")
+		return
+	}
 
 	// Set hostname using hostnamectl
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -122,6 +128,12 @@ func handleSetTimezone(w http.ResponseWriter, params map[string]interface{}) {
 func handleSetNTP(w http.ResponseWriter, params map[string]interface{}) {
 	enabled, _ := params["enabled"].(bool)
 	servers, _ := params["servers"].([]interface{})
+	for _, s := range servers {
+		if str, ok := s.(string); !ok || !validNTPServer(str) {
+			writeErr(w, http.StatusBadRequest, "invalid NTP server")
+			return
+		}
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -165,13 +177,38 @@ func handleConfigureNetwork(w http.ResponseWriter, params map[string]interface{}
 	// Extract network configuration parameters
 	iface, _ := params["interface"].(string)
 	dhcp, _ := params["dhcp"].(bool)
-	ipv4Address, _ := params["ipv4_address"].(string)
+	// One "address/prefix" string (what nosd sends) or a list of them.
+	ipv4Addresses := stringOrList(params["ipv4_address"])
 	ipv4Gateway, _ := params["ipv4_gateway"].(string)
 	dnsServers, _ := params["dns"].([]interface{})
 
 	if iface == "" {
 		writeErr(w, http.StatusBadRequest, "interface name required")
 		return
+	}
+	// iface becomes part of a file path and every value ends up in a config
+	// file or command line: validate all of them.
+	if !validIfaceName(iface) {
+		writeErr(w, http.StatusBadRequest, "invalid interface name")
+		return
+	}
+	if !dhcp {
+		for _, a := range ipv4Addresses {
+			if !validIPv4CIDR(a) {
+				writeErr(w, http.StatusBadRequest, "invalid ipv4_address (want address/prefix)")
+				return
+			}
+		}
+		if ipv4Gateway != "" && !validIP(ipv4Gateway) {
+			writeErr(w, http.StatusBadRequest, "invalid ipv4_gateway")
+			return
+		}
+	}
+	for _, d := range dnsServers {
+		if str, ok := d.(string); !ok || !validIP(str) {
+			writeErr(w, http.StatusBadRequest, "invalid dns server")
+			return
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -189,9 +226,9 @@ func handleConfigureNetwork(w http.ResponseWriter, params map[string]interface{}
 			_ = exec.CommandContext(ctx, "nmcli", "con", "mod", iface, "ipv4.dns", "").Run()
 		} else {
 			// Configure static IP
-			if ipv4Address != "" {
+			if len(ipv4Addresses) > 0 {
 				_ = exec.CommandContext(ctx, "nmcli", "con", "mod", iface, "ipv4.method", "manual").Run()
-				_ = exec.CommandContext(ctx, "nmcli", "con", "mod", iface, "ipv4.addresses", ipv4Address).Run()
+				_ = exec.CommandContext(ctx, "nmcli", "con", "mod", iface, "ipv4.addresses", strings.Join(ipv4Addresses, ",")).Run()
 
 				if ipv4Gateway != "" {
 					_ = exec.CommandContext(ctx, "nmcli", "con", "mod", iface, "ipv4.gateway", ipv4Gateway).Run()
@@ -231,7 +268,7 @@ func handleConfigureNetwork(w http.ResponseWriter, params map[string]interface{}
 		if dhcp {
 			config.WriteString("DHCP=yes\n")
 		} else {
-			if ipv4Address != "" {
+			for _, ipv4Address := range ipv4Addresses {
 				fmt.Fprintf(&config, "Address=%s\n", ipv4Address)
 			}
 			if ipv4Gateway != "" {
@@ -257,15 +294,17 @@ func handleConfigureNetwork(w http.ResponseWriter, params map[string]interface{}
 			_ = exec.CommandContext(ctx, "dhclient", iface).Run()
 		} else {
 			// Configure static IP using ip command
-			if ipv4Address != "" {
+			if len(ipv4Addresses) > 0 {
 				// Bring interface down
 				_ = exec.CommandContext(ctx, "ip", "link", "set", iface, "down").Run()
 
 				// Remove existing addresses
 				_ = exec.CommandContext(ctx, "ip", "addr", "flush", "dev", iface).Run()
 
-				// Add new address
-				_ = exec.CommandContext(ctx, "ip", "addr", "add", ipv4Address, "dev", iface).Run()
+				// Add the new addresses
+				for _, ipv4Address := range ipv4Addresses {
+					_ = exec.CommandContext(ctx, "ip", "addr", "add", ipv4Address, "dev", iface).Run()
+				}
 
 				// Bring interface up
 				_ = exec.CommandContext(ctx, "ip", "link", "set", iface, "up").Run()
