@@ -13,9 +13,7 @@ RestartSec=2s
 # Create and own the socket; group nos can access
 ExecStartPre=/usr/bin/mkdir -p /run
 ExecStartPre=/usr/bin/rm -f /run/nos-agent.sock
-ExecStartPost=/bin/sh -c 'for i in $(seq 1 50); do \
-  if [ -S /run/nos-agent.sock ]; then chgrp nos /run/nos-agent.sock && chmod 660 /run/nos-agent.sock; exit 0; fi; \
-  sleep 0.1; done; exit 1'
+# The agent itself makes its socket root:nos 0660 and checks peer credentials.
 AmbientCapabilities=CAP_SYS_ADMIN CAP_DAC_READ_SEARCH
 NoNewPrivileges=true
 ProtectSystem=strict

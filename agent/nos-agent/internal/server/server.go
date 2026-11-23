@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -32,9 +33,19 @@ func Start() error {
 	if err != nil {
 		return fmt.Errorf("listen unix: %w", err)
 	}
-	// Restrict perms; systemd unit is expected to manage ownership/group.
+	// Only root and the nos service account may connect: root:nos 0660, plus
+	// a peer-credential check on every request (see peercred.go).
+	acc := lookupServiceAccount("nos")
 	if runtime.GOOS != "windows" {
-		_ = os.Chmod(SocketPath, 0o660)
+		if acc.gid >= 0 {
+			if err := os.Chown(SocketPath, 0, acc.gid); err != nil {
+				// e.g. a unit without CAP_CHOWN; nosd won't be able to connect
+				log.Printf("nos-agent: cannot give group nos access to %s: %v", SocketPath, err)
+			}
+		}
+		if err := os.Chmod(SocketPath, 0o660); err != nil {
+			return fmt.Errorf("chmod socket: %w", err)
+		}
 	}
 
 	// Bootstrap: register with nosd on first start (best-effort)
@@ -43,8 +54,12 @@ func Start() error {
 	// init prometheus registry
 	initMetrics()
 
-	h := buildMux()
-	return http.Serve(l, h)
+	srv := &http.Server{
+		Handler:           requirePeer(acc, buildMux()),
+		ConnContext:       withPeerCred,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+	return srv.Serve(l)
 }
 
 // buildMux constructs the HTTP handler with all routes registered.

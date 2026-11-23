@@ -14,7 +14,8 @@ StandardOutput=journal
 StandardError=journal
 
 # Ensure socket is accessible
-ExecStartPost=/bin/sh -c 'sleep 1; chmod 666 /run/nos-agent.sock 2>/dev/null || true'
+# The agent itself makes its socket root:nos 0660 and checks peer credentials
+# (this used to chmod 666 it, which gave every local user root actions).
 
 [Install]
 WantedBy=multi-user.target
