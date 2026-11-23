@@ -198,3 +198,49 @@ func TestRefreshTokenRotationAndReuse(t *testing.T) {
 		t.Fatalf("after reuse, the newer token must be revoked too: %d", res.Code)
 	}
 }
+
+// The settings page's /auth/2fa/* used an in-memory manager that treated
+// everyone as "user-123", accepted any password, and was never checked at
+// login. It now uses the user store, and enrollment only takes effect after
+// a valid code.
+func TestSettings2FAUsesUserStore(t *testing.T) {
+	e := newLoginEnv(t, false)
+	b, _ := json.Marshal(map[string]string{"username": "alice", "password": "Correct-Horse-9"})
+	res := httptest.NewRecorder()
+	e.r.ServeHTTP(res, httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(b)))
+	cookies := res.Result().Cookies()
+	call := func(method, path, body string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, bytes.NewBufferString(body))
+		for _, c := range cookies {
+			req.AddCookie(c)
+		}
+		out := httptest.NewRecorder()
+		e.r.ServeHTTP(out, req)
+		return out
+	}
+	if res := call(http.MethodPost, "/api/v1/auth/2fa/enroll", `{"password":"wrong"}`); res.Code != http.StatusUnauthorized {
+		t.Fatalf("enroll with a wrong password: %d", res.Code)
+	}
+	res = call(http.MethodPost, "/api/v1/auth/2fa/enroll", `{"password":"Correct-Horse-9"}`)
+	var enr struct {
+		Secret      string   `json:"secret"`
+		BackupCodes []string `json:"backup_codes"`
+	}
+	_ = json.Unmarshal(res.Body.Bytes(), &enr)
+	if res.Code != http.StatusOK || enr.Secret == "" || len(enr.BackupCodes) == 0 {
+		t.Fatalf("enroll: %d %s", res.Code, res.Body.String())
+	}
+	if code, _ := e.login("Correct-Horse-9", ""); code != http.StatusOK {
+		t.Fatalf("pending enrollment must not change login yet: %d", code)
+	}
+	valid, _ := totp.GenerateCode(enr.Secret, time.Now())
+	if res := call(http.MethodPost, "/api/v1/auth/2fa/verify", `{"code":"`+valid+`"}`); res.Code != http.StatusOK {
+		t.Fatalf("verify: %d %s", res.Code, res.Body.String())
+	}
+	if code, ec := e.login("Correct-Horse-9", ""); code != http.StatusUnauthorized || ec != "auth.totp.required" {
+		t.Fatalf("after enabling, login must ask for the code: %d %s", code, ec)
+	}
+	if code, _ := e.login("Correct-Horse-9", enr.BackupCodes[0]); code != http.StatusOK {
+		t.Fatalf("backup code from enrollment: %d", code)
+	}
+}

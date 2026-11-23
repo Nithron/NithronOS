@@ -81,6 +81,8 @@ Goal: a clean, reproducible starting point so every later PR is judged on green 
 
 ## Phase 2: Security fixes (CRITICAL)
 
+Status: done on `revision/phase-2-security`. All of S1 to S15 are fixed with regression tests (S12 in phase 1; S13 by deleting the unused in-memory TOTP manager). Found along the way and fixed: the settings page's `/auth/2fa/*` ran on that in-memory manager (every request was user `user-123`, any password was accepted, nothing persisted or was enforced at login); 2FA now has one implementation on the user store with pending enrollment. `DELETE /users/{id}` never deleted anyone. The agent's interface name was used in a file path (`../` wrote root-owned files anywhere).
+
 | # | Issue | Where |
 |---|---|---|
 | S1 | **2FA is never enforced at login.** `/auth/login` ignores `code`/TOTP entirely. | `router.go` `/api/v1/auth/login` |

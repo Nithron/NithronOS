@@ -20,11 +20,15 @@ type User struct {
 	Roles          []string `json:"roles"`
 	TOTPEnc        string   `json:"totp_enc"`
 	RecoveryHashes []string `json:"recovery_hashes"`
-	CreatedAt      string   `json:"created_at"`
-	UpdatedAt      string   `json:"updated_at"`
-	LastLoginAt    string   `json:"last_login_at"`
-	FailedAttempts int      `json:"failed_attempts"`
-	LockedUntil    string   `json:"locked_until"`
+	// Pending two-factor enrollment: becomes TOTPEnc/RecoveryHashes once a
+	// valid code confirms it.
+	TOTPPendingEnc        string   `json:"totp_pending_enc,omitempty"`
+	RecoveryPendingHashes []string `json:"recovery_pending_hashes,omitempty"`
+	CreatedAt             string   `json:"created_at"`
+	UpdatedAt             string   `json:"updated_at"`
+	LastLoginAt           string   `json:"last_login_at"`
+	FailedAttempts        int      `json:"failed_attempts"`
+	LockedUntil           string   `json:"locked_until"`
 }
 
 type dbFile struct {

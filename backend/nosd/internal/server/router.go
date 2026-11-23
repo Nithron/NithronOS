@@ -949,90 +949,10 @@ func NewRouter(cfg config.Config) http.Handler {
 		}
 
 		// TOTP enroll (logged-in): generate secret, encrypt with secret.key, store pending enc
-		pr.Get("/api/v1/auth/totp/enroll", func(w http.ResponseWriter, r *http.Request) {
-			uid, ok := decodeSessionUID(r, cfg)
-			if !ok {
-				if s, ok2 := codec.DecodeFromRequest(r); ok2 {
-					uid = s.UserID
-					ok = true
-				}
-			}
-			if !ok {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			u, err := users.FindByID(uid)
-			if err != nil {
-				httpx.WriteError(w, http.StatusNotFound, "user not found")
-				return
-			}
-			secret, uri, err := auth.GenerateTOTPSecret("NithronOS", u.Username)
-			if err != nil {
-				httpx.WriteError(w, http.StatusInternalServerError, "totp error")
-				return
-			}
-			enc, err := encryptWithSecretKey(cfg.SecretPath, []byte(secret))
-			if err != nil {
-				httpx.WriteError(w, http.StatusInternalServerError, "encrypt error")
-				return
-			}
-			u.TOTPEnc = enc
-			if err := users.UpsertUser(u); err != nil {
-				httpx.WriteError(w, http.StatusInternalServerError, "persist error")
-				return
-			}
-			writeJSON(w, map[string]any{"otpauth_url": uri, "qr_png_base64": ""})
-		})
-
-		// Allow POST for enroll to match nos-client
-		pr.Post("/api/v1/auth/totp/enroll", func(w http.ResponseWriter, r *http.Request) {
-			// Delegate to GET handler logic by invoking the same code path
-			r2 := r.Clone(r.Context())
-			r2.Method = http.MethodGet
-			pr.ServeHTTP(w, r2)
-		})
-
-		// TOTP verify (logged-in): verify code, generate recovery codes and persist hashes
-		pr.Post("/api/v1/auth/totp/verify", func(w http.ResponseWriter, r *http.Request) {
-			uid, ok := decodeSessionUID(r, cfg)
-			if !ok {
-				if s, ok2 := codec.DecodeFromRequest(r); ok2 {
-					uid = s.UserID
-					ok = true
-				}
-			}
-			if !ok {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			u, err := users.FindByID(uid)
-			if err != nil {
-				httpx.WriteError(w, http.StatusNotFound, "user not found")
-				return
-			}
-			var body struct{ Code string }
-			_ = json.NewDecoder(r.Body).Decode(&body)
-			if len(body.Code) != 6 {
-				httpx.WriteError(w, http.StatusBadRequest, "invalid code")
-				return
-			}
-			secretB, err := decryptWithSecretKey(cfg.SecretPath, u.TOTPEnc)
-			if err != nil {
-				httpx.WriteError(w, http.StatusBadRequest, "invalid state")
-				return
-			}
-			if !auth.VerifyTOTP(string(secretB), body.Code) {
-				httpx.WriteError(w, http.StatusUnauthorized, "invalid code")
-				return
-			}
-			plain, hashes := generateRecoveryCodes()
-			u.RecoveryHashes = hashes
-			if err := users.UpsertUser(u); err != nil {
-				httpx.WriteError(w, http.StatusInternalServerError, "persist error")
-				return
-			}
-			writeJSON(w, map[string]any{"ok": true, "recovery_codes": plain})
-		})
+		// Two-factor enrollment (setup wizard) and settings: one implementation
+		// on the user store, see auth_2fa.go.
+		tf := twoFactor{cfg: cfg, users: users}
+		tf.registerTOTPRoutes(pr)
 
 		pr.Get("/api/v1/disks", func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -1418,6 +1338,8 @@ func NewRouter(cfg config.Config) http.Handler {
 			pr.Mount("/api/v1/notifications", NewNotificationHandler(notificationManager).Routes())
 		}
 
+		pr.Mount("/api/v1/auth", twoFactor{cfg: cfg, users: users}.settingsRoutes())
+
 		// Network endpoints (M4)
 		netLogger := Logger(cfg)
 		netHandler, err := NewNetHandler(*netLogger)
@@ -1426,7 +1348,6 @@ func NewRouter(cfg config.Config) http.Handler {
 			// Continue without networking features
 		} else {
 			pr.Mount("/api/v1/net", netHandler.Routes())
-			pr.Mount("/api/v1/auth", netHandler.AuthRoutes())
 		}
 
 		// Updates endpoints (M5)

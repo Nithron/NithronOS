@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -19,7 +18,6 @@ type NetHandler struct {
 	firewallMgr *net.FirewallManager
 	wgMgr       *net.WireGuardManager
 	httpsMgr    *net.HTTPSManager
-	totpMgr     *net.TOTPManager
 	logger      zerolog.Logger
 }
 
@@ -34,7 +32,6 @@ func NewNetHandler(logger zerolog.Logger) (*NetHandler, error) {
 		firewallMgr: net.NewFirewallManager(),
 		wgMgr:       wgMgr,
 		httpsMgr:    net.NewHTTPSManager(),
-		totpMgr:     net.NewTOTPManager(),
 		logger:      logger,
 	}, nil
 }
@@ -75,18 +72,6 @@ func (h *NetHandler) Routes() chi.Router {
 }
 
 // AuthRoutes returns the 2FA/auth routes to be mounted separately
-func (h *NetHandler) AuthRoutes() chi.Router {
-	r := chi.NewRouter()
-
-	// 2FA/TOTP endpoints
-	r.Post("/2fa/enroll", h.EnrollTOTP)
-	r.Post("/2fa/verify", h.VerifyTOTP)
-	r.Post("/2fa/disable", h.DisableTOTP)
-	r.Post("/2fa/backup-codes", h.RegenerateBackupCodes)
-	r.Get("/2fa/status", h.GetTOTPStatus)
-
-	return r
-}
 
 // GetNetworkStatus returns the overall network configuration status
 func (h *NetHandler) GetNetworkStatus(w http.ResponseWriter, r *http.Request) {
@@ -308,112 +293,6 @@ func (h *NetHandler) TestHTTPS(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, map[string]string{
 		"status":  "success",
 		"message": "HTTPS configuration test passed.",
-	})
-}
-
-// 2FA/TOTP handlers
-
-func (h *NetHandler) EnrollTOTP(w http.ResponseWriter, r *http.Request) {
-	var req net.EnrollTOTPRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	// Get user info from session
-	userID := h.getUserID(r)
-	username := h.getUsername(r)
-
-	// Verify password (implement actual password check)
-	if !h.verifyPassword(userID, req.Password) {
-		h.writeError(w, http.StatusUnauthorized, "Invalid password")
-		return
-	}
-
-	// Enroll user
-	enrollment, err := h.totpMgr.EnrollUser(userID, username)
-	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	h.writeJSON(w, enrollment)
-}
-
-func (h *NetHandler) VerifyTOTP(w http.ResponseWriter, r *http.Request) {
-	var req net.VerifyTOTPRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	userID := h.getUserID(r)
-
-	// Verify code
-	valid, err := h.totpMgr.VerifyCode(userID, req.Code)
-	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	if !valid {
-		h.writeError(w, http.StatusUnauthorized, "Invalid code")
-		return
-	}
-
-	// Mark session as 2FA verified
-	sessionID := h.getSessionID(r)
-	h.totpMgr.MarkSessionVerified(sessionID, 30*time.Minute)
-
-	h.writeJSON(w, map[string]string{
-		"status":  "verified",
-		"message": "2FA verification successful.",
-	})
-}
-
-func (h *NetHandler) DisableTOTP(w http.ResponseWriter, r *http.Request) {
-	userID := h.getUserID(r)
-
-	if err := h.totpMgr.DisableUser(userID); err != nil {
-		h.writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	h.writeJSON(w, map[string]string{
-		"status":  "disabled",
-		"message": "2FA disabled for user.",
-	})
-}
-
-func (h *NetHandler) RegenerateBackupCodes(w http.ResponseWriter, r *http.Request) {
-	userID := h.getUserID(r)
-
-	codes, err := h.totpMgr.RegenerateBackupCodes(userID)
-	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	h.writeJSON(w, map[string][]string{
-		"backup_codes": codes,
-	})
-}
-
-func (h *NetHandler) GetTOTPStatus(w http.ResponseWriter, r *http.Request) {
-	userID := h.getUserID(r)
-
-	enrolled := h.totpMgr.IsUserEnrolled(userID)
-	sessionID := h.getSessionID(r)
-	verified := h.totpMgr.IsSessionVerified(sessionID)
-
-	// Check if 2FA is required
-	remoteIP := h.getRemoteIP(r)
-	required := net.RequiresTwoFactor(remoteIP, userID, h.totpMgr)
-
-	h.writeJSON(w, map[string]bool{
-		"enrolled": enrolled,
-		"verified": verified,
-		"required": required,
 	})
 }
 
