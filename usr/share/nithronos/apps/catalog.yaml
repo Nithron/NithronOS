@@ -215,3 +215,44 @@ entries:
       unhealthy_after: 3
     needs_privileged: false
     notes: "n8n includes a PostgreSQL database for storing workflows and credentials. All credentials are encrypted."
+
+  - id: nai
+    name: nAI
+    version: "0.4.0"
+    description: Ask questions about the files on your NAS and get answers with citations, running locally
+    categories:
+      - productivity
+      - ai
+    icon: templates/nai/icon.svg
+    compose: templates/nai/compose.yaml
+    schema: templates/nai/schema.json
+    defaults:
+      env:
+        PUID: "1000"
+        PGID: "1000"
+        TZ: "UTC"
+        SHARES_PATH: "/srv/shares"
+        DATA_PATH: "/srv/apps/nai/data"
+      volumes:
+        - host: /srv/apps/nai/data
+          container: /app/data
+          read_only: false
+        - host: /srv/shares
+          container: /shares
+          read_only: true
+      ports:
+        - host: 8090
+          container: 8000
+          protocol: tcp
+      resources:
+        cpu_limit: "2.0"
+        memory_limit: "3072m"
+    health:
+      type: http
+      url: "http://nos-app-nai-app-1:8000/health"
+      interval_s: 30
+      timeout_s: 5
+      healthy_after: 3
+      unhealthy_after: 3
+    needs_privileged: false
+    notes: "The first account created in nAI becomes its admin; add shares under Sources. The search model (~0.5 GB) downloads on first start. Needs about 1.5 GB of RAM."

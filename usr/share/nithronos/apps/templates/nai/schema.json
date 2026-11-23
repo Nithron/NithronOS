@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "nAI Configuration",
+  "properties": {
+    "NAI_PORT": {
+      "type": "string",
+      "title": "Web Port",
+      "description": "Port for the nAI web interface and API",
+      "default": "8090",
+      "pattern": "^[0-9]{1,5}$"
+    },
+    "NAI_VERSION": {
+      "type": "string",
+      "title": "nAI Version",
+      "default": "0.4.0",
+      "enum": [
+        "0.4.0",
+        "0.4",
+        "latest"
+      ]
+    },
+    "SHARES_PATH": {
+      "type": "string",
+      "title": "Shares Folder",
+      "description": "Folder containing your NithronOS shares. It is mounted read-only; add individual shares as sources in nAI.",
+      "default": "/srv/shares"
+    },
+    "LLM_ENABLED": {
+      "type": "string",
+      "title": "Generated Answers",
+      "description": "Use a language model to write answers. When off, nAI answers with quotes from your files.",
+      "default": "false",
+      "enum": [
+        "false",
+        "true"
+      ]
+    },
+    "LLM_PROVIDER": {
+      "type": "string",
+      "title": "Model Provider",
+      "description": "ollama (local or on another PC), openai (any OpenAI-compatible server: vLLM, llama.cpp, LM Studio, or the OpenAI API), anthropic",
+      "default": "ollama",
+      "enum": [
+        "ollama",
+        "openai",
+        "anthropic"
+      ]
+    },
+    "LLM_BASE_URL": {
+      "type": "string",
+      "title": "Model Server URL",
+      "description": "e.g. http://192.168.1.50:11434 for Ollama on a gaming PC. The default reaches Ollama running on the NAS itself.",
+      "default": "http://host.docker.internal:11434"
+    },
+    "LLM_MODEL": {
+      "type": "string",
+      "title": "Model",
+      "description": "'auto' picks the largest installed Ollama model that fits the hardware. Otherwise a model name, e.g. qwen3:8b",
+      "default": "auto"
+    },
+    "LLM_API_KEY": {
+      "type": "string",
+      "title": "API Key",
+      "description": "Only for cloud providers. Your questions and matching passages are sent to that provider.",
+      "format": "password",
+      "default": ""
+    },
+    "RERANKER": {
+      "type": "string",
+      "title": "Reranking",
+      "description": "Sharper result ordering at some CPU cost. 'auto' enables it on capable hardware.",
+      "default": "auto",
+      "enum": [
+        "auto",
+        "true",
+        "false"
+      ]
+    },
+    "OCR_ENABLED": {
+      "type": "string",
+      "title": "Read Scans (OCR)",
+      "description": "Extract text from scanned PDFs and photos of documents",
+      "default": "true",
+      "enum": [
+        "true",
+        "false"
+      ]
+    },
+    "OCR_LANGUAGES": {
+      "type": "string",
+      "title": "OCR Languages",
+      "description": "Tesseract language codes. The image ships English and German.",
+      "default": "eng+deu"
+    },
+    "PUID": {
+      "type": "string",
+      "title": "User ID",
+      "description": "User ID nAI runs as. It needs read access to the shares you want to index.",
+      "default": "1000",
+      "pattern": "^[0-9]+$"
+    },
+    "PGID": {
+      "type": "string",
+      "title": "Group ID",
+      "description": "Group ID nAI runs as",
+      "default": "1000",
+      "pattern": "^[0-9]+$"
+    },
+    "TRUSTED_PROXIES": {
+      "type": "string",
+      "title": "Trusted Proxies",
+      "description": "JSON list of reverse-proxy IPs/CIDRs whose X-Forwarded-For header is trusted for rate limiting. The default covers Docker networks (where Caddy's traffic comes from).",
+      "default": "[\"172.16.0.0/12\"]"
+    },
+    "TZ": {
+      "type": "string",
+      "title": "Timezone",
+      "default": "UTC",
+      "examples": [
+        "Europe/Berlin",
+        "America/Sao_Paulo",
+        "America/New_York"
+      ]
+    },
+    "MEMORY_LIMIT": {
+      "type": "string",
+      "title": "Memory Limit",
+      "description": "Container memory limit. nAI peaks around 1.4 GB with reranking on; give it more for very large shares.",
+      "default": "3g",
+      "pattern": "^[0-9]+[mMgG]$"
+    },
+    "CPU_LIMIT": {
+      "type": "string",
+      "title": "CPU Limit",
+      "description": "CPU cores nAI may use (indexing and OCR are CPU-heavy)",
+      "default": "2.0",
+      "pattern": "^[0-9]+(\\.[0-9]+)?$"
+    }
+  },
+  "required": []
+}
