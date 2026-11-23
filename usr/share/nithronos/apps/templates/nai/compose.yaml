@@ -1,0 +1,61 @@
+version: '3.9'
+
+# nAI: "the AI that knows your NAS". Indexes NithronOS shares (read-only) and answers
+# questions about them with citations. Source: https://github.com/Nithron/NithronAI
+#
+# NithronOS specifics:
+# - The service is named `app` so the generated Caddy snippet (nos-app-<id>-app-1) reaches it.
+# - Data uses an absolute path: compose runs with --project-directory /srv/apps/nai/config,
+#   so a relative ./data would land in config/ instead of the snapshotted data subvolume.
+# - Explicit deploy limits: without them the renderer caps every app at 1024M, and nAI peaks
+#   around 1.4 GB with the reranker loaded.
+
+services:
+  app:
+    image: ghcr.io/nithron/nithronai/nai-core:${NAI_VERSION:-0.4.0}
+    container_name: nos-app-nai-app-1
+    restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"
+    ports:
+      - "${NAI_PORT:-8090}:8000"
+    volumes:
+      # Database, uploads and downloaded models (embedding + reranker, ~0.5 GB)
+      - ${DATA_PATH:-/srv/apps/nai/data}:/app/data
+      # NithronOS shares, read-only: nAI never changes files
+      - ${SHARES_PATH:-/srv/shares}:/shares:ro
+    environment:
+      - NAI_AUTH_ENABLED=true
+      - NAI_SOURCES_ALLOWED_ROOTS=["/shares"]
+      - NAI_EMBEDDINGS_ENABLED=true
+      - NAI_RERANKER=${RERANKER:-auto}
+      - NAI_OCR_ENABLED=${OCR_ENABLED:-true}
+      - NAI_OCR_LANGUAGES=${OCR_LANGUAGES:-eng+deu}
+      # Generated answers (optional). Without a model, nAI answers with exact quotes.
+      - NAI_LLM_ENABLED=${LLM_ENABLED:-false}
+      - NAI_LLM_PROVIDER=${LLM_PROVIDER:-ollama}
+      - NAI_LLM_MODEL=${LLM_MODEL:-auto}
+      - NAI_LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:11434}
+      - NAI_LLM_API_KEY=${LLM_API_KEY:-}
+      # Caddy forwards the client IP in X-Forwarded-For; trust it from Docker networks so
+      # rate limiting is per user instead of one shared bucket for everyone.
+      - NAI_TRUSTED_PROXIES=${TRUSTED_PROXIES:-["172.16.0.0/12"]}
+      - TZ=${TZ:-UTC}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "${CPU_LIMIT:-2.0}"
+          memory: ${MEMORY_LIMIT:-3g}
+    labels:
+      - "nos.app.id=nai"
+      - "nos.app.name=nAI"
+      - "nos.app.version=${NAI_VERSION:-0.4.0}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
