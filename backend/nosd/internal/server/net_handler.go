@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
@@ -450,49 +449,10 @@ func (h *NetHandler) writeError(w http.ResponseWriter, code int, message string)
 	}
 }
 
-func (h *NetHandler) getUserID(r *http.Request) string {
-	// Extract from JWT or session
-	// Placeholder implementation
-	return "user-123"
-}
-
-func (h *NetHandler) getUsername(r *http.Request) string {
-	// Extract from JWT or session
-	// Placeholder implementation
-	return "admin"
-}
-
 func (h *NetHandler) getSessionID(r *http.Request) string {
 	// Extract from cookie or header
 	// Placeholder implementation
 	return "session-123"
-}
-
-func (h *NetHandler) getRemoteIP(r *http.Request) string {
-	// Get real IP considering proxy headers
-	ip := r.Header.Get("X-Real-IP")
-	if ip == "" {
-		ip = r.Header.Get("X-Forwarded-For")
-		if ip != "" {
-			// Take first IP if multiple
-			parts := strings.Split(ip, ",")
-			ip = strings.TrimSpace(parts[0])
-		}
-	}
-	if ip == "" {
-		ip = r.RemoteAddr
-		// Remove port if present
-		if idx := strings.LastIndex(ip, ":"); idx != -1 {
-			ip = ip[:idx]
-		}
-	}
-	return ip
-}
-
-func (h *NetHandler) verifyPassword(userID, password string) bool {
-	// Implement actual password verification
-	// This should check against stored hash
-	return true // Placeholder
 }
 
 func (h *NetHandler) getExternalIP() string {
