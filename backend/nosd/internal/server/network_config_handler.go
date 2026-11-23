@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"net"
 	"net/http"
 	"os"
@@ -297,7 +298,11 @@ func (h *NetworkConfigHandler) CreateWireGuardPeer(w http.ResponseWriter, r *htt
 
 	// Generate keys if not provided
 	if peer.PublicKey == "" {
-		privateKey, publicKey := h.generateWGKeys()
+		privateKey, publicKey, err := h.generateWGKeys()
+		if err != nil {
+			httpx.WriteTypedError(w, http.StatusInternalServerError, "wg.keygen_failed", "Could not generate WireGuard keys", 0)
+			return
+		}
 		peer.PublicKey = publicKey
 		// Store private key securely
 		h.storeWGPrivateKey(peer.Name, privateKey)
@@ -687,10 +692,14 @@ func (h *NetworkConfigHandler) applyWireGuardConfig() error {
 	return nil
 }
 
-func (h *NetworkConfigHandler) generateWGKeys() (privateKey, publicKey string) {
-	// Generate WireGuard keys
-	// This is a simplified implementation - real would use wg genkey/pubkey
-	return "private-key-placeholder", "public-key-placeholder"
+// generateWGKeys returns a new WireGuard key pair (base64). It used to return
+// fixed placeholder strings, which every peer would have shared.
+func (h *NetworkConfigHandler) generateWGKeys() (privateKey, publicKey string, err error) {
+	k, err := wgtypes.GeneratePrivateKey()
+	if err != nil {
+		return "", "", fmt.Errorf("generate wireguard key: %w", err)
+	}
+	return k.String(), k.PublicKey().String(), nil
 }
 
 func (h *NetworkConfigHandler) storeWGPrivateKey(name, key string) {

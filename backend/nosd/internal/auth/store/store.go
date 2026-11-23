@@ -165,3 +165,53 @@ func (s *Store) UpsertUser(u User) error {
 	}
 	return nil
 }
+
+// DeleteUser removes the user with the given ID. It returns ErrUserNotFound
+// when there is no such user, and refuses (ErrLastAdmin) to delete the only
+// remaining administrator.
+func (s *Store) DeleteUser(id string) error {
+	s.mu.Lock()
+	var victim User
+	found, admins := false, 0
+	for _, u := range s.users {
+		if isAdminUser(u) {
+			admins++
+		}
+		if u.ID == id {
+			victim, found = u, true
+		}
+	}
+	if !found {
+		s.mu.Unlock()
+		return ErrUserNotFound
+	}
+	if isAdminUser(victim) && admins <= 1 {
+		s.mu.Unlock()
+		return ErrLastAdmin
+	}
+	delete(s.users, victim.Username)
+	list := make([]User, 0, len(s.users))
+	for _, usr := range s.users {
+		list = append(list, usr)
+	}
+	s.mu.Unlock()
+	if err := s.writeUsers(list); err != nil {
+		s.mu.Lock()
+		s.users[victim.Username] = victim
+		s.mu.Unlock()
+		return err
+	}
+	return nil
+}
+
+// ErrLastAdmin is returned when an operation would leave no administrator.
+var ErrLastAdmin = errors.New("cannot remove the last administrator")
+
+func isAdminUser(u User) bool {
+	for _, r := range u.Roles {
+		if r == "admin" {
+			return true
+		}
+	}
+	return false
+}

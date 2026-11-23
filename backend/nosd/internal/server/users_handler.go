@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -271,63 +272,19 @@ func (h *UsersHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the user to check if they're an admin
-	user, err := h.store.FindByID(userID)
-	if err != nil {
-		if err == userstore.ErrUserNotFound {
+	// The store refuses to delete the last administrator. (This used to refuse
+	// every admin, and for other users it re-saved the remaining users without
+	// ever removing the deleted one, so nobody was actually deleted.)
+	if err := h.store.DeleteUser(userID); err != nil {
+		switch {
+		case errors.Is(err, userstore.ErrUserNotFound):
 			httpx.WriteTypedError(w, http.StatusNotFound, "user.not_found", "User not found", 0)
-		} else {
-			httpx.WriteTypedError(w, http.StatusInternalServerError, "user.get_failed", "Failed to get user", 0)
-		}
-		return
-	}
-
-	// Check if this is an admin
-	isAdmin := false
-	for _, role := range user.Roles {
-		if role == "admin" {
-			isAdmin = true
-			break
-		}
-	}
-
-	// For now, prevent deleting any admin (since we can't check if it's the last one)
-	if isAdmin {
-		httpx.WriteTypedError(w, http.StatusForbidden, "user.is_admin", "Cannot delete admin users", 0)
-		return
-	}
-
-	// Delete user - we'll remove them from the store by not including them in the update
-	users, err := h.store.List()
-	if err != nil {
-		httpx.WriteTypedError(w, http.StatusInternalServerError, "user.delete_failed", "Failed to delete user", 0)
-		return
-	}
-
-	// Create a new user list without the deleted user
-	found := false
-	for i, u := range users {
-		if u.ID == userID {
-			// Remove the user by creating a new slice without this user
-			users = append(users[:i], users[i+1:]...)
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		httpx.WriteTypedError(w, http.StatusNotFound, "user.not_found", "User not found", 0)
-		return
-	}
-
-	// Save all users back (effectively deleting the one we removed)
-	// Note: This is a workaround since the store doesn't have a Delete method
-	// In production, we'd add a proper Delete method to the store
-	for _, u := range users {
-		if err := h.store.UpsertUser(u); err != nil {
+		case errors.Is(err, userstore.ErrLastAdmin):
+			httpx.WriteTypedError(w, http.StatusConflict, "user.last_admin", "Cannot delete the last administrator", 0)
+		default:
 			httpx.WriteTypedError(w, http.StatusInternalServerError, "user.delete_failed", "Failed to delete user", 0)
-			return
 		}
+		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
