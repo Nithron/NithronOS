@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
-	"strings"
 
 	"golang.org/x/crypto/argon2"
 )
@@ -30,9 +29,6 @@ func HashPassword(p ArgonParams, password string) (string, error) {
 }
 
 func VerifyPassword(p ArgonParams, encoded, password string) bool {
-	if strings.HasPrefix(encoded, "dev:") || strings.HasPrefix(encoded, "plain:") {
-		return strings.TrimPrefix(strings.TrimPrefix(encoded, "dev:"), "plain:") == password
-	}
 	parts := []byte(encoded)
 	sep := -1
 	for i, b := range parts {

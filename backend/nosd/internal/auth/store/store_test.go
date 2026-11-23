@@ -75,3 +75,38 @@ func TestCrashRecoveryFromTmp(t *testing.T) {
 		t.Fatalf("users.json missing: %v", err)
 	}
 }
+
+// Regression (S11): deleting a user re-saved the other users and never
+// removed the deleted one, and every admin was undeletable.
+func TestDeleteUser(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "users.json")
+	s, _ := New(p)
+	for _, u := range []User{
+		{ID: "a1", Username: "admin1", PasswordHash: "x", Roles: []string{"admin"}},
+		{ID: "a2", Username: "admin2", PasswordHash: "x", Roles: []string{"admin"}},
+		{ID: "u1", Username: "bob", PasswordHash: "x", Roles: []string{"user"}},
+	} {
+		if err := s.UpsertUser(u); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.DeleteUser("u1"); err != nil {
+		t.Fatal(err)
+	}
+	reloaded, _ := New(p)
+	if _, err := reloaded.FindByID("u1"); err != ErrUserNotFound {
+		t.Fatalf("bob should be gone after reload: %v", err)
+	}
+	if err := s.DeleteUser("nope"); err != ErrUserNotFound {
+		t.Fatalf("missing user: %v", err)
+	}
+	if err := s.DeleteUser("a1"); err != nil {
+		t.Fatalf("one of two admins: %v", err)
+	}
+	if err := s.DeleteUser("a2"); err != ErrLastAdmin {
+		t.Fatalf("last admin must be kept: %v", err)
+	}
+	if !s.HasAdmin() {
+		t.Fatal("an admin must remain")
+	}
+}

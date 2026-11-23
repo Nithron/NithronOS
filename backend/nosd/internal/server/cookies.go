@@ -30,13 +30,22 @@ func issueSessionCookies(w http.ResponseWriter, cfg config.Config, uid string, k
 	http.SetCookie(w, &http.Cookie{Name: cookieSession, Value: sVal, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Expires: now.Add(15 * time.Minute)})
 	// refresh
 	if keepRefresh {
-		ref := map[string]any{"uid": uid, "exp": now.Add(7 * 24 * time.Hour).Unix()}
-		rVal, err := encodeOpaque(cfg, cookieRefresh, ref)
-		if err != nil {
-			return err
-		}
-		http.SetCookie(w, &http.Cookie{Name: cookieRefresh, Value: rVal, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Expires: now.Add(7 * 24 * time.Hour)})
+		return issueRefreshCookie(w, cfg, uid, generateUUID())
 	}
+	return nil
+}
+
+// issueRefreshCookie sets nos_refresh. rid identifies this refresh token: each
+// refresh spends it and issues a new one, so a replayed (stolen) token is
+// detected (see the /api/v1/auth/refresh handler).
+func issueRefreshCookie(w http.ResponseWriter, cfg config.Config, uid, rid string) error {
+	exp := time.Now().UTC().Add(7 * 24 * time.Hour)
+	ref := map[string]any{"uid": uid, "rid": rid, "iat": time.Now().UnixMilli(), "exp": exp.Unix()}
+	rVal, err := encodeOpaque(cfg, cookieRefresh, ref)
+	if err != nil {
+		return err
+	}
+	http.SetCookie(w, &http.Cookie{Name: cookieRefresh, Value: rVal, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Expires: exp})
 	return nil
 }
 
@@ -69,22 +78,34 @@ func decodeSessionUID(r *http.Request, cfg config.Config) (string, bool) {
 
 // decodeRefreshUID validates nos_refresh and returns uid string
 func decodeRefreshUID(r *http.Request, cfg config.Config) (string, bool) {
+	uid, _, _, ok := decodeRefresh(r, cfg)
+	return uid, ok
+}
+
+// decodeRefresh validates nos_refresh and returns its uid, refresh id and
+// issue time in Unix ms. Cookies issued before refresh rotation existed have
+// no rid/iat; the refresh handler refuses them (iat 0 is never after the
+// user's last revocation), so users sign in once more after upgrading.
+func decodeRefresh(r *http.Request, cfg config.Config) (uid, rid string, iatMs int64, ok bool) {
 	ck, err := r.Cookie(cookieRefresh)
 	if err != nil {
-		return "", false
+		return "", "", 0, false
 	}
 	var m map[string]any
 	if err := decodeOpaque(cfg, cookieRefresh, ck.Value, &m); err != nil {
-		return "", false
+		return "", "", 0, false
 	}
 	expUnix, ok := asInt64(m["exp"])
 	if !ok || time.Now().UTC().Unix() > expUnix {
-		return "", false
+		return "", "", 0, false
 	}
-	if uid, ok := m["uid"].(string); ok && uid != "" {
-		return uid, true
+	uid, _ = m["uid"].(string)
+	if uid == "" {
+		return "", "", 0, false
 	}
-	return "", false
+	rid, _ = m["rid"].(string)
+	iatMs, _ = asInt64(m["iat"])
+	return uid, rid, iatMs, true
 }
 
 func issueCSRFCookie(w http.ResponseWriter) {
@@ -102,12 +123,7 @@ func issueSessionCookiesSID(w http.ResponseWriter, cfg config.Config, uid, sid s
 	}
 	http.SetCookie(w, &http.Cookie{Name: cookieSession, Value: sVal, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Expires: now.Add(15 * time.Minute)})
 	if keepRefresh {
-		ref := map[string]any{"uid": uid, "exp": now.Add(7 * 24 * time.Hour).Unix()}
-		rVal, err := encodeOpaque(cfg, cookieRefresh, ref)
-		if err != nil {
-			return err
-		}
-		http.SetCookie(w, &http.Cookie{Name: cookieRefresh, Value: rVal, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, Expires: now.Add(7 * 24 * time.Hour)})
+		return issueRefreshCookie(w, cfg, uid, generateUUID())
 	}
 	return nil
 }

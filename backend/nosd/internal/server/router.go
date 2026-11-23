@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"nithronos/backend/nosd/internal/version"
@@ -88,9 +90,11 @@ func NewRouter(cfg config.Config) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
-	// TODO(revision phase 2, S4): RealIP trusts X-Forwarded-For from any client; replace with a trusted-proxy aware middleware.
-	//lint:ignore SA1019 tracked in docs/dev/revision-plan.md (S4)
-	r.Use(middleware.RealIP) //nolint:staticcheck // SA1019: tracked in docs/dev/revision-plan.md (S4)
+	// No RealIP middleware: it replaced RemoteAddr with the client-supplied
+	// X-Forwarded-For, which let remote clients pass the localhost-only checks
+	// and dodge per-IP rate limits. RemoteAddr stays the real peer; clientIP()
+	// honours X-Forwarded-For only from a trusted proxy, and isLocalRequest()
+	// guards the local-only endpoints.
 	r.Use(zerologMiddleware(Logger(cfg), cfg))
 	r.Use(securityHeaders)
 
@@ -167,11 +171,7 @@ func NewRouter(cfg config.Config) http.Handler {
 	if cfg.PprofEnabled {
 		// Guard pprof: localhost only
 		r.Mount("/debug/pprof", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip := r.RemoteAddr
-			if i := strings.LastIndex(ip, ":"); i >= 0 {
-				ip = ip[:i]
-			}
-			if ip != "127.0.0.1" && ip != "::1" {
+			if !isLocalRequest(r) {
 				w.WriteHeader(http.StatusForbidden)
 				return
 			}
@@ -180,7 +180,6 @@ func NewRouter(cfg config.Config) http.Handler {
 	}
 
 	// Init stores
-	store, _ := auth.NewStore(cfg.UsersPath)
 	users, _ := userstore.New(cfg.UsersPath)
 	codec := auth.NewSessionCodec(cfg.SessionHashKey, cfg.SessionBlockKey)
 	InitJobsStore(cfg)
@@ -251,7 +250,11 @@ func NewRouter(cfg config.Config) http.Handler {
 	// SessionContext middleware (parse cookies only; no auth enforcement)
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// parse nos_session; ignore failures
+			// X-UID/X-SID carry the signed-in identity to handlers. Never take
+			// them from the client: drop whatever came in, then set them only
+			// from a valid session cookie.
+			r.Header.Del("X-UID")
+			r.Header.Del("X-SID")
 			uid, sid, ok := decodeSessionParts(r, cfg)
 			if ok {
 				// attach to context via headers (lightweight)
@@ -295,11 +298,7 @@ func NewRouter(cfg config.Config) http.Handler {
 		r.Route("/api/v1/recovery", func(rr chi.Router) {
 			rr.Use(func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					ip := r.RemoteAddr
-					if i := strings.LastIndex(ip, ":"); i >= 0 {
-						ip = ip[:i]
-					}
-					if ip != "127.0.0.1" && ip != "::1" {
+					if !isLocalRequest(r) {
 						w.WriteHeader(http.StatusForbidden)
 						return
 					}
@@ -387,7 +386,8 @@ func NewRouter(cfg config.Config) http.Handler {
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		// compare against bootstrap token
 		bootTok, _ := os.ReadFile("/etc/nos/agent-token")
-		if len(bootTok) == 0 || strings.TrimSpace(body.Token) != strings.TrimSpace(string(bootTok)) {
+		want := strings.TrimSpace(string(bootTok))
+		if want == "" || subtle.ConstantTimeCompare([]byte(strings.TrimSpace(body.Token)), []byte(want)) != 1 {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -589,11 +589,7 @@ func NewRouter(cfg config.Config) http.Handler {
 	// Recovery: local-only endpoint to clear first-boot state and optionally users
 	r.Post("/api/v1/setup/recover", func(w http.ResponseWriter, r *http.Request) {
 		// Guard: localhost only
-		ip := r.RemoteAddr
-		if i := strings.LastIndex(ip, ":"); i >= 0 {
-			ip = ip[:i]
-		}
-		if ip != "127.0.0.1" && ip != "::1" {
+		if !isLocalRequest(r) {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
@@ -685,23 +681,32 @@ func NewRouter(cfg config.Config) http.Handler {
 				return
 			}
 		}
-		ph := u.PasswordHash
-		ok := false
-		if strings.HasPrefix(ph, "dev:") || strings.HasPrefix(ph, "plain:") {
-			ok = strings.TrimPrefix(strings.TrimPrefix(ph, "dev:"), "plain:") == pass
-		} else {
-			ok = pwhash.VerifyPassword(ph, pass)
-		}
-		if !ok {
-			// increment failure; lock after 10
+		// Only real password hashes are accepted (no "plain:"/"dev:" shortcuts).
+		recordFailure := func() {
+			// lock after 10 failed attempts (password or second factor)
 			u.FailedAttempts++
 			if u.FailedAttempts >= 10 {
 				u.FailedAttempts = 0
 				u.LockedUntil = time.Now().Add(15 * time.Minute).UTC().Format(time.RFC3339)
 			}
 			_ = users.UpsertUser(u)
+		}
+		if !pwhash.VerifyPassword(u.PasswordHash, pass) {
+			recordFailure()
 			w.WriteHeader(http.StatusUnauthorized)
 			return
+		}
+		// Second factor: required whenever the user has enabled 2FA.
+		if userHasTOTP(u) {
+			if strings.TrimSpace(body.Code) == "" {
+				httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.totp.required", "Two-factor code required", 0)
+				return
+			}
+			if !verifySecondFactor(cfg, &u, body.Code) {
+				recordFailure()
+				httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.totp.invalid", "Invalid two-factor code", 0)
+				return
+			}
 		}
 		// success: reset counters
 		u.FailedAttempts = 0
@@ -724,24 +729,43 @@ func NewRouter(cfg config.Config) http.Handler {
 
 	// Record refresh events in sessions store (best-effort)
 	r.Post("/api/v1/auth/refresh", func(w http.ResponseWriter, r *http.Request) {
-		if uid, ok := decodeRefreshUID(r, cfg); ok {
-			// rotate refresh; revoke all if reuse detected
-			old := r.Header.Get("X-Refresh-ID")
-			newID, reuse, _ := mgr.RotateRefresh(uid, strings.TrimSpace(old))
+		uid, rid, iat, ok := decodeRefresh(r, cfg)
+		if !ok || !mgr.RefreshAllowed(uid, iat) {
+			// expired, malformed, or issued before the user's sessions were
+			// revoked (logout, reuse detection)
+			clearAuthCookies(w)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		// Each refresh token is spent once. A token that was already spent
+		// means it was copied: revoke all of the user's sessions.
+		newRID := generateUUID()
+		if rid != "" {
+			next, reuse, err := mgr.RotateRefresh(uid, rid)
+			if err != nil {
+				httpx.WriteError(w, http.StatusInternalServerError, "session error")
+				return
+			}
 			if reuse {
+				Logger(cfg).Warn().Str("event", "auth.refresh.reuse").Str("uid", uid).Msg("refresh token reused; revoking all sessions")
 				_ = mgr.RevokeAll(uid)
+				_ = sessStore.DeleteByUserID(uid)
 				clearAuthCookies(w)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			_ = sessStore.Upsert(sessions.Session{ID: generateUUID(), UserID: uid, Roles: []string{"refresh"}, ExpiresAt: time.Now().Add(7 * 24 * time.Hour).UTC().Format(time.RFC3339)})
-			if err := issueSessionCookies(w, cfg, uid, true); err == nil {
-				w.Header().Set("X-Refresh-ID", newID)
-				writeJSON(w, map[string]any{"ok": true})
-				return
-			}
+			newRID = next
 		}
-		w.WriteHeader(http.StatusUnauthorized)
+		_ = sessStore.Upsert(sessions.Session{ID: generateUUID(), UserID: uid, Roles: []string{"refresh"}, ExpiresAt: time.Now().Add(7 * 24 * time.Hour).UTC().Format(time.RFC3339)})
+		if err := issueSessionCookies(w, cfg, uid, false); err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, "session error")
+			return
+		}
+		if err := issueRefreshCookie(w, cfg, uid, newRID); err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, "session error")
+			return
+		}
+		writeJSON(w, map[string]any{"ok": true})
 	})
 
 	// Logout: clear cookies and remove persisted sessions for this user (best-effort)
@@ -871,61 +895,9 @@ func NewRouter(cfg config.Config) http.Handler {
 		w.WriteHeader(http.StatusUnauthorized)
 	})
 
-	r.Post("/api/v1/auth/refresh", func(w http.ResponseWriter, r *http.Request) {
-		if uid, ok := decodeRefreshUID(r, cfg); ok {
-			if err := issueSessionCookies(w, cfg, uid, true); err == nil {
-				writeJSON(w, map[string]any{"ok": true})
-				return
-			}
-		}
-		w.WriteHeader(http.StatusUnauthorized)
-	})
-
-	// TOTP setup & confirm
-	r.Post("/api/v1/auth/totp/setup", func(w http.ResponseWriter, r *http.Request) {
-		var body struct{ Email, Password string }
-		_ = json.NewDecoder(r.Body).Decode(&body)
-		u, err := store.GetByEmail(body.Email)
-		// TODO: Fix password verification - UserManager should handle this
-		if err != nil /*|| !auth.VerifyPassword(auth.DefaultParams, u.PasswordHash, body.Password)*/ {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		// TODO: Check if TOTP is enabled via UserManager
-		if false /*u.TOTPSecret != ""*/ {
-			w.WriteHeader(http.StatusConflict)
-			if err := json.NewEncoder(w).Encode(map[string]any{"error": "totp_already_enabled"}); err != nil {
-				fmt.Printf("Failed to write response: %v\n", err)
-			}
-			return
-		}
-		secret, uri, err := auth.GenerateTOTPSecret("NithronOS", u.Email)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		// TODO: Store TOTP secret via UserManager
-		// u.TOTPSecret = secret
-		_ = store.UpdateUser(u)
-		writeJSON(w, map[string]any{"secret": secret, "otpauth": uri})
-	})
-
-	r.Post("/api/v1/auth/totp/confirm", func(w http.ResponseWriter, r *http.Request) {
-		var body struct{ Email, Code string }
-		_ = json.NewDecoder(r.Body).Decode(&body)
-		_, err := store.GetByEmail(body.Email)
-		// TODO: Check TOTP secret via UserManager
-		if err != nil /*|| u.TOTPSecret == ""*/ {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		// TODO: Verify TOTP via UserManager
-		if false /*!auth.VerifyTOTP(u.TOTPSecret, body.Code)*/ {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		writeJSON(w, map[string]any{"ok": true})
-	})
+	// (POST /api/v1/auth/totp/setup and /totp/confirm were removed: they were
+	// reachable without signing in and never checked the password. TOTP is
+	// enrolled through the authenticated /api/v1/auth/totp/enroll and /verify.)
 
 	// Protected routes
 	r.Group(func(pr chi.Router) {
@@ -977,90 +949,10 @@ func NewRouter(cfg config.Config) http.Handler {
 		}
 
 		// TOTP enroll (logged-in): generate secret, encrypt with secret.key, store pending enc
-		pr.Get("/api/v1/auth/totp/enroll", func(w http.ResponseWriter, r *http.Request) {
-			uid, ok := decodeSessionUID(r, cfg)
-			if !ok {
-				if s, ok2 := codec.DecodeFromRequest(r); ok2 {
-					uid = s.UserID
-					ok = true
-				}
-			}
-			if !ok {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			u, err := users.FindByID(uid)
-			if err != nil {
-				httpx.WriteError(w, http.StatusNotFound, "user not found")
-				return
-			}
-			secret, uri, err := auth.GenerateTOTPSecret("NithronOS", u.Username)
-			if err != nil {
-				httpx.WriteError(w, http.StatusInternalServerError, "totp error")
-				return
-			}
-			enc, err := encryptWithSecretKey(cfg.SecretPath, []byte(secret))
-			if err != nil {
-				httpx.WriteError(w, http.StatusInternalServerError, "encrypt error")
-				return
-			}
-			u.TOTPEnc = enc
-			if err := users.UpsertUser(u); err != nil {
-				httpx.WriteError(w, http.StatusInternalServerError, "persist error")
-				return
-			}
-			writeJSON(w, map[string]any{"otpauth_url": uri, "qr_png_base64": ""})
-		})
-
-		// Allow POST for enroll to match nos-client
-		pr.Post("/api/v1/auth/totp/enroll", func(w http.ResponseWriter, r *http.Request) {
-			// Delegate to GET handler logic by invoking the same code path
-			r2 := r.Clone(r.Context())
-			r2.Method = http.MethodGet
-			pr.ServeHTTP(w, r2)
-		})
-
-		// TOTP verify (logged-in): verify code, generate recovery codes and persist hashes
-		pr.Post("/api/v1/auth/totp/verify", func(w http.ResponseWriter, r *http.Request) {
-			uid, ok := decodeSessionUID(r, cfg)
-			if !ok {
-				if s, ok2 := codec.DecodeFromRequest(r); ok2 {
-					uid = s.UserID
-					ok = true
-				}
-			}
-			if !ok {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			u, err := users.FindByID(uid)
-			if err != nil {
-				httpx.WriteError(w, http.StatusNotFound, "user not found")
-				return
-			}
-			var body struct{ Code string }
-			_ = json.NewDecoder(r.Body).Decode(&body)
-			if len(body.Code) != 6 {
-				httpx.WriteError(w, http.StatusBadRequest, "invalid code")
-				return
-			}
-			secretB, err := decryptWithSecretKey(cfg.SecretPath, u.TOTPEnc)
-			if err != nil {
-				httpx.WriteError(w, http.StatusBadRequest, "invalid state")
-				return
-			}
-			if !auth.VerifyTOTP(string(secretB), body.Code) {
-				httpx.WriteError(w, http.StatusUnauthorized, "invalid code")
-				return
-			}
-			plain, hashes := generateRecoveryCodes()
-			u.RecoveryHashes = hashes
-			if err := users.UpsertUser(u); err != nil {
-				httpx.WriteError(w, http.StatusInternalServerError, "persist error")
-				return
-			}
-			writeJSON(w, map[string]any{"ok": true, "recovery_codes": plain})
-		})
+		// Two-factor enrollment (setup wizard) and settings: one implementation
+		// on the user store, see auth_2fa.go.
+		tf := twoFactor{cfg: cfg, users: users}
+		tf.registerTOTPRoutes(pr)
 
 		pr.Get("/api/v1/disks", func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -1446,6 +1338,8 @@ func NewRouter(cfg config.Config) http.Handler {
 			pr.Mount("/api/v1/notifications", NewNotificationHandler(notificationManager).Routes())
 		}
 
+		pr.Mount("/api/v1/auth", twoFactor{cfg: cfg, users: users}.settingsRoutes())
+
 		// Network endpoints (M4)
 		netLogger := Logger(cfg)
 		netHandler, err := NewNetHandler(*netLogger)
@@ -1454,7 +1348,6 @@ func NewRouter(cfg config.Config) http.Handler {
 			// Continue without networking features
 		} else {
 			pr.Mount("/api/v1/net", netHandler.Routes())
-			pr.Mount("/api/v1/auth", netHandler.AuthRoutes())
 		}
 
 		// Updates endpoints (M5)
@@ -1884,29 +1777,11 @@ func hasCommand(name string) bool {
 	return err == nil
 }
 
-func generateUUID() string {
-	const hex = "0123456789abcdef"
-	var b [16]byte
-	n := time.Now().UnixNano()
-	for i := 0; i < 16; i++ {
-		b[i] = byte(n >> (i * 8))
-	}
-	b[6] = (b[6] & 0x0f) | 0x40
-	b[8] = (b[8] & 0x3f) | 0x80
-	out := make([]byte, 36)
-	idx := 0
-	for i := 0; i < 16; i++ {
-		if i == 4 || i == 6 || i == 8 || i == 10 {
-			out[idx] = '-'
-			idx++
-		}
-		out[idx] = hex[b[i]>>4]
-		idx++
-		out[idx] = hex[b[i]&0x0f]
-		idx++
-	}
-	return string(out)
-}
+// generateUUID returns a random (version 4) UUID from crypto/rand. It is used
+// for IDs that must not be guessable: per-agent auth tokens, session records,
+// user IDs. (It used to be derived from the clock, with the last 8 bytes always
+// zero, so agent tokens could be predicted from the registration time.)
+func generateUUID() string { return uuid.NewString() }
 
 func errString(err error) string {
 	if err == nil {
@@ -1996,28 +1871,6 @@ func mustJSON(v any) []byte {
 }
 
 // clientIP extracts client IP. If TrustProxy is true, use last untrusted hop from X-Forwarded-For; otherwise use RemoteAddr.
-func clientIP(r *http.Request, cfg config.Config) string {
-	ip := r.RemoteAddr
-	if i := strings.LastIndex(ip, ":"); i >= 0 {
-		ip = ip[:i]
-	}
-	if !cfg.TrustProxy && !RuntimeTrustProxy() {
-		return ip
-	}
-	h := strings.TrimSpace(r.Header.Get("X-Forwarded-For"))
-	if h == "" {
-		return ip
-	}
-	parts := strings.Split(h, ",")
-	// take the last non-empty token
-	for i := len(parts) - 1; i >= 0; i-- {
-		p := strings.TrimSpace(parts[i])
-		if p != "" {
-			return p
-		}
-	}
-	return ip
-}
 
 func dirPermInfo(path string) string {
 	fi, err := os.Stat(path)

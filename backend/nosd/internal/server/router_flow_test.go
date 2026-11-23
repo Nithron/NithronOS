@@ -204,10 +204,12 @@ func TestSetupFullFlowAnd410(t *testing.T) {
 		t.Log("get-secret")
 		us, _ := userstore.New(usersPath)
 		u, _ := us.FindByUsername("alice")
-		if u.TOTPEnc == "" {
-			t.Fatal("expected encrypted secret after enroll")
+		// Enrollment is pending until a code confirms it; login must not
+		// require a code yet.
+		if u.TOTPPendingEnc == "" || u.TOTPEnc != "" {
+			t.Fatalf("expected a pending secret only after enroll: pending=%q active=%q", u.TOTPPendingEnc, u.TOTPEnc)
 		}
-		pt, err := decryptWithSecretKey(secretPath, u.TOTPEnc)
+		pt, err := decryptWithSecretKey(secretPath, u.TOTPPendingEnc)
 		if err != nil {
 			t.Fatalf("decrypt secret: %v", err)
 		}
