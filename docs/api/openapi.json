@@ -452,6 +452,19 @@
         ]
       }
     },
+    "/api/v1/auth/password": {
+      "post": {
+        "operationId": "postAuthPassword",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/refresh": {
       "post": {
         "operationId": "postAuthRefresh",
@@ -5328,55 +5341,9 @@
         ]
       }
     },
-    "/api/v1/users/{id}/2fa/toggle": {
+    "/api/v1/users/{id}/2fa/disable": {
       "post": {
-        "operationId": "postUsersId2faToggle",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "users"
-        ]
-      }
-    },
-    "/api/v1/users/{id}/password": {
-      "post": {
-        "operationId": "postUsersIdPassword",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "users"
-        ]
-      }
-    },
-    "/api/v1/users/{id}/recovery-codes": {
-      "post": {
-        "operationId": "postUsersIdRecoveryCodes",
+        "operationId": "postUsersId2faDisable",
         "parameters": [
           {
             "in": "path",

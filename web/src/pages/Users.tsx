@@ -1,369 +1,340 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { KeyRound, ShieldOff, Trash2, UserPlus } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card } from '@/components/ui/card-enhanced'
 import { Button } from '@/components/ui/button'
-import { StatusPill } from '@/components/ui/status'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/components/ui/toast'
-import { useUsers } from '@/hooks/use-api'
-import { 
-  UserPlus, 
-  Key, 
-  ChevronRight, 
-  Shield,
-  Mail,
-  Calendar,
-  Edit,
-  Trash2,
-  RefreshCw
-} from 'lucide-react'
-import { motion } from 'framer-motion'
+import { useAuth } from '@/lib/auth'
+import { getErrorMessage } from '@/lib/nos-client'
+import {
+	USERNAME_PATTERN,
+	passwordProblem,
+	useUserAccounts,
+	useUserMutations,
+	type Role,
+	type UserAccount,
+} from '@/api/users'
 
-interface User {
-  id: string
-  username: string
-  email?: string
-  role: string
-  status: 'active' | 'inactive' | 'locked'
-  lastLogin?: string
-  createdAt?: string
-  has2FA?: boolean
+const roleLabel: Record<Role, string> = { admin: 'Administrator', user: 'User' }
+
+function roleOf(u: UserAccount): Role {
+	return u.roles.includes('admin') ? 'admin' : 'user'
 }
 
+function when(iso?: string): string {
+	return iso ? new Date(iso).toLocaleString() : 'Never'
+}
+
+/** PasswordFields is a new password typed twice. */
+function PasswordFields({ value, confirm, onChange, onConfirm }: {
+	value: string
+	confirm: string
+	onChange: (v: string) => void
+	onConfirm: (v: string) => void
+}) {
+	const problem = value ? passwordProblem(value) : null
+	const mismatch = confirm !== '' && confirm !== value
+	return (
+		<>
+			<div className="space-y-2">
+				<Label htmlFor="pw">Password</Label>
+				<Input id="pw" type="password" autoComplete="new-password" value={value} onChange={(e) => onChange(e.target.value)} />
+				<p className={problem ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}>
+					{problem ?? 'Also the password for the file shares (SMB).'}
+				</p>
+			</div>
+			<div className="space-y-2">
+				<Label htmlFor="pw2">Repeat password</Label>
+				<Input id="pw2" type="password" autoComplete="new-password" value={confirm} onChange={(e) => onConfirm(e.target.value)} />
+				{mismatch && <p className="text-sm text-destructive">The passwords don't match</p>}
+			</div>
+		</>
+	)
+}
+
+function passwordReady(p: string, confirm: string): boolean {
+	return passwordProblem(p) === null && p === confirm
+}
+
+function AddUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+	const { create } = useUserMutations()
+	const [username, setUsername] = useState('')
+	const [password, setPassword] = useState('')
+	const [confirm, setConfirm] = useState('')
+	const [role, setRole] = useState<Role>('user')
+	const nameOK = USERNAME_PATTERN.test(username)
+
+	const close = () => {
+		setUsername('')
+		setPassword('')
+		setConfirm('')
+		setRole('user')
+		onOpenChange(false)
+	}
+	const submit = () =>
+		create.mutate(
+			{ username, password, roles: [role] },
+			{
+				onSuccess: () => {
+					toast.success(`User ${username} created`)
+					close()
+				},
+				onError: (e) => toast.error(getErrorMessage(e)),
+			},
+		)
+
+	return (
+		<Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : close())}>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>Add user</DialogTitle>
+					<DialogDescription>The user signs in to nOS and to the file shares with this name and password.</DialogDescription>
+				</DialogHeader>
+				<div className="space-y-4">
+					<div className="space-y-2">
+						<Label htmlFor="username">Username</Label>
+						<Input id="username" autoComplete="off" value={username} onChange={(e) => setUsername(e.target.value.trim())} />
+						<p className={username && !nameOK ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}>
+							3-32 lowercase letters, digits, '-' or '_', starting with a letter
+						</p>
+					</div>
+					<PasswordFields value={password} confirm={confirm} onChange={setPassword} onConfirm={setConfirm} />
+					<div className="space-y-2">
+						<Label htmlFor="role">Role</Label>
+						<select
+							id="role"
+							className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+							value={role}
+							onChange={(e) => setRole(e.target.value as Role)}
+						>
+							<option value="user">User: the shares, apps and sync they are given</option>
+							<option value="admin">Administrator: manages the whole system</option>
+						</select>
+					</div>
+				</div>
+				<DialogFooter>
+					<Button variant="outline" onClick={close}>Cancel</Button>
+					<Button onClick={submit} disabled={!nameOK || !passwordReady(password, confirm) || create.isPending}>
+						{create.isPending ? 'Creating…' : 'Create user'}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	)
+}
+
+function ResetPasswordDialog({ user, onClose }: { user: UserAccount | null; onClose: () => void }) {
+	const { resetPassword } = useUserMutations()
+	const [password, setPassword] = useState('')
+	const [confirm, setConfirm] = useState('')
+	const close = () => {
+		setPassword('')
+		setConfirm('')
+		onClose()
+	}
+	const submit = () => {
+		if (!user) return
+		resetPassword.mutate(
+			{ id: user.id, password },
+			{
+				onSuccess: () => {
+					toast.success(`New password set for ${user.username}; they were signed out`)
+					close()
+				},
+				onError: (e) => toast.error(getErrorMessage(e)),
+			},
+		)
+	}
+	return (
+		<Dialog open={user !== null} onOpenChange={(o) => !o && close()}>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>Set a new password for {user?.username}</DialogTitle>
+					<DialogDescription>
+						Their devices are signed out, and a lockout from failed sign-ins ends.
+					</DialogDescription>
+				</DialogHeader>
+				<div className="space-y-4">
+					<PasswordFields value={password} confirm={confirm} onChange={setPassword} onConfirm={setConfirm} />
+				</div>
+				<DialogFooter>
+					<Button variant="outline" onClick={close}>Cancel</Button>
+					<Button onClick={submit} disabled={!passwordReady(password, confirm) || resetPassword.isPending}>
+						{resetPassword.isPending ? 'Saving…' : 'Set password'}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	)
+}
+
+function DeleteUserDialog({ user, onClose }: { user: UserAccount | null; onClose: () => void }) {
+	const { remove } = useUserMutations()
+	const submit = () => {
+		if (!user) return
+		remove.mutate(user.id, {
+			onSuccess: () => {
+				toast.success(`User ${user.username} deleted`)
+				onClose()
+			},
+			onError: (e) => toast.error(getErrorMessage(e)),
+		})
+	}
+	return (
+		<Dialog open={user !== null} onOpenChange={(o) => !o && onClose()}>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>Delete {user?.username}?</DialogTitle>
+					<DialogDescription>
+						They are signed out, lose their file-sharing access, and are taken out of every group and share.
+						Files they made in shares stay.
+					</DialogDescription>
+				</DialogHeader>
+				<DialogFooter>
+					<Button variant="outline" onClick={onClose}>Cancel</Button>
+					<Button variant="destructive" onClick={submit} disabled={remove.isPending}>
+						{remove.isPending ? 'Deleting…' : 'Delete user'}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	)
+}
+
+function UserRow({ user, isSelf, onReset, onDelete }: {
+	user: UserAccount
+	isSelf: boolean
+	onReset: () => void
+	onDelete: () => void
+}) {
+	const { setRoles, disableTwoFactor } = useUserMutations()
+	const role = roleOf(user)
+	const changeRole = (next: Role) =>
+		setRoles.mutate(
+			{ id: user.id, roles: [next] },
+			{
+				onSuccess: () => toast.success(`${user.username} is now ${roleLabel[next].toLowerCase()}`),
+				onError: (e) => toast.error(getErrorMessage(e)),
+			},
+		)
+	const turnOff2FA = () =>
+		disableTwoFactor.mutate(user.id, {
+			onSuccess: () => toast.success(`Two-factor sign-in is off for ${user.username}`),
+			onError: (e) => toast.error(getErrorMessage(e)),
+		})
+
+	return (
+		<TableRow>
+			<TableCell className="font-medium">
+				{user.username}
+				{isSelf && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
+			</TableCell>
+			<TableCell>
+				<select
+					aria-label={`Role of ${user.username}`}
+					className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+					value={role}
+					disabled={setRoles.isPending}
+					onChange={(e) => changeRole(e.target.value as Role)}
+				>
+					<option value="user">{roleLabel.user}</option>
+					<option value="admin">{roleLabel.admin}</option>
+				</select>
+			</TableCell>
+			<TableCell>
+				{user.two_factor_enabled ? <Badge>On</Badge> : <span className="text-muted-foreground">Off</span>}
+				{user.locked_until && <Badge variant="destructive" className="ml-2">Locked</Badge>}
+			</TableCell>
+			<TableCell className="text-muted-foreground">{when(user.last_login_at)}</TableCell>
+			<TableCell>
+				<div className="flex justify-end gap-1">
+					<Button variant="ghost" size="sm" onClick={onReset} title="Set a new password">
+						<KeyRound className="h-4 w-4" aria-hidden />
+						<span className="sr-only">Set a new password for {user.username}</span>
+					</Button>
+					{user.two_factor_enabled && !isSelf && (
+						<Button variant="ghost" size="sm" onClick={turnOff2FA} disabled={disableTwoFactor.isPending} title="Turn off two-factor sign-in">
+							<ShieldOff className="h-4 w-4" aria-hidden />
+							<span className="sr-only">Turn off two-factor sign-in for {user.username}</span>
+						</Button>
+					)}
+					{!isSelf && (
+						<Button variant="ghost" size="sm" onClick={onDelete} title="Delete user">
+							<Trash2 className="h-4 w-4 text-destructive" aria-hidden />
+							<span className="sr-only">Delete {user.username}</span>
+						</Button>
+					)}
+				</div>
+			</TableCell>
+		</TableRow>
+	)
+}
+
+/**
+ * Users: who can sign in to nOS and the file shares. (This page used to show
+ * made-up emails and "coming soon" for every action, and "deleted" users
+ * without deleting them.)
+ */
 export function Users() {
-  const navigate = useNavigate()
-  const { data: users, isLoading } = useUsers()
-  const [selectedUser, setSelectedUser] = useState<string | null>(null)
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [userToDelete, setUserToDelete] = useState<User | null>(null)
+	const { session } = useAuth()
+	const { data: users, isLoading, error, refetch } = useUserAccounts()
+	const [adding, setAdding] = useState(false)
+	const [resetting, setResetting] = useState<UserAccount | null>(null)
+	const [deleting, setDeleting] = useState<UserAccount | null>(null)
 
-  // Transform the users data
-  const userData: User[] = users ? (Array.isArray(users) ? users : users?.data || []).map((u: any) => ({
-    id: u.id || u.username,
-    username: u.username,
-    email: u.email || `${u.username}@example.com`,
-    role: u.role || (u.username === 'admin' ? 'Administrator' : 'User'),
-    status: u.status || 'active',
-    lastLogin: u.lastLogin,
-    createdAt: u.createdAt,
-    has2FA: u.has2FA || false,
-  })) : []
-
-  const handleAddUser = () => {
-    // Navigate to add user page or open modal
-    toast.info('Add user functionality coming soon')
-  }
-
-  const handleEditUser = (user: User) => {
-    setSelectedUser(user.id)
-    toast.info(`Edit user ${user.username} functionality coming soon`)
-  }
-
-  const handleDeleteUser = (user: User) => {
-    setUserToDelete(user)
-    setShowDeleteModal(true)
-  }
-
-  const confirmDelete = () => {
-    if (userToDelete) {
-      toast.success(`User ${userToDelete.username} deleted`)
-      setShowDeleteModal(false)
-      setUserToDelete(null)
-    }
-  }
-
-  const handleResetPassword = (user: User) => {
-    toast.info(`Password reset for ${user.username} functionality coming soon`)
-  }
-
-  const handleToggle2FA = (user: User) => {
-    toast.info(`2FA settings for ${user.username} functionality coming soon`)
-  }
-
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Users"
-        description="Manage user accounts and permissions"
-        actions={
-          <Button onClick={handleAddUser}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Add User
-          </Button>
-        }
-      />
-
-      {/* User Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Users</p>
-                <p className="text-2xl font-semibold">{userData.length}</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <UserPlus className="h-6 w-6 text-primary" />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active Users</p>
-                <p className="text-2xl font-semibold">
-                  {userData.filter(u => u.status === 'active').length}
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                <Shield className="h-6 w-6 text-green-500" />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">With 2FA</p>
-                <p className="text-2xl font-semibold">
-                  {userData.filter(u => u.has2FA).length}
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
-                <Key className="h-6 w-6 text-blue-500" />
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Users List */}
-      <Card title="User Accounts">
-        {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground">
-            Loading users...
-          </div>
-        ) : userData.length === 0 ? (
-          <div className="p-8 text-center">
-            <UserPlus className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground mb-4">No users found</p>
-            <Button onClick={handleAddUser}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Add Your First User
-            </Button>
-          </div>
-        ) : (
-          <div className="divide-y">
-            {userData.map((user) => (
-              <motion.div
-                key={user.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 hover:bg-muted/30 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    {/* User Avatar */}
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-lg font-semibold">
-                        {user.username[0].toUpperCase()}
-                      </span>
-                    </div>
-
-                    {/* User Info */}
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{user.username}</span>
-                        <StatusPill 
-                          variant={user.role === 'Administrator' ? 'warning' : 'info'}
-                          size="sm"
-                        >
-                          {user.role}
-                        </StatusPill>
-                        {user.has2FA && (
-                          <StatusPill variant="success" size="sm">
-                            <Key className="h-3 w-3 mr-1" />
-                            2FA
-                          </StatusPill>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          {user.email}
-                        </span>
-                        {user.lastLogin && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            Last login: {new Date(user.lastLogin).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    <StatusPill 
-                      variant={
-                        user.status === 'active' ? 'success' : 
-                        user.status === 'locked' ? 'error' : 
-                        'info'
-                      }
-                    >
-                      {user.status}
-                    </StatusPill>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleResetPassword(user)}
-                      title="Reset Password"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleToggle2FA(user)}
-                      title="Configure 2FA"
-                    >
-                      <Key className="h-4 w-4" />
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEditUser(user)}
-                      title="Edit User"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteUser(user)}
-                      title="Delete User"
-                      className="text-red-500 hover:text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedUser(selectedUser === user.id ? null : user.id)}
-                    >
-                      <ChevronRight 
-                        className={`h-4 w-4 transition-transform ${
-                          selectedUser === user.id ? 'rotate-90' : ''
-                        }`}
-                      />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Expanded Details */}
-                {selectedUser === user.id && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="mt-4 pt-4 border-t space-y-2"
-                  >
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Created:</span>
-                        <span className="ml-2">
-                          {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">User ID:</span>
-                        <span className="ml-2 font-mono">{user.id}</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {/* Security Settings */}
-      <Card title="Security Settings">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-            <div className="flex items-center gap-3">
-              <Key className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <div className="font-medium">Two-Factor Authentication</div>
-                <div className="text-sm text-muted-foreground">
-                  Require 2FA for all administrators
-                </div>
-              </div>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => navigate('/settings/2fa')}>
-              Configure
-            </Button>
-          </div>
-
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-            <div className="flex items-center gap-3">
-              <Shield className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <div className="font-medium">Password Policy</div>
-                <div className="text-sm text-muted-foreground">
-                  Set minimum password requirements
-                </div>
-              </div>
-            </div>
-            <Button variant="outline" size="sm">
-              Configure
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && userToDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md">
-            <div className="p-6 space-y-4">
-              <h2 className="text-xl font-semibold">Delete User</h2>
-              <p className="text-muted-foreground">
-                Are you sure you want to delete user <strong>{userToDelete.username}</strong>? 
-                This action cannot be undone.
-              </p>
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowDeleteModal(false)
-                    setUserToDelete(null)
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={confirmDelete}
-                >
-                  Delete User
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
-    </div>
-  )
+	return (
+		<div className="space-y-6">
+			<PageHeader
+				title="Users"
+				description="People who sign in to nOS and to the file shares"
+				actions={
+					<Button onClick={() => setAdding(true)}>
+						<UserPlus className="mr-2 h-4 w-4" aria-hidden />
+						Add user
+					</Button>
+				}
+			/>
+			<Card isLoading={isLoading} error={error ? getErrorMessage(error) : null} onRetry={() => refetch()}>
+				{users && users.length > 0 && (
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Username</TableHead>
+								<TableHead>Role</TableHead>
+								<TableHead>Two-factor</TableHead>
+								<TableHead>Last sign-in</TableHead>
+								<TableHead className="text-right">Actions</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{users.map((u) => (
+								<UserRow
+									key={u.id}
+									user={u}
+									isSelf={u.id === session?.user.id}
+									onReset={() => setResetting(u)}
+									onDelete={() => setDeleting(u)}
+								/>
+							))}
+						</TableBody>
+					</Table>
+				)}
+			</Card>
+			<AddUserDialog open={adding} onOpenChange={setAdding} />
+			<ResetPasswordDialog user={resetting} onClose={() => setResetting(null)} />
+			<DeleteUserDialog user={deleting} onClose={() => setDeleting(null)} />
+		</div>
+	)
 }

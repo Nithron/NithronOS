@@ -96,11 +96,14 @@ function toApiError(err: any): ApiError {
     const ae = err as AxiosError<any>;
     const status = ae.response?.status;
     const data = ae.response?.data;
-    // Try to normalize server error shape; fall back sensibly
-    const code = (data?.code as string) || (status === 401 ? 'Unauthorized' : status === 429 ? 'RateLimited' : 'HttpError');
-    const message = (typeof data?.message === 'string' ? data.message : ae.message) || 'Request failed';
+    // nosd's typed errors are {"error":{"code","message","details"}}; some
+    // older handlers send {"code","message"} or {"error":"text"}.
+    const body = data?.error && typeof data.error === 'object' ? data.error : data;
+    const text = typeof data?.error === 'string' ? data.error : undefined;
+    const code = (body?.code as string) || (status === 401 ? 'Unauthorized' : status === 429 ? 'RateLimited' : 'HttpError');
+    const message = (typeof body?.message === 'string' ? body.message : text ?? ae.message) || 'Request failed';
     const requestId = ae.response?.headers?.['x-request-id'];
-    return { code, message, details: data?.details ?? data, status, requestId };
+    return { code, message, details: body?.details ?? data, status, requestId };
   }
   return { code: 'UnknownError', message: err?.message || 'Unknown error' };
 }
