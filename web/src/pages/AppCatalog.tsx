@@ -428,7 +428,7 @@ export function AppCatalog() {
           <div>
             <h1 className="text-3xl font-bold">App Catalog</h1>
             <p className="text-muted-foreground">
-              Discover and install applications for your NithronOS
+              Discover and install applications for your nOS
             </p>
           </div>
         </div>

@@ -1,7 +1,7 @@
 {
   "info": {
     "description": "Generated from the nosd router (cmd/route-dump -format openapi); do not edit by hand.",
-    "title": "NithronOS API",
+    "title": "nOS API",
     "version": "0.9.5-pre-alpha"
   },
   "openapi": "3.0.3",

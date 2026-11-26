@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"testing"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 )
 
 func TestPoolsImportPersistsMountOptions(t *testing.T) {

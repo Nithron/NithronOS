@@ -1,7 +1,7 @@
 Source: nos-agent
 Section: admin
 Priority: optional
-Maintainer: NithronOS Maintainers <maintainers@nithron.com>
+Maintainer: nOS Maintainers <maintainers@nithron.com>
 Standards-Version: 4.6.2
 Build-Depends: debhelper-compat (= 13)
 Rules-Requires-Root: no
@@ -9,6 +9,6 @@ Rules-Requires-Root: no
 Package: nos-agent
 Architecture: amd64
 Depends: ${misc:Depends}, ${shlibs:Depends}
-Description: NithronOS privileged agent (root-only ops)
+Description: nOS privileged agent (root-only ops)
 
 

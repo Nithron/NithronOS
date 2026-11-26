@@ -470,7 +470,7 @@ func (m *Manager) deliver(webhook *Webhook, event Event, attempt int) *Delivery 
 
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "NithronOS-Webhook/1.0")
+	req.Header.Set("User-Agent", "nOS-Webhook/1.0")
 	req.Header.Set("X-NOS-Event", string(event.Type))
 	req.Header.Set("X-NOS-Event-ID", event.ID)
 	req.Header.Set("X-NOS-Webhook-ID", webhook.ID)

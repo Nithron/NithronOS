@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Whoami Configuration",
+  "properties": {
+    "WHOAMI_PORT": {
+      "type": "string",
+      "title": "Port",
+      "description": "Port to expose the service on",
+      "default": "8080",
+      "pattern": "^[0-9]{1,5}$"
+    },
+    "WHOAMI_NAME": {
+      "type": "string",
+      "title": "Service Name",
+      "description": "Name to display in responses",
+      "default": "nOS Test App"
+    },
+    "WHOAMI_VERSION": {
+      "type": "string",
+      "title": "Version",
+      "description": "Docker image version to use",
+      "default": "latest",
+      "enum": ["latest", "v1.10", "v1.9", "v1.8"]
+    }
+  },
+  "required": []
+}

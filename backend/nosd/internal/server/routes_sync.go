@@ -4,7 +4,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"errors"
-	// "nithronos/backend/nosd/pkg/firewall"
+	// "nos/backend/nosd/pkg/firewall"
 )
 
 // registerSync serves NithronSync (on pr, signed-in users) and WebDAV (on root; it checks sync device tokens itself).

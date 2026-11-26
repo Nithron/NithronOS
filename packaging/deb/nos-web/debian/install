@@ -1,4 +1,4 @@
-../../../web/dist/* usr/share/nithronos/web/
-../../../packaging/caddy/nithronos.caddy usr/share/doc/nos-web/examples/Caddyfile.nithronos
+../../../web/dist/* usr/share/nos/web/
+../../../packaging/caddy/nos.caddy usr/share/doc/nos-web/examples/Caddyfile.nos
 ../../../packaging/deb/nos-web/debian/caddy.override.conf etc/systemd/system/caddy.service.d/
 

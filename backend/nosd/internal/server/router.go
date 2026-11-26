@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"nithronos/backend/nosd/internal/version"
+	"nos/backend/nosd/internal/version"
 	"os"
 	"os/exec"
 	"time"
@@ -17,9 +17,9 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog"
 
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/pkg/agentclient"
-	// "nithronos/backend/nosd/pkg/firewall"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/pkg/agentclient"
+	// "nos/backend/nosd/pkg/firewall"
 )
 
 // AgentClient interface for nos-agent interactions

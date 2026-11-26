@@ -168,7 +168,7 @@ export function Settings2FA() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'nithronos-recovery-codes.txt'
+    a.download = 'nos-recovery-codes.txt'
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -368,7 +368,7 @@ export function Settings2FA() {
               <div>
                 <p className="font-medium">Never share your codes</p>
                 <p className="text-sm text-muted-foreground">
-                  NithronOS will never ask for your 2FA codes via email or phone
+                  nOS will never ask for your 2FA codes via email or phone
                 </p>
               </div>
             </div>

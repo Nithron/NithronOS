@@ -14,7 +14,7 @@ if [ -z "$N1_PACKAGES_DIR" ] || [ -z "$N_PACKAGES_DIR" ]; then
 fi
 
 # Configuration
-TEST_VM="nithronos-upgrade-test-$$"
+TEST_VM="nos-upgrade-test-$$"
 VM_DISK="/tmp/${TEST_VM}.qcow2"
 VM_SIZE="20G"
 LOG_DIR="tests/upgrade/logs"
@@ -100,7 +100,7 @@ phase_install_n1() {
 apt-get update
 apt-get install -y btrfs-progs systemd
 
-# Install NithronOS packages
+# Install nOS packages
 dpkg -i /packages/*.deb || true
 apt-get install -f -y
 
@@ -381,7 +381,7 @@ phase_check_api_compat() {
 # Main execution
 echo ""
 echo "========================================="
-echo "NithronOS Upgrade Test"
+echo "nOS Upgrade Test"
 echo "========================================="
 echo ""
 echo "N-1 packages: $N1_PACKAGES_DIR"

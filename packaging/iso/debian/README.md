@@ -1,4 +1,4 @@
-# NithronOS ISO (Debian live-build)
+# nOS ISO (Debian live-build)
 
 ## Requirements
 - Debian/Ubuntu host (or container)

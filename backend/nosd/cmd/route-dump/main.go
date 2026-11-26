@@ -11,8 +11,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/internal/server"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/server"
 )
 
 func main() {

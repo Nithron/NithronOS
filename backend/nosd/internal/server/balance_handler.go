@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/pkg/agentclient"
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/pkg/agentclient"
+	"nos/backend/nosd/pkg/httpx"
 )
 
 // handleBalanceStatus returns the status of a BTRFS balance operation

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"nithronos/backend/nosd/internal/version"
+	"nos/backend/nosd/internal/version"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/pkg/httpx"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -192,8 +192,8 @@ func (h *UpdatesHandler) checkAPTUpdates(info *UpdateInfo) error {
 		return err
 	}
 
-	// Check for nithronos package updates
-	cmd = exec.CommandContext(ctx, "apt-cache", "policy", "nithronos")
+	// Check for nos package updates
+	cmd = exec.CommandContext(ctx, "apt-cache", "policy", "nos")
 	output, err := cmd.Output()
 	if err != nil {
 		return err
@@ -225,7 +225,7 @@ func (h *UpdatesHandler) checkGitHubReleases(info *UpdateInfo) error {
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "GET",
-		"https://api.github.com/repos/nithronos/nithronos/releases/latest", nil)
+		"https://api.github.com/repos/Nithron/nOS/releases/latest", nil)
 	if err != nil {
 		return err
 	}
@@ -342,7 +342,7 @@ func (h *UpdatesHandler) performUpdate(info UpdateInfo) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
 
-		cmd := exec.CommandContext(ctx, "apt-get", "install", "-y", "nithronos")
+		cmd := exec.CommandContext(ctx, "apt-get", "install", "-y", "nos")
 		if output, err := cmd.CombinedOutput(); err != nil {
 			h.logUpdate(fmt.Sprintf("Update failed: %v\nOutput: %s", err, output))
 			return
@@ -371,7 +371,7 @@ func (h *UpdatesHandler) downloadAndApplyUpdate(info UpdateInfo) error {
 	defer resp.Body.Close()
 
 	// Save to temp file
-	tmpFile := filepath.Join(os.TempDir(), "nithronos-update")
+	tmpFile := filepath.Join(os.TempDir(), "nos-update")
 	out, err := os.Create(tmpFile)
 	if err != nil {
 		return err

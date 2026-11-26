@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	nftablesConfigPath = "/etc/nithronos/firewall.nft"
-	nftablesBackupPath = "/etc/nithronos/firewall.backup.nft"
+	nftablesConfigPath = "/etc/nos/firewall.nft"
+	nftablesBackupPath = "/etc/nos/firewall.backup.nft"
 	rollbackTimeout    = 60 * time.Second
 )
 

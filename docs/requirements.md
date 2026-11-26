@@ -1,4 +1,4 @@
-# NithronOS Requirements
+# nOS Requirements
 
 This document tracks product and technical requirements across subsystems. Items marked as “Follow-ups” are planned but not included in the current milestone.
 

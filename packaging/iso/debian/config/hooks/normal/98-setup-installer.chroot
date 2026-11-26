@@ -4,16 +4,16 @@ set -e
 echo "[98-setup-installer] Setting up installer and system scripts..."
 
 # Make installer executable if it exists
-if [ -f /usr/bin/nithronos-installer ]; then
-    chmod +x /usr/bin/nithronos-installer
+if [ -f /usr/sbin/nos-installer ]; then
+    chmod +x /usr/sbin/nos-installer
 else
-    echo "[98-setup-installer] Warning: /usr/bin/nithronos-installer not found"
+    echo "[98-setup-installer] Warning: /usr/sbin/nos-installer not found"
 fi
 
-if [ -f /usr/lib/nithronos/installer-welcome ]; then
-    chmod +x /usr/lib/nithronos/installer-welcome
+if [ -f /usr/lib/nos/installer-welcome ]; then
+    chmod +x /usr/lib/nos/installer-welcome
 else
-    echo "[98-setup-installer] Warning: /usr/lib/nithronos/installer-welcome not found"
+    echo "[98-setup-installer] Warning: /usr/lib/nos/installer-welcome not found"
 fi
 
 # Make nos-agent executable
@@ -22,6 +22,6 @@ if [ -f /usr/sbin/nos-agent ]; then
 fi
 
 # Enable installer welcome service
-systemctl enable nithronos-installer-welcome.service || true
+systemctl enable nos-installer-welcome.service || true
 
 echo "[98-setup-installer] Setup complete"

@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/pkg/httpx"
 )
 
 // AppearanceSettings represents UI appearance configuration
@@ -100,7 +100,7 @@ func (h *AppearanceHandler) GetThemePresets(w http.ResponseWriter, r *http.Reque
 		{
 			"id":          "default",
 			"name":        "Default",
-			"description": "NithronOS default theme",
+			"description": "nOS default theme",
 			"colors": map[string]string{
 				"primary":    "#0066cc",
 				"secondary":  "#6c757d",

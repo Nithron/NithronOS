@@ -271,7 +271,7 @@ function SetupView({ onComplete }: { onComplete: () => void }) {
       <div className="text-center mb-8">
         <Cloud className="w-16 h-16 text-blue-500 mx-auto mb-4" />
         <h1 className="text-2xl font-bold text-slate-800">Welcome to NithronSync</h1>
-        <p className="text-slate-600 mt-2">Connect to your NithronOS server to start syncing files.</p>
+        <p className="text-slate-600 mt-2">Connect to your nOS server to start syncing files.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -298,7 +298,7 @@ function SetupView({ onComplete }: { onComplete: () => void }) {
             required
           />
           <p className="text-xs text-slate-500 mt-1">
-            Get this from NithronOS → Settings → Sync → Devices → Add Device
+            Get this from nOS → Settings → Sync → Devices → Add Device
           </p>
         </div>
 
@@ -481,7 +481,7 @@ function MainView({
           onClick={() => window.go.app.App.OpenWebUI()}
           className="text-sm text-blue-500 hover:text-blue-600 flex items-center gap-1"
         >
-          Open NithronOS <ExternalLink className="w-3 h-3" />
+          Open nOS <ExternalLink className="w-3 h-3" />
         </button>
         <span className="text-xs text-slate-400">NithronSync v1.0.0</span>
       </div>

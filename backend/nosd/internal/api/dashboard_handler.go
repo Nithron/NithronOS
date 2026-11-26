@@ -306,7 +306,7 @@ func getRecentEvents(ctx context.Context) []EventInfo {
 	// Read events from event log file
 	eventFile := "/var/lib/nos/events.jsonl"
 	if runtime.GOOS == "windows" {
-		eventFile = `C:\ProgramData\NithronOS\events.jsonl`
+		eventFile = `C:\ProgramData\nOS\events.jsonl`
 	}
 
 	// Try to read actual events

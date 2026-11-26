@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"nithronos/backend/nosd/internal/pools"
+	"nos/backend/nosd/internal/pools"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"

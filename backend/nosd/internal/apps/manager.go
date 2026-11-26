@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"nithronos/backend/nosd/pkg/apps"
+	"nos/backend/nosd/pkg/apps"
 )
 
 // Manager integrates all app management components

@@ -1,0 +1,8 @@
+[Unit]
+Description=Weekly SMART health scan
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/nos/smart-scan.sh
+
+

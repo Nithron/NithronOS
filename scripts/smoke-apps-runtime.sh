@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# NithronOS Apps Runtime smoke test
+# nOS Apps Runtime smoke test
 # Tests Docker installation, app deployment, and snapshot functionality
 
 RED='\033[0;31m'
@@ -141,7 +141,7 @@ test_directory_structure() {
         "/srv/apps/.snapshots"
         "/var/lib/nos/apps/state"
         "/etc/nos/apps"
-        "/usr/share/nithronos/apps"
+        "/usr/share/nos/apps"
         "/usr/lib/nos/apps"
     )
     
@@ -365,7 +365,7 @@ test_docker_config() {
 
 # Main test execution
 main() {
-    log "Starting NithronOS Apps Runtime smoke test..."
+    log "Starting nOS Apps Runtime smoke test..."
     
     local failed=0
     

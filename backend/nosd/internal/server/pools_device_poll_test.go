@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/internal/fsatomic"
-	"nithronos/backend/nosd/internal/pools"
-	"nithronos/backend/nosd/pkg/agentclient"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/fsatomic"
+	"nos/backend/nosd/internal/pools"
+	"nos/backend/nosd/pkg/agentclient"
 )
 
 type fakeAgentPoll struct {

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/pkg/httpx"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -42,7 +42,7 @@ type ServiceHealthSummary struct {
 	LastCheck       time.Time       `json:"last_check"`
 }
 
-// Critical NithronOS services to monitor
+// Critical nOS services to monitor
 var criticalServices = []string{
 	"nosd",
 	"nos-agent",

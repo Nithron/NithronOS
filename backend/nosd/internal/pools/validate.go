@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"nithronos/backend/nosd/pkg/shell"
+	"nos/backend/nosd/pkg/shell"
 )
 
 var ErrDeviceInUse = errors.New("device appears to be mounted/in use")

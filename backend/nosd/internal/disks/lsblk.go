@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"nithronos/backend/nosd/pkg/shell"
+	"nos/backend/nosd/pkg/shell"
 )
 
 type lsblkJSON struct {

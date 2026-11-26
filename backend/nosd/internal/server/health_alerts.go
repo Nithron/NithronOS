@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/internal/disks"
-	"nithronos/backend/nosd/internal/fsatomic"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/disks"
+	"nos/backend/nosd/internal/fsatomic"
 )
 
 type healthConfig struct {

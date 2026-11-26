@@ -1,6 +1,6 @@
 # App Catalog
 
-The NithronOS App Catalog provides one-click installation and management of containerized applications through a curated marketplace and self-service portal.
+The nOS App Catalog provides one-click installation and management of containerized applications through a curated marketplace and self-service portal.
 
 ## Overview
 
@@ -32,7 +32,7 @@ The App Catalog is built on Docker Engine and Docker Compose v2, providing:
 
 ## Installation
 
-The App Catalog is installed automatically with NithronOS. The required packages are:
+The App Catalog is installed automatically with nOS. The required packages are:
 
 1. **nos-apps-runtime**: Docker runtime and utilities
 2. **nos-apps**: Catalog data and templates

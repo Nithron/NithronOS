@@ -2,7 +2,7 @@
 
 ## Overview
 
-NithronOS uses a secure authentication system with support for first-boot setup, two-factor authentication (TOTP), and automatic session management. The frontend implements a complete authentication flow that integrates with the backend API.
+nOS uses a secure authentication system with support for first-boot setup, two-factor authentication (TOTP), and automatic session management. The frontend implements a complete authentication flow that integrates with the backend API.
 
 ## Architecture
 
@@ -207,7 +207,7 @@ For critical errors (backend down), a global banner appears:
 {
   kind: 'error',
   title: 'Backend Unreachable',
-  message: 'Cannot connect to the NithronOS backend',
+  message: 'Cannot connect to the nOS backend',
   action: { label: 'View Help', href: '/help/proxy' }
 }
 ```

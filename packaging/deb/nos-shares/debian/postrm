@@ -9,7 +9,7 @@ case "$1" in
         # Remove our managed configs but preserve hand-written ones
         find /etc/samba/smb.conf.d -name "nos-*.conf" -delete 2>/dev/null || true
         find /etc/exports.d -name "nos-*.exports" -delete 2>/dev/null || true
-        rm -f /etc/avahi/services/nithronos-tm.service 2>/dev/null || true
+        rm -f /etc/avahi/services/nos-tm.service 2>/dev/null || true
         
         # Remove shares.json only on purge
         rm -f /etc/nos/shares.json 2>/dev/null || true

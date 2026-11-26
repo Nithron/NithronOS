@@ -12,10 +12,10 @@ import (
 
 	"github.com/pquerna/otp/totp"
 
-	pwhash "nithronos/backend/nosd/internal/auth/hash"
-	userstore "nithronos/backend/nosd/internal/auth/store"
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/pkg/auth"
+	pwhash "nos/backend/nosd/internal/auth/hash"
+	userstore "nos/backend/nosd/internal/auth/store"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/pkg/auth"
 )
 
 type loginEnv struct {
@@ -48,7 +48,7 @@ func newLoginEnv(t *testing.T, withTOTP bool, recovery ...string) loginEnv {
 	u := userstore.User{ID: "u-alice", Username: "alice", PasswordHash: h, Roles: []string{"admin"}}
 	env := loginEnv{users: usersPath}
 	if withTOTP {
-		env.secret, _, err = auth.GenerateTOTPSecret("NithronOS", "alice")
+		env.secret, _, err = auth.GenerateTOTPSecret("nOS", "alice")
 		if err != nil {
 			t.Fatal(err)
 		}

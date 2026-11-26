@@ -1,4 +1,4 @@
-module nithronos/clients/sync-core
+module nos/clients/sync-core
 
 go 1.24
 

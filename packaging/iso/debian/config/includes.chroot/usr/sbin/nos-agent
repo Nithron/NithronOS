@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# NithronOS Privileged Agent - Handles system configuration with root privileges
+# nOS Privileged Agent - Handles system configuration with root privileges
 
 import socket
 import os
@@ -99,7 +99,7 @@ class SystemConfigAgent:
                     config = "[Time]\n"
                     config += f"NTP={' '.join(servers)}\n"
                     Path('/etc/systemd/timesyncd.conf.d').mkdir(exist_ok=True)
-                    with open('/etc/systemd/timesyncd.conf.d/nithronos.conf', 'w') as f:
+                    with open('/etc/systemd/timesyncd.conf.d/nos.conf', 'w') as f:
                         f.write(config)
                 
                 self.execute_command(['systemctl', 'restart', 'systemd-timesyncd'])

@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"nithronos/backend/nosd/pkg/agentclient"
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/pkg/agentclient"
+	"nos/backend/nosd/pkg/httpx"
 
 	"github.com/go-chi/chi/v5"
 )

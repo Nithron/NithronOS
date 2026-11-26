@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 )
 
 func TestPoolOptionsGetDefault(t *testing.T) {

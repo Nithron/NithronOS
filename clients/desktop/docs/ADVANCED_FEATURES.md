@@ -69,7 +69,7 @@ Status: **Planned for v1.1**
 
 Right-click menu options:
 - "Share Link" - Generate sharing link
-- "View on NithronOS" - Open in web UI
+- "View on nOS" - Open in web UI
 - "View History" - Show file versions
 - "Resolve Conflict" - Conflict resolution dialog
 
@@ -96,7 +96,7 @@ Allow scheduling sync during specific hours:
 
 Status: **Planned for v1.2**
 
-Support connecting to multiple NithronOS servers:
+Support connecting to multiple nOS servers:
 - Switch between accounts
 - Separate sync folders per account
 - Unified activity view

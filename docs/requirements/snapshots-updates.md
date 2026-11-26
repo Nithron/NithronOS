@@ -5,7 +5,7 @@ On every system or app update, take point-in-time backups so an admin can quickl
 
 ### Scope (v0)
 - Targets:
-  - NithronOS config and data directories (for example: /etc/nos and /srv/nos-web if present).
+  - nOS config and data directories (for example: /etc/nos and /srv/nos-web if present).
   - App data roots that live under Btrfs pools (for example: /srv/apps/*). Each app directory is treated as an individual target when possible.
   - Optional pool subvolumes the user selects in the UI (admin chooses which subvolumes are protected during updates).
 - Out of scope for v0:

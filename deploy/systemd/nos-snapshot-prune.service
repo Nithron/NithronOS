@@ -1,5 +1,5 @@
 [Unit]
-Description=NithronOS snapshot prune
+Description=nOS snapshot prune
 After=network-online.target
 
 [Service]

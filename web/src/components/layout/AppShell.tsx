@@ -133,11 +133,11 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
           <div className="flex h-14 items-center border-b border-border px-4">
             <Link to="/" className="flex items-center gap-2">
               <img 
-                src="/brand/nithronos-logo-mark.svg" 
-                alt="NithronOS Logo" 
+                src="/brand/nos-logo-mark.svg" 
+                alt="nOS Logo" 
                 className="h-8 w-8"
               />
-              <span className="text-lg font-semibold">NithronOS</span>
+              <span className="text-lg font-semibold">nOS</span>
             </Link>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -158,7 +158,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
           {/* Sidebar Footer */}
           <div className="border-t border-border p-4">
             <div className="text-xs text-muted-foreground">
-              v1.0.0 • © 2024 NithronOS
+              v1.0.0 • © 2024 nOS
             </div>
           </div>
         </div>

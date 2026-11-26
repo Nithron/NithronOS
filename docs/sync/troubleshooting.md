@@ -21,9 +21,9 @@ This guide helps resolve common NithronSync issues.
 
 2. **Check server is running**
    ```bash
-   # On NithronOS server
+   # On nOS server
    systemctl status nosd
-   systemctl status caddy-nithronos
+   systemctl status nos-caddy
    ```
 
 3. **Test connectivity**
@@ -34,7 +34,7 @@ This guide helps resolve common NithronSync issues.
 
 4. **Check firewall**
    - Ensure port 443 is open
-   - Check NithronOS firewall settings in **Settings → Network → Firewall**
+   - Check nOS firewall settings in **Settings → Network → Firewall**
 
 5. **SSL certificate issues**
    - For self-signed certs, install the CA on your client
@@ -328,11 +328,11 @@ When reporting issues, include:
 6. **Log files** (with sensitive info redacted)
 7. **Screenshots** if applicable
 
-Submit issues at: https://github.com/Nithron/NithronOS/issues
+Submit issues at: https://github.com/Nithron/nOS/issues
 
 ## Getting Help
 
 1. **Documentation** — [docs/sync/](./overview.md)
 2. **Community Discord** — https://discord.gg/qzB37WS5AT
-3. **GitHub Issues** — https://github.com/Nithron/NithronOS/issues
+3. **GitHub Issues** — https://github.com/Nithron/nOS/issues
 

@@ -6,9 +6,9 @@ This guide covers installing and configuring NithronSync clients on various plat
 
 Before setting up a client:
 
-1. Ensure your NithronOS server is accessible from the client device
+1. Ensure your nOS server is accessible from the client device
 2. Have at least one sync-enabled share configured
-3. Have your NithronOS credentials ready (or a registered device token)
+3. Have your nOS credentials ready (or a registered device token)
 
 ## Windows
 
@@ -21,7 +21,7 @@ Before setting up a client:
 
 ### Initial Setup
 
-1. **Server URL** — Enter your NithronOS server address (e.g., `https://nas.local`)
+1. **Server URL** — Enter your nOS server address (e.g., `https://nas.local`)
 2. **Authentication** — Choose one:
    - **Web Login** — Opens browser for secure authentication
    - **Device Token** — Paste a token from the web UI
@@ -139,7 +139,7 @@ journalctl --user -u nithron-sync -f
 3. Launch NithronSync from Applications
 4. Grant required permissions:
    - **Files and Folders** — Access to sync folder
-   - **Network** — Connect to NithronOS server
+   - **Network** — Connect to nOS server
 
 ### Menu Bar
 
@@ -165,7 +165,7 @@ Access preferences via menu bar icon → **Preferences**:
 1. Download **NithronSync** from the App Store
 2. Open the app and tap **Add Server**
 3. Enter your server URL or scan the QR code from web UI
-4. Authenticate with your NithronOS credentials or device token
+4. Authenticate with your nOS credentials or device token
 5. Choose which shares to sync
 
 ### Features
@@ -190,7 +190,7 @@ In-app settings:
 1. Download **NithronSync** from Google Play
 2. Open the app and tap **Connect to Server**
 3. Enter your server URL or scan the QR code
-4. Sign in with your NithronOS credentials
+4. Sign in with your nOS credentials
 5. Grant storage permissions when prompted
 
 ### Features
@@ -293,5 +293,5 @@ Use your device access token as the password:
 
 1. Check [Troubleshooting Guide](./troubleshooting.md)
 2. Visit [Community Discord](https://discord.gg/qzB37WS5AT)
-3. Report issues on [GitHub](https://github.com/Nithron/NithronOS/issues)
+3. Report issues on [GitHub](https://github.com/Nithron/nOS/issues)
 

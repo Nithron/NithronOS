@@ -4,7 +4,7 @@ This document describes the security model and best practices for NithronSync.
 
 ## Overview
 
-NithronSync is designed with security as a priority, following the same principles as NithronOS:
+NithronSync is designed with security as a priority, following the same principles as nOS:
 - **Local-first** — Your data stays on your server
 - **Zero trust** — All connections are authenticated and encrypted
 - **Minimal attack surface** — Only necessary APIs are exposed
@@ -17,7 +17,7 @@ NithronSync uses a device token system separate from user sessions:
 
 ```
 ┌─────────────┐     ┌─────────────────────────────────────────────┐
-│   Client    │     │              NithronOS Server               │
+│   Client    │     │              nOS Server               │
 │   Device    │     │                                             │
 │             │     │  ┌─────────────┐    ┌─────────────────────┐ │
 │  ┌───────┐  │     │  │   Device    │    │     User Auth       │ │
@@ -105,10 +105,10 @@ All sync traffic is encrypted using TLS 1.3:
 
 ### At Rest
 
-Files on the server use NithronOS storage encryption:
+Files on the server use nOS storage encryption:
 - LUKS2 for full-disk encryption
 - Per-pool encryption options
-- Key management via NithronOS
+- Key management via nOS
 
 ### Client-Side Encryption (Optional)
 
@@ -189,7 +189,7 @@ See [Networking Guide](../networking.md) for detailed remote access setup.
 
 ### For Users
 
-1. **Use strong passwords** — Follow NithronOS password requirements
+1. **Use strong passwords** — Follow nOS password requirements
 2. **Enable 2FA** — Protects device registration
 3. **Review devices regularly** — Revoke unused devices
 4. **Use selective sync** — Only sync what you need
@@ -230,7 +230,7 @@ See [Networking Guide](../networking.md) for detailed remote access setup.
 These threats require additional measures:
 - **Physical device theft** — Enable device encryption, remote wipe
 - **Compromised client** — Use endpoint security software
-- **Server compromise** — Follow NithronOS security guide
+- **Server compromise** — Follow nOS security guide
 - **Social engineering** — User security awareness training
 
 ## Security Contacts

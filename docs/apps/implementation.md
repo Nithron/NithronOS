@@ -2,7 +2,7 @@
 
 ## Overview
 
-The M3 milestone implements a complete Docker-based application platform for NithronOS, providing one-click app deployment with health monitoring, snapshots, and rollback capabilities.
+The M3 milestone implements a complete Docker-based application platform for nOS, providing one-click app deployment with health monitoring, snapshots, and rollback capabilities.
 
 ## Architecture
 
@@ -59,7 +59,7 @@ Go implementation providing REST APIs:
 #### Core Managers
 
 1. **CatalogManager** (`pkg/apps/catalog.go`)
-   - Loads built-in catalog from `/usr/share/nithronos/apps`
+   - Loads built-in catalog from `/usr/share/nos/apps`
    - Merges remote catalogs from `/etc/nos/apps/catalogs.d`
    - Verifies SHA256 hashes and signatures
 
@@ -207,7 +207,7 @@ All containers run with:
 - `/var/lib/nos/apps/state/`: Runtime state
 
 ### System
-- `/usr/share/nithronos/apps/`: Built-in catalog
+- `/usr/share/nos/apps/`: Built-in catalog
 - `/usr/lib/nos/apps/`: Helper scripts
 - `/lib/systemd/system/nos-app@.service`: Systemd template
 

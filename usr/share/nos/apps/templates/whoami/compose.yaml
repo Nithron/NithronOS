@@ -1,0 +1,27 @@
+version: '3.9'
+
+services:
+  app:
+    image: traefik/whoami:${WHOAMI_VERSION:-latest}
+    container_name: nos-app-whoami-app-1
+    restart: unless-stopped
+    ports:
+      - "${WHOAMI_PORT:-8080}:80"
+    environment:
+      - WHOAMI_PORT_NUMBER=80
+      - WHOAMI_NAME=${WHOAMI_NAME:-nOS Test App}
+    labels:
+      - "nos.app.id=whoami"
+      - "nos.app.name=Whoami"
+      - "nos.app.version=${WHOAMI_VERSION:-latest}"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s

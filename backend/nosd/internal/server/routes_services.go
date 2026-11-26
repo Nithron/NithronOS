@@ -3,9 +3,9 @@ package server
 import (
 	"github.com/go-chi/chi/v5"
 
-	"nithronos/backend/nosd/internal/api"
-	"nithronos/backend/nosd/pkg/agentclient"
-	// "nithronos/backend/nosd/pkg/firewall"
+	"nos/backend/nosd/internal/api"
+	"nos/backend/nosd/pkg/agentclient"
+	// "nos/backend/nosd/pkg/firewall"
 )
 
 // registerServices serves dashboard status, health, storage, Btrfs, schedules, shares and backup.

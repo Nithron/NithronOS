@@ -22,7 +22,7 @@ func TestMetricsEndpointExposesRegistry(t *testing.T) {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
 	body, _ := io.ReadAll(rr.Body)
-	if !strings.Contains(string(body), "nithronos_agent_btrfs_status_calls_total") {
+	if !strings.Contains(string(body), "nos_agent_btrfs_status_calls_total") {
 		t.Fatalf("expected metric name in output")
 	}
 }

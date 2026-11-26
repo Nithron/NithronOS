@@ -1,6 +1,6 @@
 # Real Data Only (M1-M3)
 
-This document describes how the NithronOS web UI is wired to use real API data for all M1-M3 features.
+This document describes how the nOS web UI is wired to use real API data for all M1-M3 features.
 
 ## Overview
 

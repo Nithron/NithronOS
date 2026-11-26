@@ -161,7 +161,7 @@ jobs:
       - name: Upload web build (artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: NithronOS - Web UI - ${{ github.event.release.tag_name || github.sha }}
+          name: nOS - Web UI - ${{ github.event.release.tag_name || github.sha }}
           path: web/dist
           if-no-files-found: ignore
 
@@ -197,6 +197,9 @@ jobs:
       - name: Test agent
         working-directory: agent/nos-agent
         run: go test -count=1 ./...
+
+      - name: Test the NithronOS -> nOS upgrade migration
+        run: sh deploy/scripts/test-migrate-from-nithronos.sh
 
       - name: Web tests
         working-directory: web
@@ -263,13 +266,13 @@ jobs:
           sudo apt-get update && sudo apt-get install -y caddy openssl
           sudo install -D -m0644 deploy/caddy/Caddyfile /etc/caddy/Caddyfile
           # Provide local TLS certs expected by Caddyfile to avoid provision failure during validation
-          sudo install -d -m0700 /etc/nithronos/tls
+          sudo install -d -m0700 /etc/ssl/nos
           sudo openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
-            -days 1 -sha256 -nodes -subj "/CN=NithronOS CI" \
-            -keyout /etc/nithronos/tls/key.pem -out /etc/nithronos/tls/cert.pem \
-            -addext "subjectAltName=IP:127.0.0.1,DNS:nithronos.local"
-          sudo chmod 0600 /etc/nithronos/tls/key.pem
-          sudo chmod 0644 /etc/nithronos/tls/cert.pem
+            -days 1 -sha256 -nodes -subj "/CN=nOS CI" \
+            -keyout /etc/ssl/nos/key.pem -out /etc/ssl/nos/cert.pem \
+            -addext "subjectAltName=IP:127.0.0.1,DNS:nos.local"
+          sudo chmod 0600 /etc/ssl/nos/key.pem
+          sudo chmod 0644 /etc/ssl/nos/cert.pem
           sudo caddy validate --config /etc/caddy/Caddyfile
       - name: Systemd sandbox smoke for nosd
         if: runner.os == 'Linux'
@@ -280,7 +283,7 @@ jobs:
       - name: Upload .deb artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: NithronOS - Debian Packages - ${{ github.event.release.tag_name || github.sha }}
+          name: nOS - Debian Packages - ${{ github.event.release.tag_name || github.sha }}
           path: |
             dist/deb/*.deb
 
@@ -314,7 +317,7 @@ jobs:
       - name: Download .deb artifacts from this workflow
         uses: actions/download-artifact@v4
         with:
-          name: NithronOS - Debian Packages - ${{ github.event.release.tag_name || github.sha }}
+          name: nOS - Debian Packages - ${{ github.event.release.tag_name || github.sha }}
           path: dist/deb
 
       - name: Stage debs for ISO
@@ -345,17 +348,17 @@ jobs:
           
           # Create temporary TLS certificates for validation
           echo "[ci] Creating temporary TLS certificates for validation..."
-          mkdir -p /etc/nithronos/tls
+          mkdir -p /etc/ssl/nos
           openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
-            -keyout /etc/nithronos/tls/key.pem \
-            -out /etc/nithronos/tls/cert.pem \
+            -keyout /etc/ssl/nos/key.pem \
+            -out /etc/ssl/nos/cert.pem \
             -subj "/CN=localhost" 2>/dev/null || true
           
           echo "[ci] Validating Caddy config (with temporary certs)"
           caddy validate --config packaging/iso/debian/config/includes.chroot/etc/caddy/Caddyfile || {
             echo "[ci] Validation failed, trying with adapted config..."
             # If validation fails, try with internal TLS for CI
-            sed 's|tls /etc/nithronos/tls/cert.pem /etc/nithronos/tls/key.pem|tls internal|' \
+            sed 's|tls /etc/ssl/nos/cert.pem /etc/ssl/nos/key.pem|tls internal|' \
               packaging/iso/debian/config/includes.chroot/etc/caddy/Caddyfile > /tmp/ci-caddyfile
             caddy validate --config /tmp/ci-caddyfile
           }
@@ -392,14 +395,14 @@ jobs:
           set -euo pipefail
           echo "[ci] Validating app catalog templates..."
           # Check catalog YAML is valid
-          if [ -f usr/share/nithronos/apps/catalog.yaml ]; then
-            python3 -c "import yaml; yaml.safe_load(open('usr/share/nithronos/apps/catalog.yaml'))" || {
+          if [ -f usr/share/nos/apps/catalog.yaml ]; then
+            python3 -c "import yaml; yaml.safe_load(open('usr/share/nos/apps/catalog.yaml'))" || {
               echo "[ci] Invalid YAML in catalog.yaml"
               exit 1
             }
           fi
           # Validate all template JSON schemas
-          for schema in usr/share/nithronos/apps/templates/*/schema.json; do
+          for schema in usr/share/nos/apps/templates/*/schema.json; do
             if [ -f "$schema" ]; then
               echo "[ci] Validating: $schema"
               python3 -c "import json; json.load(open('$schema'))" || {
@@ -455,7 +458,7 @@ jobs:
       - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NithronOS - ISO - amd64 - ${{ github.event.release.tag_name || github.sha }}
+          name: nOS - ISO - amd64 - ${{ github.event.release.tag_name || github.sha }}
           path: |
             dist/iso/*.iso
           if-no-files-found: error
@@ -616,7 +619,7 @@ jobs:
       - name: Download ISO artifact
         uses: actions/download-artifact@v4
         with:
-          pattern: NithronOS - ISO - amd64 - *
+          pattern: nOS - ISO - amd64 - *
 
       - name: Install QEMU and tools
         run: |
@@ -737,7 +740,7 @@ jobs:
         if: steps.check-docs.outputs.docs_exist == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: NithronOS - Docs - ${{ github.event.release.tag_name || github.sha }}
+          name: nOS - Docs - ${{ github.event.release.tag_name || github.sha }}
           path: docs-site/site/
         continue-on-error: true
 
@@ -814,10 +817,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/NithronOS - ISO - amd64 - *.zip
-            artifacts/NithronOS - Debian Packages - *.zip
-            artifacts/NithronOS - Web UI - *.zip
-            artifacts/NithronOS - Docs - *.zip
+            artifacts/nOS - ISO - amd64 - *.zip
+            artifacts/nOS - Debian Packages - *.zip
+            artifacts/nOS - Web UI - *.zip
+            artifacts/nOS - Docs - *.zip
           fail_on_unmatched_files: false
           draft: false
           prerelease: false

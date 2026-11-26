@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"nithronos/backend/nosd/internal/fsatomic"
+	"nos/backend/nosd/internal/fsatomic"
 )
 
 // State represents a simple rate-limit state persisted to disk

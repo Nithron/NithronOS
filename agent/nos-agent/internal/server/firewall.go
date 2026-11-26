@@ -34,7 +34,7 @@ func handleFirewallApply(w http.ResponseWriter, r *http.Request) {
 	nftDropDir := "/etc/nftables.d"
 	pendingPath := filepath.Join(etcNosFwDir, "pending.nft")
 	backupPath := filepath.Join(etcNosFwDir, fmt.Sprintf("backup-%s.nft", time.Now().UTC().Format("20060102-150405")))
-	persistPath := filepath.Join(nftDropDir, "nithronos.nft")
+	persistPath := filepath.Join(nftDropDir, "nos.nft")
 
 	if err := os.MkdirAll(etcNosFwDir, 0o755); err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())

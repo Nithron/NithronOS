@@ -13,7 +13,7 @@ import {RootNavigator} from './src/navigation/RootNavigator';
 import {useAuthStore} from './src/stores/authStore';
 import {useSyncStore} from './src/stores/syncStore';
 
-// Custom themes matching NithronOS branding
+// Custom themes matching nOS branding
 const NithronLightTheme = {
   ...DefaultTheme,
   colors: {

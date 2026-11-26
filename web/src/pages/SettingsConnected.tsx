@@ -520,9 +520,9 @@ function AboutSection() {
 
       <Card title="License">
         <div className="space-y-2 text-sm">
-          <p>NithronOS is licensed under the MIT License.</p>
+          <p>nOS is licensed under the MIT License.</p>
           <p className="text-muted-foreground">
-            Copyright © 2024 NithronOS Team. All rights reserved.
+            Copyright © 2024 nOS Team. All rights reserved.
           </p>
         </div>
       </Card>
@@ -707,7 +707,7 @@ export function SettingsConnected() {
     <div className="container mx-auto py-6">
       <PageHeader
         title="Settings"
-        description="Configure your NithronOS system"
+        description="Configure your nOS system"
         icon={SettingsIcon}
       />
 

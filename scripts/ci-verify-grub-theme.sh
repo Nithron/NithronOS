@@ -2,11 +2,11 @@
 # CI verification script for GRUB theme in ISO
 set -e
 
-ISO_PATH="${1:-nithronos.iso}"
+ISO_PATH="${1:-nos.iso}"
 TEMP_DIR=$(mktemp -d)
 EXIT_CODE=0
 
-echo "=== NithronOS GRUB Theme Verification ==="
+echo "=== nOS GRUB Theme Verification ==="
 echo "ISO: $ISO_PATH"
 echo ""
 
@@ -80,7 +80,7 @@ check_file "boot/grub/grub.cfg" "Main GRUB config" || EXIT_CODE=1
 # Check theme references in grub.cfg
 check_content "boot/grub/grub.cfg" "set theme=" "Theme setting" || EXIT_CODE=1
 check_content "boot/grub/grub.cfg" "terminal_output gfxterm" "Graphics terminal" || EXIT_CODE=1
-check_content "boot/grub/grub.cfg" "NithronOS" "NithronOS branding" || EXIT_CODE=1
+check_content "boot/grub/grub.cfg" "nOS" "nOS branding" || EXIT_CODE=1
 
 # Check EFI configuration if present
 if [ -d "$TEMP_DIR/EFI" ]; then
@@ -124,7 +124,7 @@ fi
 echo ""
 echo "=== Checking Menu Entries ==="
 
-check_content "boot/grub/grub.cfg" "menuentry.*NithronOS Live" "NithronOS Live entry" || EXIT_CODE=1
+check_content "boot/grub/grub.cfg" "menuentry.*nOS Live" "nOS Live entry" || EXIT_CODE=1
 check_content "boot/grub/grub.cfg" "menuentry.*failsafe\|Safe Graphics" "Failsafe entry" || EXIT_CODE=1
 
 # Summary

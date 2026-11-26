@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 )
 
 func zerologMiddleware(logger *zerolog.Logger, cfg config.Config) func(next http.Handler) http.Handler {

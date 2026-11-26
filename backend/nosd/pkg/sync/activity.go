@@ -1,4 +1,4 @@
-// Package sync provides file synchronization functionality for NithronOS.
+// Package sync provides file synchronization functionality for nOS.
 package sync
 
 import (

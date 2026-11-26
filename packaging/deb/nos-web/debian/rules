@@ -7,8 +7,8 @@ override_dh_auto_build:
 	cd ../../../web && npm install && npm run build
 
 override_dh_auto_install:
-	install -d debian/nos-web/usr/share/nithronos/web
-	cp -a ../../../web/dist/* debian/nos-web/usr/share/nithronos/web/
+	install -d debian/nos-web/usr/share/nos/web
+	cp -a ../../../web/dist/* debian/nos-web/usr/share/nos/web/
 	# No longer ship /etc/caddy/Caddyfile; use conf.d snippets instead
 
 

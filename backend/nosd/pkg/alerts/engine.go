@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
-	"nithronos/backend/nosd/pkg/monitor"
+	"nos/backend/nosd/pkg/monitor"
 )
 
 // Engine manages alert rules and notifications
@@ -575,7 +575,7 @@ func (e *Engine) TestChannel(id string) error {
 	hostname, _ := os.Hostname()
 	msg := NotificationMessage{
 		Title:     "Test Alert",
-		Body:      "This is a test notification from NithronOS monitoring.",
+		Body:      "This is a test notification from nOS monitoring.",
 		Severity:  SeverityInfo,
 		Timestamp: time.Now(),
 		Hostname:  hostname,

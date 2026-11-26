@@ -73,8 +73,8 @@ function TokenQRCode({
     if (!canvasRef.current || !token) return;
 
     // Create a sync URL that the mobile app can parse
-    // Format: nithronos://sync?server=<url>&token=<token>&name=<name>
-    const syncUrl = `nithronos://sync?server=${encodeURIComponent(serverUrl)}&token=${encodeURIComponent(token)}&name=${encodeURIComponent(deviceName)}`;
+    // Format: nos://sync?server=<url>&token=<token>&name=<name>
+    const syncUrl = `nos://sync?server=${encodeURIComponent(serverUrl)}&token=${encodeURIComponent(token)}&name=${encodeURIComponent(deviceName)}`;
 
     QRCode.toCanvas(canvasRef.current, syncUrl, {
       width: size,
@@ -125,7 +125,7 @@ function ServerQRCode({ size = 200 }: { size?: number }) {
     if (!canvasRef.current) return;
 
     // Create a discovery URL for the mobile app
-    const discoveryUrl = `nithronos://discover?server=${encodeURIComponent(serverUrl)}`;
+    const discoveryUrl = `nos://discover?server=${encodeURIComponent(serverUrl)}`;
 
     QRCode.toCanvas(canvasRef.current, discoveryUrl, {
       width: size,
@@ -461,7 +461,7 @@ export default function SyncDevices() {
             <Smartphone className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No devices connected</h3>
             <p className="text-muted-foreground text-center mb-4 max-w-md">
-              Connect your Windows, Linux, or mobile device to sync files with your NithronOS server.
+              Connect your Windows, Linux, or mobile device to sync files with your nOS server.
             </p>
             <div className="flex gap-2">
               <Button onClick={() => setShowAddDialog(true)}>
@@ -550,7 +550,7 @@ export default function SyncDevices() {
             <DialogTitle>Add Sync Device</DialogTitle>
             <DialogDescription>
               {!registeredDevice
-                ? 'Register a new device to sync files with NithronOS.'
+                ? 'Register a new device to sync files with nOS.'
                 : 'Copy the token below and enter it in your sync client.'}
             </DialogDescription>
           </DialogHeader>

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"nithronos/backend/nosd/internal/fsatomic"
+	"nos/backend/nosd/internal/fsatomic"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -156,7 +156,7 @@ func (m *Manager) addDefaultChannels() {
 		Enabled: true,
 		Config: map[string]interface{}{
 			"facility": "local0",
-			"tag":      "nithronos",
+			"tag":      "nos",
 		},
 		Filters: []Filter{
 			{MinLevel: "info"},
@@ -296,7 +296,7 @@ func (m *Manager) sendEmail(channel *Channel, notif *Notification) {
 	}
 
 	// Build message
-	subject := fmt.Sprintf("[NithronOS %s] %s", strings.ToUpper(notif.Type), notif.Title)
+	subject := fmt.Sprintf("[nOS %s] %s", strings.ToUpper(notif.Type), notif.Title)
 	body := fmt.Sprintf("Time: %s\n\n%s\n", notif.Timestamp.Format(time.RFC3339), notif.Message)
 
 	if len(notif.Details) > 0 {

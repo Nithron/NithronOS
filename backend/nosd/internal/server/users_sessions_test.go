@@ -11,8 +11,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	userstore "nithronos/backend/nosd/internal/auth/store"
-	"nithronos/backend/nosd/internal/config"
+	userstore "nos/backend/nosd/internal/auth/store"
+	"nos/backend/nosd/internal/config"
 )
 
 func (e loginEnv) signIn(t *testing.T) (cookies []*http.Cookie, csrf string) {

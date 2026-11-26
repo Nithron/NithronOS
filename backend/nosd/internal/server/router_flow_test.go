@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	userstore "nithronos/backend/nosd/internal/auth/store"
-	"nithronos/backend/nosd/internal/config"
+	userstore "nos/backend/nosd/internal/auth/store"
+	"nos/backend/nosd/internal/config"
 
 	"github.com/gorilla/securecookie"
 	"github.com/pquerna/otp/totp"

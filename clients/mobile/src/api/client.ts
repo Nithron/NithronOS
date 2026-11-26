@@ -1,6 +1,6 @@
 /**
  * NithronSync API Client
- * Handles all communication with the NithronOS backend
+ * Handles all communication with the nOS backend
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -89,7 +89,7 @@ class NithronAPIClient {
 
     return {
       url: normalizedUrl,
-      name: healthData.name || 'NithronOS',
+      name: healthData.name || 'nOS',
       version: healthData.version || 'unknown',
       features: healthData.features || [],
     };
@@ -128,10 +128,10 @@ class NithronAPIClient {
    * Register device using QR code data
    */
   async registerFromQRCode(qrData: string): Promise<DeviceTokenResponse> {
-    // Parse QR code URL: nithronos://sync?server=...&token=...
+    // Parse QR code URL: nos://sync?server=...&token=...
     const url = new URL(qrData);
     
-    if (url.protocol !== 'nithronos:') {
+    if (url.protocol !== 'nos:') {
       throw new Error('Invalid QR code format');
     }
 

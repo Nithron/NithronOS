@@ -19,21 +19,21 @@ var (
 	promReg          = prometheus.NewRegistry()
 	btrfsStatusCalls = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "nithronos_agent_btrfs_status_calls_total",
+			Name: "nos_agent_btrfs_status_calls_total",
 			Help: "Total number of btrfs status calls by kind.",
 		},
 		[]string{"kind"},
 	)
 	btrfsStatusLatency = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "nithronos_agent_btrfs_status_latency_seconds",
+			Name:    "nos_agent_btrfs_status_latency_seconds",
 			Help:    "Latency of btrfs status calls by kind in seconds.",
 			Buckets: prometheus.DefBuckets,
 		},
 		[]string{"kind"},
 	)
 	buildInfoGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name:        "nithronos_agent_build_info",
+		Name:        "nos_agent_build_info",
 		Help:        "Build info of the agent.",
 		ConstLabels: prometheus.Labels{"version": Version, "rev": Rev},
 	})

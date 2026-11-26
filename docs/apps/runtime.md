@@ -1,8 +1,8 @@
-# NithronOS Apps Runtime
+# nOS Apps Runtime
 
 ## Overview
 
-The NithronOS Apps Runtime provides a secure, Docker-based application platform with built-in snapshot support and lifecycle management. It enables one-click deployment of containerized applications with proper isolation and resource management.
+The nOS Apps Runtime provides a secure, Docker-based application platform with built-in snapshot support and lifecycle management. It enables one-click deployment of containerized applications with proper isolation and resource management.
 
 ## Architecture
 
@@ -30,7 +30,7 @@ The NithronOS Apps Runtime provides a secure, Docker-based application platform 
 
 /var/lib/nos/apps/state/         # Runtime state (0700 nosd:nosd)
 /etc/nos/apps/                   # Catalog config (0700 nosd:nosd)
-/usr/share/nithronos/apps/       # Built-in templates (read-only)
+/usr/share/nos/apps/       # Built-in templates (read-only)
 ```
 
 ## Security Model

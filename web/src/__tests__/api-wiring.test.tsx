@@ -45,7 +45,7 @@ describe('API Wiring Tests', () => {
   describe('System API', () => {
     it('should fetch system info using /v1/system/info', async () => {
       const mockData = {
-        hostname: 'nithronos',
+        hostname: 'nos',
         uptime: 123456,
         kernel: '5.15.0',
         version: '0.3.0',

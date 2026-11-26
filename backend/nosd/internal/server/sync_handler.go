@@ -10,10 +10,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/internal/shares"
-	"nithronos/backend/nosd/pkg/httpx"
-	nosync "nithronos/backend/nosd/pkg/sync"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/shares"
+	"nos/backend/nosd/pkg/httpx"
+	nosync "nos/backend/nosd/pkg/sync"
 )
 
 // SyncHandler handles sync-related API endpoints

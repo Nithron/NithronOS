@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 )
 
 // Fast window tests for OTP and Login using short windows via env knobs

@@ -48,7 +48,7 @@ func DefaultChangeTrackerConfig() ChangeTrackerConfig {
 			"*.swp",
 			"*.bak",
 			".sync",
-			".nithronos",
+			".nos",
 		},
 		MaxFileSize: MaxFileSize,
 	}

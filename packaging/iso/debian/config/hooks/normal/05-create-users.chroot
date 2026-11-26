@@ -6,7 +6,7 @@ echo "[05-create-users] Creating system users..."
 # Create nos user for nosd service
 if ! id -u nos >/dev/null 2>&1; then
     echo "Creating nos user..."
-    useradd --system --home /var/lib/nos --shell /bin/false --comment "NithronOS daemon user" nos || true
+    useradd --system --home /var/lib/nos --shell /bin/false --comment "nOS daemon user" nos || true
     mkdir -p /var/lib/nos /etc/nos
     chown -R nos:nos /var/lib/nos /etc/nos || true
 fi

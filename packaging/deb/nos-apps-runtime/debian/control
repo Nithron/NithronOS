@@ -18,8 +18,8 @@ Depends: ${misc:Depends},
          jq
 Recommends: btrfs-progs,
             docker-buildx-plugin
-Description: NithronOS Apps Runtime - Docker-based application platform
- Provides a hardened Docker runtime for NithronOS applications with:
+Description: nOS Apps Runtime - Docker-based application platform
+ Provides a hardened Docker runtime for nOS applications with:
  - Pre-configured Docker daemon with security defaults
  - Btrfs-aware snapshot support for app data
  - Systemd integration for app lifecycle management
@@ -27,4 +27,4 @@ Description: NithronOS Apps Runtime - Docker-based application platform
  .
  This package sets up the Docker environment, creates necessary
  directories, and provides tools for managing containerized
- applications on NithronOS.
+ applications on nOS.

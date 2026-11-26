@@ -2,7 +2,7 @@ package main
 
 import (
 	"log"
-	"nithronos/agent/nos-agent/internal/server"
+	"nos/agent/nos-agent/internal/server"
 )
 
 func main() {

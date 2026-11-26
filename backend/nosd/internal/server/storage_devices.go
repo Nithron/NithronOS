@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"nithronos/backend/nosd/internal/storage/blk"
+	"nos/backend/nosd/internal/storage/blk"
 )
 
 type deviceDTO struct {

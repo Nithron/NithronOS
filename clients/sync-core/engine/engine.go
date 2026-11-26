@@ -15,11 +15,11 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 
-	"nithronos/clients/sync-core/api"
-	"nithronos/clients/sync-core/config"
-	"nithronos/clients/sync-core/db"
-	"nithronos/clients/sync-core/hash"
-	"nithronos/clients/sync-core/watcher"
+	"nos/clients/sync-core/api"
+	"nos/clients/sync-core/config"
+	"nos/clients/sync-core/db"
+	"nos/clients/sync-core/hash"
+	"nos/clients/sync-core/watcher"
 )
 
 // State represents the current sync state.

@@ -3,3 +3,4 @@ debian/sysusers.d/nosd.conf  usr/lib/sysusers.d/
 debian/tmpfiles.d/nosd.conf  usr/lib/tmpfiles.d/
 ../../../deploy/systemd/nos-issue-reload.path  lib/systemd/system/
 ../../../deploy/systemd/nos-issue-reload.service  lib/systemd/system/
+../../../deploy/scripts/migrate-from-nithronos.sh  usr/lib/nos/

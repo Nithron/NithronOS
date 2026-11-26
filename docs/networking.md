@@ -2,7 +2,7 @@
 
 ## Overview
 
-NithronOS provides comprehensive networking features for secure remote access:
+nOS provides comprehensive networking features for secure remote access:
 
 - **LAN-only mode** (default): Restricts access to local network only
 - **WireGuard VPN**: Secure remote access through encrypted tunnel
@@ -50,7 +50,7 @@ Block: WAN → UI/API
 
 ### Public HTTPS
 
-Exposes NithronOS to the internet with SSL/TLS encryption.
+Exposes nOS to the internet with SSL/TLS encryption.
 
 **Requirements:**
 - Domain name pointing to server
@@ -132,7 +132,7 @@ POST /api/v1/net/firewall/rollback
 
 ### nftables Integration
 
-Rules are managed via `/etc/nithronos/firewall.nft`:
+Rules are managed via `/etc/nos/firewall.nft`:
 
 ```nft
 table inet filter {
@@ -240,7 +240,7 @@ nas.example.com:443 {
     
     # Serve frontend
     handle {
-        root * /usr/share/nithronos/web
+        root * /usr/share/nos/web
         try_files {path} /index.html
         file_server
     }

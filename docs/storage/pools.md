@@ -1,6 +1,6 @@
 # Storage pools
 
-NithronOS manages data on Btrfs pools. You can create a new pool, import an existing one, and optionally enable encryption.
+nOS manages data on Btrfs pools. You can create a new pool, import an existing one, and optionally enable encryption.
 
 ## Create vs Import
 - Create: wipes selected devices and creates a fresh Btrfs filesystem, mounts at your chosen path, and provisions default subvolumes (`data`, `snaps`, `apps`). A plan is shown before any destructive step.
@@ -35,7 +35,7 @@ Notes:
 - Dangerous/unsupported options are rejected (e.g., `nodatacow`).
 
 ## Device operations (add/remove/replace)
-NithronOS supports safe device lifecycle operations using `btrfs` under the hood. The web UI (Pool Details → Devices) provides wizards to plan and apply changes.
+nOS supports safe device lifecycle operations using `btrfs` under the hood. The web UI (Pool Details → Devices) provides wizards to plan and apply changes.
 
 - Planning API: `POST /api/v1/pools/{id}/plan-device`
   - Body: `{"action":"add|remove|replace","devices":{...},"targetProfile":{"data":"single|raid1","meta":"single|raid1"},"force":false}`

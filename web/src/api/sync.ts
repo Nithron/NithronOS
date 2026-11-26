@@ -624,7 +624,7 @@ export function isDeviceActive(device: SyncDevice): boolean {
  */
 export function generateDeviceQRData(serverUrl: string, setupToken: string): string {
   return JSON.stringify({
-    type: 'nithronos-sync',
+    type: 'nos-sync',
     version: 1,
     server: serverUrl,
     token: setupToken,

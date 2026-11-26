@@ -5,15 +5,15 @@
 
 override_dh_auto_install:
 	# Create directory structure
-	install -d $(CURDIR)/debian/nos-apps/usr/share/nithronos/apps
-	install -d $(CURDIR)/debian/nos-apps/usr/share/nithronos/apps/templates
-	install -d $(CURDIR)/debian/nos-apps/usr/share/nithronos/apps/icons
+	install -d $(CURDIR)/debian/nos-apps/usr/share/nos/apps
+	install -d $(CURDIR)/debian/nos-apps/usr/share/nos/apps/templates
+	install -d $(CURDIR)/debian/nos-apps/usr/share/nos/apps/icons
 	install -d $(CURDIR)/debian/nos-apps/etc/caddy/Caddyfile.d
 	install -d $(CURDIR)/debian/nos-apps/etc/systemd/system
 	
 	# Copy catalog and templates from repository
-	if [ -f $(CURDIR)/../../../usr/share/nithronos/apps/catalog.yaml ]; then \
-		cp -r $(CURDIR)/../../../usr/share/nithronos/apps/* $(CURDIR)/debian/nos-apps/usr/share/nithronos/apps/; \
+	if [ -f $(CURDIR)/../../../usr/share/nos/apps/catalog.yaml ]; then \
+		cp -r $(CURDIR)/../../../usr/share/nos/apps/* $(CURDIR)/debian/nos-apps/usr/share/nos/apps/; \
 	fi
 	
 	# Copy systemd unit (will be moved from nos-apps-runtime)

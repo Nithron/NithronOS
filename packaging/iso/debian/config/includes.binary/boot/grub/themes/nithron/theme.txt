@@ -1,8 +1,8 @@
-# NithronOS GRUB Theme
+# nOS GRUB Theme
 # ISO Boot Menu Theme Configuration
 
 # Global Properties
-title-text: "NithronOS Boot Menu"
+title-text: "nOS Boot Menu"
 title-font: "DejaVu Sans Bold 24"
 title-color: "#2D7FF9"
 desktop-color: "#1a1a1a"
@@ -73,7 +73,7 @@ terminal-box: "terminal_box_*.png"
   width = 70%
   height = 30
   
-  text = "NithronOS - Open Source NAS & Homelab OS"
+  text = "nOS - Open Source NAS & Homelab OS"
   font = "DejaVu Sans Bold 18"
   color = "#2D7FF9"
   align = "center"

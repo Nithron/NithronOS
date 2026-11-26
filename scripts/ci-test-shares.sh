@@ -2,7 +2,7 @@
 # CI smoke test for shares functionality
 set -e
 
-echo "=== NithronOS Shares CI Smoke Test ==="
+echo "=== nOS Shares CI Smoke Test ==="
 
 # Configuration
 API_URL="${API_URL:-http://localhost:9000}"
@@ -179,7 +179,7 @@ echo -e "${GREEN}✓${NC} Time Machine share created"
 # Verify Avahi service
 echo ""
 echo "=== Verifying Avahi Time Machine Service ==="
-AVAHI_SERVICE="/etc/avahi/services/nithronos-tm.service"
+AVAHI_SERVICE="/etc/avahi/services/nos-tm.service"
 check_file "$AVAHI_SERVICE" || {
     echo -e "${RED}✗${NC} Avahi Time Machine service file not created"
     exit 1

@@ -6,7 +6,7 @@ import "testing"
 // went unvalidated into /etc/hosts, a file path under /etc/systemd/network
 // and config files, as root.
 func TestSystemInputValidation(t *testing.T) {
-	for _, h := range []string{"nithronos", "nas-01", "nas.example.com"} {
+	for _, h := range []string{"nos", "nas-01", "nas.example.com"} {
 		if !validHostname(h) {
 			t.Errorf("hostname %q rejected", h)
 		}

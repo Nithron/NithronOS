@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install a NithronOS ISO in QEMU, boot the installed disk, and check the
+# Install a nOS ISO in QEMU, boot the installed disk, and check the
 # first-boot flow end to end:
 #   - the installer finishes unattended (BIOS or UEFI),
 #   - the installed system shows the one-time setup code on its console,

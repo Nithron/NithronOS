@@ -1,4 +1,4 @@
-# Contributing to NithronOS
+# Contributing to nOS
 
 Thanks for your interest in contributing! We welcome issues, docs, code, tests, and ideas.
 

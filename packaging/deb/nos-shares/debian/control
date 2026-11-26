@@ -1,10 +1,10 @@
 Source: nos-shares
 Section: admin
 Priority: optional
-Maintainer: NithronOS Team <support@nithronos.local>
+Maintainer: nOS Maintainers <maintainers@nithron.com>
 Build-Depends: debhelper-compat (= 13)
 Standards-Version: 4.6.0
-Homepage: https://github.com/nithronos/nithronos
+Homepage: https://github.com/Nithron/nOS
 
 Package: nos-shares
 Architecture: all
@@ -19,7 +19,7 @@ Depends: ${misc:Depends},
          nftables
 Recommends: smbclient,
             nfs-common
-Description: NithronOS network shares management
- Provides SMB/CIFS and NFS network share management for NithronOS.
+Description: nOS network shares management
+ Provides SMB/CIFS and NFS network share management for nOS.
  Includes support for Time Machine backups, recycle bins, and
  fine-grained access control via POSIX ACLs.

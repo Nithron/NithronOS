@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/internal/setup/firstboot"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/setup/firstboot"
 )
 
 func setupOTPEnv(t *testing.T) (config.Config, http.Handler) {

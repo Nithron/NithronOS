@@ -5,15 +5,15 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: nithronos_test
-      POSTGRES_USER: nithronos
+      POSTGRES_DB: nos_test
+      POSTGRES_USER: nos
       POSTGRES_PASSWORD: testpass123
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - nithronos_test
+      - nos_test
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nithronos"]
+      test: ["CMD-SHELL", "pg_isready -U nos"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -23,7 +23,7 @@ services:
     image: redis:7-alpine
     command: redis-server --requirepass testpass123
     networks:
-      - nithronos_test
+      - nos_test
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 5s
@@ -39,7 +39,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - agent_socket:/run
     networks:
-      - nithronos_test
+      - nos_test
     privileged: true
     healthcheck:
       test: ["CMD", "test", "-S", "/run/nos-agent.sock"]
@@ -55,9 +55,9 @@ services:
     environment:
       NOS_ENV: test
       NOS_DB_HOST: postgres
-      NOS_DB_USER: nithronos
+      NOS_DB_USER: nos
       NOS_DB_PASSWORD: testpass123
-      NOS_DB_NAME: nithronos_test
+      NOS_DB_NAME: nos_test
       NOS_REDIS_HOST: redis
       NOS_REDIS_PASSWORD: testpass123
       NOS_AGENT_SOCKET: /run/nos-agent.sock
@@ -68,7 +68,7 @@ services:
       - nos_data:/var/lib/nos
       - nos_config:/etc/nos
     networks:
-      - nithronos_test
+      - nos_test
     depends_on:
       postgres:
         condition: service_healthy
@@ -90,11 +90,11 @@ services:
       - "8443:443"
     volumes:
       - ./Caddyfile.test:/etc/caddy/Caddyfile:ro
-      - ../../web/dist:/usr/share/nithronos/web:ro
+      - ../../web/dist:/usr/share/nos/web:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:
-      - nithronos_test
+      - nos_test
     depends_on:
       nosd:
         condition: service_healthy
@@ -111,7 +111,7 @@ services:
       - "1025:1025"  # SMTP
       - "8025:8025"  # Web UI
     networks:
-      - nithronos_test
+      - nos_test
 
   # Mock webhook receiver
   webhook-mock:
@@ -119,10 +119,10 @@ services:
     ports:
       - "8084:8080"
     networks:
-      - nithronos_test
+      - nos_test
 
 networks:
-  nithronos_test:
+  nos_test:
     driver: bridge
 
 volumes:

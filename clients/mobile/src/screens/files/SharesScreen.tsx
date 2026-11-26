@@ -91,7 +91,7 @@ export function SharesScreen(): React.JSX.Element {
       <Icon name="folder-off-outline" size={64} color={`${colors.text}30`} />
       <Text style={[styles.emptyTitle, {color: colors.text}]}>No Shares</Text>
       <Text style={[styles.emptyText, {color: `${colors.text}60`}]}>
-        Enable sync on shares from your NithronOS dashboard
+        Enable sync on shares from your nOS dashboard
       </Text>
     </View>
   );

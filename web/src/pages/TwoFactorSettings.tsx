@@ -99,7 +99,7 @@ export function TwoFactorSettings() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'nithronos-backup-codes.txt';
+    a.download = 'nos-backup-codes.txt';
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -232,7 +232,7 @@ export function TwoFactorSettings() {
                 <div>
                   <div className="font-medium">Scan the QR code</div>
                   <div className="text-sm text-muted-foreground">
-                    Link your authenticator app to your NithronOS account
+                    Link your authenticator app to your nOS account
                   </div>
                 </div>
               </li>

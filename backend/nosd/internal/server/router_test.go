@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	pwhash "nithronos/backend/nosd/internal/auth/hash"
+	pwhash "nos/backend/nosd/internal/auth/hash"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 )
 
 func TestHealth(t *testing.T) {

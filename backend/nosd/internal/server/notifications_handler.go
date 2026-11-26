@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"nithronos/backend/nosd/internal/notifications"
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/internal/notifications"
+	"nos/backend/nosd/pkg/httpx"
 
 	"github.com/go-chi/chi/v5"
 )

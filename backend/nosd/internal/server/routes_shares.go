@@ -6,10 +6,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"nithronos/backend/nosd/pkg/agentclient"
+	"nos/backend/nosd/pkg/agentclient"
 
-	// "nithronos/backend/nosd/pkg/firewall"
-	"nithronos/backend/nosd/pkg/httpx"
+	// "nos/backend/nosd/pkg/firewall"
+	"nos/backend/nosd/pkg/httpx"
 )
 
 // registerSMBUsers serves the SMB user list and the legacy share delete.

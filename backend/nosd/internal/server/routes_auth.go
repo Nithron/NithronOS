@@ -9,12 +9,12 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"errors"
-	pwhash "nithronos/backend/nosd/internal/auth/hash"
-	"nithronos/backend/nosd/internal/auth/session"
-	userstore "nithronos/backend/nosd/internal/auth/store"
+	pwhash "nos/backend/nosd/internal/auth/hash"
+	"nos/backend/nosd/internal/auth/session"
+	userstore "nos/backend/nosd/internal/auth/store"
 
-	// "nithronos/backend/nosd/pkg/firewall"
-	"nithronos/backend/nosd/pkg/httpx"
+	// "nos/backend/nosd/pkg/firewall"
+	"nos/backend/nosd/pkg/httpx"
 
 	"strconv"
 )

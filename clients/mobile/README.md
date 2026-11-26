@@ -1,10 +1,10 @@
 # NithronSync Mobile
 
-Cross-platform mobile client for NithronOS file synchronization, supporting iOS and Android.
+Cross-platform mobile client for nOS file synchronization, supporting iOS and Android.
 
 ## Features
 
-- **QR Code Setup** — Scan a QR code from your NithronOS dashboard for instant configuration
+- **QR Code Setup** — Scan a QR code from your nOS dashboard for instant configuration
 - **File Browser** — Browse and manage your synced files on the go
 - **Background Sync** — Automatic file synchronization in the background
 - **Conflict Resolution** — Visual interface for resolving file conflicts
@@ -95,7 +95,7 @@ src/
 ## Authentication Flow
 
 1. **Welcome Screen** — User chooses QR code scan or manual setup
-2. **QR Scanner** — Scan QR code from NithronOS dashboard
+2. **QR Scanner** — Scan QR code from nOS dashboard
 3. **Manual Setup** — Enter server URL and register device
 4. **Main App** — Access files, activity, and settings
 
@@ -157,5 +157,5 @@ See the main [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines.
 
 ## License
 
-NithronSync Mobile is part of NithronOS and is licensed under the Nithron Community License (NCL).
+NithronSync Mobile is part of nOS and is licensed under the Nithron Community License (NCL).
 

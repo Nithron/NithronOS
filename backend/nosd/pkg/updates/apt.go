@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	aptSourcesPath     = "/etc/apt/sources.list.d/nithronos.list"
-	aptPreferencesPath = "/etc/apt/preferences.d/nithronos"
-	aptKeyringPath     = "/usr/share/keyrings/nithronos-archive-keyring.gpg"
-	channelConfigPath  = "/etc/nithronos/update/channel"
+	aptSourcesPath     = "/etc/apt/sources.list.d/nos.list"
+	aptPreferencesPath = "/etc/apt/preferences.d/nos"
+	aptKeyringPath     = "/usr/share/keyrings/nos-archive-keyring.gpg"
+	channelConfigPath  = "/etc/nos/update/channel"
 )
 
 // APTManager manages APT repository configuration and operations
@@ -85,7 +85,7 @@ func (am *APTManager) SetChannel(channel Channel) error {
 // UpdateSources updates the APT sources list for the current channel
 func (am *APTManager) UpdateSources() error {
 	// Generate sources.list content
-	content := fmt.Sprintf(`# NithronOS APT Repository
+	content := fmt.Sprintf(`# nOS APT Repository
 # Channel: %s
 # Managed by nos-updater - DO NOT EDIT MANUALLY
 
@@ -103,7 +103,7 @@ deb [signed-by=%s] %s %s main
 // UpdatePreferences updates APT pinning preferences
 func (am *APTManager) UpdatePreferences() error {
 	// Generate preferences content to prevent cross-channel drift
-	content := fmt.Sprintf(`# NithronOS APT Pinning
+	content := fmt.Sprintf(`# nOS APT Pinning
 # Prevents packages from other channels being installed
 # Managed by nos-updater - DO NOT EDIT MANUALLY
 

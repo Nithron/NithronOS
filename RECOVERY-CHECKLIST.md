@@ -1,4 +1,4 @@
-# NithronOS — Pre-Alpha Recovery Checklist
+# nOS — Pre-Alpha Recovery Checklist
 
 > For **testers** during pre-alpha. These steps assume local/physical access. Use carefully — some actions are destructive.
 
@@ -25,7 +25,7 @@ Reload UI — setup/OTP flow should appear.
 ### 2) Forgot admin password or lost 2FA
 **A) Recovery mode (preferred)**
 
-1. At GRUB, highlight NithronOS, press **e**, append to the linux line:
+1. At GRUB, highlight nOS, press **e**, append to the linux line:
        
        nos.recovery=1
 

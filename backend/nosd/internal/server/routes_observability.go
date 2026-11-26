@@ -10,9 +10,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	prom "github.com/prometheus/client_golang/prometheus"
 
-	"nithronos/backend/nosd/internal/pools"
-	"nithronos/backend/nosd/pkg/agentclient"
-	// "nithronos/backend/nosd/pkg/firewall"
+	"nos/backend/nosd/internal/pools"
+	"nos/backend/nosd/pkg/agentclient"
+	// "nos/backend/nosd/pkg/firewall"
 )
 
 // registerObservability serves Prometheus metrics and pprof when enabled (pprof from localhost only).

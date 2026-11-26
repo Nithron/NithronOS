@@ -20,7 +20,7 @@ Provide a safe, guided way to switch exposure of the web UI between **lan-only**
 - Detect and block if **UFW** or **firewalld** is active (return 409 with instructions).
 - Validate ruleset with `nft -c -f` before apply.
 - Backup current ruleset: `nft list ruleset > /etc/nos/firewall/backup-<ts>.nft`.
-- Persist rules in `/etc/nftables.d/nithronos.nft` and ensure `nftables.service` enabled.
+- Persist rules in `/etc/nftables.d/nos.nft` and ensure `nftables.service` enabled.
 
 ## Agent (`nos-agent`)
 - `POST /v1/firewall/apply { ruleset_text, persist: true }`

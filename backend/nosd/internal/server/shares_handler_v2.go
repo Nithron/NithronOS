@@ -5,14 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"nithronos/backend/nosd/internal/shares"
-	"nithronos/backend/nosd/pkg/validate"
+	"nos/backend/nosd/internal/shares"
+	"nos/backend/nosd/pkg/validate"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/pkg/httpx"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"

@@ -1,5 +1,5 @@
 [Unit]
-Description=Caddy Web Server for NithronOS
+Description=Caddy Web Server for nOS
 After=network-online.target nosd.service
 Wants=network-online.target
 

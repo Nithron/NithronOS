@@ -13,9 +13,9 @@ import (
 	"syscall"
 	"time"
 
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/internal/ratelimit"
-	"nithronos/backend/nosd/internal/server"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/ratelimit"
+	"nos/backend/nosd/internal/server"
 )
 
 func main() {

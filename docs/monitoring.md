@@ -2,7 +2,7 @@
 
 ## Overview
 
-NithronOS provides comprehensive real-time and historical monitoring with intelligent alerting. The system collects metrics for CPU, memory, disk, network, services, and more, storing them efficiently with automatic downsampling for long-term retention.
+nOS provides comprehensive real-time and historical monitoring with intelligent alerting. The system collects metrics for CPU, memory, disk, network, services, and more, storing them efficiently with automatic downsampling for long-term retention.
 
 ## Key Features
 
@@ -104,7 +104,7 @@ Configure SMTP settings for email alerts:
     "smtp_user": "alerts@example.com",
     "smtp_password": "app-password",
     "use_starttls": true,
-    "from": "NithronOS <alerts@example.com>",
+    "from": "nOS <alerts@example.com>",
     "to": ["admin@example.com"]
   }
 }
@@ -137,7 +137,7 @@ Push notifications to mobile devices:
   "type": "ntfy",
   "config": {
     "server_url": "https://ntfy.sh",
-    "topic": "nithronos-alerts",
+    "topic": "nos-alerts",
     "priority": 4,
     "tags": ["warning", "computer"]
   }
@@ -358,7 +358,7 @@ Export metrics for external visualization:
 ```yaml
 # Prometheus endpoint (future)
 scrape_configs:
-  - job_name: 'nithronos'
+  - job_name: 'nos'
     static_configs:
       - targets: ['localhost:9090']
 ```
@@ -420,7 +420,7 @@ scrape_configs:
         {"title": "Metric", "value": "{{.Metric}}", "short": true},
         {"title": "Value", "value": "{{.Value}}", "short": true}
       ],
-      "footer": "NithronOS",
+      "footer": "nOS",
       "ts": "{{.Timestamp}}"
     }]
   }

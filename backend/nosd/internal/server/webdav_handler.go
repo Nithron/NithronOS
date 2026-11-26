@@ -12,8 +12,8 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/net/webdav"
 
-	"nithronos/backend/nosd/internal/shares"
-	nosync "nithronos/backend/nosd/pkg/sync"
+	"nos/backend/nosd/internal/shares"
+	nosync "nos/backend/nosd/pkg/sync"
 )
 
 // WebDAVHandler provides WebDAV access to sync-enabled shares
@@ -47,7 +47,7 @@ func (h *WebDAVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Authenticate using device token
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
-		w.Header().Set("WWW-Authenticate", `Bearer realm="NithronOS Sync"`)
+		w.Header().Set("WWW-Authenticate", `Bearer realm="nOS Sync"`)
 		http.Error(w, "Authorization required", http.StatusUnauthorized)
 		return
 	}

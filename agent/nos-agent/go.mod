@@ -1,4 +1,4 @@
-module nithronos/agent/nos-agent
+module nos/agent/nos-agent
 
 go 1.24
 

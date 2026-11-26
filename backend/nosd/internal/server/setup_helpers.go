@@ -7,9 +7,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 
-	// "nithronos/backend/nosd/pkg/firewall"
+	// "nos/backend/nosd/pkg/firewall"
 
 	"github.com/gorilla/securecookie"
 )

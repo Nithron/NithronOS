@@ -1,5 +1,5 @@
 [Unit]
-Description=Daily NithronOS snapshot prune
+Description=Daily nOS snapshot prune
 
 [Timer]
 OnCalendar=daily

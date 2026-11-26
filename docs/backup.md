@@ -2,7 +2,7 @@
 
 ## Overview
 
-NithronOS provides comprehensive backup and replication capabilities using Btrfs snapshots. The system supports scheduled snapshots with retention policies, replication to remote destinations, and both full and file-level restore operations.
+nOS provides comprehensive backup and replication capabilities using Btrfs snapshots. The system supports scheduled snapshots with retention policies, replication to remote destinations, and both full and file-level restore operations.
 
 ## Key Features
 
@@ -118,7 +118,7 @@ Replicate snapshots to remote servers via SSH:
      "host": "backup.example.com",
      "port": 22,
      "user": "backup",
-     "path": "/backups/nithronos",
+     "path": "/backups/nos",
      "bandwidth_limit": 10000
    }
    ```
@@ -162,7 +162,7 @@ Sync snapshots to cloud storage providers:
      "name": "S3 Backup",
      "type": "rclone",
      "remote_name": "s3-backup",
-     "remote_path": "bucket/nithronos-backups",
+     "remote_path": "bucket/nos-backups",
      "bandwidth_limit": 5000,
      "concurrency": 4
    }

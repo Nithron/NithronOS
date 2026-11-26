@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: nos-apps-runtime
 Upstream-Contact: Nithron Team <hello@nithron.com>
-Source: https://github.com/NotTekk/NithronOS
+Source: https://github.com/Nithron/nOS
 
 Files: *
 Copyright: 2024 Nithron

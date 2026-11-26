@@ -66,7 +66,7 @@ export function AppInstallWizard() {
               type: "string",
               title: "Service Name",
               description: "Name to display in responses",
-              default: "NithronOS Test App"
+              default: "nOS Test App"
             }
           }
         },

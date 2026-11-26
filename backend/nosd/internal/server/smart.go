@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"nithronos/backend/nosd/pkg/agentclient"
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/pkg/agentclient"
+	"nos/backend/nosd/pkg/httpx"
 )
 
 func handleSmartProxy(w http.ResponseWriter, r *http.Request) {

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"nithronos/backend/nosd/pkg/firewall"
+	"nos/backend/nosd/pkg/firewall"
 	"strings"
 	"testing"
 )

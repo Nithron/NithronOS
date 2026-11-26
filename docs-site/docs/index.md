@@ -1,18 +1,18 @@
-# Welcome to NithronOS Documentation
+# Welcome to nOS Documentation
 
 <div align="center">
-  <img src="assets/logo.svg" alt="NithronOS Logo" width="200">
+  <img src="assets/logo.svg" alt="nOS Logo" width="200">
   
   **The secure, self-hosted storage and application platform**
   
   [![Version](https://img.shields.io/badge/version-1.0.0-blue)](releases/v1.0.md)
-  [![License](https://img.shields.io/badge/license-Proprietary-red)](https://github.com/yourusername/NithronOS/blob/main/LICENSE)
-  [![Build Status](https://img.shields.io/github/actions/workflow/status/yourusername/NithronOS/ci-complete.yml)](https://github.com/yourusername/NithronOS/actions)
+  [![License](https://img.shields.io/badge/license-Proprietary-red)](https://github.com/Nithron/nOS/blob/main/LICENSE)
+  [![Build Status](https://img.shields.io/github/actions/workflow/status/Nithron/nOS/ci-complete.yml)](https://github.com/Nithron/nOS/actions)
 </div>
 
-## What is NithronOS?
+## What is nOS?
 
-NithronOS is a comprehensive storage and application platform designed for self-hosting enthusiasts and small businesses. Built on Debian Linux with enterprise-grade features, it provides:
+nOS is a comprehensive storage and application platform designed for self-hosting enthusiasts and small businesses. Built on Debian Linux with enterprise-grade features, it provides:
 
 - **🗄️ Advanced Storage Management** - Btrfs-based with snapshots, RAID, and automatic health monitoring
 - **📦 Application Ecosystem** - Docker-based app deployment with one-click installs
@@ -30,7 +30,7 @@ NithronOS is a comprehensive storage and application platform designed for self-
     
     ---
     
-    New to NithronOS? Start here with installation and initial setup.
+    New to nOS? Start here with installation and initial setup.
     
     [:octicons-arrow-right-24: Installation Guide](getting-started/installation/iso-install.md)
 
@@ -38,7 +38,7 @@ NithronOS is a comprehensive storage and application platform designed for self-
     
     ---
     
-    Learn how to use NithronOS features and manage your system.
+    Learn how to use nOS features and manage your system.
     
     [:octicons-arrow-right-24: User Documentation](user-guide/index.md)
 
@@ -46,7 +46,7 @@ NithronOS is a comprehensive storage and application platform designed for self-
     
     ---
     
-    Integrate with NithronOS using our comprehensive REST API.
+    Integrate with nOS using our comprehensive REST API.
     
     [:octicons-arrow-right-24: API Documentation](api/index.md)
 
@@ -124,10 +124,9 @@ NithronOS is a comprehensive storage and application platform designed for self-
 
 ## Community & Support
 
-- **GitHub**: [github.com/yourusername/NithronOS](https://github.com/yourusername/NithronOS)
-- **Discord**: [discord.gg/nithronos](https://discord.gg/nithronos)
-- **Forum**: [forum.nithronos.org](https://forum.nithronos.org)
-- **Email**: support@nithronos.org
+- **GitHub**: [github.com/Nithron/nOS](https://github.com/Nithron/nOS)
+- **Discord**: [discord.gg/qzB37WS5AT](https://discord.gg/qzB37WS5AT)
+- **Forum**: [GitHub Discussions](https://github.com/Nithron/nOS/discussions)
 
 ## Contributing
 
@@ -135,11 +134,11 @@ We welcome contributions! See our [Contributing Guide](developer/contributing/gu
 
 ## License
 
-NithronOS is proprietary software. See the [LICENSE](https://github.com/yourusername/NithronOS/blob/main/LICENSE) file for details.
+nOS is proprietary software. See the [LICENSE](https://github.com/Nithron/nOS/blob/main/LICENSE) file for details.
 
 ---
 
-!!! tip "New to NithronOS?"
+!!! tip "New to nOS?"
     Start with our [Quick Start Guide](getting-started/quickstart.md) to get up and running in minutes!
 
 !!! info "Looking for the latest release?"

@@ -7,15 +7,15 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"nithronos/backend/nosd/internal/apps"
-	"nithronos/backend/nosd/internal/auth/session"
-	userstore "nithronos/backend/nosd/internal/auth/store"
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/internal/notifications"
-	"nithronos/backend/nosd/internal/ratelimit"
-	"nithronos/backend/nosd/internal/setup/firstboot"
-	"nithronos/backend/nosd/internal/shares"
-	"nithronos/backend/nosd/pkg/agentclient"
+	"nos/backend/nosd/internal/apps"
+	"nos/backend/nosd/internal/auth/session"
+	userstore "nos/backend/nosd/internal/auth/store"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/notifications"
+	"nos/backend/nosd/internal/ratelimit"
+	"nos/backend/nosd/internal/setup/firstboot"
+	"nos/backend/nosd/internal/shares"
+	"nos/backend/nosd/pkg/agentclient"
 )
 
 // routeDeps holds what the route files share. It is built once per router.
@@ -66,10 +66,10 @@ func newRouteDeps(cfg config.Config) *routeDeps {
 	appManagerConfig := &apps.Config{
 		AppsRoot:      "/srv/apps",
 		StateFile:     filepath.Join(filepath.Dir(cfg.UsersPath), "apps.json"),
-		CatalogPath:   "/usr/share/nithronos/apps",
+		CatalogPath:   "/usr/share/nos/apps",
 		CachePath:     "/var/lib/nos/apps/catalog.cache.json",
 		SourcesPath:   "/etc/nos/apps/catalogs.d",
-		TemplatesPath: "/usr/share/nithronos/apps",
+		TemplatesPath: "/usr/share/nos/apps",
 		AgentPath:     cfg.AgentSocket(),
 		CaddyPath:     "/etc/caddy/Caddyfile.d",
 	}

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1400" height="360" viewBox="0 0 1400 360" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1400" height="360" fill="#0B0E13"/>
+  <defs>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00D1FF"/>
+      <stop offset="100%" stop-color="#A4F932"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(60,40) scale(0.52)">
+    <path d="M256 24 L444 132 Q456 139 456 154 L456 358 Q456 373 444 380 L256 488 L68 380 Q56 373 56 358 L56 154 Q56 139 68 132 Z"
+          fill="none" stroke="url(#ring)" stroke-width="22" stroke-linejoin="round"/>
+    <path d="M168 360 L168 164 L188 164 L344 328 L344 164 L364 164 L364 360 L344 360 L188 196 L188 360 Z"
+          fill="#E6EDF7"/>
+  </g>
+  <text x="340" y="175" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="120" fill="#E6EDF7" font-weight="800">nOS</text>
+  <text x="345" y="260" font-family="JetBrains Mono,Consolas,monospace" font-size="36" fill="#9AA7B8">Open-source OS for NAS &amp; homelabs</text>
+</svg>
+

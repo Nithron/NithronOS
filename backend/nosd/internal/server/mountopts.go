@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"nithronos/backend/nosd/internal/disks"
+	"nos/backend/nosd/internal/disks"
 )
 
 // computeDefaultMountOptsFromDisks decides defaults based on rotational flag.

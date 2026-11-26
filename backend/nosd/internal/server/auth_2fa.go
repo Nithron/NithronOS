@@ -10,11 +10,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	qrcode "github.com/skip2/go-qrcode"
 
-	pwhash "nithronos/backend/nosd/internal/auth/hash"
-	userstore "nithronos/backend/nosd/internal/auth/store"
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/pkg/auth"
-	"nithronos/backend/nosd/pkg/httpx"
+	pwhash "nos/backend/nosd/internal/auth/hash"
+	userstore "nos/backend/nosd/internal/auth/store"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/pkg/auth"
+	"nos/backend/nosd/pkg/httpx"
 )
 
 // twoFactor is the one implementation of TOTP two-factor sign-in. Secrets
@@ -50,7 +50,7 @@ func (t twoFactor) currentUser(r *http.Request) (userstore.User, bool) {
 // begin starts enrollment: a new secret and recovery codes are stored as
 // pending. It returns the secret, its otpauth:// URI and the recovery codes.
 func (t twoFactor) begin(u *userstore.User) (secret, uri string, recovery []string, err error) {
-	secret, uri, err = auth.GenerateTOTPSecret("NithronOS", u.Username)
+	secret, uri, err = auth.GenerateTOTPSecret("nOS", u.Username)
 	if err != nil {
 		return "", "", nil, err
 	}

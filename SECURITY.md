@@ -17,7 +17,7 @@ We will acknowledge within 5 business days.
 - Critical issues may be patched faster; timelines may extend for complex fixes.
 
 ## Scope
-- In scope: NithronOS code in this repo (backend `nosd`, `nos-agent`, web UI) and official packaging.
+- In scope: nOS code in this repo (backend `nosd`, `nos-agent`, web UI) and official packaging.
 - Out of scope: third-party dependencies, forks, or self-modified builds (report upstream where appropriate).
 
 ## Hardening & Updates

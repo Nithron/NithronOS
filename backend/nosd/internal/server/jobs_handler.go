@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/pkg/httpx"
 )
 
 // Job represents a background job
@@ -40,7 +40,7 @@ var jobsStore *JobsStore
 func InitJobsStore(cfg config.Config) {
 	jobsPath := filepath.Join("/var/lib/nos", "jobs.json")
 	if runtime.GOOS == "windows" {
-		jobsPath = filepath.Join(`C:\ProgramData\NithronOS`, "jobs.json")
+		jobsPath = filepath.Join(`C:\ProgramData\nOS`, "jobs.json")
 	}
 
 	jobsStore = &JobsStore{

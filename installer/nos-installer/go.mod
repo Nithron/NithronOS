@@ -1,4 +1,4 @@
-module nithronos/installer
+module nos/installer
 
 go 1.24
 

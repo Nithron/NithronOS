@@ -1,12 +1,12 @@
 Source: nos-updater
 Section: admin
 Priority: optional
-Maintainer: NithronOS Team <dev@nithronos.com>
+Maintainer: nOS Maintainers <maintainers@nithron.com>
 Build-Depends: debhelper (>= 13), golang (>= 1.19)
 Standards-Version: 4.6.0
-Homepage: https://github.com/nithronos/nos
-Vcs-Browser: https://github.com/nithronos/nos
-Vcs-Git: https://github.com/nithronos/nos.git
+Homepage: https://github.com/Nithron/nOS
+Vcs-Browser: https://github.com/Nithron/nOS
+Vcs-Git: https://github.com/Nithron/nOS.git
 
 Package: nos-updater
 Architecture: any
@@ -18,7 +18,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
  gnupg,
  btrfs-progs
 Recommends: nos-web
-Description: NithronOS Update Service
+Description: nOS Update Service
  Manages atomic system updates with automatic rollback capabilities.
  Provides signed APT repository management, Btrfs snapshot-based
  rollback, and safe update application with postflight checks.

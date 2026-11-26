@@ -158,7 +158,7 @@ func handleSetNTP(w http.ResponseWriter, params map[string]interface{}) {
 			if len(serverList) > 0 {
 				config := "[Time]\n"
 				config += fmt.Sprintf("NTP=%s\n", strings.Join(serverList, " "))
-				_ = os.WriteFile(filepath.Join(configDir, "nithronos.conf"), []byte(config), 0644)
+				_ = os.WriteFile(filepath.Join(configDir, "nos.conf"), []byte(config), 0644)
 			}
 		}
 

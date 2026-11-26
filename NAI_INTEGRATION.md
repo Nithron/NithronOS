@@ -1,28 +1,28 @@
-# nAI app for NithronOS: integration handoff
+# nAI app for nOS: integration handoff
 
 > Written 2026-11-21 by the Claude session working on the **NithronAI** repo
-> (`/mnt/vault/Dev/Nithron/NithronAI`, github.com/Nithron-Intelligence/nAI), for the Claude session working on NithronOS.
-> The user asked for nAI to be added to the NithronOS app catalog and for this note to explain it.
+> (`/mnt/vault/Dev/Nithron/NithronAI`, github.com/Nithron-Intelligence/nAI), for the Claude session working on nOS.
+> The user asked for nAI to be added to the nOS app catalog and for this note to explain it.
 > Delete this file once the work below is done.
 
 ## What nAI is
 
-nAI is "the AI that knows your NAS": it indexes folders (NithronOS shares) **in place and read-only**, keeps the index in
+nAI is "the AI that knows your NAS": it indexes folders (nOS shares) **in place and read-only**, keeps the index in
 sync (inotify watcher + periodic incremental rescans), and answers questions with citations (file, page, section),
 using hybrid keyword + multilingual semantic search. Answers come from an optional LLM (Ollama on the NAS or on a PC
 with a GPU, any OpenAI-compatible server, or a cloud API) or, without one, as exact quotes. It runs CPU-only, as one
-container (FastAPI API + web UI on port 8000), with all state in one SQLite file. Same license as NithronOS (NCL v1.0).
+container (FastAPI API + web UI on port 8000), with all state in one SQLite file. Same license as nOS (NCL v1.0).
 Version 0.4.0 is on NithronAI `main` (commit `6686b59`).
 
 ## What I added here (uncommitted, in your working tree)
 
 | Path | What |
 |------|------|
-| `usr/share/nithronos/apps/templates/nai/compose.yaml` | the app's compose template |
-| `usr/share/nithronos/apps/templates/nai/schema.json` | install form (JSON Schema, all values strings) |
-| `usr/share/nithronos/apps/templates/nai/README.md` | user docs (your CI wants a README per template) |
-| `usr/share/nithronos/apps/templates/nai/icon.svg` | icon (entries reference icons, though the UI shows category icons) |
-| `usr/share/nithronos/apps/catalog.yaml` | new `nai` entry appended at the end; nothing else changed |
+| `usr/share/nos/apps/templates/nai/compose.yaml` | the app's compose template |
+| `usr/share/nos/apps/templates/nai/schema.json` | install form (JSON Schema, all values strings) |
+| `usr/share/nos/apps/templates/nai/README.md` | user docs (your CI wants a README per template) |
+| `usr/share/nos/apps/templates/nai/icon.svg` | icon (entries reference icons, though the UI shows category icons) |
+| `usr/share/nos/apps/catalog.yaml` | new `nai` entry appended at the end; nothing else changed |
 | `NAI_INTEGRATION.md` | this file |
 
 Nothing else in the repo was touched. Your branch at the time was `revision/phase-1-firstboot` with a clean tree.
@@ -30,7 +30,7 @@ Nothing else in the repo was touched. Your branch at the time was `revision/phas
 `feat(apps): add nAI to the app catalog`. Ask the user before committing/pushing; in the NithronAI repo they want commits
 made as them with no Claude attribution, so check whether the same applies here.
 
-### How it's adapted to NithronOS (from reading `pkg/apps/renderer.go`, `lifecycle.go`, `nos-app@.service`)
+### How it's adapted to nOS (from reading `pkg/apps/renderer.go`, `lifecycle.go`, `nos-app@.service`)
 
 - **Service name `app`, container `nos-app-nai-app-1`.** `RenderCaddySnippet` always proxies to `nos-app-<id>-app-1`.
   Caddy's `handle_path /apps/nai/*` strips the prefix and `flush_interval -1` keeps nAI's SSE streaming working; the
@@ -49,12 +49,12 @@ made as them with no Claude attribution, so check whether the same applies here.
 ### Verified
 
 - Catalog YAML and schema JSON pass the same checks as your CI (`App Catalog templates validation`).
-- Ran **your Go code** on it from a scratch module (`replace nithronos/backend/nosd => .../backend/nosd`):
+- Ran **your Go code** on it from a scratch module (`replace nos/backend/nosd => .../backend/nosd`):
   `LoadBuiltinCatalog` → `ValidateParams` → `RenderComposeFile` for defaults and for a "GPU PC" parameter set.
   Rendered output keeps the 3g limit, maps params correctly, rejects `MEMORY_LIMIT=lots`; `docker compose config`
   accepts the rendered files.
 - In the NithronAI repo: the same image ran with these settings, read-only shares, PUID/PGID, OCR, and health checks.
-- **Not verified**: installing through nosd on a real NithronOS box (the image is now public, so this can be tested).
+- **Not verified**: installing through nosd on a real nOS box (the image is now public, so this can be tested).
 
 ## Blockers / things for you to fix or decide
 
@@ -88,10 +88,10 @@ made as them with no Claude attribution, so check whether the same applies here.
   - sources: `GET/POST /sources`, `PATCH /sources/{id}` with `{"allowed_groups": [...]}`, `POST /sources/{id}/scan`
   - users: `POST /auth/register` (admin token), `PUT /auth/users/{id}/groups` with `{"groups": [...]}`
   - All nAI API calls use `Authorization: Bearer <jwt>` from `POST /auth/login`. OpenAPI at `/docs` on the app.
-- **Single sign-on**: today nAI has its own accounts (first account = admin). Plan: accept NithronOS identities.
-- **Dashboard embedding**: the UI already works under `/apps/nai/`; a NithronOS dashboard widget could call
+- **Single sign-on**: today nAI has its own accounts (first account = admin). Plan: accept nOS identities.
+- **Dashboard embedding**: the UI already works under `/apps/nai/`; a nOS dashboard widget could call
   `/ask/stream` (Server-Sent Events: `citations`, `token`…, `done`) and open citations via `/documents/{id}/file`.
-- **MCP server for NithronOS** (nAI's Phase 2): nAI will call the NithronOS API (`nos_client_contract.json`) read-only
+- **MCP server for nOS** (nAI's Phase 2): nAI will call the nOS API (`nos_client_contract.json`) read-only
   first (pool usage, snapshots, backups), then confirmed actions. Keeping that contract current helps.
 
 ## Reproduce the render check
@@ -101,8 +101,8 @@ mkdir /tmp/rendercheck && cd /tmp/rendercheck
 cat > go.mod <<'EOF2'
 module rendercheck
 go 1.24
-require nithronos/backend/nosd v0.0.0
-replace nithronos/backend/nosd => /mnt/vault/Dev/Nithron/NithronOS/backend/nosd
+require nos/backend/nosd v0.0.0
+replace nos/backend/nosd => /mnt/vault/Dev/Nithron/NithronOS/backend/nosd
 EOF2
 cp /mnt/vault/Dev/Nithron/NithronOS/backend/nosd/go.sum .
 # main.go: apps.NewCatalogManager(<apps dir>, ...).LoadBuiltinCatalog(), pick entry "nai",
@@ -111,4 +111,4 @@ GOFLAGS=-mod=mod go run .
 ```
 
 Questions about the nAI side go to the user (or the NithronAI session); nAI's own notes are in the NithronAI repo
-README and `packaging/nithronos/README.md`.
+README and `packaging/nos/README.md`.

@@ -295,7 +295,7 @@ func (hm *HTTPSManager) generateCaddyConfig(config *HTTPSConfig) (string, error)
 	
 	# Static files (React app)
 	handle {
-		root * /usr/share/nithronos/web
+		root * /usr/share/nos/web
 		try_files {path} /index.html
 		file_server
 	}

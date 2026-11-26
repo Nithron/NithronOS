@@ -1,4 +1,4 @@
-module nithronos/backend/nosd
+module nos/backend/nosd
 
 go 1.24
 

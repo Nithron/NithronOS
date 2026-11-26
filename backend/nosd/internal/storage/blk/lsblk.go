@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"nithronos/backend/nosd/pkg/agentclient"
-	"nithronos/backend/nosd/pkg/shell"
+	"nos/backend/nosd/pkg/agentclient"
+	"nos/backend/nosd/pkg/shell"
 )
 
 var ErrNoLsblk = errors.New("lsblk not found")

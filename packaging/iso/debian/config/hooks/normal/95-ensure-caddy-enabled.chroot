@@ -5,7 +5,7 @@ echo "[95-ensure-caddy] Setting up Caddy directories and permissions..."
 
 # Create necessary directories
 mkdir -p /var/log/caddy
-mkdir -p /usr/share/nithronos/web
+mkdir -p /usr/share/nos/web
 
 # Create caddy user if it doesn't exist
 if ! id -u caddy >/dev/null 2>&1; then

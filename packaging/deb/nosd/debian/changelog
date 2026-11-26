@@ -1,9 +1,9 @@
 nosd (0.9.5~pre-alpha-1) unstable; urgency=medium
 
-  * Align the package version with the NithronOS release (0.9.5-pre-alpha); the
+  * Align the package version with the nOS release (0.9.5-pre-alpha); the
     VERSION file at the repository root is now the single source.
 
- -- NithronOS Maintainers <maintainers@nithron.com>  Sat, 21 Nov 2026 19:13:49 +0100
+ -- nOS Maintainers <maintainers@nithron.com>  Sat, 21 Nov 2026 19:13:49 +0100
 
 nosd (0.1.1-2) unstable; urgency=medium
 
@@ -12,10 +12,10 @@ nosd (0.1.1-2) unstable; urgency=medium
   * Use StateDirectory=nos and ConfigurationDirectory=nos.
   * Add sysusers/tmpfiles for nosd user/group and dirs.
 
- -- NithronOS Maintainers <maintainers@nithron.com>  Sat, 23 Aug 2025 13:00:00 +0000
+ -- nOS Maintainers <maintainers@nithron.com>  Sat, 23 Aug 2025 13:00:00 +0000
 
 nosd (0.1.1-1) unstable; urgency=medium
 
   * Initial Debian packaging.
 
- -- NithronOS Maintainers <maintainers@nithron.com>  Wed, 20 Aug 2025 12:00:00 +0000
+ -- nOS Maintainers <maintainers@nithron.com>  Wed, 20 Aug 2025 12:00:00 +0000

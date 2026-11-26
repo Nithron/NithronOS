@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"nithronos/backend/nosd/internal/version"
+	"nos/backend/nosd/internal/version"
 )
 
 // APIRoute is one method and path the router serves.
@@ -75,7 +75,7 @@ func OpenAPIDocument(routes []APIRoute) map[string]any {
 	return map[string]any{
 		"openapi": "3.0.3",
 		"info": map[string]any{
-			"title":       "NithronOS API",
+			"title":       "nOS API",
 			"version":     version.Version,
 			"description": "Generated from the nosd router (cmd/route-dump -format openapi); do not edit by hand.",
 		},

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"nithronos/backend/nosd/pkg/agentclient"
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/pkg/agentclient"
+	"nos/backend/nosd/pkg/httpx"
 )
 
 // POST /api/v1/pools/scrub/start { mount }

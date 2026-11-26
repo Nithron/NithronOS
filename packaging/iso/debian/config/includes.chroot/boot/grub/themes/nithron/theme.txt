@@ -1,8 +1,8 @@
-# NithronOS GRUB Theme
+# nOS GRUB Theme
 # Based on brand colors from palette.json
 
 # Global properties
-title-text: "NithronOS"
+title-text: "nOS"
 title-font: "DroidSans-Bold-32"
 title-color: "#E6EDF7"
 desktop-image: "background.png"
@@ -10,13 +10,13 @@ desktop-color: "#0B0E13"
 terminal-font: "DroidSans-32"
 terminal-box: "terminal_*.png"
 
-# NithronOS Logo
+# nOS Logo
 + image {
   left = 50%-64
   top = 10%
   width = 128
   height = 128
-  file = "nithronos-logo-mark.png"
+  file = "nos-logo-mark.png"
 }
 
 # Boot menu styling

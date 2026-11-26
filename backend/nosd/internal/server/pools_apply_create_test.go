@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/internal/pools"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/pools"
 )
 
 func TestApplyCreatePersistsMountOptions(t *testing.T) {

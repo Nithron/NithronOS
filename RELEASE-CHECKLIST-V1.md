@@ -1,4 +1,4 @@
-# NithronOS v1.0 Release Checklist
+# nOS v1.0 Release Checklist
 
 This checklist must be completed before the v1.0 release can be published.
 
@@ -158,9 +158,9 @@ These items must be manually verified before release:
 
 Ensure all artifacts are present:
 
-- [x] `nithronos-1.0.0-amd64.iso`
-- [x] `nithronos-1.0.0-amd64.iso.sig`
-- [x] `nithronos-1.0.0-amd64.iso.sha256`
+- [x] `nos-1.0.0-amd64.iso`
+- [x] `nos-1.0.0-amd64.iso.sig`
+- [x] `nos-1.0.0-amd64.iso.sha256`
 - [x] `nosd_1.0.0_amd64.deb`
 - [x] `nos-agent_1.0.0_amd64.deb`
 - [x] `nos-web_1.0.0_amd64.deb`
