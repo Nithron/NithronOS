@@ -137,7 +137,7 @@ Grouped by feature. Each item lists the evidence.
 
 **Network / remote access**: `net_handler.go:474-633` are TODOs/placeholders (store WG/HTTPS config, enable WG, configure HTTPS, apply firewall, interface/port enumeration). Real WG keypairs. Implement or remove the UI-only endpoints (`/network/dns`, `/network/https/{generate,upload,toggle}`, `/network/wireguard/*`, `/firewall/*`).
 
-**Updates**: UI calls `/updates/{channel,progress,progress/stream,snapshots,version}`, which don't exist. Decide on `pkg/updates` + `pkg/snapcfg` (pre-update snapshot + rollback) and wire them; `updater.go:593` "just mark it as failed".
+**Updates**: two implementations: the router's inline `/api/v1/updates/{check,apply,rollback}` (agent plan/apply with a snapshot first, admin-only) wins over `UpdatesHandler` (`/check` POST, `/apply` unreachable). Keep one. UI calls `/updates/{channel,progress,progress/stream,snapshots,version}`, which don't exist. Decide on `pkg/updates` + `pkg/snapcfg` (pre-update snapshot + rollback) and wire them; `updater.go:593` "just mark it as failed".
 
 **Apps**: log streaming (`internal/apps/manager.go:292`, `apps_handler.go:306`), `/apps/schema/{id}` (the UI uses hard-coded `mockSchemas`), and git catalog sources (`pkg/apps/catalog.go:173`).
 

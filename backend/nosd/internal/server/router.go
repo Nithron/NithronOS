@@ -269,29 +269,11 @@ func NewRouter(cfg config.Config) http.Handler {
 		writeJSON(w, map[string]any{"ok": true, "version": version.Version})
 	})
 
-	// Health monitoring endpoints (for real-time data)
-	r.Get("/api/v1/health/system", handleSystemHealth(cfg))
-	r.Get("/api/v1/health/disks", handleDiskHealth(cfg))
-	r.Get("/api/v1/monitoring/system", handleSystemHealth(cfg)) // Reuse system health for monitoring
-
-	// Metrics endpoints allowed without /api prefix for tech monitoring
-	r.Get("/metrics", handleSystemHealth(cfg))
-	r.Get("/metrics/all", handleMetricsStream(cfg))
-
-	// Dashboard endpoints (v1)
-	r.Get("/api/v1/dashboard", api.HandleDashboard)
-	r.Get("/api/v1/storage/summary", api.HandleStorageSummary)
-	r.Get("/api/v1/health/disks/summary", api.HandleDisksSummary)
-	r.Get("/api/v1/events/recent", api.HandleRecentEvents)
-	r.Get("/api/v1/maintenance/status", api.HandleMaintenanceStatus)
-
-	// Storage: block device inventory
-	r.Get("/api/v1/storage/devices", handleListDevices)
-	// SMART health proxy
-	r.Get("/api/v1/health/smart", handleSmartProxy)
-
-	// Storage: block device inventory
-	r.Get("/api/v1/storage/devices", handleListDevices)
+	// Everything else that reports on the system is registered once, inside
+	// the authenticated group below. (These used to be registered here as
+	// well, outside authentication, where they took priority: the disk
+	// inventory, SMART data and system details were public, and /metrics and
+	// /metrics/all replaced the Prometheus endpoints with JSON.)
 
 	// Recovery routes (localhost only)
 	if cfg.RecoveryMode {
@@ -1237,17 +1219,21 @@ func NewRouter(cfg config.Config) http.Handler {
 			// Admin operations
 			pr.With(adminRequired).Post("/api/v1/apps/catalog/sync", handleSyncCatalogs(appsManager))
 		} else {
-			// Fallback: provide minimal implementations so FE endpoints exist
-			pr.Get("/api/v1/apps/catalog", func(w http.ResponseWriter, r *http.Request) {
-				writeJSON(w, apps.Catalog(cfg.AppsInstallDir))
-			})
-			pr.Get("/api/v1/apps/installed", func(w http.ResponseWriter, r *http.Request) {
-				writeJSON(w, map[string]any{"items": []any{}})
-			})
-			pr.Get("/api/v1/apps/{id}", func(w http.ResponseWriter, r *http.Request) {
-				httpx.WriteError(w, http.StatusNotFound, "App not found")
-			})
+			// No stubs: say the app runtime is unavailable instead of showing an
+			// empty catalog.
+			pr.Mount("/api/v1/apps", unavailable("apps.unavailable", "Apps are unavailable: the app manager could not start (see the nosd log)"))
 		}
+
+		// System status for the dashboard and health pages
+		pr.Get("/api/v1/health/system", handleSystemHealth(cfg))
+		pr.Get("/api/v1/health/disks", handleDiskHealth(cfg))
+		pr.Get("/api/v1/health/disks/summary", api.HandleDisksSummary)
+		pr.Get("/api/v1/health/smart", handleSmartProxy)
+		pr.Get("/api/v1/dashboard", api.HandleDashboard)
+		pr.Get("/api/v1/storage/summary", api.HandleStorageSummary)
+		pr.Get("/api/v1/storage/devices", handleListDevices)
+		pr.Get("/api/v1/events/recent", api.HandleRecentEvents)
+		pr.Get("/api/v1/maintenance/status", api.HandleMaintenanceStatus)
 
 		// Health endpoints
 		healthHandler := NewHealthHandler(agentclient.New(cfg.AgentSocket()))
@@ -1936,121 +1922,6 @@ type DiskIOStats struct {
 	WriteOps   uint64 `json:"writeOps"`
 	ReadSpeed  uint64 `json:"readSpeed"`
 	WriteSpeed uint64 `json:"writeSpeed"`
-}
-
-// handleMetricsStream emits SystemHealthResponse via SSE at 1Hz
-func handleMetricsStream(cfg config.Config) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("Connection", "keep-alive")
-		flusher, ok := w.(http.Flusher)
-		if !ok {
-			http.Error(w, "streaming unsupported", http.StatusInternalServerError)
-			return
-		}
-
-		ctx := r.Context()
-		ticker := time.NewTicker(1 * time.Second)
-		defer ticker.Stop()
-
-		// Send first event immediately
-		send := func() {
-			// Reuse handleSystemHealth logic by constructing the payload here
-			// Minimal duplication: compute a fresh snapshot
-			payload := captureSystemHealth()
-			b, _ := json.Marshal(payload)
-			_, _ = w.Write([]byte("data: "))
-			_, _ = w.Write(b)
-			_, _ = w.Write([]byte("\n\n"))
-			flusher.Flush()
-		}
-
-		send()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				send()
-			}
-		}
-	}
-}
-
-// captureSystemHealth builds a SystemHealthResponse snapshot quickly
-func captureSystemHealth() SystemHealthResponse {
-	h := SystemHealthResponse{Timestamp: time.Now().Unix()}
-	if cpuPercent, err := cpu.Percent(100*time.Millisecond, false); err == nil && len(cpuPercent) > 0 {
-		h.CPU = cpuPercent[0]
-	}
-	if loadAvg, err := load.Avg(); err == nil {
-		h.Load1 = loadAvg.Load1
-		h.Load5 = loadAvg.Load5
-		h.Load15 = loadAvg.Load15
-	}
-	if vmStat, err := mem.VirtualMemory(); err == nil {
-		h.Memory = MemoryInfo{
-			Total:     vmStat.Total,
-			Used:      vmStat.Used,
-			Free:      vmStat.Free,
-			Available: vmStat.Available,
-			UsagePct:  vmStat.UsedPercent,
-			Cached:    vmStat.Cached,
-			Buffers:   vmStat.Buffers,
-		}
-	}
-	if swapStat, err := mem.SwapMemory(); err == nil {
-		h.Swap = SwapInfo{Total: swapStat.Total, Used: swapStat.Used, Free: swapStat.Free, UsagePct: swapStat.UsedPercent}
-	}
-	if uptime, err := host.Uptime(); err == nil {
-		h.Uptime = int64(uptime)
-	}
-	if netStats, err := net.IOCounters(false); err == nil && len(netStats) > 0 {
-		current := netStats[0]
-		now := time.Now()
-		h.Network = NetworkInfo{BytesRecv: current.BytesRecv, BytesSent: current.BytesSent, PacketsRecv: current.PacketsRecv, PacketsSent: current.PacketsSent}
-		if !lastNetStatsTime.IsZero() {
-			duration := now.Sub(lastNetStatsTime).Seconds()
-			if duration > 0 {
-				h.Network.RxSpeed = uint64(float64(current.BytesRecv-lastNetStats.BytesRecv) / duration)
-				h.Network.TxSpeed = uint64(float64(current.BytesSent-lastNetStats.BytesSent) / duration)
-			}
-		}
-		lastNetStats = current
-		lastNetStatsTime = now
-	}
-	if diskStats, err := disk.IOCounters(); err == nil {
-		var totalRead, totalWrite, totalReadOps, totalWriteOps uint64
-		for _, stat := range diskStats {
-			totalRead += stat.ReadBytes
-			totalWrite += stat.WriteBytes
-			totalReadOps += stat.ReadCount
-			totalWriteOps += stat.WriteCount
-		}
-		now := time.Now()
-		h.DiskIO = DiskIOStats{ReadBytes: totalRead, WriteBytes: totalWrite, ReadOps: totalReadOps, WriteOps: totalWriteOps}
-		if !lastDiskStatsTime.IsZero() {
-			duration := now.Sub(lastDiskStatsTime).Seconds()
-			if duration > 0 {
-				h.DiskIO.ReadSpeed = uint64(float64(totalRead-lastDiskStats.ReadBytes) / duration)
-				h.DiskIO.WriteSpeed = uint64(float64(totalWrite-lastDiskStats.WriteBytes) / duration)
-			}
-		}
-		lastDiskStats = disk.IOCountersStat{ReadBytes: totalRead, WriteBytes: totalWrite}
-		lastDiskStatsTime = now
-	}
-	if runtime.GOOS == "linux" {
-		if temps, err := host.SensorsTemperatures(); err == nil {
-			for _, temp := range temps {
-				if temp.SensorKey == "coretemp_core_0" || temp.SensorKey == "cpu_thermal" {
-					h.TempCPU = &temp.Temperature
-					break
-				}
-			}
-		}
-	}
-	return h
 }
 
 // DiskHealthResponse represents a disk's health information

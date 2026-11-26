@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"nithronos/backend/nosd/internal/disks"
 	"nithronos/backend/nosd/internal/pools"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
@@ -116,7 +114,6 @@ func (h *StorageHandler) Routes() chi.Router {
 	r.Put("/pools/{uuid}/options", h.SetPoolMountOptions)
 
 	// Device endpoints
-	r.Get("/devices", h.GetDevices)
 
 	return r
 }
@@ -260,17 +257,6 @@ func (h *StorageHandler) SetPoolMountOptions(w http.ResponseWriter, r *http.Requ
 	log.Info().Str("uuid", uuid).Str("options", req.MountOptions).Msg("Updated mount options for pool")
 }
 
-// GetDevices returns all storage devices
-// GET /api/v1/storage/devices
-func (h *StorageHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
-	devices := h.getDevices(r.Context())
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(devices); err != nil {
-		fmt.Printf("Failed to write response: %v\n", err)
-	}
-}
-
 // getPools lists the Btrfs pools found on this machine. (It used to return a
 // made-up 2 TB RAID1 pool.)
 func (h *StorageHandler) getPools(ctx context.Context) []Pool {
@@ -289,45 +275,6 @@ func (h *StorageHandler) getPools(ctx context.Context) []Pool {
 			pool.Devices = append(pool.Devices, PoolDevice{Path: d})
 		}
 		out = append(out, pool)
-	}
-	return out
-}
-
-// getDevices lists the machine's disks (lsblk) and which pool uses them. (It
-// used to return four made-up disks.)
-func (h *StorageHandler) getDevices(ctx context.Context) []Device {
-	list, err := disks.Collect(ctx)
-	if err != nil {
-		log.Warn().Err(err).Msg("collect disks")
-		return []Device{}
-	}
-	inPool := map[string]string{}
-	for _, p := range h.getPools(ctx) {
-		for _, d := range p.Devices {
-			inPool[d.Path] = p.ID
-		}
-	}
-	out := []Device{}
-	for _, d := range list {
-		if d.Type != "disk" {
-			continue
-		}
-		dev := Device{Path: d.Path, Model: strings.TrimSpace(d.Model), Serial: d.Serial}
-		if d.SizeBytes > 0 {
-			dev.Size = uint64(d.SizeBytes)
-		}
-		if d.Rota != nil {
-			dev.Type = "ssd"
-			if *d.Rota {
-				dev.Type = "hdd"
-			}
-		}
-		if id, ok := inPool[d.Path]; ok {
-			dev.InUse, dev.Pool = true, id
-		} else if d.Mountpoint != nil || d.FSType != "" {
-			dev.InUse = true
-		}
-		out = append(out, dev)
 	}
 	return out
 }
