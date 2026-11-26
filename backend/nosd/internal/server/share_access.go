@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"nos/backend/nosd/internal/api"
 	userstore "nos/backend/nosd/internal/auth/store"
 	"nos/backend/nosd/internal/groups"
 	"nos/backend/nosd/internal/shares"
@@ -74,4 +75,41 @@ func (d *routeDeps) forgetUser(ctx context.Context, username string) {
 	if d.sharesApplier != nil {
 		d.sharesApplier.Apply(ctx)
 	}
+}
+
+// dashboardSources feeds the dashboard's shares and apps widgets from the
+// real stores (one row per protocol a share is exported over).
+func (d *routeDeps) dashboardSources() api.DashboardSources {
+	src := api.DashboardSources{}
+	if d.sharesStore != nil {
+		src.Shares = func() []api.ShareInfo {
+			out := []api.ShareInfo{}
+			for _, sh := range d.sharesStore.List() {
+				if sh.SMB != nil {
+					out = append(out, api.ShareInfo{Name: sh.Name, Proto: "SMB", Path: sh.Path, State: activeOrDisabled(sh.SMB.Enabled)})
+				}
+				if sh.NFS != nil {
+					out = append(out, api.ShareInfo{Name: sh.Name, Proto: "NFS", Path: sh.Path, State: activeOrDisabled(sh.NFS.Enabled)})
+				}
+			}
+			return out
+		}
+	}
+	if d.appsManager != nil {
+		src.Apps = func() []api.AppInfo {
+			out := []api.AppInfo{}
+			for _, a := range d.appsManager.GetInstalledApps() {
+				out = append(out, api.AppInfo{ID: a.ID, Name: a.Name, State: string(a.Status), Version: a.Version})
+			}
+			return out
+		}
+	}
+	return src
+}
+
+func activeOrDisabled(on bool) string {
+	if on {
+		return "active"
+	}
+	return "disabled"
 }
