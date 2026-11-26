@@ -1,7 +1,7 @@
 # nAI app for NithronOS: integration handoff
 
 > Written 2026-11-21 by the Claude session working on the **NithronAI** repo
-> (`/mnt/vault/Dev/Nithron/NithronAI`, github.com/Nithron/NithronAI), for the Claude session working on NithronOS.
+> (`/mnt/vault/Dev/Nithron/NithronAI`, github.com/Nithron-Intelligence/nAI), for the Claude session working on NithronOS.
 > The user asked for nAI to be added to the NithronOS app catalog and for this note to explain it.
 > Delete this file once the work below is done.
 
@@ -60,7 +60,7 @@ made as them with no Claude attribution, so check whether the same applies here.
 
 1. ~~**Image not published yet.**~~ **Resolved 2026-11-22:** `ghcr.io/nithron/nithronai/nai-core:0.4.0`
    (also `:0.4`, `:0`) is published and **public** (linux/amd64 + linux/arm64); an anonymous pull and start were
-   verified. Release: https://github.com/Nithron/NithronAI/releases/tag/v0.4.0
+   verified. Release: https://github.com/Nithron-Intelligence/nAI/releases/tag/v0.4.0
 2. **Data folder ownership.** `setAppOwnership` runs `chown -R nos:nos /srv/apps/<id>`, but app containers run as
    `PUID:PGID` (1000:1000 by default, here and in jellyfin/code-server). Unless `nos` happens to be uid 1000, nAI can't
    write `/srv/apps/nai/data` (its DB, uploads and model cache). Options: chown the data dir to the app's PUID:PGID at

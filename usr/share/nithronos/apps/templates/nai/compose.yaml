@@ -1,7 +1,7 @@
 version: '3.9'
 
 # nAI: "the AI that knows your NAS". Indexes NithronOS shares (read-only) and answers
-# questions about them with citations. Source: https://github.com/Nithron/NithronAI
+# questions about them with citations. Source: https://github.com/Nithron-Intelligence/nAI
 #
 # NithronOS specifics:
 # - The service is named `app` so the generated Caddy snippet (nos-app-<id>-app-1) reaches it.
@@ -12,7 +12,7 @@ version: '3.9'
 
 services:
   app:
-    image: ghcr.io/nithron/nithronai/nai-core:${NAI_VERSION:-0.4.0}
+    image: ghcr.io/nithron/nithronai/nai-core:${NAI_VERSION:-0.7.0}
     container_name: nos-app-nai-app-1
     restart: unless-stopped
     user: "${PUID:-1000}:${PGID:-1000}"
@@ -25,9 +25,10 @@ services:
       - ${SHARES_PATH:-/srv/shares}:/shares:ro
     environment:
       - NAI_AUTH_ENABLED=true
+      - NAI_NAS_PLATFORM=nithronos
       - NAI_SOURCES_ALLOWED_ROOTS=["/shares"]
       - NAI_EMBEDDINGS_ENABLED=true
-      - NAI_RERANKER=${RERANKER:-auto}
+      - NAI_RERANKER=${RERANKER:-off}
       - NAI_OCR_ENABLED=${OCR_ENABLED:-true}
       - NAI_OCR_LANGUAGES=${OCR_LANGUAGES:-eng+deu}
       # Generated answers (optional). Without a model, nAI answers with exact quotes.
@@ -52,7 +53,7 @@ services:
     labels:
       - "nos.app.id=nai"
       - "nos.app.name=nAI"
-      - "nos.app.version=${NAI_VERSION:-0.4.0}"
+      - "nos.app.version=${NAI_VERSION:-0.7.0}"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
