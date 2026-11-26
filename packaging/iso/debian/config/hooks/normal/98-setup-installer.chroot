@@ -16,11 +16,6 @@ else
     echo "[98-setup-installer] Warning: /usr/lib/nos/installer-welcome not found"
 fi
 
-# Make nos-agent executable
-if [ -f /usr/sbin/nos-agent ]; then
-    chmod +x /usr/sbin/nos-agent
-fi
-
 # Enable installer welcome service
 systemctl enable nos-installer-welcome.service || true
 

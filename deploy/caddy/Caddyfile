@@ -1,5 +1,6 @@
 {
-  admin off
+  # Admin API on a socket only root and caddy can reach (reloads need it).
+  admin unix//var/lib/caddy/admin.sock
   auto_https off
 }
 
@@ -8,6 +9,9 @@
 }
 
 :443 {
+  # Apps installed by nOS (written by nos-agent)
+  import /etc/caddy/Caddyfile.d/app-*.caddy
+
   # If you have certs on disk (recommended for IP SAN):
   tls /etc/ssl/nos/cert.pem /etc/ssl/nos/key.pem
 

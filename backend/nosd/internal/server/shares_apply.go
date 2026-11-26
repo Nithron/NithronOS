@@ -117,6 +117,8 @@ func (a *sharesApplier) applyAtStartup() {
 		st := a.Apply(ctx)
 		cancel()
 		if st.OK {
+			// The ISO install test looks for this line.
+			log.Info().Int("warnings", len(st.Warnings)).Msg("shares: configuration applied by nos-agent")
 			return
 		}
 		time.Sleep(10 * time.Second)

@@ -204,6 +204,7 @@ Grouped by feature. Each item lists the evidence.
 5. Prune `hooks/normal/` (25 hooks, several overlapping: `10-enable-services`, `91-enable-nos-services`, `95-ensure-caddy-enabled`, `041-enable-otp-announce`, `96-setup-otp-generator`) and the preset file.
 5. Caddy: verify the shipped Caddyfile serves the UI and proxies `/api` and WebDAV, with the self-signed TLS path (`nos-tls-gen`).
 6. Secure Boot: track shim signing as a known limitation.
+8. From phase 4: the ISO keeps its own copies of `nosd.service` and `caddy.service` in `includes.chroot` that differ from `deploy/systemd` (the ISO's nosd has no sandbox at all); use the packaged units. (Phase 4 already removed the ISO's Python stand-in `nos-agent`, which overwrote the Go agent from the deb so every agent endpoint returned 404 on ISO installs, and its unit override.)
 7. From phase 4: give the WireGuard and HTTPS managers agent operations (like `/v1/firewall/*`); make HTTPS edit only its own Caddy site block instead of regenerating the Caddyfile; decide which ACME challenges nOS supports with Debian's caddy; no outside service for the public address without the admin's consent.
 
 ---
