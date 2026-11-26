@@ -62,7 +62,7 @@ export function Settings2FA() {
   const { data: status, isLoading } = useQuery({
     queryKey: ['2fa-status'],
     queryFn: async () => {
-      const response = await api.get<any>('/api/v1/auth/2fa/status')
+      const response = await api.get<any>('/v1/auth/2fa/status')
       return response as TwoFactorStatus
     },
   })
@@ -71,14 +71,15 @@ export function Settings2FA() {
   const enableMutation = useMutation({
     mutationFn: async () => {
       // Step 1: Initialize 2FA
-      const initResponse = await api.post<any>('/api/v1/auth/2fa/enable', { password })
-      const { secret, qrcode, recoveryCodes } = initResponse
-      
+      // nosd: {secret, uri (otpauth://), qr_code, backup_codes}
+      const initResponse = await api.post<any>('/v1/auth/2fa/enroll', { password })
+      const { secret, uri, backup_codes } = initResponse
+
       setSecret(secret)
-      setRecoveryCodes(recoveryCodes)
-      
+      setRecoveryCodes(backup_codes || [])
+
       // Generate QR code
-      const qrDataUrl = await QRCode.toDataURL(qrcode)
+      const qrDataUrl = await QRCode.toDataURL(uri)
       setQrCodeUrl(qrDataUrl)
       
       return initResponse
@@ -91,7 +92,7 @@ export function Settings2FA() {
   // Verify 2FA mutation
   const verifyMutation = useMutation({
     mutationFn: async () => {
-      const response = await api.post<any>('/api/v1/auth/2fa/verify', {
+      const response = await api.post<any>('/v1/auth/2fa/verify', {
         code: verificationCode,
         secret,
       })
@@ -111,7 +112,7 @@ export function Settings2FA() {
   // Disable 2FA mutation
   const disableMutation = useMutation({
     mutationFn: async () => {
-      const response = await api.post<any>('/api/v1/auth/2fa/disable', {
+      const response = await api.post<any>('/v1/auth/2fa/disable', {
         password,
         code: verificationCode,
       })
@@ -131,8 +132,8 @@ export function Settings2FA() {
   // Generate recovery codes mutation
   const generateRecoveryMutation = useMutation({
     mutationFn: async () => {
-      const response = await api.post<any>('/api/v1/auth/2fa/recovery/generate', { password })
-      return response.codes
+      const response = await api.post<any>('/v1/auth/2fa/backup-codes', { password })
+      return response.backup_codes
     },
     onSuccess: (codes) => {
       setRecoveryCodes(codes)

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/rs/zerolog/log"
@@ -57,6 +58,9 @@ type UsersHandler struct {
 	store    *userstore.Store
 	sessions userSessions
 	config   config.Config
+	// onDeleted runs after a user is deleted (takes them out of groups and
+	// share access lists). Nil does nothing.
+	onDeleted func(ctx context.Context, username string)
 }
 
 // userSessions is what UsersHandler needs from the session store.
@@ -281,6 +285,8 @@ func (h *UsersHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	gone, findErr := h.store.FindByID(userID)
+
 	// The store refuses to delete the last administrator. (This used to refuse
 	// every admin, and for other users it re-saved the remaining users without
 	// ever removing the deleted one, so nobody was actually deleted.)
@@ -298,6 +304,9 @@ func (h *UsersHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	// A deleted user's browsers are signed out at once.
 	if err := h.sessions.RevokeAll(userID); err != nil {
 		log.Error().Err(err).Str("uid", userID).Msg("revoke sessions of deleted user")
+	}
+	if findErr == nil && h.onDeleted != nil {
+		h.onDeleted(r.Context(), gone.Username)
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -424,6 +433,7 @@ func (h *UsersHandler) Routes() chi.Router {
 
 	// Password management
 	r.Post("/{id}/password", h.ChangePassword)
+	r.Post("/{id}/reset-password", h.ResetPassword)
 
 	// Role management
 	r.Post("/{id}/roles", h.SetUserRoles)
@@ -622,4 +632,42 @@ func generateRecoveryCode() string {
 		b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
 	}
 	return string(b)
+}
+
+// ResetPassword sets another user's password (the users API is for admins;
+// /{id}/password is a user changing their own, with the current one). The
+// user's sessions end and a lockout is cleared.
+func (h *UsersHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "id")
+	var req struct {
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&req); err != nil {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "user.invalid_body", "Invalid request body", 0)
+		return
+	}
+	if len(req.Password) < 8 {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "user.weak_password", "Password must be at least 8 characters", 0)
+		return
+	}
+	u, err := h.store.FindByID(userID)
+	if err != nil {
+		httpx.WriteTypedError(w, http.StatusNotFound, "user.not_found", "User not found", 0)
+		return
+	}
+	hashed, err := hash.HashPassword(req.Password)
+	if err != nil {
+		httpx.WriteTypedError(w, http.StatusInternalServerError, "user.hash_failed", "Failed to hash password", 0)
+		return
+	}
+	u.PasswordHash, u.FailedAttempts, u.LockedUntil = hashed, 0, ""
+	u.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	if err := h.store.UpsertUser(u); err != nil {
+		httpx.WriteTypedError(w, http.StatusInternalServerError, "user.save_failed", "Failed to save the user", 0)
+		return
+	}
+	if err := h.sessions.RevokeAll(userID); err != nil {
+		log.Error().Err(err).Str("uid", userID).Msg("revoke sessions after password reset")
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

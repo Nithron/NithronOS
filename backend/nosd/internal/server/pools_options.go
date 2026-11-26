@@ -1,9 +1,12 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -18,36 +21,94 @@ import (
 	"nos/backend/nosd/pkg/httpx"
 )
 
+// poolOptionsRecord is what nOS remembers about a pool in pools.json.
 type poolOptionsRecord struct {
-	Mount        string   `json:"mount"`
-	MountOptions string   `json:"mountOptions"`
-	Devices      []string `json:"devices,omitempty"`
+	Name         string    `json:"name,omitempty"`
+	Mount        string    `json:"mount"`
+	UUID         string    `json:"uuid,omitempty"`
+	MountOptions string    `json:"mountOptions"`
+	Devices      []string  `json:"devices,omitempty"`
+	CreatedAt    time.Time `json:"createdAt,omitzero"`
 }
 
+// poolOptionsStore is pools.json: {"records": [...]}. Pool import and create
+// used to write a bare list instead, so each kind of write wiped the other's
+// records; a bare list is still read and saved back in this format.
 type poolOptionsStore struct {
 	Records []poolOptionsRecord `json:"records"`
 }
 
 func poolsStorePath(cfg config.Config) string { return filepath.Join(cfg.EtcDir, "nos", "pools.json") }
 
-func loadPoolOptions(cfg config.Config) (poolOptionsStore, error) {
+func readPoolsFile(path string) (poolOptionsStore, error) {
 	var st poolOptionsStore
-	_, _ = fsatomic.LoadJSON(poolsStorePath(cfg), &st)
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return st, nil
+	}
+	if err != nil {
+		return st, err
+	}
+	data = bytes.TrimSpace(data)
+	switch {
+	case len(data) == 0:
+		return st, nil
+	case data[0] == '[':
+		// The old list (its keys were Go field names; JSON matching ignores case).
+		err = json.Unmarshal(data, &st.Records)
+	default:
+		err = json.Unmarshal(data, &st)
+	}
+	if err != nil {
+		return poolOptionsStore{}, fmt.Errorf("parse %s: %w", path, err)
+	}
 	return st, nil
+}
+
+func loadPoolOptions(cfg config.Config) (poolOptionsStore, error) {
+	return readPoolsFile(poolsStorePath(cfg))
 }
 
 // updatePoolOptions loads the pool options store, applies mutate and saves it,
 // all under one exclusive lock. Never call it while already holding the
 // pools.json lock: flock locks are per open file, so a nested lock from the
-// same process blocks forever.
+// same process blocks forever. A file that can't be parsed is left alone.
 func updatePoolOptions(cfg config.Config, mutate func(st *poolOptionsStore)) error {
 	return fsatomic.WithLock(poolsStorePath(cfg), func() error {
-		var st poolOptionsStore
-		if _, err := fsatomic.LoadJSON(poolsStorePath(cfg), &st); err != nil {
+		st, err := readPoolsFile(poolsStorePath(cfg))
+		if err != nil {
 			return err
 		}
 		mutate(&st)
 		return fsatomic.SaveJSON(poolsStorePath(cfg), st, 0o600)
+	})
+}
+
+// recordPool adds rec, or fills in the record with the same mount point.
+func recordPool(cfg config.Config, rec poolOptionsRecord) error {
+	return updatePoolOptions(cfg, func(st *poolOptionsStore) {
+		for i := range st.Records {
+			if st.Records[i].Mount == rec.Mount {
+				cur := &st.Records[i]
+				if rec.Name != "" {
+					cur.Name = rec.Name
+				}
+				if rec.UUID != "" {
+					cur.UUID = rec.UUID
+				}
+				if rec.MountOptions != "" {
+					cur.MountOptions = rec.MountOptions
+				}
+				if len(rec.Devices) > 0 {
+					cur.Devices = rec.Devices
+				}
+				return
+			}
+		}
+		if rec.CreatedAt.IsZero() {
+			rec.CreatedAt = time.Now().UTC()
+		}
+		st.Records = append(st.Records, rec)
 	})
 }
 

@@ -23,7 +23,7 @@ func (d *routeDeps) registerSettings(pr chi.Router) {
 
 	// Network endpoints (M4)
 	netLogger := Logger(cfg)
-	netHandler, err := NewNetHandler(*netLogger)
+	netHandler, err := NewNetHandler(*netLogger, d.agentClient)
 	if err != nil {
 		netLogger.Error().Err(err).Msg("Failed to create network handler")
 		// Continue without networking features
@@ -32,11 +32,11 @@ func (d *routeDeps) registerSettings(pr chi.Router) {
 	}
 
 	// Updates endpoints (M5)
-	updatesHandler := NewUpdatesHandler(cfg)
-	pr.Mount("/api/v1/updates", updatesHandler.Routes())
+	d.registerUpdates(pr)
 
 	// Users management endpoints
 	usersHandler := NewUsersHandler(users, mgr, cfg)
+	usersHandler.onDeleted = d.forgetUser
 	pr.With(adminRequired).Mount("/api/v1/users", usersHandler.Routes())
 
 	// Appearance settings endpoints

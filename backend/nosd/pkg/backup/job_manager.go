@@ -27,7 +27,7 @@ func (jm *JobManager) AddJob(job *BackupJob) {
 	jm.mu.Lock()
 	defer jm.mu.Unlock()
 
-	jm.jobs[job.ID] = job
+	jm.jobs[job.ID] = job.clone()
 	jm.logger.Info().
 		Str("id", job.ID).
 		Str("type", job.Type).
@@ -35,11 +35,30 @@ func (jm *JobManager) AddJob(job *BackupJob) {
 }
 
 // UpdateJob updates an existing job
+// UpdateJob stores a copy of job. The job's runner keeps its own copy (jobs
+// used to be one shared pointer that runners wrote while readers read it);
+// the log stays the stored one (AddLogEntry), and a canceled job stays
+// canceled.
 func (jm *JobManager) UpdateJob(job *BackupJob) {
 	jm.mu.Lock()
 	defer jm.mu.Unlock()
 
-	jm.jobs[job.ID] = job
+	next := job.clone()
+	if cur, ok := jm.jobs[job.ID]; ok {
+		next.LogEntries = cur.LogEntries
+		if cur.State == JobStateCanceled {
+			next.State, next.FinishedAt = cur.State, cur.FinishedAt
+		}
+	}
+	jm.jobs[job.ID] = next
+}
+
+// clone copies a job so the copy shares no slices with it.
+func (j *BackupJob) clone() *BackupJob {
+	c := *j
+	c.LogEntries = append([]LogEntry(nil), j.LogEntries...)
+	c.Subvolumes = append([]string(nil), j.Subvolumes...)
+	return &c
 }
 
 // GetJob returns a job by ID
@@ -48,7 +67,10 @@ func (jm *JobManager) GetJob(id string) (*BackupJob, bool) {
 	defer jm.mu.RUnlock()
 
 	job, ok := jm.jobs[id]
-	return job, ok
+	if !ok {
+		return nil, false
+	}
+	return job.clone(), true
 }
 
 // ListJobs returns all jobs
@@ -58,7 +80,7 @@ func (jm *JobManager) ListJobs() []*BackupJob {
 
 	jobs := make([]*BackupJob, 0, len(jm.jobs))
 	for _, job := range jm.jobs {
-		jobs = append(jobs, job)
+		jobs = append(jobs, job.clone())
 	}
 
 	return jobs

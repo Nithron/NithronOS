@@ -27,21 +27,45 @@ type Scheduler struct {
 	jobManager  *JobManager
 }
 
-// AgentClient interface for privileged operations
+// AgentClient is what backups need from nos-agent (nosd can't snapshot,
+// send or roll back Btrfs subvolumes itself). There are no pre/post hooks:
+// they would run any shell command as root.
 type AgentClient interface {
-	CreateSnapshot(subvolume string, path string, readOnly bool) error
-	DeleteSnapshot(path string) error
-	GetSnapshotInfo(path string) (*SnapshotInfo, error)
-	ExecuteHook(command string) error
+	// CreateSnapshot makes a read-only snapshot of subvolume in its
+	// .snapshots folder; the agent names it <time>-<tag>.
+	CreateSnapshot(subvolume, tag string) (SnapshotInfo, error)
+	DeleteSnapshot(snap *Snapshot) error
+	RollbackSnapshot(snap *Snapshot, stopServices []string) error
+	Send(req SendRequest) error
+	SendStatus(job string) (SendStatus, error)
 }
 
-// SnapshotInfo contains snapshot details from agent
+// SnapshotInfo is a snapshot the agent made.
 type SnapshotInfo struct {
+	ID        string // the agent's name for it
 	Path      string
 	Subvolume string
-	SizeBytes int64
-	ReadOnly  bool
 	CreatedAt time.Time
+}
+
+// SendRequest replicates one snapshot (nos-agent /v1/backup/send).
+type SendRequest struct {
+	Job      string `json:"job"`
+	Snapshot string `json:"snapshot"`
+	Parent   string `json:"parent,omitempty"`
+	Target   string `json:"target"` // ssh, local
+	Host     string `json:"host,omitempty"`
+	Port     int    `json:"port,omitempty"`
+	User     string `json:"user,omitempty"`
+	Path     string `json:"path"`
+	Key      string `json:"key,omitempty"`
+}
+
+// SendStatus is the state of a replication (nos-agent /v1/backup/status).
+type SendStatus struct {
+	State      string   `json:"state"` // none, running, succeeded, failed
+	ExitStatus int      `json:"exit_status"`
+	Log        []string `json:"log"`
 }
 
 // NewScheduler creates a new backup scheduler
@@ -134,7 +158,7 @@ func (s *Scheduler) CreateSchedule(schedule *Schedule) error {
 	}
 
 	// Save state
-	if err := s.saveState(); err != nil {
+	if err := s.saveStateLocked(); err != nil {
 		return fmt.Errorf("failed to save state: %w", err)
 	}
 
@@ -183,7 +207,7 @@ func (s *Scheduler) UpdateSchedule(id string, update *Schedule) error {
 	}
 
 	// Save state
-	if err := s.saveState(); err != nil {
+	if err := s.saveStateLocked(); err != nil {
 		return fmt.Errorf("failed to save state: %w", err)
 	}
 
@@ -210,7 +234,7 @@ func (s *Scheduler) DeleteSchedule(id string) error {
 	delete(s.schedules, id)
 
 	// Save state
-	if err := s.saveState(); err != nil {
+	if err := s.saveStateLocked(); err != nil {
 		return fmt.Errorf("failed to save state: %w", err)
 	}
 
@@ -292,7 +316,7 @@ func (s *Scheduler) DeleteSnapshot(id string) error {
 	}
 
 	// Delete via agent
-	if err := s.agentClient.DeleteSnapshot(snapshot.Path); err != nil {
+	if err := s.agentClient.DeleteSnapshot(snapshot); err != nil {
 		return fmt.Errorf("failed to delete snapshot: %w", err)
 	}
 
@@ -300,7 +324,7 @@ func (s *Scheduler) DeleteSnapshot(id string) error {
 	s.removeSnapshot(snapshot)
 
 	// Save state
-	if err := s.saveState(); err != nil {
+	if err := s.saveStateLocked(); err != nil {
 		return fmt.Errorf("failed to save state: %w", err)
 	}
 
@@ -383,6 +407,9 @@ func (s *Scheduler) validateSchedule(schedule *Schedule) error {
 
 	if len(schedule.Subvolumes) == 0 {
 		return fmt.Errorf("at least one subvolume is required")
+	}
+	if len(schedule.PreHooks) > 0 || len(schedule.PostHooks) > 0 {
+		return fmt.Errorf("pre- and post-hooks are not supported")
 	}
 
 	// Validate frequency
@@ -509,35 +536,12 @@ func (s *Scheduler) runSnapshotJob(job *BackupJob, subvolumes []string, tag stri
 	job.State = JobStateRunning
 	s.jobManager.UpdateJob(job)
 
-	// Run pre-hooks if specified
-	if schedule != nil && len(schedule.PreHooks) > 0 {
-		for _, hook := range schedule.PreHooks {
-			s.logger.Info().Str("hook", hook).Msg("Running pre-hook")
-			if err := s.agentClient.ExecuteHook(hook); err != nil {
-				s.logger.Error().Err(err).Str("hook", hook).Msg("Pre-hook failed")
-				job.State = JobStateFailed
-				job.Error = fmt.Sprintf("pre-hook failed: %v", err)
-				now := time.Now()
-				job.FinishedAt = &now
-				s.jobManager.UpdateJob(job)
-				return
-			}
-		}
-	}
-
 	// Create snapshots
 	var createdSnapshots []*Snapshot
 	for _, subvol := range subvolumes {
-		// Generate snapshot name
-		timestamp := time.Now().Format("20060102-150405")
-		if tag != "" {
-			timestamp = fmt.Sprintf("%s-%s", timestamp, tag)
-		}
-
-		snapshotPath := fmt.Sprintf("@snapshots/%s/%s", subvol, timestamp)
-
-		// Create snapshot via agent
-		if err := s.agentClient.CreateSnapshot(subvol, snapshotPath, true); err != nil {
+		// Create the snapshot via the agent (in the subvolume's .snapshots)
+		info, err := s.agentClient.CreateSnapshot(subvol, tag)
+		if err != nil {
 			s.logger.Error().Err(err).Str("subvolume", subvol).Msg("Failed to create snapshot")
 			job.State = JobStateFailed
 			job.Error = fmt.Sprintf("failed to create snapshot for %s: %v", subvol, err)
@@ -547,25 +551,13 @@ func (s *Scheduler) runSnapshotJob(job *BackupJob, subvolumes []string, tag stri
 			return
 		}
 
-		// Get snapshot info
-		info, err := s.agentClient.GetSnapshotInfo(snapshotPath)
-		if err != nil {
-			s.logger.Warn().Err(err).Str("path", snapshotPath).Msg("Failed to get snapshot info")
-			info = &SnapshotInfo{
-				Path:      snapshotPath,
-				Subvolume: subvol,
-				CreatedAt: time.Now(),
-				ReadOnly:  true,
-			}
-		}
-
 		// Create snapshot record
 		snapshot := &Snapshot{
 			ID:        uuid.New().String(),
+			AgentID:   info.ID,
 			Subvolume: subvol,
-			Path:      snapshotPath,
+			Path:      info.Path,
 			CreatedAt: info.CreatedAt,
-			SizeBytes: info.SizeBytes,
 			ReadOnly:  true,
 			Tags:      []string{},
 		}
@@ -588,17 +580,6 @@ func (s *Scheduler) runSnapshotJob(job *BackupJob, subvolumes []string, tag stri
 		// Update progress
 		job.Progress = (len(createdSnapshots) * 100) / len(subvolumes)
 		s.jobManager.UpdateJob(job)
-	}
-
-	// Run post-hooks if specified
-	if schedule != nil && len(schedule.PostHooks) > 0 {
-		for _, hook := range schedule.PostHooks {
-			s.logger.Info().Str("hook", hook).Msg("Running post-hook")
-			if err := s.agentClient.ExecuteHook(hook); err != nil {
-				s.logger.Error().Err(err).Str("hook", hook).Msg("Post-hook failed")
-				// Don't fail the job for post-hook failures
-			}
-		}
 	}
 
 	// Apply retention if this was a scheduled backup
@@ -656,7 +637,7 @@ func (s *Scheduler) applyRetention(schedule *Schedule) {
 
 			if !keep {
 				s.logger.Info().Str("id", snap.ID).Str("path", snap.Path).Msg("Deleting snapshot per retention policy")
-				if err := s.agentClient.DeleteSnapshot(snap.Path); err != nil {
+				if err := s.agentClient.DeleteSnapshot(snap); err != nil {
 					s.logger.Error().Err(err).Str("path", snap.Path).Msg("Failed to delete snapshot")
 				} else {
 					s.removeSnapshot(snap)
@@ -818,8 +799,16 @@ func (s *Scheduler) loadState() error {
 	return nil
 }
 
+// saveState writes the state file; the caller must not hold mu.
 func (s *Scheduler) saveState() error {
 	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.saveStateLocked()
+}
+
+// saveStateLocked writes the state file; the caller holds mu. (saveState
+// used to take mu again while callers held it, which deadlocked.)
+func (s *Scheduler) saveStateLocked() error {
 	state := struct {
 		Schedules map[string]*Schedule   `json:"schedules"`
 		Snapshots map[string][]*Snapshot `json:"snapshots"`
@@ -827,7 +816,6 @@ func (s *Scheduler) saveState() error {
 		Schedules: s.schedules,
 		Snapshots: s.snapshots,
 	}
-	s.mu.RUnlock()
 
 	data, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {

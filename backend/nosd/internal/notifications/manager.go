@@ -1,8 +1,13 @@
 package notifications
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"log/syslog"
+	"net/http"
 	"net/smtp"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -320,26 +325,58 @@ func (m *Manager) sendEmail(channel *Channel, notif *Notification) {
 	}
 }
 
-// sendWebhook sends notification via webhook
+// webhookClient sends webhooks; the timeout keeps a slow endpoint from
+// piling up goroutines.
+var webhookClient = &http.Client{Timeout: 10 * time.Second}
+
+// sendWebhook POSTs the notification as JSON to the channel's URL.
 func (m *Manager) sendWebhook(channel *Channel, notif *Notification) {
-	url, _ := channel.Config["url"].(string)
-	if url == "" {
-		log.Error().Str("channel", channel.ID).Msg("Invalid webhook configuration")
+	target, _ := channel.Config["url"].(string)
+	u, err := url.Parse(target)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		log.Error().Str("channel", channel.ID).Msg("Webhook channel needs an http(s) URL")
 		return
 	}
-
-	// TODO: Implement webhook sending
-	log.Debug().Str("channel", channel.ID).Str("url", url).Msg("Webhook notification not yet implemented")
+	body, _ := json.Marshal(notif)
+	req, err := http.NewRequest(http.MethodPost, u.String(), bytes.NewReader(body))
+	if err != nil {
+		log.Error().Err(err).Str("channel", channel.ID).Msg("webhook request")
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "nOS-notifications")
+	resp, err := webhookClient.Do(req)
+	if err != nil {
+		log.Error().Err(err).Str("channel", channel.ID).Msg("webhook delivery failed")
+		return
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		log.Error().Int("status", resp.StatusCode).Str("channel", channel.ID).Msg("webhook rejected the notification")
+	}
 }
 
-// sendSyslog sends notification to syslog
+// syslogPriority maps a notification type to a syslog priority.
+func syslogPriority(kind string) syslog.Priority {
+	switch kind {
+	case "error":
+		return syslog.LOG_ERR
+	case "warning":
+		return syslog.LOG_WARNING
+	default:
+		return syslog.LOG_INFO
+	}
+}
+
+// sendSyslog writes the notification to the local syslog (journal).
 func (m *Manager) sendSyslog(channel *Channel, notif *Notification) {
-	// TODO: Implement syslog sending
-	log.Info().
-		Str("type", notif.Type).
-		Str("category", notif.Category).
-		Str("title", notif.Title).
-		Msg(notif.Message)
+	w, err := syslog.New(syslogPriority(notif.Type)|syslog.LOG_DAEMON, "nos")
+	if err != nil {
+		log.Error().Err(err).Str("channel", channel.ID).Msg("syslog unavailable")
+		return
+	}
+	defer w.Close()
+	_, _ = fmt.Fprintf(w, "[%s] %s: %s", notif.Category, notif.Title, notif.Message)
 }
 
 // List returns all notifications

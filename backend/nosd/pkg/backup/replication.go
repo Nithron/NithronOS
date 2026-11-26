@@ -1,12 +1,12 @@
 package backup
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +14,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
+
+// KnownHostsFile holds the SSH host keys of backup destinations (nosd tests
+// connections as nos, nos-agent sends as root; both use this file).
+const KnownHostsFile = "/var/lib/nos/backup/known_hosts"
 
 // Replicator handles backup replication to remote destinations
 type Replicator struct {
@@ -23,6 +27,25 @@ type Replicator struct {
 	keysDir      string
 	mu           sync.RWMutex
 	jobManager   *JobManager
+
+	// Set by Connect: the agent sends snapshots, snapshot finds them.
+	agent     AgentClient
+	snapshot  func(id string) (*Snapshot, bool)
+	pollEvery time.Duration
+}
+
+// Connect gives the replicator the agent and the scheduler's snapshots.
+func (r *Replicator) Connect(agent AgentClient, snapshots func() []*Snapshot) {
+	r.agent = agent
+	r.pollEvery = 3 * time.Second
+	r.snapshot = func(id string) (*Snapshot, bool) {
+		for _, s := range snapshots() {
+			if s.ID == id {
+				return s, true
+			}
+		}
+		return nil, false
+	}
 }
 
 // NewReplicator creates a new replicator
@@ -91,7 +114,7 @@ func (r *Replicator) CreateDestination(dest *Destination) error {
 	r.destinations[dest.ID] = dest
 
 	// Save state
-	if err := r.saveState(); err != nil {
+	if err := r.saveStateLocked(); err != nil {
 		return fmt.Errorf("failed to save state: %w", err)
 	}
 
@@ -123,7 +146,7 @@ func (r *Replicator) UpdateDestination(id string, update *Destination) error {
 	r.destinations[id] = update
 
 	// Save state
-	if err := r.saveState(); err != nil {
+	if err := r.saveStateLocked(); err != nil {
 		return fmt.Errorf("failed to save state: %w", err)
 	}
 
@@ -153,7 +176,7 @@ func (r *Replicator) DeleteDestination(id string) error {
 	delete(r.destinations, id)
 
 	// Save state
-	if err := r.saveState(); err != nil {
+	if err := r.saveStateLocked(); err != nil {
 		return fmt.Errorf("failed to save state: %w", err)
 	}
 
@@ -201,8 +224,6 @@ func (r *Replicator) TestDestination(id string) error {
 	switch dest.Type {
 	case "ssh":
 		err = r.testSSHDestination(dest)
-	case "rclone":
-		err = r.testRcloneDestination(dest)
 	case "local":
 		err = r.testLocalDestination(dest)
 	default:
@@ -262,37 +283,42 @@ func (r *Replicator) Replicate(destID string, snapshotID string, baseSnapshotID 
 
 // Private methods
 
+// The same rules as nos-agent's /v1/backup/send: these values reach ssh and
+// the remote shell, so only plain names and paths are accepted.
+var (
+	reDestHost = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9.:-]{0,252}$`)
+	reDestUser = regexp.MustCompile(`^[a-z_][a-z0-9_-]{0,31}$`)
+	reDestPath = regexp.MustCompile(`^/[A-Za-z0-9._/-]{0,254}$`)
+)
+
 func (r *Replicator) validateDestination(dest *Destination) error {
 	if dest.Name == "" {
 		return fmt.Errorf("destination name is required")
 	}
-
+	pathOK := reDestPath.MatchString(dest.Path) && !strings.Contains(dest.Path, "..")
 	switch dest.Type {
 	case "ssh":
-		if dest.Host == "" {
-			return fmt.Errorf("SSH host is required")
+		if !reDestHost.MatchString(dest.Host) {
+			return fmt.Errorf("SSH host: a host name or IP address")
 		}
-		if dest.User == "" {
-			return fmt.Errorf("SSH user is required")
+		if !reDestUser.MatchString(dest.User) {
+			return fmt.Errorf("SSH user: a plain user name")
 		}
-		if dest.Path == "" {
-			return fmt.Errorf("SSH path is required")
+		if !pathOK {
+			return fmt.Errorf("SSH path: an absolute path of letters, digits, '.', '_', '-' and '/'")
 		}
-	case "rclone":
-		if dest.RemoteName == "" {
-			return fmt.Errorf("rclone remote name is required")
-		}
-		if dest.RemotePath == "" {
-			return fmt.Errorf("rclone remote path is required")
+		if dest.Port < 0 || dest.Port > 65535 {
+			return fmt.Errorf("SSH port out of range")
 		}
 	case "local":
-		if dest.Path == "" {
-			return fmt.Errorf("local path is required")
+		if !pathOK {
+			return fmt.Errorf("local path: an absolute path of letters, digits, '.', '_', '-' and '/'")
 		}
+	case "rclone":
+		return fmt.Errorf("rclone destinations are not supported; use ssh or local")
 	default:
 		return fmt.Errorf("invalid destination type: %s", dest.Type)
 	}
-
 	return nil
 }
 
@@ -301,7 +327,7 @@ func (r *Replicator) testSSHDestination(dest *Destination) error {
 	sshArgs := []string{
 		"-o", "ConnectTimeout=10",
 		"-o", "StrictHostKeyChecking=accept-new",
-		"-o", "UserKnownHostsFile=/var/lib/nos/backup/known_hosts",
+		"-o", "UserKnownHostsFile=" + KnownHostsFile,
 		"-o", "BatchMode=yes",
 		"-p", fmt.Sprintf("%d", dest.Port),
 	}
@@ -316,7 +342,7 @@ func (r *Replicator) testSSHDestination(dest *Destination) error {
 	}
 
 	// Add user@host
-	sshArgs = append(sshArgs, fmt.Sprintf("%s@%s", dest.User, dest.Host))
+	sshArgs = append(sshArgs, "--", fmt.Sprintf("%s@%s", dest.User, dest.Host))
 
 	// Test command
 	sshArgs = append(sshArgs, "echo", "test")
@@ -329,27 +355,12 @@ func (r *Replicator) testSSHDestination(dest *Destination) error {
 	}
 
 	// Check if path exists
+	// dest.Path is validated (plain characters only); the remote shell runs it.
 	sshArgs[len(sshArgs)-2] = fmt.Sprintf("test -d %s || mkdir -p %s", dest.Path, dest.Path)
 	sshArgs[len(sshArgs)-1] = ""
 	cmd = exec.Command("ssh", sshArgs[:len(sshArgs)-1]...)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to access/create remote path: %w", err)
-	}
-
-	return nil
-}
-
-func (r *Replicator) testRcloneDestination(dest *Destination) error {
-	// Check if rclone is installed
-	if _, err := exec.LookPath("rclone"); err != nil {
-		return fmt.Errorf("rclone not found: %w", err)
-	}
-
-	// Test remote
-	cmd := exec.Command("rclone", "lsd", fmt.Sprintf("%s:%s", dest.RemoteName, dest.RemotePath))
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("rclone test failed: %w\nOutput: %s", err, string(output))
 	}
 
 	return nil
@@ -372,33 +383,14 @@ func (r *Replicator) testLocalDestination(dest *Destination) error {
 }
 
 func (r *Replicator) runReplication(job *BackupJob, dest *Destination, snapshotID string, baseSnapshotID string) {
-	// Update job state
 	job.State = JobStateRunning
 	r.jobManager.UpdateJob(job)
-
-	// Log start
 	r.jobManager.AddLogEntry(job.ID, "info", fmt.Sprintf("Starting replication to %s", dest.Name))
 
-	// TODO: Get snapshot details from snapshot manager
-	// For now, use placeholder paths
-	snapshotPath := fmt.Sprintf("@snapshots/test/%s", snapshotID)
+	err := r.send(job, dest, snapshotID, baseSnapshotID)
 
-	var err error
-	switch dest.Type {
-	case "ssh":
-		err = r.replicateSSH(job, dest, snapshotPath, baseSnapshotID)
-	case "rclone":
-		err = r.replicateRclone(job, dest, snapshotPath)
-	case "local":
-		err = r.replicateLocal(job, dest, snapshotPath, baseSnapshotID)
-	default:
-		err = fmt.Errorf("unsupported destination type: %s", dest.Type)
-	}
-
-	// Update job state
 	now := time.Now()
 	job.FinishedAt = &now
-
 	if err != nil {
 		job.State = JobStateFailed
 		job.Error = err.Error()
@@ -410,240 +402,61 @@ func (r *Replicator) runReplication(job *BackupJob, dest *Destination, snapshotI
 		r.jobManager.AddLogEntry(job.ID, "info", "Replication completed successfully")
 		r.logger.Info().Str("job", job.ID).Msg("Replication completed")
 	}
-
 	r.jobManager.UpdateJob(job)
 }
 
-func (r *Replicator) replicateSSH(job *BackupJob, dest *Destination, snapshotPath string, baseSnapshotID string) error {
-	// Build btrfs send command
-	sendArgs := []string{"send"}
-
-	// Add parent for incremental
+// send has nos-agent stream the snapshot with btrfs send (incrementally
+// from baseSnapshotID when given) and follows it until it ends.
+func (r *Replicator) send(job *BackupJob, dest *Destination, snapshotID, baseSnapshotID string) error {
+	if r.agent == nil {
+		return fmt.Errorf("replication is not connected to nos-agent")
+	}
+	snap, ok := r.snapshot(snapshotID)
+	if !ok {
+		return fmt.Errorf("snapshot not found: %s", snapshotID)
+	}
+	req := SendRequest{Job: job.ID, Snapshot: snap.Path, Path: dest.Path}
 	if baseSnapshotID != "" {
-		parentPath := fmt.Sprintf("@snapshots/test/%s", baseSnapshotID)
-		sendArgs = append(sendArgs, "-p", parentPath)
+		base, ok := r.snapshot(baseSnapshotID)
+		if !ok {
+			return fmt.Errorf("base snapshot not found: %s", baseSnapshotID)
+		}
+		req.Parent = base.Path
 	}
-
-	sendArgs = append(sendArgs, snapshotPath)
-
-	// Build SSH command
-	sshArgs := []string{
-		"-o", "StrictHostKeyChecking=accept-new",
-		"-o", "UserKnownHostsFile=/var/lib/nos/backup/known_hosts",
-		"-o", "BatchMode=yes",
-		"-p", fmt.Sprintf("%d", dest.Port),
+	switch dest.Type {
+	case "ssh":
+		req.Target, req.Host, req.Port, req.User, req.Key = "ssh", dest.Host, dest.Port, dest.User, dest.KeyRef
+	case "local":
+		req.Target = "local"
+	default:
+		return fmt.Errorf("%s destinations are not supported; use ssh or local", dest.Type)
 	}
-
-	// Add key if specified
-	if dest.KeyRef != "" {
-		keyPath := filepath.Join(r.keysDir, dest.KeyRef)
-		sshArgs = append(sshArgs, "-i", keyPath)
+	if err := r.agent.Send(req); err != nil {
+		return err
 	}
-
-	// Add user@host and receive command
-	// remotePath := filepath.Join(dest.Path, filepath.Base(snapshotPath)) // TODO: use for validation
-	sshArgs = append(sshArgs,
-		fmt.Sprintf("%s@%s", dest.User, dest.Host),
-		fmt.Sprintf("btrfs receive %s", dest.Path),
-	)
-
-	// Create send command
-	sendCmd := exec.Command("btrfs", sendArgs...)
-
-	// Create SSH command
-	sshCmd := exec.Command("ssh", sshArgs...)
-
-	// Create pipe
-	pipe, err := sendCmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("failed to create pipe: %w", err)
-	}
-	sshCmd.Stdin = pipe
-
-	// Handle bandwidth limiting if specified
-	if dest.BandwidthLimit > 0 {
-		// Use pv for bandwidth limiting
-		if _, err := exec.LookPath("pv"); err == nil {
-			pvCmd := exec.Command("pv", "-L", fmt.Sprintf("%dk", dest.BandwidthLimit))
-			pvCmd.Stdin = pipe
-
-			pvPipe, err := pvCmd.StdoutPipe()
-			if err != nil {
-				return fmt.Errorf("failed to create pv pipe: %w", err)
+	r.jobManager.AddLogEntry(job.ID, "info", "Sending "+snap.Path)
+	seen := 0
+	start := time.Now()
+	for {
+		st, err := r.agent.SendStatus(job.ID)
+		if err == nil {
+			for _, line := range st.Log[min(seen, len(st.Log)):] {
+				r.jobManager.AddLogEntry(job.ID, "info", line)
 			}
-			sshCmd.Stdin = pvPipe
-
-			// Start pv
-			if err := pvCmd.Start(); err != nil {
-				return fmt.Errorf("failed to start pv: %w", err)
+			seen = len(st.Log)
+			switch st.State {
+			case "succeeded":
+				return nil
+			case "failed":
+				return fmt.Errorf("btrfs send exited with status %d; see the job log", st.ExitStatus)
+			case "none":
+				if time.Since(start) > time.Minute {
+					return fmt.Errorf("the replication did not start")
+				}
 			}
-			defer func() { _ = pvCmd.Wait() }()
 		}
+		time.Sleep(r.pollEvery)
 	}
-
-	// Capture SSH stderr for logging
-	sshStderr, err := sshCmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("failed to create stderr pipe: %w", err)
-	}
-
-	// Start SSH command
-	if err := sshCmd.Start(); err != nil {
-		return fmt.Errorf("failed to start SSH: %w", err)
-	}
-
-	// Start send command
-	if err := sendCmd.Start(); err != nil {
-		return fmt.Errorf("failed to start btrfs send: %w", err)
-	}
-
-	// Read SSH stderr for progress
-	go func() {
-		scanner := bufio.NewScanner(sshStderr)
-		for scanner.Scan() {
-			line := scanner.Text()
-			r.jobManager.AddLogEntry(job.ID, "info", line)
-		}
-	}()
-
-	// Wait for send to complete
-	if err := sendCmd.Wait(); err != nil {
-		return fmt.Errorf("btrfs send failed: %w", err)
-	}
-
-	// Close pipe
-	pipe.Close()
-
-	// Wait for SSH to complete
-	if err := sshCmd.Wait(); err != nil {
-		return fmt.Errorf("SSH receive failed: %w", err)
-	}
-
-	return nil
-}
-
-func (r *Replicator) replicateRclone(job *BackupJob, dest *Destination, snapshotPath string) error {
-	// Check if rclone is installed
-	if _, err := exec.LookPath("rclone"); err != nil {
-		return fmt.Errorf("rclone not found: %w", err)
-	}
-
-	// Create temporary mount point
-	mountPoint := fmt.Sprintf("/tmp/backup-mount-%s", job.ID)
-	if err := os.MkdirAll(mountPoint, 0755); err != nil {
-		return fmt.Errorf("failed to create mount point: %w", err)
-	}
-	defer os.RemoveAll(mountPoint)
-
-	// Mount snapshot read-only
-	mountCmd := exec.Command("mount", "-o", "ro,subvol="+snapshotPath, "/dev/mapper/nos-root", mountPoint)
-	if err := mountCmd.Run(); err != nil {
-		return fmt.Errorf("failed to mount snapshot: %w", err)
-	}
-	defer func() { _ = exec.Command("umount", mountPoint).Run() }()
-
-	// Build rclone command
-	rcloneArgs := []string{
-		"sync",
-		mountPoint,
-		fmt.Sprintf("%s:%s/%s", dest.RemoteName, dest.RemotePath, filepath.Base(snapshotPath)),
-		"--progress",
-	}
-
-	// Add bandwidth limit if specified
-	if dest.BandwidthLimit > 0 {
-		rcloneArgs = append(rcloneArgs, "--bwlimit", fmt.Sprintf("%dk", dest.BandwidthLimit))
-	}
-
-	// Add transfers limit if specified
-	if dest.Concurrency > 0 {
-		rcloneArgs = append(rcloneArgs, "--transfers", fmt.Sprintf("%d", dest.Concurrency))
-	}
-
-	// Execute rclone
-	cmd := exec.Command("rclone", rcloneArgs...)
-
-	// Capture output for progress
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("failed to create stdout pipe: %w", err)
-	}
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start rclone: %w", err)
-	}
-
-	// Read progress
-	scanner := bufio.NewScanner(stdout)
-	for scanner.Scan() {
-		line := scanner.Text()
-		r.jobManager.AddLogEntry(job.ID, "info", line)
-
-		// Parse progress if possible
-		if strings.Contains(line, "%") {
-			// Extract percentage
-			// This is simplified; real implementation would parse rclone's progress format
-			job.Progress = 50 // Placeholder
-			r.jobManager.UpdateJob(job)
-		}
-	}
-
-	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("rclone sync failed: %w", err)
-	}
-
-	return nil
-}
-
-func (r *Replicator) replicateLocal(job *BackupJob, dest *Destination, snapshotPath string, baseSnapshotID string) error {
-	// For local replication, use btrfs send/receive to local path
-	sendArgs := []string{"send"}
-
-	// Add parent for incremental
-	if baseSnapshotID != "" {
-		parentPath := fmt.Sprintf("@snapshots/test/%s", baseSnapshotID)
-		sendArgs = append(sendArgs, "-p", parentPath)
-	}
-
-	sendArgs = append(sendArgs, snapshotPath)
-
-	// Create send command
-	sendCmd := exec.Command("btrfs", sendArgs...)
-
-	// Create receive command
-	receiveCmd := exec.Command("btrfs", "receive", dest.Path)
-
-	// Create pipe
-	pipe, err := sendCmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("failed to create pipe: %w", err)
-	}
-	receiveCmd.Stdin = pipe
-
-	// Start receive
-	if err := receiveCmd.Start(); err != nil {
-		return fmt.Errorf("failed to start btrfs receive: %w", err)
-	}
-
-	// Start send
-	if err := sendCmd.Start(); err != nil {
-		return fmt.Errorf("failed to start btrfs send: %w", err)
-	}
-
-	// Wait for send to complete
-	if err := sendCmd.Wait(); err != nil {
-		return fmt.Errorf("btrfs send failed: %w", err)
-	}
-
-	// Close pipe
-	pipe.Close()
-
-	// Wait for receive to complete
-	if err := receiveCmd.Wait(); err != nil {
-		return fmt.Errorf("btrfs receive failed: %w", err)
-	}
-
-	return nil
 }
 
 func (r *Replicator) loadState() error {
@@ -672,14 +485,21 @@ func (r *Replicator) loadState() error {
 	return nil
 }
 
+// saveState writes the state file; the caller must not hold mu.
 func (r *Replicator) saveState() error {
 	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.saveStateLocked()
+}
+
+// saveStateLocked writes the state file; the caller holds mu. (saveState
+// used to take mu again while callers held it, which deadlocked.)
+func (r *Replicator) saveStateLocked() error {
 	state := struct {
 		Destinations map[string]*Destination `json:"destinations"`
 	}{
 		Destinations: r.destinations,
 	}
-	r.mu.RUnlock()
 
 	data, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {
@@ -722,5 +542,5 @@ func (r *Replicator) StoreSSHKey(destID string, keyContent string) error {
 	}
 
 	// Save state
-	return r.saveState()
+	return r.saveStateLocked()
 }

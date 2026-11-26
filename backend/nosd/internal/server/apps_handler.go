@@ -284,27 +284,39 @@ func handleGetAppLogs(appManager *apps.Manager) http.HandlerFunc {
 			}
 		}
 
-		// Get logs
-		logs, err := appManager.GetAppLogs(r.Context(), appID, options)
-		if err != nil {
-			if strings.Contains(err.Error(), "not found") {
-				httpx.WriteError(w, http.StatusNotFound, "App not found")
-			} else if strings.Contains(err.Error(), "not yet implemented") {
-				httpx.WriteError(w, http.StatusNotImplemented, "Log streaming not yet implemented")
-			} else {
-				httpx.WriteError(w, http.StatusInternalServerError, "Failed to get logs")
+		// Following: server-sent events, one log line per event.
+		if options.Follow {
+			flusher, ok := w.(http.Flusher)
+			if !ok {
+				httpx.WriteError(w, http.StatusInternalServerError, "Streaming is not supported")
+				return
+			}
+			w.Header().Set("Content-Type", "text/event-stream")
+			w.Header().Set("Cache-Control", "no-cache")
+			w.Header().Set("X-Accel-Buffering", "no")
+			err := appManager.StreamAppLogs(r.Context(), appID, options, func(line string) error {
+				if _, err := fmt.Fprintf(w, "data: %s\n\n", line); err != nil {
+					return err
+				}
+				flusher.Flush()
+				return nil
+			})
+			if err != nil && r.Context().Err() == nil {
+				_, _ = fmt.Fprintf(w, "event: error\ndata: %s\n\n", err.Error())
+				flusher.Flush()
 			}
 			return
 		}
 
-		// If following, set up SSE
-		if options.Follow {
-			w.Header().Set("Content-Type", "text/event-stream")
-			w.Header().Set("Cache-Control", "no-cache")
-			w.Header().Set("Connection", "keep-alive")
-
-			// TODO: Implement SSE streaming
-			httpx.WriteError(w, http.StatusNotImplemented, "Log following not yet implemented")
+		logs, err := appManager.GetAppLogs(r.Context(), appID, options)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				httpx.WriteError(w, http.StatusNotFound, "App not found")
+			} else if strings.Contains(err.Error(), "invalid container") {
+				httpx.WriteError(w, http.StatusBadRequest, err.Error())
+			} else {
+				httpx.WriteTypedError(w, http.StatusBadGateway, "apps.logs_failed", err.Error(), 0)
+			}
 			return
 		}
 
@@ -313,6 +325,19 @@ func handleGetAppLogs(appManager *apps.Manager) http.HandlerFunc {
 		if _, err := w.Write(logs); err != nil {
 			fmt.Printf("Failed to write logs: %v\n", err)
 		}
+	}
+}
+
+// handleGetAppSchema returns a catalog app's install form schema.
+func handleGetAppSchema(appManager *apps.Manager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		schema, err := appManager.GetSchema(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteTypedError(w, http.StatusNotFound, "apps.schema_not_found", "No schema for this app", 0)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(schema)
 	}
 }
 

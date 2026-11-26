@@ -2,9 +2,6 @@ package backup
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -327,116 +324,40 @@ func (r *Restorer) getAffectedServices(targetPath string) []string {
 }
 
 func (r *Restorer) createSafetySnapshot(targetPath string) error {
-	// Generate snapshot name
-	timestamp := time.Now().Format("20060102-150405")
-	snapshotPath := fmt.Sprintf("@snapshots/restore-safety/%s-%s", filepath.Base(targetPath), timestamp)
-
-	// Create snapshot via agent
-	return r.agentClient.CreateSnapshot(targetPath, snapshotPath, true)
+	_, err := r.agentClient.CreateSnapshot(targetPath, "pre-restore")
+	return err
 }
 
-func (r *Restorer) stopService(service string) error {
-	cmd := exec.Command("systemctl", "stop", service)
-	return cmd.Run()
-}
+// Services are stopped and started by the agent around the rollback.
+func (r *Restorer) stopService(service string) error  { return nil }
+func (r *Restorer) startService(service string) error { return nil }
 
-func (r *Restorer) startService(service string) error {
-	cmd := exec.Command("systemctl", "start", service)
-	return cmd.Run()
-}
-
+// rollbackSubvolume puts a local snapshot back in place of its subvolume
+// (nos-agent keeps the current state in .rollback first). Restoring from an
+// SSH destination is not supported yet: receive the snapshot on this system
+// and restore it from there.
 func (r *Restorer) rollbackSubvolume(plan *RestorePlan, targetPath string) error {
-	switch plan.SourceType {
-	case "local":
-		// Get snapshot
-		snapshots := r.scheduler.ListSnapshots()
-		var snapshot *Snapshot
-		for _, s := range snapshots {
-			if s.ID == plan.SourceID {
-				snapshot = s
-				break
+	if plan.SourceType != "local" {
+		return fmt.Errorf("restoring from a remote destination is not supported; restore a local snapshot")
+	}
+	for _, snap := range r.scheduler.ListSnapshots() {
+		if snap.ID == plan.SourceID {
+			if snap.Subvolume != targetPath {
+				return fmt.Errorf("snapshot %s is of %s, not %s", snap.ID, snap.Subvolume, targetPath)
 			}
+			return r.agentClient.RollbackSnapshot(snap, r.getAffectedServices(targetPath))
 		}
-		if snapshot == nil {
-			return fmt.Errorf("snapshot not found")
-		}
-
-		// Perform atomic subvolume replacement
-		// 1. Move current subvolume to backup
-		backupPath := targetPath + ".backup." + time.Now().Format("20060102-150405")
-		if err := exec.Command("mv", targetPath, backupPath).Run(); err != nil {
-			return fmt.Errorf("failed to move current subvolume: %w", err)
-		}
-
-		// 2. Create new subvolume from snapshot
-		if err := exec.Command("btrfs", "subvolume", "snapshot", snapshot.Path, targetPath).Run(); err != nil {
-			// Rollback on failure
-			_ = exec.Command("mv", backupPath, targetPath).Run()
-			return fmt.Errorf("failed to create subvolume from snapshot: %w", err)
-		}
-
-		// 3. Delete backup after successful restore
-		go func() {
-			time.Sleep(5 * time.Minute)
-			_ = exec.Command("btrfs", "subvolume", "delete", backupPath).Run()
-		}()
-
-		return nil
-
-	case "ssh":
-		// Restore from SSH requires receiving the snapshot
-		parts := strings.SplitN(plan.SourceID, ":", 2)
-		if len(parts) != 2 {
-			return fmt.Errorf("invalid source ID")
-		}
-
-		_, err := r.replicator.GetDestination(parts[0]) // dest will be used for SSH restore
-		if err != nil {
-			return err
-		}
-
-		// Build SSH receive command
-		// This would be the inverse of replication
-		// Implementation would be similar to replicateSSH but in reverse
-
-		return fmt.Errorf("SSH restore not yet implemented")
-
-	default:
-		return fmt.Errorf("unsupported source type for rollback")
 	}
+	return fmt.Errorf("snapshot not found: %s", plan.SourceID)
 }
 
-func (r *Restorer) mountSnapshot(snapshotPath string) error {
-	// Create mount point
-	mountPoint := fmt.Sprintf("/tmp/restore-mount-%s", uuid.New().String())
-	if err := os.MkdirAll(mountPoint, 0755); err != nil {
-		return err
-	}
+// File-level restore isn't done by nOS: snapshots of a share are in its
+// .snapshots folder, so files can be copied back over SMB or NFS.
+var errFileRestore = fmt.Errorf("restoring single files is not supported; copy them from the share's .snapshots folder")
 
-	// Mount snapshot read-only
-	return exec.Command("mount", "-o", "ro,subvol="+snapshotPath, "/dev/mapper/nos-root", mountPoint).Run()
-}
-
-func (r *Restorer) copyFiles(plan *RestorePlan, targetPath string) error {
-	// Get mount point from previous mount action
-	mountPoint := "/tmp/restore-mount-*"
-
-	// Use rsync to copy files preserving attributes
-	cmd := exec.Command("rsync", "-avHAX", "--progress", mountPoint+"/", targetPath+"/")
-	return cmd.Run()
-}
-
-func (r *Restorer) unmountSnapshot(snapshotPath string) error {
-	// Find and unmount
-	mountPoint := "/tmp/restore-mount-*"
-	cmd := exec.Command("umount", mountPoint)
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-
-	// Clean up mount point
-	return os.RemoveAll(mountPoint)
-}
+func (r *Restorer) mountSnapshot(string) error           { return errFileRestore }
+func (r *Restorer) copyFiles(*RestorePlan, string) error { return errFileRestore }
+func (r *Restorer) unmountSnapshot(string) error         { return nil }
 
 // RestorePoint represents an available restore point
 type RestorePoint struct {

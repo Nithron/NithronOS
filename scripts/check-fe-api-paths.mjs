@@ -50,11 +50,16 @@ function served(p) {
 }
 
 const literal = /(['"`])(\/(?:api\/)?v1\/[^'"`\s]*)\1/g
+// `const BASE_PATH = '/v1/sync'`: a base other paths are joined to, served
+// when any route is below it.
+const baseConst = /\b(?:const|let|var)\s+\w*(?:BASE|PREFIX|ROOT)\w*\s*=\s*$/i
 const missing = new Map() // path -> files
 for (const file of sourceFiles(srcDir)) {
   const text = fs.readFileSync(file, 'utf-8')
   for (const m of text.matchAll(literal)) {
-    const p = normalize(m[2])
+    let p = normalize(m[2])
+    const before = text.slice(Math.max(0, m.index - 80), m.index)
+    if (baseConst.test(before) && !p.endsWith('/')) p += '/'
     if (served(p)) continue
     const rel = path.relative(root, file)
     missing.set(p, [...new Set([...(missing.get(p) || []), rel])].sort())

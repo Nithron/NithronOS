@@ -75,32 +75,24 @@ func (d *routeDeps) registerStorage(pr chi.Router) {
 	pr.Get("/api/v1/monitoring/services", handleMonitoringServices(cfg))
 	pr.Get("/api/v1/monitoring/system", handleMonitoringSystem(cfg))
 
-	// Scrub endpoints expected by frontend
-	pr.Get("/api/v1/scrub/status", func(w http.ResponseWriter, r *http.Request) {
-		// Delegate to pools scrub status
-		handleScrubStatus(w, r)
-	})
-	pr.With(adminRequired).Post("/api/v1/scrub/start", func(w http.ResponseWriter, r *http.Request) {
-		// Delegate to pools scrub start
-		handleScrubStart(w, r)
-	})
-	pr.With(adminRequired).Post("/api/v1/scrub/cancel", func(w http.ResponseWriter, r *http.Request) {
-		// TODO: Implement scrub cancel
-		writeJSON(w, map[string]any{"ok": true, "message": "Scrub cancelled"})
-	})
+	// Metrics, time series and alert rules (pkg/monitor, pkg/alerts).
+	if d.monitor != nil {
+		pr.Mount("/api/v1/monitor", d.monitor.Routes(adminRequired))
+	} else {
+		pr.Mount("/api/v1/monitor", unavailable("monitor.unavailable", "Monitoring is unavailable: the metrics storage could not be opened (see the nosd log)"))
+	}
 
-	// Balance endpoints
-	pr.Get("/api/v1/balance/status", handleBalanceStatus(cfg))
-	pr.With(adminRequired).Post("/api/v1/balance/start", handleBalanceStart(cfg))
-	pr.With(adminRequired).Post("/api/v1/balance/cancel", handleBalanceCancel(cfg))
+	// Scrub and balance (all pools, or the one in mount/poolId).
+	poolMaintenance{agent: d.agentClient}.routes(pr, adminRequired)
+	pr.Get("/api/v1/pools/{id}/subvolumes", NewStorageHandler(d.agentClient).GetPoolSubvolumes)
 
 	// SMART endpoints
 	pr.Get("/api/v1/smart/summary", handleSmartSummary(cfg))
 	pr.Get("/api/v1/smart/devices", handleSmartDevices(cfg))
 	pr.Get("/api/v1/smart/device/{device}", handleSmartDevice(cfg))
-	pr.Get("/api/v1/smart/test/{device}", handleSmartTestDevice(cfg))
+	pr.Get("/api/v1/smart/test/{device}", handleSmartTestStatus(cfg))
 	pr.With(adminRequired).Post("/api/v1/smart/scan", handleSmartScan(cfg))
-	pr.With(adminRequired).Post("/api/v1/smart/test/{device}", handleSmartTestDevice(cfg))
+	pr.With(adminRequired).Post("/api/v1/smart/test/{device}", handleSmartTestStart(cfg))
 
 	// Jobs endpoints
 	pr.Get("/api/v1/jobs/recent", handleJobsRecent(cfg))
@@ -120,8 +112,6 @@ func (d *routeDeps) registerStorage(pr chi.Router) {
 	pr.With(adminRequired).Post("/api/v1/pools/{id}/apply-device", handleApplyDevice(cfg))
 	pr.With(adminRequired).Post("/api/v1/pools/{id}/plan-destroy", handlePlanDestroy(cfg))
 	pr.With(adminRequired).Post("/api/v1/pools/{id}/apply-destroy", handleApplyDestroy(cfg))
-	pr.With(adminRequired).Post("/api/v1/pools/scrub/start", handleScrubStart)
-	pr.With(adminRequired).Get("/api/v1/pools/scrub/status", handleScrubStatus)
 	pr.Get("/api/v1/pools/{id}", handlePoolDetail)
 	// Mount options (canonical + compatibility with FE path)
 	pr.Get("/api/v1/pools/{id}/options", handlePoolOptionsGet(cfg))

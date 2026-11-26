@@ -38,19 +38,29 @@ import { Card } from '@/components/ui/card-enhanced';
 import { toast } from '@/components/ui/toast';
 import { Badge } from '@/components/ui/badge';
 
-// Category icons mapping
+// Category icons, by the catalog's (lowercase) category keys. (The keys used
+// to be capitalised, so every app showed the generic icon.)
 const categoryIcons: Record<string, any> = {
-  'Media': Film,
-  'Gaming': Gamepad,
-  'Productivity': Zap,
-  'Development': Code,
-  'Database': Database,
-  'Smart Home': Home,
-  'Security': Lock,
-  'Cloud': Cloud,
-  'Health': Heart,
-  'Utilities': Server,
+  media: Film,
+  entertainment: Film,
+  gaming: Gamepad,
+  productivity: Zap,
+  development: Code,
+  database: Database,
+  storage: Database,
+  'smart-home': Home,
+  security: Lock,
+  cloud: Cloud,
+  health: Heart,
+  utilities: Server,
+  automation: Zap,
+  integration: Cloud,
+  ai: Zap,
+  testing: Server,
 };
+
+const iconFor = (category?: string) =>
+  (category && categoryIcons[category.toLowerCase()]) || Package;
 
 // Animation variants
 const containerVariants: any = {
@@ -226,7 +236,7 @@ export function AppCatalog() {
   };
 
   const AppCard = ({ app, isInstalled }: { app: CatalogEntry; isInstalled: boolean }) => {
-    const CategoryIcon = app.categories?.[0] ? categoryIcons[app.categories[0]] || Package : Package;
+    const CategoryIcon = iconFor(app.categories?.[0]);
     
     return (
       <motion.div variants={itemVariants}>
@@ -547,7 +557,7 @@ export function AppCatalog() {
                 All Categories
               </button>
               {categories.map((cat) => {
-                const Icon = categoryIcons[cat] || Package;
+                const Icon = iconFor(cat);
                 return (
                   <button
                     key={cat}

@@ -14,13 +14,6 @@ import (
 	"github.com/gorilla/securecookie"
 )
 
-func errString(err error) string {
-	if err == nil {
-		return ""
-	}
-	return err.Error()
-}
-
 // legacy in-memory rate limiter removed; persisted ratelimit store governs throttling
 
 // setup token helpers using secret.key

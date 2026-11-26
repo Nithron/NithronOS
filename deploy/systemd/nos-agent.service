@@ -14,21 +14,22 @@ RestartSec=2s
 ExecStartPre=/usr/bin/mkdir -p /run
 ExecStartPre=/usr/bin/rm -f /run/nos-agent.sock
 # The agent itself makes its socket root:nos 0660 and checks peer credentials.
-AmbientCapabilities=CAP_SYS_ADMIN CAP_DAC_READ_SEARCH
+#
+# nos-agent is the one root process that does nosd's privileged work: it
+# writes /etc (Samba, exports, Caddy, nftables), /srv and /var/lib/nos, chowns
+# folders, manages users, runs btrfs, smartctl, mount and nft. The sandbox it
+# had (ProtectSystem=strict, PrivateDevices, only CAP_SYS_ADMIN and
+# CAP_DAC_READ_SEARCH, AF_UNIX only, @system-service) made all of that fail;
+# what's left doesn't get in the way of those jobs. Long jobs (apt, btrfs send)
+# run as their own transient units.
 NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=yes
+ProtectHome=read-only
 PrivateTmp=yes
-PrivateDevices=yes
-ProtectKernelTunables=yes
 ProtectKernelLogs=yes
-ProtectControlGroups=yes
-CapabilityBoundingSet=CAP_SYS_ADMIN CAP_DAC_READ_SEARCH
 LockPersonality=yes
-MemoryDenyWriteExecute=yes
-RestrictAddressFamilies=AF_UNIX
 RestrictRealtime=yes
-SystemCallFilter=@system-service
+# netlink: nft, ip and wg; inet: smbclient checks, docker pulls go through dockerd
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
 
 [Install]
 WantedBy=multi-user.target

@@ -30,6 +30,9 @@ type DeviceToken struct {
 	// Token hashes (never exposed)
 	TokenHash   string `json:"-"`
 	RefreshHash string `json:"-"`
+	// TokenLookup is sha256(device token): finds the device without trying
+	// every bcrypt hash. Tokens are 32 random bytes, so it reveals nothing.
+	TokenLookup string `json:"-"`
 
 	// Timestamps
 	CreatedAt  time.Time  `json:"created_at"`

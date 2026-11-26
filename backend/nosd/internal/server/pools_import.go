@@ -11,9 +11,10 @@ import (
 	"strings"
 
 	"nos/backend/nosd/internal/config"
-	"nos/backend/nosd/internal/fsatomic"
 	"nos/backend/nosd/pkg/agentclient"
 	"nos/backend/nosd/pkg/httpx"
+
+	"github.com/rs/zerolog/log"
 )
 
 type discoveredPool struct {
@@ -146,19 +147,9 @@ func handlePoolsImport(cfg config.Config) http.HandlerFunc {
 		for _, sv := range []string{"data", "snaps", "apps"} {
 			_ = client.PostJSON(r.Context(), "/v1/run", map[string]any{"steps": []map[string]any{{"cmd": "btrfs", "args": []string{"subvolume", "create", filepath.Join(body.Mountpoint, sv)}}}}, nil)
 		}
-		// persist pool record best-effort
-		type PoolRecord struct {
-			Name, Mount  string
-			Devices      []string
-			MountOptions string
+		if err := recordPool(cfg, poolOptionsRecord{Name: body.Label, Mount: body.Mountpoint, UUID: body.UUID, MountOptions: opts}); err != nil {
+			log.Error().Err(err).Str("mount", body.Mountpoint).Msg("pools: could not record the imported pool")
 		}
-		rec := PoolRecord{Name: body.Label, Mount: body.Mountpoint, Devices: []string{}, MountOptions: opts}
-		_ = fsatomic.WithLock(filepath.Join(cfg.EtcDir, "nos", "pools.json"), func() error {
-			var list []PoolRecord
-			_, _ = fsatomic.LoadJSON(filepath.Join(cfg.EtcDir, "nos", "pools.json"), &list)
-			list = append(list, rec)
-			return fsatomic.SaveJSON(filepath.Join(cfg.EtcDir, "nos", "pools.json"), list, 0o600)
-		})
 		writeJSON(w, map[string]any{"ok": true})
 	}
 }

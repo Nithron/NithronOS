@@ -170,8 +170,9 @@ func (cm *CatalogManager) fetchRemoteCatalog(source CatalogSource) (*Catalog, er
 	case "http", "https":
 		return cm.fetchHTTPCatalog(source.URL)
 	case "git":
-		// TODO: Implement git support
-		return nil, fmt.Errorf("git sources not yet implemented")
+		// Not supported: a remote catalog only adds entries, whose templates
+		// must already be installed, so a git checkout would add nothing.
+		return nil, fmt.Errorf("git catalog sources are not supported; use an http(s) URL")
 	default:
 		return nil, fmt.Errorf("unsupported source type: %s", source.Type)
 	}

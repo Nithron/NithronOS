@@ -131,4 +131,19 @@ status=$(curl -sk -m 10 -o /dev/null -w '%{http_code}' -H 'Content-Type: applica
 status=$(curl -sk -m 10 -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d "{\"otp\":\"$code\"}" "$api/otp/verify")
 [ "$status" = 200 ] || fail "the console's code returned HTTP $status (want 200)"
 
-log "PASS: installed, console shows the setup code, the API accepts it"
+# 5. nosd's privileged work goes through nos-agent: the share configuration it
+#    applies at startup must have reached the real agent (an ISO that shipped a
+#    stand-in agent, or a unit sandbox that blocks writing /etc, fails here).
+applied=""
+for _ in $(seq 1 24); do
+	applied="$(tr -cd '\11\12\15\40-\176' < "$WORK_DIR/boot-serial.log" | grep -c 'shares: configuration applied by nos-agent' || true)"
+	[ "${applied:-0}" -gt 0 ] && break
+	sleep 5
+done
+if [ "${applied:-0}" -eq 0 ]; then
+	tr -cd '\11\12\15\40-\176' < "$WORK_DIR/boot-serial.log" | grep -E 'shares: agent|nos-agent' | tail -n 5
+	fail "nosd could not apply the share configuration through nos-agent"
+fi
+log "nos-agent applied the share configuration"
+
+log "PASS: installed, console shows the setup code, the API accepts it, nos-agent works"

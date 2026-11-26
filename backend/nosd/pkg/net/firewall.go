@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +27,43 @@ type FirewallManager struct {
 	rollbackCancel chan struct{}
 	configPath     string
 	backupPath     string
+	nft            NFTables
+}
+
+// NFTables reads and replaces the kernel's ruleset. nosd runs as the nos
+// user, which can do neither, so the server gives the manager one backed by
+// nos-agent (SetNFTables); the default runs nft directly (tests, root).
+type NFTables interface {
+	// List returns `nft list ruleset` (json selects -j).
+	List(json bool) ([]byte, error)
+	// Apply checks and loads script; persist keeps it across reboots.
+	Apply(script string, persist bool) error
+}
+
+type execNFTables struct{}
+
+func (execNFTables) List(json bool) ([]byte, error) {
+	if json {
+		return exec.Command("nft", "-j", "list", "ruleset").Output()
+	}
+	return exec.Command("nft", "list", "ruleset").Output()
+}
+
+func (execNFTables) Apply(script string, _ bool) error {
+	tmp, err := os.CreateTemp("", "nft-*.rules")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.WriteString(script); err != nil {
+		tmp.Close()
+		return err
+	}
+	tmp.Close()
+	if out, err := exec.Command("nft", "-f", tmp.Name()).CombinedOutput(); err != nil {
+		return fmt.Errorf("nft failed: %s: %w", out, err)
+	}
+	return nil
 }
 
 // NewFirewallManager creates a new firewall manager
@@ -35,7 +71,15 @@ func NewFirewallManager() *FirewallManager {
 	return &FirewallManager{
 		configPath: nftablesConfigPath,
 		backupPath: nftablesBackupPath,
+		nft:        execNFTables{},
 	}
+}
+
+// SetNFTables replaces how the manager reads and loads rulesets.
+func (fm *FirewallManager) SetNFTables(n NFTables) {
+	fm.mu.Lock()
+	defer fm.mu.Unlock()
+	fm.nft = n
 }
 
 // GetState returns the current firewall state
@@ -185,8 +229,7 @@ func (fm *FirewallManager) Rollback() error {
 
 func (fm *FirewallManager) loadCurrentState() (*FirewallState, error) {
 	// Parse current nftables rules
-	cmd := exec.Command("nft", "-j", "list", "ruleset")
-	output, err := cmd.Output()
+	output, err := fm.nft.List(true)
 	if err != nil {
 		// If nftables is empty, return default state
 		return &FirewallState{
@@ -479,31 +522,19 @@ func (fm *FirewallManager) generateNFTablesScript(state *FirewallState, dryRun b
 }
 
 func (fm *FirewallManager) applyNFTablesScript(script string) error {
-	// Write script to temporary file
-	tmpFile := filepath.Join(os.TempDir(), fmt.Sprintf("nft-%d.rules", time.Now().Unix()))
-	if err := os.WriteFile(tmpFile, []byte(script), 0600); err != nil {
-		return fmt.Errorf("failed to write script: %w", err)
+	if err := fm.nft.Apply(script, true); err != nil {
+		return err
 	}
-	defer os.Remove(tmpFile)
-
-	// Apply the script
-	cmd := exec.Command("nft", "-f", tmpFile)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("nft failed: %s: %w", output, err)
-	}
-
 	// Save to config path for persistence
 	if err := os.WriteFile(fm.configPath, []byte(script), 0600); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
-
 	return nil
 }
 
 func (fm *FirewallManager) backupCurrentConfig() error {
 	// Get current ruleset
-	cmd := exec.Command("nft", "list", "ruleset")
-	output, err := cmd.Output()
+	output, err := fm.nft.List(false)
 	if err != nil {
 		return fmt.Errorf("failed to get current ruleset: %w", err)
 	}
@@ -522,10 +553,13 @@ func (fm *FirewallManager) rollbackToBackup() error {
 		return fmt.Errorf("no backup found")
 	}
 
-	// Apply backup
-	cmd := exec.Command("nft", "-f", fm.backupPath)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("rollback failed: %s: %w", output, err)
+	// Apply backup (a full ruleset listing: flush first)
+	backup, err := os.ReadFile(fm.backupPath)
+	if err != nil {
+		return fmt.Errorf("read backup: %w", err)
+	}
+	if err := fm.nft.Apply("flush ruleset\n"+string(backup), true); err != nil {
+		return fmt.Errorf("rollback failed: %w", err)
 	}
 
 	// Update state

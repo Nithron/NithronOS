@@ -74,10 +74,9 @@ func buildMux() http.Handler {
 	mux.HandleFunc("/v1/btrfs/balance/status", handleBtrfsBalanceStatus)
 	mux.HandleFunc("/v1/btrfs/replace/status", handleBtrfsReplaceStatus)
 	mux.HandleFunc("/v1/service/reload", handleServiceReload)
-	mux.HandleFunc("/v1/app/compose-up", handleComposeUp)
-	mux.HandleFunc("/v1/app/compose-down", handleComposeDown)
-	mux.HandleFunc("/v1/systemd/install-app", handleSystemdInstall)
+	mux.HandleFunc("/v1/apps/op", handleAppOp)
 	mux.HandleFunc("/v1/firewall/apply", handleFirewallApply)
+	mux.HandleFunc("/v1/firewall/ruleset", handleFirewallRuleset)
 	mux.HandleFunc("/v1/fs/write", handleFSWrite)
 	mux.HandleFunc("/v1/fs/mkdir", handleFSMkdir)
 	mux.HandleFunc("/v1/run", handleRun)
@@ -87,18 +86,28 @@ func buildMux() http.Handler {
 	mux.HandleFunc("/v1/crypttab/remove", handleCrypttabRemove)
 	mux.HandleFunc("/v1/btrfs/scrub/start", handleBtrfsScrubStart)
 	mux.HandleFunc("/v1/btrfs/scrub/status", handleBtrfsScrubStatus)
+	mux.HandleFunc("/v1/btrfs/scrub/cancel", handleBtrfsScrubCancel)
+	mux.HandleFunc("/v1/btrfs/balance/start", handleBtrfsBalanceStart)
+	mux.HandleFunc("/v1/btrfs/balance/cancel", handleBtrfsBalanceCancel)
+	mux.HandleFunc("/v1/btrfs/subvolumes", handleBtrfsSubvolumes)
 	mux.HandleFunc("/v1/btrfs/check-repair", handleBtrfsCheckRepair)
 	mux.HandleFunc("/v1/btrfs/usage", handleBtrfsUsage)
 	mux.HandleFunc("/v1/smb/user-create", handleSMBUserCreate)
 	mux.HandleFunc("/v1/smb/users", handleSMBUsersList)
+	mux.HandleFunc("/v1/shares/apply", handleSharesApply)
 	mux.HandleFunc("/v1/snapshot/create", handleSnapshotCreate)
 	mux.HandleFunc("/v1/snapshot/list", handleSnapshotList)
 	mux.HandleFunc("/v1/snapshot/rollback", handleSnapshotRollback)
+	mux.HandleFunc("/v1/snapshot/delete", handleSnapshotDelete)
+	mux.HandleFunc("/v1/backup/send", handleBackupSend)
+	mux.HandleFunc("/v1/backup/status", handleBackupStatus)
 	mux.HandleFunc("/v1/updates/plan", handleUpdatesPlan)
 	mux.HandleFunc("/v1/updates/apply", handleUpdatesApply)
+	mux.HandleFunc("/v1/updates/status", handleUpdatesStatus)
 	mux.HandleFunc("/v1/snapshot/prune", handleSnapshotPrune)
 	mux.HandleFunc("/v1/storage/lsblk", handleStorageLsblk)
 	mux.HandleFunc("/v1/smart", handleSmartSummary)
+	mux.HandleFunc("/v1/smart/test", handleSmartTest)
 	// Prometheus metrics on the same unix socket
 	mux.Handle("/metrics", metricsHandler())
 	return mux
@@ -263,6 +272,15 @@ func handleServiceReload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, http.StatusOK, PlanResponse{Plan: []string{"exportfs -ra"}})
+		return
+	case "nosd":
+		// After nosd's own state was restored (update rollback). --no-block:
+		// the reply goes out before systemd stops the caller.
+		if out, err := exec.Command("systemctl", "restart", "--no-block", "nosd").CombinedOutput(); err != nil {
+			writeErr(w, http.StatusInternalServerError, fmt.Sprintf("restart nosd failed: %s", string(out)))
+			return
+		}
+		writeJSON(w, http.StatusOK, PlanResponse{Plan: []string{"systemctl restart nosd"}})
 		return
 	default:
 		writeErr(w, http.StatusBadRequest, "service not allowed")

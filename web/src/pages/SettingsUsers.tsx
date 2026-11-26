@@ -81,7 +81,7 @@ function UserDialog({
   const queryClient = useQueryClient()
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => api.post('/api/v1/users', data),
+    mutationFn: (data: any) => api.post('/v1/users', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       toast.success('User created successfully')
@@ -93,7 +93,7 @@ function UserDialog({
   })
 
   const updateMutation = useMutation({
-    mutationFn: (data: any) => api.put(`/api/v1/users/${user?.id}`, data),
+    mutationFn: (data: any) => api.put(`/v1/users/${user?.id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       toast.success('User updated successfully')
@@ -332,7 +332,7 @@ function ResetPasswordDialog({
   const [error, setError] = useState('')
   
   const mutation = useMutation({
-    mutationFn: (data: any) => api.post(`/api/v1/users/${user?.id}/reset-password`, data),
+    mutationFn: (data: any) => api.post(`/v1/users/${user?.id}/reset-password`, data),
     onSuccess: () => {
       toast.success('Password reset successfully')
       onClose()
@@ -438,7 +438,7 @@ export function SettingsUsers() {
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
-      const response = await api.get<{ data: User[] }>('/api/v1/users')
+      const response = await api.get<{ data: User[] }>('/v1/users')
       return response.data
     },
     refetchInterval: 30000, // Refresh every 30 seconds
@@ -446,7 +446,7 @@ export function SettingsUsers() {
 
   // Delete user mutation
   const deleteMutation = useMutation({
-    mutationFn: (userId: string) => api.delete(`/api/v1/users/${userId}`),
+    mutationFn: (userId: string) => api.delete(`/v1/users/${userId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       toast.success('User deleted successfully')
@@ -461,7 +461,7 @@ export function SettingsUsers() {
   // Toggle user enabled status
   const toggleEnabledMutation = useMutation({
     mutationFn: ({ userId, enabled }: { userId: string, enabled: boolean }) => 
-      api.put(`/api/v1/users/${userId}`, { enabled }),
+      api.put(`/v1/users/${userId}`, { enabled }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       toast.success('User status updated')

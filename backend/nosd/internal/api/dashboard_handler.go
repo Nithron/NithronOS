@@ -98,8 +98,36 @@ type EventInfo struct {
 	Severity  string `json:"severity"` // info, warning, error
 }
 
-// HandleDashboard returns aggregated dashboard data
-func HandleDashboard(w http.ResponseWriter, r *http.Request) {
+// DashboardSources supplies the dashboard parts that nosd's stores own. A
+// nil source shows an empty list.
+type DashboardSources struct {
+	Shares func() []ShareInfo
+	Apps   func() []AppInfo
+}
+
+func (s DashboardSources) shares() []ShareInfo {
+	if s.Shares == nil {
+		return []ShareInfo{}
+	}
+	return s.Shares()
+}
+
+func (s DashboardSources) apps() []AppInfo {
+	if s.Apps == nil {
+		return []AppInfo{}
+	}
+	return s.Apps()
+}
+
+// Dashboard returns aggregated dashboard data. (The shares and apps widgets
+// used to show made-up Plex and Nextcloud entries.)
+func Dashboard(src DashboardSources) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		handleDashboard(w, r, src)
+	}
+}
+
+func handleDashboard(w http.ResponseWriter, r *http.Request, src DashboardSources) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -113,8 +141,8 @@ func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 		System:      getSystemSummary(ctx),
 		Storage:     getStorageSummary(ctx),
 		Disks:       getDisksSummary(ctx),
-		Shares:      getShares(ctx),
-		Apps:        getInstalledApps(ctx),
+		Shares:      src.shares(),
+		Apps:        src.apps(),
 		Maintenance: getMaintenanceStatus(ctx),
 		Events:      getRecentEvents(ctx),
 	}
@@ -249,54 +277,12 @@ func getDisksSummary(ctx context.Context) DisksSummary {
 	return summary
 }
 
-func getShares(ctx context.Context) []ShareInfo {
-	// Return mock data for now - would integrate with actual shares system
-	return []ShareInfo{
-		{
-			Name:  "Documents",
-			Proto: "SMB",
-			Path:  "/mnt/pool/documents",
-			State: "active",
-		},
-		{
-			Name:  "Media",
-			Proto: "SMB",
-			Path:  "/mnt/pool/media",
-			State: "active",
-		},
-	}
-}
-
-func getInstalledApps(ctx context.Context) []AppInfo {
-	// Return mock data for now - would integrate with actual apps system
-	return []AppInfo{
-		{
-			ID:      "plex",
-			Name:    "Plex Media Server",
-			State:   "running",
-			Version: "1.32.8",
-		},
-		{
-			ID:      "nextcloud",
-			Name:    "Nextcloud",
-			State:   "running",
-			Version: "28.0.1",
-		},
-	}
-}
-
 func getMaintenanceStatus(ctx context.Context) MaintenanceStatus {
-	// Return default idle status - would integrate with actual maintenance system
-	nextWeek := time.Now().Add(7 * 24 * time.Hour)
+	// Live scrub and balance progress is at /api/v1/{scrub,balance}/status;
+	// no next run is shown (it used to be a made-up date a week ahead).
 	return MaintenanceStatus{
-		Scrub: MaintenanceOp{
-			State:   "idle",
-			NextISO: nextWeek.Format(time.RFC3339),
-		},
-		Balance: MaintenanceOp{
-			State:   "idle",
-			NextISO: nextWeek.Add(24 * time.Hour).Format(time.RFC3339),
-		},
+		Scrub:   MaintenanceOp{State: "idle"},
+		Balance: MaintenanceOp{State: "idle"},
 	}
 }
 

@@ -71,6 +71,29 @@
         ]
       }
     },
+    "/api/v1/apps/catalog/{id}/schema": {
+      "get": {
+        "operationId": "getAppsCatalogIdSchema",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "apps"
+        ]
+      }
+    },
     "/api/v1/apps/install": {
       "post": {
         "operationId": "postAppsInstall",
@@ -531,6 +554,403 @@
         ]
       }
     },
+    "/api/v1/backup/destinations": {
+      "get": {
+        "operationId": "getBackupDestinations",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      },
+      "post": {
+        "operationId": "postBackupDestinations",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
+    "/api/v1/backup/destinations/{id}": {
+      "delete": {
+        "operationId": "deleteBackupDestinationsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      },
+      "get": {
+        "operationId": "getBackupDestinationsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      },
+      "patch": {
+        "operationId": "patchBackupDestinationsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
+    "/api/v1/backup/destinations/{id}/key": {
+      "post": {
+        "operationId": "postBackupDestinationsIdKey",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
+    "/api/v1/backup/destinations/{id}/test": {
+      "post": {
+        "operationId": "postBackupDestinationsIdTest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
+    "/api/v1/backup/jobs": {
+      "get": {
+        "operationId": "getBackupJobs",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
+    "/api/v1/backup/jobs/{id}": {
+      "get": {
+        "operationId": "getBackupJobsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
+    "/api/v1/backup/jobs/{id}/cancel": {
+      "post": {
+        "operationId": "postBackupJobsIdCancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
+    "/api/v1/backup/replicate": {
+      "post": {
+        "operationId": "postBackupReplicate",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
+    "/api/v1/backup/restore/apply": {
+      "post": {
+        "operationId": "postBackupRestoreApply",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
+    "/api/v1/backup/restore/plan": {
+      "post": {
+        "operationId": "postBackupRestorePlan",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
+    "/api/v1/backup/restore/points": {
+      "get": {
+        "operationId": "getBackupRestorePoints",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
+    "/api/v1/backup/schedules": {
+      "get": {
+        "operationId": "getBackupSchedules",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      },
+      "post": {
+        "operationId": "postBackupSchedules",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
+    "/api/v1/backup/schedules/{id}": {
+      "delete": {
+        "operationId": "deleteBackupSchedulesId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      },
+      "get": {
+        "operationId": "getBackupSchedulesId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      },
+      "patch": {
+        "operationId": "patchBackupSchedulesId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
+    "/api/v1/backup/snapshots": {
+      "get": {
+        "operationId": "getBackupSnapshots",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
+    "/api/v1/backup/snapshots/create": {
+      "post": {
+        "operationId": "postBackupSnapshotsCreate",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
+    "/api/v1/backup/snapshots/stats": {
+      "get": {
+        "operationId": "getBackupSnapshotsStats",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
+    "/api/v1/backup/snapshots/{id}": {
+      "delete": {
+        "operationId": "deleteBackupSnapshotsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "backup"
+        ]
+      }
+    },
     "/api/v1/balance/cancel": {
       "post": {
         "operationId": "postBalanceCancel",
@@ -567,84 +987,6 @@
         },
         "tags": [
           "balance"
-        ]
-      }
-    },
-    "/api/v1/btrfs/balance/cancel": {
-      "post": {
-        "operationId": "postBtrfsBalanceCancel",
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "btrfs"
-        ]
-      }
-    },
-    "/api/v1/btrfs/balance/start": {
-      "post": {
-        "operationId": "postBtrfsBalanceStart",
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "btrfs"
-        ]
-      }
-    },
-    "/api/v1/btrfs/balance/status": {
-      "get": {
-        "operationId": "getBtrfsBalanceStatus",
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "btrfs"
-        ]
-      }
-    },
-    "/api/v1/btrfs/scrub/cancel": {
-      "post": {
-        "operationId": "postBtrfsScrubCancel",
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "btrfs"
-        ]
-      }
-    },
-    "/api/v1/btrfs/scrub/start": {
-      "post": {
-        "operationId": "postBtrfsScrubStart",
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "btrfs"
-        ]
-      }
-    },
-    "/api/v1/btrfs/scrub/status": {
-      "get": {
-        "operationId": "getBtrfsScrubStatus",
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "btrfs"
         ]
       }
     },
@@ -697,6 +1039,116 @@
         },
         "tags": [
           "events"
+        ]
+      }
+    },
+    "/api/v1/groups": {
+      "get": {
+        "operationId": "getGroups",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      },
+      "post": {
+        "operationId": "postGroups",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/v1/groups/{name}": {
+      "delete": {
+        "operationId": "deleteGroupsName",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      },
+      "get": {
+        "operationId": "getGroupsName",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      },
+      "patch": {
+        "operationId": "patchGroupsName",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      },
+      "put": {
+        "operationId": "putGroupsName",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "groups"
         ]
       }
     },
@@ -955,6 +1407,298 @@
         },
         "tags": [
           "maintenance"
+        ]
+      }
+    },
+    "/api/v1/metrics/stream": {
+      "get": {
+        "operationId": "getMetricsStream",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
+    "/api/v1/monitor/alerts/channels": {
+      "get": {
+        "operationId": "getMonitorAlertsChannels",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      },
+      "post": {
+        "operationId": "postMonitorAlertsChannels",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/alerts/channels/{id}": {
+      "delete": {
+        "operationId": "deleteMonitorAlertsChannelsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      },
+      "get": {
+        "operationId": "getMonitorAlertsChannelsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      },
+      "patch": {
+        "operationId": "patchMonitorAlertsChannelsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/alerts/channels/{id}/test": {
+      "post": {
+        "operationId": "postMonitorAlertsChannelsIdTest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/alerts/events": {
+      "get": {
+        "operationId": "getMonitorAlertsEvents",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/alerts/rules": {
+      "get": {
+        "operationId": "getMonitorAlertsRules",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      },
+      "post": {
+        "operationId": "postMonitorAlertsRules",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/alerts/rules/{id}": {
+      "delete": {
+        "operationId": "deleteMonitorAlertsRulesId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      },
+      "get": {
+        "operationId": "getMonitorAlertsRulesId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      },
+      "patch": {
+        "operationId": "patchMonitorAlertsRulesId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/btrfs": {
+      "get": {
+        "operationId": "getMonitorBtrfs",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/devices": {
+      "get": {
+        "operationId": "getMonitorDevices",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/overview": {
+      "get": {
+        "operationId": "getMonitorOverview",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/services": {
+      "get": {
+        "operationId": "getMonitorServices",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/timeseries": {
+      "post": {
+        "operationId": "postMonitorTimeseries",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
         ]
       }
     },
@@ -1545,6 +2289,30 @@
         ]
       }
     },
+    "/api/v1/policy": {
+      "get": {
+        "operationId": "getPolicy",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "policy"
+        ]
+      },
+      "put": {
+        "operationId": "putPolicy",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "policy"
+        ]
+      }
+    },
     "/api/v1/pools": {
       "get": {
         "operationId": "getPools",
@@ -1991,6 +2759,29 @@
         ]
       }
     },
+    "/api/v1/pools/{id}/subvolumes": {
+      "get": {
+        "operationId": "getPoolsIdSubvolumes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "pools"
+        ]
+      }
+    },
     "/api/v1/remote/status": {
       "get": {
         "operationId": "getRemoteStatus",
@@ -2245,13 +3036,39 @@
         ]
       }
     },
-    "/api/v1/shares/{id}": {
+    "/api/v1/shares/apply": {
+      "post": {
+        "operationId": "postSharesApply",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "shares"
+        ]
+      }
+    },
+    "/api/v1/shares/apply-status": {
+      "get": {
+        "operationId": "getSharesApplyStatus",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "shares"
+        ]
+      }
+    },
+    "/api/v1/shares/{name}": {
       "delete": {
-        "operationId": "deleteSharesId",
+        "operationId": "deleteSharesName",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
+            "name": "name",
             "required": true,
             "schema": {
               "type": "string"
@@ -2268,11 +3085,32 @@
         ]
       },
       "get": {
-        "operationId": "getSharesId",
+        "operationId": "getSharesName",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "shares"
+        ]
+      },
+      "patch": {
+        "operationId": "patchSharesName",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
             "required": true,
             "schema": {
               "type": "string"
@@ -2289,11 +3127,11 @@
         ]
       },
       "put": {
-        "operationId": "putSharesId",
+        "operationId": "putSharesName",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
+            "name": "name",
             "required": true,
             "schema": {
               "type": "string"
@@ -2310,59 +3148,13 @@
         ]
       }
     },
-    "/api/v1/shares/{id}/disable": {
+    "/api/v1/shares/{name}/test": {
       "post": {
-        "operationId": "postSharesIdDisable",
+        "operationId": "postSharesNameTest",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "shares"
-        ]
-      }
-    },
-    "/api/v1/shares/{id}/enable": {
-      "post": {
-        "operationId": "postSharesIdEnable",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "shares"
-        ]
-      }
-    },
-    "/api/v1/shares/{id}/test": {
-      "post": {
-        "operationId": "postSharesIdTest",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
+            "name": "name",
             "required": true,
             "schema": {
               "type": "string"
@@ -2587,50 +3379,6 @@
     "/api/v1/storage/pools/{uuid}": {
       "get": {
         "operationId": "getStoragePoolsUuid",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "uuid",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "storage"
-        ]
-      }
-    },
-    "/api/v1/storage/pools/{uuid}/options": {
-      "get": {
-        "operationId": "getStoragePoolsUuidOptions",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "uuid",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "storage"
-        ]
-      },
-      "put": {
-        "operationId": "putStoragePoolsUuidOptions",
         "parameters": [
           {
             "in": "path",
@@ -4355,6 +5103,30 @@
         ]
       }
     },
+    "/api/v1/updates/channel": {
+      "get": {
+        "operationId": "getUpdatesChannel",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "updates"
+        ]
+      },
+      "post": {
+        "operationId": "postUpdatesChannel",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "updates"
+        ]
+      }
+    },
     "/api/v1/updates/check": {
       "get": {
         "operationId": "getUpdatesCheck",
@@ -4379,9 +5151,84 @@
         ]
       }
     },
+    "/api/v1/updates/progress": {
+      "get": {
+        "operationId": "getUpdatesProgress",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "updates"
+        ]
+      }
+    },
+    "/api/v1/updates/progress/stream": {
+      "get": {
+        "operationId": "getUpdatesProgressStream",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "updates"
+        ]
+      }
+    },
     "/api/v1/updates/rollback": {
       "post": {
         "operationId": "postUpdatesRollback",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "updates"
+        ]
+      }
+    },
+    "/api/v1/updates/snapshots": {
+      "get": {
+        "operationId": "getUpdatesSnapshots",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "updates"
+        ]
+      }
+    },
+    "/api/v1/updates/snapshots/{id}": {
+      "delete": {
+        "operationId": "deleteUpdatesSnapshotsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "updates"
+        ]
+      }
+    },
+    "/api/v1/updates/version": {
+      "get": {
+        "operationId": "getUpdatesVersion",
         "responses": {
           "default": {
             "description": "See docs/api/versioning-and-errors.md for the error format."
@@ -4530,6 +5377,29 @@
     "/api/v1/users/{id}/recovery-codes": {
       "post": {
         "operationId": "postUsersIdRecoveryCodes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/reset-password": {
+      "post": {
+        "operationId": "postUsersIdResetPassword",
         "parameters": [
           {
             "in": "path",

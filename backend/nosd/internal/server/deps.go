@@ -1,9 +1,11 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/rs/zerolog/log"
 
@@ -11,11 +13,17 @@ import (
 	"nos/backend/nosd/internal/auth/session"
 	userstore "nos/backend/nosd/internal/auth/store"
 	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/groups"
 	"nos/backend/nosd/internal/notifications"
+	"nos/backend/nosd/internal/policy"
 	"nos/backend/nosd/internal/ratelimit"
 	"nos/backend/nosd/internal/setup/firstboot"
 	"nos/backend/nosd/internal/shares"
+	"nos/backend/nosd/internal/updates"
 	"nos/backend/nosd/pkg/agentclient"
+	"nos/backend/nosd/pkg/alerts"
+	"nos/backend/nosd/pkg/backup"
+	"nos/backend/nosd/pkg/monitor"
 )
 
 // routeDeps holds what the route files share. It is built once per router.
@@ -25,7 +33,16 @@ type routeDeps struct {
 	users               *userstore.Store
 	agentClient         *agentclient.Client
 	sharesStore         *shares.Store
-	sharesHandler       *SharesHandlerV2
+	sharesHandler       *SharesHandler
+	groupsHandler       *GroupsHandler
+	policyHandler       *PolicyHandler
+	accounts            accounts
+	groupsStore         *groups.Store
+	sharesApplier       *sharesApplier
+	updates             *updates.Service
+	monitor             *MonitorHandler
+	backupStart         func(ctx context.Context)
+	monitorStart        func(ctx context.Context)
 	backupHandler       *BackupHandler
 	notificationManager *notifications.Manager
 	appsManager         *apps.Manager
@@ -39,21 +56,54 @@ func newRouteDeps(cfg config.Config) *routeDeps {
 	users, _ := userstore.New(cfg.UsersPath)
 	InitJobsStore(cfg)
 
-	// Initialize shares handler
 	agentClient := agentclient.New(cfg.AgentSocket())
-	// One shares store for the shares API, NithronSync and WebDAV.
-	var sharesHandler *SharesHandlerV2
-	sharesStore, err := shares.NewStore(filepath.Join(filepath.Dir(cfg.UsersPath), "shares.json"))
+	etcDir := filepath.Dir(cfg.UsersPath)
+	// One shares store for the shares API, NithronSync and WebDAV; groups and
+	// the policy next to it. A store that can't be read leaves its API
+	// answering 503 (nothing is overwritten).
+	sharesStore, err := shares.NewStore(filepath.Join(etcDir, "shares.json"))
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to load the shares store")
-	} else {
-		sharesHandler = NewSharesHandlerV2(sharesStore, agentClient)
+		sharesStore = nil
+	}
+	groupsStore, err := groups.NewStore(filepath.Join(etcDir, "groups.json"))
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to load the groups store")
+		groupsStore = nil
+	}
+	policyStore, err := policy.NewStore(filepath.Join(etcDir, "policy.json"))
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to load the policy")
+		policyStore = nil
+	}
+	acc := accounts{users: users, groups: groupsStore}
+	monitorHandler, monitorStart := newMonitor(cfg, etcDir)
+	updatesSvc, err := updates.New(agentClient,
+		filepath.Join(filepath.Dir(cfg.SessionsPath), "updates"),
+		filepath.Join(etcDir, "update", "channel"))
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to load the update state")
+		updatesSvc = nil
+	}
+	var (
+		applier       *sharesApplier
+		sharesHandler *SharesHandler
+		groupsHandler *GroupsHandler
+		policyHandler *PolicyHandler
+	)
+	if policyStore != nil {
+		policyHandler = &PolicyHandler{store: policyStore}
+	}
+	if sharesStore != nil && groupsStore != nil && policyStore != nil {
+		applier = &sharesApplier{shares: sharesStore, groups: groupsStore, users: acc, agent: agentClient}
+		sharesHandler = &SharesHandler{store: sharesStore, groups: groupsStore, users: acc, policy: policyStore, applier: applier}
+		groupsHandler = &GroupsHandler{store: groupsStore, shares: sharesStore, users: acc, applier: applier}
 	}
 
-	// Initialize backup handler (using existing implementation)
-	// The existing backup handler requires scheduler, replicator, and restorer
-	// For now, we'll skip initializing it as it needs more complex setup
-	var backupHandler *BackupHandler
+	// Backups: scheduled snapshots, replication and restore, all through
+	// nos-agent. (The handler used to be left nil, so none of the backup
+	// API existed.)
+	backupHandler, backupStart := newBackup(cfg, etcDir, agentClient)
 
 	// Initialize notifications manager
 	notificationsPath := filepath.Join(filepath.Dir(cfg.UsersPath), "notifications")
@@ -92,6 +142,9 @@ func newRouteDeps(cfg config.Config) *routeDeps {
 	return &routeDeps{
 		cfg: cfg, users: users, agentClient: agentClient,
 		sharesStore: sharesStore, sharesHandler: sharesHandler, backupHandler: backupHandler,
+		groupsHandler: groupsHandler, policyHandler: policyHandler, accounts: acc,
+		groupsStore: groupsStore, sharesApplier: applier, updates: updatesSvc,
+		monitor: monitorHandler, monitorStart: monitorStart, backupStart: backupStart,
 		notificationManager: notificationManager, appsManager: appsManager,
 		rlStore: rlStore, mgr: mgr, fb: fb,
 	}
@@ -120,4 +173,54 @@ func (d *routeDeps) adminRequired(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// newMonitor builds the metrics collector, its storage and the alert
+// engine. start runs them (only the daemon does; tests and route-dump just
+// build the router). A storage that can't be opened leaves /monitor at 503.
+func newMonitor(cfg config.Config, etcDir string) (*MonitorHandler, func(context.Context)) {
+	logger := *Logger(cfg)
+	storage, err := monitor.NewTimeSeriesStorage(logger, filepath.Join(filepath.Dir(cfg.SessionsPath), "monitor"))
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to open the metrics storage")
+		return nil, func(context.Context) {}
+	}
+	collector := monitor.NewCollector(logger, storage, 30*time.Second)
+	engine := alerts.NewEngine(logger, filepath.Join(etcDir, "alerts"), collector, storage)
+	start := func(ctx context.Context) {
+		if err := collector.Start(ctx); err != nil {
+			log.Error().Err(err).Msg("metrics collector")
+		}
+		if err := engine.Start(ctx); err != nil {
+			log.Error().Err(err).Msg("alerts engine")
+		}
+	}
+	return NewMonitorHandler(logger, collector, storage, engine), start
+}
+
+// newBackup builds the backup scheduler, replicator and restorer; start runs
+// the schedules (the daemon only).
+func newBackup(cfg config.Config, etcDir string, agent AgentClient) (*BackupHandler, func(context.Context)) {
+	logger := *Logger(cfg)
+	stateDir := filepath.Join(filepath.Dir(cfg.SessionsPath), "backup")
+	host := backupAgent{agent: agent}
+	scheduler := backup.NewScheduler(logger, filepath.Join(stateDir, "schedules.json"), host)
+	jobs := scheduler.GetJobManager() // one job list for snapshots, replication and restore
+	replicator := backup.NewReplicator(logger, filepath.Join(stateDir, "destinations.json"), filepath.Join(etcDir, "backup", "keys"), jobs)
+	replicator.Connect(host, scheduler.ListSnapshots)
+	restorer := backup.NewRestorer(logger, host, jobs, scheduler, replicator)
+	start := func(ctx context.Context) {
+		for _, dir := range []string{stateDir, filepath.Join(etcDir, "backup", "keys")} {
+			if err := os.MkdirAll(dir, 0o700); err != nil {
+				log.Error().Err(err).Str("dir", dir).Msg("backup state folder")
+			}
+		}
+		if err := scheduler.Start(ctx); err != nil {
+			log.Error().Err(err).Msg("backup scheduler")
+		}
+		if err := replicator.Start(); err != nil {
+			log.Error().Err(err).Msg("backup replicator")
+		}
+	}
+	return NewBackupHandler(logger, scheduler, replicator, restorer), start
 }

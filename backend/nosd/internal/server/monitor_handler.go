@@ -30,8 +30,9 @@ func NewMonitorHandler(logger zerolog.Logger, collector *monitor.Collector, stor
 	}
 }
 
-// Routes returns the monitoring API routes
-func (h *MonitorHandler) Routes() chi.Router {
+// Routes returns the monitoring API routes. Alert rules, channels (which
+// hold SMTP passwords and webhook URLs) and events are for admins.
+func (h *MonitorHandler) Routes(adminRequired func(http.Handler) http.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	// Metrics
@@ -43,6 +44,7 @@ func (h *MonitorHandler) Routes() chi.Router {
 
 	// Alerts
 	r.Route("/alerts", func(r chi.Router) {
+		r.Use(adminRequired)
 		// Rules
 		r.Get("/rules", h.ListAlertRules)
 		r.Post("/rules", h.CreateAlertRule)

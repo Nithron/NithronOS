@@ -4,7 +4,7 @@
 
 import http from '@/lib/nos-client';
 
-const BASE_PATH = '/api/v1/sync/smartsync';
+const BASE_PATH = '/v1/sync/smartsync';
 
 // Types
 export type PlaceholderState = 'cloud' | 'hydrating' | 'local' | 'pinned';

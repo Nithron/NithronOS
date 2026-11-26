@@ -71,9 +71,11 @@ func NewDeviceManager(store *Store, logger zerolog.Logger, config DeviceManagerC
 func (dm *DeviceManager) populateTokenCache() {
 	dm.tokenCacheMu.Lock()
 	defer dm.tokenCacheMu.Unlock()
-
-	// This is a simplified approach - in production, we'd iterate all devices
-	// For now, the cache is populated on first use
+	for _, d := range dm.store.ListAllDevices() {
+		if d.TokenLookup != "" {
+			dm.tokenCache[d.TokenLookup] = d
+		}
+	}
 }
 
 // RegisterDevice registers a new sync device for a user
@@ -128,6 +130,7 @@ func (dm *DeviceManager) RegisterDevice(userID string, req DeviceRegisterRequest
 		ClientVersion: req.ClientVersion,
 		TokenHash:     deviceTokenHash,
 		RefreshHash:   refreshTokenHash,
+		TokenLookup:   dm.fastHash(deviceToken),
 		CreatedAt:     now,
 		ExpiresAt:     &deviceExpiresAt,
 		Scopes:        DefaultDeviceScopes(),
@@ -142,7 +145,7 @@ func (dm *DeviceManager) RegisterDevice(userID string, req DeviceRegisterRequest
 
 	// Add to token cache
 	dm.tokenCacheMu.Lock()
-	dm.tokenCache[deviceTokenHash] = device
+	dm.tokenCache[device.TokenLookup] = device
 	dm.tokenCacheMu.Unlock()
 
 	dm.logger.Info().
@@ -195,7 +198,7 @@ func (dm *DeviceManager) ValidateDeviceToken(tokenValue, ip, userAgent string) (
 	}
 
 	// Fallback to full scan (expensive but necessary for cache misses)
-	devices := dm.store.ListDevicesByUser("")
+	devices := dm.store.ListAllDevices()
 	for _, device := range devices {
 		if device.TokenHash == "" {
 			continue
@@ -239,7 +242,7 @@ func (dm *DeviceManager) RefreshDeviceToken(refreshTokenValue string) (*DeviceRe
 
 	// Find device by refresh token (scan all devices)
 	var targetDevice *DeviceToken
-	devices := dm.store.ListDevicesByUser("")
+	devices := dm.store.ListAllDevices()
 	for _, device := range devices {
 		if device.RefreshHash == "" {
 			continue
@@ -290,6 +293,7 @@ func (dm *DeviceManager) RefreshDeviceToken(refreshTokenValue string) (*DeviceRe
 	// Update device
 	targetDevice.TokenHash = newDeviceTokenHash
 	targetDevice.RefreshHash = newRefreshTokenHash
+	targetDevice.TokenLookup = dm.fastHash(newDeviceToken)
 	targetDevice.ExpiresAt = &newExpiresAt
 	targetDevice.LastSeenAt = &now
 

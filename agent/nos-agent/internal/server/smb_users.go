@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"os/user"
 	"regexp"
 	"strings"
 )
@@ -32,17 +33,27 @@ func handleSMBUserCreate(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "invalid username")
 		return
 	}
-	// ensure system user exists (idempotent)
-	if out, err := exec.Command("id", "-u", req.Username).CombinedOutput(); err != nil {
-		_ = out
-		_ = exec.Command("useradd", "-M", "-s", "/usr/sbin/nologin", req.Username).Run()
+	// The password goes to smbpasswd on stdin, one line twice; it can't
+	// contain a line break. (It used to be put into an `sh -c` command line,
+	// where $(...) in a password ran as root.)
+	if len(req.Password) < 8 || len(req.Password) > 256 || strings.ContainsAny(req.Password, "\r\n\x00") {
+		writeErr(w, http.StatusBadRequest, "password must be 8-256 characters on one line")
+		return
 	}
-	// set samba password non-interactively; if empty, set a random disabled password
-	pass := req.Password
-	if pass == "" {
-		pass = "x"
+	// A login without a home and shell. Existing accounts must be regular
+	// users: an SMB password for root or a daemon account is refused.
+	if _, err := user.Lookup(req.Username); err != nil {
+		if out, err := exec.Command("useradd", "-M", "-s", "/usr/sbin/nologin", req.Username).CombinedOutput(); err != nil {
+			writeErr(w, http.StatusInternalServerError, fmt.Sprintf("useradd failed: %s", strings.TrimSpace(string(out))))
+			return
+		}
 	}
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("(echo %q; echo %q) | smbpasswd -s -a %s", pass, pass, shellQuote(req.Username)))
+	if !(realSharesHost{}).UserOK(req.Username) {
+		writeErr(w, http.StatusBadRequest, "not a regular user account")
+		return
+	}
+	cmd := exec.Command("smbpasswd", "-s", "-a", req.Username)
+	cmd.Stdin = strings.NewReader(req.Password + "\n" + req.Password + "\n")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		writeErr(w, http.StatusInternalServerError, fmt.Sprintf("smbpasswd failed: %s", strings.TrimSpace(string(out))))
 		return

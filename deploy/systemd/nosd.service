@@ -1,6 +1,7 @@
 [Unit]
 Description=nOS API Server (nosd)
-After=network.target
+After=network.target nos-agent.service
+Wants=nos-agent.service
 
 [Service]
 # /run/nos holds the first-boot console banner; keep it across restarts

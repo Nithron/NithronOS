@@ -23,7 +23,8 @@ ProtectControlGroups=yes
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 LockPersonality=yes
 MemoryDenyWriteExecute=yes
-RestrictAddressFamilies=AF_INET AF_INET6
+# AF_UNIX: the admin API is a socket in /var/lib/caddy (nos-agent reloads through it)
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 RestrictRealtime=yes
 SystemCallFilter=@system-service
 

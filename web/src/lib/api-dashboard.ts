@@ -95,9 +95,17 @@ export const dashboardApi = {
     return await http.get<DisksSummary>('/v1/health/disks/summary')
   },
 
+  // One row per protocol a share is exported over.
   getShares: async (): Promise<ShareInfo[]> => {
-    const response = await http.get<ShareInfo[]>('/v1/shares')
-    return Array.isArray(response) ? response : []
+    type ApiShare = { name: string; path: string; smb?: { enabled: boolean }; nfs?: { enabled: boolean } }
+    const response = await http.get<ApiShare[]>('/v1/shares')
+    if (!Array.isArray(response)) return []
+    return response.flatMap((s): ShareInfo[] => {
+      const rows: ShareInfo[] = []
+      if (s.smb) rows.push({ name: s.name, path: s.path, proto: 'SMB', state: s.smb.enabled ? 'active' : 'disabled' })
+      if (s.nfs) rows.push({ name: s.name, path: s.path, proto: 'NFS', state: s.nfs.enabled ? 'active' : 'disabled' })
+      return rows
+    })
   },
 
   getInstalledApps: async (): Promise<AppInfo[]> => {
