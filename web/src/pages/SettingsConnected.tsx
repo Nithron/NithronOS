@@ -70,7 +70,7 @@ function GeneralSettings() {
   const { data: systemConfig } = useQuery({
     queryKey: ['system-config'],
     queryFn: async () => {
-      const response = await api.get<any>('/api/v1/system/config')
+      const response = await api.get<any>('/v1/system/config')
       return response
     }
   })
@@ -90,7 +90,7 @@ function GeneralSettings() {
   // Update system settings mutation
   const updateSystemMutation = useMutation({
     mutationFn: async (data: any) => {
-      await api.put('/api/v1/system/config', data)
+      await api.put('/v1/system/config', data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['system-config'] })
@@ -258,7 +258,7 @@ function AppearanceSettings() {
   const { data: appearanceConfig } = useQuery({
     queryKey: ['appearance-config'],
     queryFn: async () => {
-      const response = await api.get<any>('/api/v1/settings/appearance')
+      const response = await api.get<any>('/v1/settings/appearance')
       return response
     }
   })
@@ -274,7 +274,7 @@ function AppearanceSettings() {
   // Update appearance mutation
   const updateAppearanceMutation = useMutation({
     mutationFn: async (data: any) => {
-      await api.put('/api/v1/settings/appearance', data)
+      await api.put('/v1/settings/appearance', data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appearance-config'] })
@@ -426,7 +426,7 @@ function AboutSection() {
   const { data: systemInfo, isLoading } = useQuery({
     queryKey: ['system-info'],
     queryFn: async () => {
-      const response = await api.get<any>('/api/v1/about')
+      const response = await api.get<any>('/v1/about')
       return response
     },
   })
@@ -545,7 +545,7 @@ function AdvancedSettings() {
   // Mutation for updating advanced settings
   const updateAdvancedMutation = useMutation({
     mutationFn: async (data: any) => {
-      await api.put('/api/v1/settings/advanced', data)
+      await api.put('/v1/settings/advanced', data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['advanced-settings'] })

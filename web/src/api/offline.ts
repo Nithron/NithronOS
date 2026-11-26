@@ -4,7 +4,7 @@
 
 import http from '@/lib/nos-client';
 
-const BASE_PATH = '/api/v1/sync/offline';
+const BASE_PATH = '/v1/sync/offline';
 
 // Types
 export type OperationType = 'create' | 'modify' | 'delete' | 'rename' | 'move';

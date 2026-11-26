@@ -96,7 +96,7 @@ function OverviewTab() {
   const { data: interfaces = [], isLoading } = useQuery({
     queryKey: ['network-interfaces'],
     queryFn: async () => {
-      const response = await api.get<any>('/api/v1/network/interfaces')
+      const response = await api.get<any>('/v1/network/interfaces')
       return response
     },
     refetchInterval: 5000,
@@ -105,7 +105,7 @@ function OverviewTab() {
   const { data: status } = useQuery({
     queryKey: ['network-status'],
     queryFn: async () => {
-      const response = await api.get<any>('/api/v1/network/status')
+      const response = await api.get<any>('/v1/network/status')
       return response
     },
     refetchInterval: 5000,
@@ -201,7 +201,7 @@ function InterfaceCard({ interface: iface }: { interface: NetworkInterface }) {
   const queryClient = useQueryClient()
 
   const mutation = useMutation({
-    mutationFn: (data: any) => api.put(`/api/v1/network/interfaces/${iface.name}`, data),
+    mutationFn: (data: any) => api.put(`/v1/network/interfaces/${iface.name}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['network-interfaces'] })
       toast.success('Interface updated successfully')
@@ -363,14 +363,14 @@ function DNSConfig() {
   useQuery({
     queryKey: ['dns-config'],
     queryFn: async () => {
-      const response = await api.get<any>('/api/v1/network/dns')
+      const response = await api.get<any>('/v1/network/dns')
       setServers(response.servers || [])
       return response
     },
   })
 
   const mutation = useMutation({
-    mutationFn: (data: any) => api.put('/api/v1/network/dns', data),
+    mutationFn: (data: any) => api.put('/v1/network/dns', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dns-config'] })
       toast.success('DNS configuration updated')
@@ -472,7 +472,7 @@ function FirewallTab() {
   const { data: rules = [], isLoading } = useQuery({
     queryKey: ['firewall-rules'],
     queryFn: async () => {
-      const response = await api.get<any>('/api/v1/network/firewall/rules')
+      const response = await api.get<any>('/v1/network/firewall/rules')
       return response
     },
   })
@@ -480,14 +480,14 @@ function FirewallTab() {
   const { data: status } = useQuery({
     queryKey: ['firewall-status'],
     queryFn: async () => {
-      const response = await api.get<any>('/api/v1/network/firewall/status')
+      const response = await api.get<any>('/v1/network/firewall/status')
       return response
     },
   })
 
   const toggleFirewall = useMutation({
     mutationFn: (enabled: boolean) => 
-      api.post('/api/v1/network/firewall/toggle', { enabled }),
+      api.post('/v1/network/firewall/toggle', { enabled }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['firewall-status'] })
       toast.success('Firewall status updated')
@@ -496,7 +496,7 @@ function FirewallTab() {
 
   const deleteRule = useMutation({
     mutationFn: (ruleId: string) => 
-      api.delete(`/api/v1/network/firewall/rules/${ruleId}`),
+      api.delete(`/v1/network/firewall/rules/${ruleId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['firewall-rules'] })
       toast.success('Rule deleted')
@@ -657,8 +657,8 @@ function FirewallRuleDialog({
   const mutation = useMutation({
     mutationFn: (data: any) => 
       rule 
-        ? api.put(`/api/v1/network/firewall/rules/${rule.id}`, data)
-        : api.post('/api/v1/network/firewall/rules', data),
+        ? api.put(`/v1/network/firewall/rules/${rule.id}`, data)
+        : api.post('/v1/network/firewall/rules', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['firewall-rules'] })
       toast.success(rule ? 'Rule updated' : 'Rule created')
@@ -833,7 +833,7 @@ function WireGuardTab() {
   const { data: config, isLoading } = useQuery({
     queryKey: ['wireguard-config'],
     queryFn: async () => {
-      const response = await api.get<any>('/api/v1/network/wireguard')
+      const response = await api.get<any>('/v1/network/wireguard')
       return response
     },
   })
@@ -841,14 +841,14 @@ function WireGuardTab() {
   const { data: peers = [] } = useQuery({
     queryKey: ['wireguard-peers'],
     queryFn: async () => {
-      const response = await api.get<any>('/api/v1/network/wireguard/peers')
+      const response = await api.get<any>('/v1/network/wireguard/peers')
       return response
     },
   })
 
   const toggleWireGuard = useMutation({
     mutationFn: (enabled: boolean) => 
-      api.post('/api/v1/network/wireguard/toggle', { enabled }),
+      api.post('/v1/network/wireguard/toggle', { enabled }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wireguard-config'] })
       toast.success('WireGuard status updated')
@@ -857,7 +857,7 @@ function WireGuardTab() {
 
   const deletePeer = useMutation({
     mutationFn: (peerId: string) => 
-      api.delete(`/api/v1/network/wireguard/peers/${peerId}`),
+      api.delete(`/v1/network/wireguard/peers/${peerId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wireguard-peers'] })
       toast.success('Peer removed')
@@ -1009,14 +1009,14 @@ function HTTPSTab() {
   const { data: tlsConfig, isLoading } = useQuery({
     queryKey: ['tls-config'],
     queryFn: async () => {
-      const response = await api.get<any>('/api/v1/network/https')
+      const response = await api.get<any>('/v1/network/https')
       return response
     },
   })
 
   const toggleHTTPS = useMutation({
     mutationFn: (enabled: boolean) => 
-      api.post('/api/v1/network/https/toggle', { enabled }),
+      api.post('/v1/network/https/toggle', { enabled }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tls-config'] })
       toast.success('HTTPS status updated')
@@ -1024,7 +1024,7 @@ function HTTPSTab() {
   })
 
   const generateCert = useMutation({
-    mutationFn: () => api.post('/api/v1/network/https/generate'),
+    mutationFn: () => api.post('/v1/network/https/generate'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tls-config'] })
       toast.success('Self-signed certificate generated')
@@ -1041,7 +1041,7 @@ function HTTPSTab() {
     formData.append('type', type)
 
     try {
-      await api.post('/api/v1/network/https/upload', formData)
+      await api.post('/v1/network/https/upload', formData)
       queryClient.invalidateQueries({ queryKey: ['tls-config'] })
       toast.success(`${type === 'cert' ? 'Certificate' : 'Key'} uploaded successfully`)
     } catch (error: any) {

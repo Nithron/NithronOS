@@ -1410,6 +1410,19 @@
         ]
       }
     },
+    "/api/v1/metrics/stream": {
+      "get": {
+        "operationId": "getMetricsStream",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
     "/api/v1/monitor/alerts/channels": {
       "get": {
         "operationId": "getMonitorAlertsChannels",
@@ -5364,6 +5377,29 @@
     "/api/v1/users/{id}/recovery-codes": {
       "post": {
         "operationId": "postUsersIdRecoveryCodes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/reset-password": {
+      "post": {
+        "operationId": "postUsersIdResetPassword",
         "parameters": [
           {
             "in": "path",

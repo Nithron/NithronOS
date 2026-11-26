@@ -15,6 +15,7 @@ func (d *routeDeps) registerServices(pr chi.Router) {
 	backupHandler := d.backupHandler
 	// System status for the dashboard and health pages
 	pr.Get("/api/v1/health/system", handleSystemHealth(cfg))
+	pr.Get("/api/v1/metrics/stream", handleMetricsStream)
 	pr.Get("/api/v1/health/disks", handleDiskHealth(cfg))
 	pr.Get("/api/v1/health/disks/summary", api.HandleDisksSummary)
 	pr.Get("/api/v1/health/smart", handleSmartProxy)

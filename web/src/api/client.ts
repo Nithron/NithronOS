@@ -117,9 +117,6 @@ export const api = {
 		delete: (name: string) => http.del(`/v1/shares/${name}`),
 		test: (name: string, config: any) => http.post<TestShareResponse>(`/v1/shares/${name}/test`, { config }),
 	},
-	apps: {
-		get: () => http.get<Apps>('/v1/apps'),
-	},
 	remote: {
 		status: () => http.get<RemoteStatus>('/v1/remote/status'),
 	},
@@ -134,13 +131,6 @@ export const api = {
 	},
 	policy: {
 		get: () => http.get<Policy>('/v1/policy'),
-	},
-	firewall: {
-		status: () => http.get<GetResponse<'/api/firewall/status'>>('/v1/firewall/status'),
-		plan: (mode: string) => http.post<PostResponse<'/api/firewall/plan'>>('/v1/firewall/plan', { mode }),
-		apply: (mode: string, twoFactorToken?: string) =>
-			http.post<PostResponse<'/api/firewall/apply'>>('/v1/firewall/apply', { mode, twoFactorToken }),
-		rollback: () => http.post<PostResponse<'/api/firewall/rollback'>>('/v1/firewall/rollback'),
 	},
 	support: {
 		bundle: () => http.support.bundle(),

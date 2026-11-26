@@ -1,53 +1,5 @@
 [
   {
-    "path": "/api/v1/apps",
-    "files": [
-      "web/src/api/client.ts"
-    ]
-  },
-  {
-    "path": "/api/v1/auth/2fa/enable",
-    "files": [
-      "web/src/pages/Settings2FA.tsx"
-    ]
-  },
-  {
-    "path": "/api/v1/auth/2fa/recovery/generate",
-    "files": [
-      "web/src/pages/Settings2FA.tsx"
-    ]
-  },
-  {
-    "path": "/api/v1/firewall/apply",
-    "files": [
-      "web/src/api/client.ts"
-    ]
-  },
-  {
-    "path": "/api/v1/firewall/plan",
-    "files": [
-      "web/src/api/client.ts"
-    ]
-  },
-  {
-    "path": "/api/v1/firewall/rollback",
-    "files": [
-      "web/src/api/client.ts"
-    ]
-  },
-  {
-    "path": "/api/v1/firewall/status",
-    "files": [
-      "web/src/api/client.ts"
-    ]
-  },
-  {
-    "path": "/api/v1/metrics/stream",
-    "files": [
-      "web/src/hooks/use-system-vitals.ts"
-    ]
-  },
-  {
     "path": "/api/v1/network/dns",
     "files": [
       "web/src/pages/SettingsNetwork.tsx"
@@ -174,39 +126,9 @@
     ]
   },
   {
-    "path": "/api/v1/sync",
-    "files": [
-      "web/src/api/sync.ts"
-    ]
-  },
-  {
-    "path": "/api/v1/sync/encryption",
-    "files": [
-      "web/src/api/encryption.ts"
-    ]
-  },
-  {
-    "path": "/api/v1/sync/offline",
-    "files": [
-      "web/src/api/offline.ts"
-    ]
-  },
-  {
-    "path": "/api/v1/sync/smartsync",
-    "files": [
-      "web/src/api/smartsync.ts"
-    ]
-  },
-  {
     "path": "/api/v1/system/config",
     "files": [
       "web/src/pages/SettingsConnected.tsx"
-    ]
-  },
-  {
-    "path": "/api/v1/users/{}/reset-password",
-    "files": [
-      "web/src/pages/SettingsUsers.tsx"
     ]
   }
 ]
