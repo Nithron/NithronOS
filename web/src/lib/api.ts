@@ -68,16 +68,6 @@ export const endpoints = {
     upgrade: (id: string, params: any) => http.post(`/v1/apps/${id}/upgrade`, params),
     delete: (id: string, keepData: boolean) => http.del(`/v1/apps/${id}?keep_data=${keepData}`),
   },
-  remote: {
-    listDestinations: () => http.get('/v1/remote/destinations') || (() => Promise.resolve([])),
-    createDestination: (dest: any) => http.post('/v1/remote/destinations', dest) || (() => Promise.resolve()),
-    deleteDestination: (id: string) => http.del(`/v1/remote/destinations/${id}`) || (() => Promise.resolve()),
-    listJobs: () => http.get('/v1/remote/jobs') || (() => Promise.resolve([])),
-    createJob: (job: any) => http.post('/v1/remote/jobs', job) || (() => Promise.resolve()),
-    startJob: (id: string) => http.post(`/v1/remote/jobs/${id}/start`) || (() => Promise.resolve()),
-    stopJob: (id: string) => http.post(`/v1/remote/jobs/${id}/stop`) || (() => Promise.resolve()),
-    getStats: () => http.get('/v1/remote/stats') || (() => Promise.resolve()),
-  },
   monitoring: {
     getLogs: () => http.get('/v1/monitoring/logs') || (() => Promise.resolve([])),
     getEvents: () => http.get('/v1/monitoring/events') || (() => Promise.resolve([])),

@@ -171,7 +171,8 @@ const router = createBrowserRouter([
           { path: 'settings/sync/conflicts', element: <SyncConflicts /> },
           { path: 'settings/sync/sharing', element: <SyncSharing /> },
           { path: 'settings/sync/encryption', element: <SyncEncryption /> },
-          { path: 'remote', element: <Remote /> },
+          { path: 'backup/remote', element: <Remote /> },
+          { path: 'remote', element: <Navigate to="/backup/remote" replace /> },
           { path: 'storage/create', element: <PoolsCreate /> },
           { path: 'storage/:id', element: <PoolDetails /> },
           // Redirect old schedules route to new location
