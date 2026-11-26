@@ -63,6 +63,10 @@ func NewRouter(cfg config.Config) http.Handler {
 func NewServer(cfg config.Config) (http.Handler, func()) {
 	d := newRouteDeps(cfg)
 	start := func() {
+		if d.updates != nil {
+			// An upgrade restarts nosd; follow it again.
+			d.updates.Resume()
+		}
 		if d.sharesApplier != nil {
 			// The host's Samba/NFS configuration and ACLs follow the stores
 			// (this also moves systems upgraded from per-share files).

@@ -17,6 +17,7 @@ import (
 	"nos/backend/nosd/internal/ratelimit"
 	"nos/backend/nosd/internal/setup/firstboot"
 	"nos/backend/nosd/internal/shares"
+	"nos/backend/nosd/internal/updates"
 	"nos/backend/nosd/pkg/agentclient"
 )
 
@@ -33,6 +34,7 @@ type routeDeps struct {
 	accounts            accounts
 	groupsStore         *groups.Store
 	sharesApplier       *sharesApplier
+	updates             *updates.Service
 	backupHandler       *BackupHandler
 	notificationManager *notifications.Manager
 	appsManager         *apps.Manager
@@ -67,6 +69,13 @@ func newRouteDeps(cfg config.Config) *routeDeps {
 		policyStore = nil
 	}
 	acc := accounts{users: users, groups: groupsStore}
+	updatesSvc, err := updates.New(agentClient,
+		filepath.Join(filepath.Dir(cfg.SessionsPath), "updates"),
+		filepath.Join(etcDir, "update", "channel"))
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to load the update state")
+		updatesSvc = nil
+	}
 	var (
 		applier       *sharesApplier
 		sharesHandler *SharesHandler
@@ -125,7 +134,7 @@ func newRouteDeps(cfg config.Config) *routeDeps {
 		cfg: cfg, users: users, agentClient: agentClient,
 		sharesStore: sharesStore, sharesHandler: sharesHandler, backupHandler: backupHandler,
 		groupsHandler: groupsHandler, policyHandler: policyHandler, accounts: acc,
-		groupsStore: groupsStore, sharesApplier: applier,
+		groupsStore: groupsStore, sharesApplier: applier, updates: updatesSvc,
 		notificationManager: notificationManager, appsManager: appsManager,
 		rlStore: rlStore, mgr: mgr, fb: fb,
 	}

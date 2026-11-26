@@ -4391,6 +4391,30 @@
         ]
       }
     },
+    "/api/v1/updates/channel": {
+      "get": {
+        "operationId": "getUpdatesChannel",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "updates"
+        ]
+      },
+      "post": {
+        "operationId": "postUpdatesChannel",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "updates"
+        ]
+      }
+    },
     "/api/v1/updates/check": {
       "get": {
         "operationId": "getUpdatesCheck",
@@ -4415,9 +4439,84 @@
         ]
       }
     },
+    "/api/v1/updates/progress": {
+      "get": {
+        "operationId": "getUpdatesProgress",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "updates"
+        ]
+      }
+    },
+    "/api/v1/updates/progress/stream": {
+      "get": {
+        "operationId": "getUpdatesProgressStream",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "updates"
+        ]
+      }
+    },
     "/api/v1/updates/rollback": {
       "post": {
         "operationId": "postUpdatesRollback",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "updates"
+        ]
+      }
+    },
+    "/api/v1/updates/snapshots": {
+      "get": {
+        "operationId": "getUpdatesSnapshots",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "updates"
+        ]
+      }
+    },
+    "/api/v1/updates/snapshots/{id}": {
+      "delete": {
+        "operationId": "deleteUpdatesSnapshotsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "updates"
+        ]
+      }
+    },
+    "/api/v1/updates/version": {
+      "get": {
+        "operationId": "getUpdatesVersion",
         "responses": {
           "default": {
             "description": "See docs/api/versioning-and-errors.md for the error format."

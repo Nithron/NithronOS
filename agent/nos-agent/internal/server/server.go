@@ -99,8 +99,10 @@ func buildMux() http.Handler {
 	mux.HandleFunc("/v1/snapshot/create", handleSnapshotCreate)
 	mux.HandleFunc("/v1/snapshot/list", handleSnapshotList)
 	mux.HandleFunc("/v1/snapshot/rollback", handleSnapshotRollback)
+	mux.HandleFunc("/v1/snapshot/delete", handleSnapshotDelete)
 	mux.HandleFunc("/v1/updates/plan", handleUpdatesPlan)
 	mux.HandleFunc("/v1/updates/apply", handleUpdatesApply)
+	mux.HandleFunc("/v1/updates/status", handleUpdatesStatus)
 	mux.HandleFunc("/v1/snapshot/prune", handleSnapshotPrune)
 	mux.HandleFunc("/v1/storage/lsblk", handleStorageLsblk)
 	mux.HandleFunc("/v1/smart", handleSmartSummary)
@@ -269,6 +271,15 @@ func handleServiceReload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, http.StatusOK, PlanResponse{Plan: []string{"exportfs -ra"}})
+		return
+	case "nosd":
+		// After nosd's own state was restored (update rollback). --no-block:
+		// the reply goes out before systemd stops the caller.
+		if out, err := exec.Command("systemctl", "restart", "--no-block", "nosd").CombinedOutput(); err != nil {
+			writeErr(w, http.StatusInternalServerError, fmt.Sprintf("restart nosd failed: %s", string(out)))
+			return
+		}
+		writeJSON(w, http.StatusOK, PlanResponse{Plan: []string{"systemctl restart nosd"}})
 		return
 	default:
 		writeErr(w, http.StatusBadRequest, "service not allowed")

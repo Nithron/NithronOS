@@ -372,42 +372,6 @@
     ]
   },
   {
-    "path": "/api/v1/updates/channel",
-    "files": [
-      "web/src/api/updates.ts"
-    ]
-  },
-  {
-    "path": "/api/v1/updates/progress",
-    "files": [
-      "web/src/api/updates.ts"
-    ]
-  },
-  {
-    "path": "/api/v1/updates/progress/stream",
-    "files": [
-      "web/src/lib/nos-client.ts"
-    ]
-  },
-  {
-    "path": "/api/v1/updates/snapshots",
-    "files": [
-      "web/src/api/updates.ts"
-    ]
-  },
-  {
-    "path": "/api/v1/updates/snapshots/{}",
-    "files": [
-      "web/src/api/updates.ts"
-    ]
-  },
-  {
-    "path": "/api/v1/updates/version",
-    "files": [
-      "web/src/api/updates.ts"
-    ]
-  },
-  {
     "path": "/api/v1/users/{}/reset-password",
     "files": [
       "web/src/pages/SettingsUsers.tsx"

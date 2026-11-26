@@ -20,8 +20,8 @@
 | First-boot | `/var/lib/nos/state/firstboot.json` | OK | `main.go`, `internal/server/router.go`
 | Sessions | `/var/lib/nos/sessions.json` | Not implemented | N/A
 | Rate limit | `/var/lib/nos/ratelimit.json` | Not implemented | N/A
-| Updates index | `/var/lib/nos/snapshots/index.json` | OK | `pkg/updates/index.go`
-| Snapshot DB | `/var/lib/nos/snapshots/index.json` (snapdb) | OK | `pkg/snapdb/snapdb.go`
+| Update state | `/var/lib/nos/updates/state.json` | OK | `internal/updates/service.go`
+| Update records | `/var/lib/nos/updates/records.json` | OK | `internal/updates/service.go`
 | Shares store | path via `NOS_SHARES_PATH` (devdata in tests) | OK | `internal/shares/store.go`
 
 Notes:
@@ -34,8 +34,8 @@ Notes:
 ### Permissions and locking
 
 - Secrets/state (users/firstboot/shares): 0600 via SaveJSON or default.
-- Non-sensitive metadata (updates/snapdb): 0644.
-- Writers use `WithLock(path, ...)` where cross-process coordination is needed (users, shares, snapdb append, updates index save).
+- Update state and records: 0640.
+- Writers use `WithLock(path, ...)` where cross-process coordination is needed (users, shares, update records append, updates index save).
 
 ### Tests
 

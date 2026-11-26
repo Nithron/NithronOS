@@ -32,8 +32,7 @@ func (d *routeDeps) registerSettings(pr chi.Router) {
 	}
 
 	// Updates endpoints (M5)
-	updatesHandler := NewUpdatesHandler(cfg)
-	pr.Mount("/api/v1/updates", updatesHandler.Routes())
+	d.registerUpdates(pr)
 
 	// Users management endpoints
 	usersHandler := NewUsersHandler(users, mgr, cfg)
