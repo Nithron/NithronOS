@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"slices"
+	"sort"
 
 	"github.com/rs/zerolog/log"
 
@@ -35,6 +36,7 @@ func (a accounts) Usernames() ([]string, error) {
 	for _, u := range list {
 		out = append(out, u.Username)
 	}
+	sort.Strings(out) // stable for the agent (and tests)
 	return out, nil
 }
 
