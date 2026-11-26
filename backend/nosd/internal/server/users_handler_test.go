@@ -136,3 +136,29 @@ func TestPasswordsAndDeleteReachSMB(t *testing.T) {
 		t.Fatalf("SMB delete: %+v", del)
 	}
 }
+
+// System settings (hostname, time, network, telemetry) are changed by admins
+// with the CSRF token; signed-in users may read them.
+func TestSystemSettingsNeedAnAdmin(t *testing.T) {
+	e := newLoginEnv(t, false)
+	admin, csrf := e.signIn(t)
+	if res := e.call(http.MethodPost, "/api/v1/users", `{"username":"bob","password":"Bob-Secret-1"}`, admin, csrf); res.Code != http.StatusCreated {
+		t.Fatalf("create bob: %d", res.Code)
+	}
+	bob, bobCSRF := e.signInAs(t, "bob", "Bob-Secret-1")
+	for _, path := range []string{"/api/v1/system/hostname", "/api/v1/system/timezone", "/api/v1/system/ntp", "/api/v1/network/interfaces/eth0", "/api/v1/telemetry/consent"} {
+		if res := e.call(http.MethodPost, path, `{}`, bob, bobCSRF); res.Code != http.StatusForbidden {
+			t.Errorf("a user changed %s: %d", path, res.Code)
+		}
+		if res := e.call(http.MethodPost, path, `{}`, admin, ""); res.Code != http.StatusUnauthorized {
+			t.Errorf("%s without the CSRF token: %d", path, res.Code)
+		}
+	}
+	if res := e.call(http.MethodGet, "/api/v1/system/hostname", "", bob, ""); res.Code != http.StatusOK {
+		t.Errorf("a user can't read the hostname: %d", res.Code)
+	}
+	// An admin with the token gets through to validation.
+	if res := e.call(http.MethodPost, "/api/v1/system/hostname", `{"hostname":"bad host"}`, admin, csrf); res.Code != http.StatusBadRequest {
+		t.Errorf("admin hostname change: %d %s", res.Code, res.Body.String())
+	}
+}

@@ -32,8 +32,15 @@ func (d *routeDeps) registerSystem(r chi.Router) {
 				uid, ok := signedInUID(r)
 
 				if ok && uid != "" {
-					// Valid session found, proceed
-					next.ServeHTTP(w, r)
+					// Signed in: reading is for everyone, changing the system
+					// (hostname, time, network) is for admins, with the CSRF
+					// token. (Any signed-in user could change them, and this
+					// router is outside the CSRF-checked group.)
+					if r.Method == http.MethodGet || r.Method == http.MethodHead {
+						next.ServeHTTP(w, r)
+						return
+					}
+					requireCSRF(d.adminRequired(next)).ServeHTTP(w, r)
 					return
 				}
 
@@ -88,18 +95,18 @@ func (d *routeDeps) registerSystem(r chi.Router) {
 
 	// Network endpoints to match FE contract: /api/v1/network/interfaces
 	r.Route("/api/v1/network", func(nr chi.Router) {
-		// Require auth for network configuration
-		nr.Use(requireAuth)
+		// Reading needs a session; changing an interface needs an admin.
+		nr.Use(requireAuth, requireCSRF)
 		nr.Get("/interfaces", systemConfigHandler.ListInterfaces)
 		nr.Get("/interfaces/{iface}", systemConfigHandler.GetInterface)
-		nr.Post("/interfaces/{iface}", systemConfigHandler.ConfigureInterface)
+		nr.With(d.adminRequired).Post("/interfaces/{iface}", systemConfigHandler.ConfigureInterface)
 	})
 
 	// Telemetry endpoints to match FE contract: /api/v1/telemetry/consent
 	r.Route("/api/v1/telemetry", func(tr chi.Router) {
-		tr.Use(requireAuth)
+		tr.Use(requireAuth, requireCSRF)
 		tr.Get("/consent", systemConfigHandler.GetTelemetryConsent)
-		tr.Post("/consent", systemConfigHandler.SetTelemetryConsent)
+		tr.With(d.adminRequired).Post("/consent", systemConfigHandler.SetTelemetryConsent)
 	})
 
 }
