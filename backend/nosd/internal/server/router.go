@@ -54,7 +54,21 @@ func Logger(cfg config.Config) *zerolog.Logger {
 // NewRouter builds the nosd HTTP API. The routes live in routes_*.go, one
 // file per area, as methods on routeDeps.
 func NewRouter(cfg config.Config) http.Handler {
+	h, _ := NewServer(cfg)
+	return h
+}
+
+// NewServer builds the API and returns, with it, the background work the
+// running daemon starts once (tests and route-dump only build the router).
+func NewServer(cfg config.Config) (http.Handler, func()) {
 	d := newRouteDeps(cfg)
+	start := func() {
+		if d.sharesApplier != nil {
+			// The host's Samba/NFS configuration and ACLs follow the stores
+			// (this also moves systems upgraded from per-share files).
+			go d.sharesApplier.applyAtStartup()
+		}
+	}
 
 	// chi requires every middleware before the first route. (The metrics
 	// routes used to be registered before withSession, so enabling metrics
@@ -100,7 +114,7 @@ func NewRouter(cfg config.Config) http.Handler {
 			Logger(cfg).Info().RawJSON("api_routes", b).Msg("")
 		}
 	}()
-	return r
+	return r, start
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

@@ -14,8 +14,8 @@ func (d *routeDeps) registerSync(pr, root chi.Router) {
 	// Sync endpoints (for NithronSync clients)
 	var syncHandler *SyncHandler
 	syncErr := errors.New("the shares store could not be loaded")
-	if sharesStore != nil {
-		syncHandler, syncErr = NewSyncHandler(cfg, sharesStore, *Logger(cfg))
+	if sharesStore != nil && d.groupsStore != nil {
+		syncHandler, syncErr = NewSyncHandler(cfg, sharesStore, d.accounts, *Logger(cfg))
 	}
 	if syncErr != nil {
 		Logger(cfg).Error().Err(syncErr).Msg("Failed to create sync handler")
@@ -24,7 +24,7 @@ func (d *routeDeps) registerSync(pr, root chi.Router) {
 		pr.Mount("/api/v1/sync", syncHandler.Routes())
 
 		// Mount WebDAV endpoint for file access
-		webdavHandler := NewWebDAVHandler(sharesStore, syncHandler.DeviceManager(), *Logger(cfg))
+		webdavHandler := NewWebDAVHandler(sharesStore, syncHandler.DeviceManager(), d.accounts, *Logger(cfg))
 		root.Mount("/dav", webdavHandler)
 
 		Logger(cfg).Info().Msg("NithronSync API initialized")

@@ -1,4 +1,4 @@
-make su # Shares & Permissions User Guide
+# Shares & Permissions User Guide
 
 ## Overview
 
@@ -26,9 +26,8 @@ Click the **+ Create Share** button in the top right corner of the shares page.
 ![Create Share Dialog - General Tab](../images/share-create-general.png)
 
 1. **Share Name**: Enter a name for your share (e.g., "documents", "media", "backups")
-   - Must be lowercase
-   - Can contain letters, numbers, hyphens, and underscores
-   - 2-32 characters long
+   - Letters, numbers, hyphens and underscores, 1-32 characters
+   - Can't be changed later (create a new share instead)
 
 2. **Description**: Add an optional description to help identify the share's purpose
 
@@ -78,6 +77,20 @@ Control who can access your share:
 - Can view and download files
 - Cannot modify or delete
 - Cannot create new content
+
+#### Everyone, or nobody
+
+A new share without owners or readers is open to every nOS user (its owners
+become `group:users`, the built-in group of all users). If you later remove
+every owner and reader, the share is closed: nobody can open it until you add
+someone.
+
+#### SMB accounts
+
+To open a share over SMB, a user needs an SMB password: an administrator sets
+it under **Users** (API: `POST /api/v1/smb/users`). The SMB account has the
+same name as the nOS user, so the share's permissions apply to it. Until then
+the user is skipped (the share's apply status says so).
 
 #### Adding Users and Groups
 
@@ -315,21 +328,35 @@ Choose descriptive, memorable names:
 
 ### Using the API
 
-Power users can manage shares programmatically:
+Shares are under `/api/v1/shares` (signed in; changes need an administrator):
 
-```bash
-# List all shares
-curl http://nos.local:9000/api/v1/shares
+| Call | Does |
+|---|---|
+| `GET /api/v1/shares`, `GET /api/v1/shares/{name}` | list, read (by name or id) |
+| `POST /api/v1/shares` | create `{name, description, smb, nfs, owners, readers}`; the path is `/srv/shares/<name>` |
+| `PATCH /api/v1/shares/{name}` | change only the fields sent |
+| `DELETE /api/v1/shares/{name}` | remove the share (the files stay) |
+| `POST /api/v1/shares/{name}/test` | check `{config: {...}}` without saving: `{valid, errors}` |
+| `GET /api/v1/shares/apply-status` | the result of the last apply (warnings such as users without SMB accounts) |
+| `/api/v1/groups` | groups: `{name, description, members}`; a group used by a share can't be deleted |
+| `/api/v1/policy` | `{"shares": {"guest_access_forbidden": true}}` |
 
-# Create a new share
-curl -X POST http://nos.local:9000/api/v1/shares \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "api-share",
-    "smb": {"enabled": true},
-    "owners": ["user:admin"]
-  }'
+```json
+{
+  "name": "media",
+  "smb": {"enabled": true, "recycle": {"enabled": true}},
+  "nfs": {"enabled": true, "networks": ["192.168.1.0/24"], "read_only": true},
+  "owners": ["user:alice"],
+  "readers": ["group:family"]
+}
 ```
+
+Principals are `user:<name>` and `group:<name>`; `group:users` is every user.
+Each change is saved, then nos-agent writes `/etc/samba/smb.conf.d/nos-shares.conf`,
+`/etc/exports.d/nos.exports`, the Unix groups (`nos-<group>`) and the folder's
+ACL, and reloads Samba and the NFS exports. If that fails the change is kept
+and the call answers `502 shares.apply_failed`; it applies with the next change
+or when nosd restarts.
 
 ### Custom Access Patterns
 
@@ -356,14 +383,15 @@ For complex scenarios:
 ## Quick Reference
 
 ### Share Naming Rules
-- Start with lowercase letter or number
-- Use only: a-z, 0-9, hyphen (-), underscore (_)
-- Length: 2-32 characters
+- Use only letters, digits, hyphen (-) and underscore (_)
+- Length: 1-32 characters
+- Names differing only in case are the same share to Samba
 
 ### Default Paths
 - Share location: `/srv/shares/<name>`
 - Recycle bin: `/srv/shares/<name>/.recycle`
-- Config files: `/etc/nos/shares.json`
+- Share list: `/etc/nos/shares.json`; groups: `/etc/nos/groups.json`
+- Generated: `/etc/samba/smb.conf.d/nos-shares.conf`, `/etc/exports.d/nos.exports`
 
 ### Service Ports
 - SMB: 445, 139

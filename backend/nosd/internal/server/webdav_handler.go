@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -20,14 +21,18 @@ import (
 type WebDAVHandler struct {
 	shareStore *shares.Store
 	deviceMgr  *nosync.DeviceManager
+	access     shareAccessChecker
 	logger     zerolog.Logger
-	handlers   map[string]*webdav.Handler // shareID -> handler
+
+	mu       sync.Mutex
+	handlers map[string]*webdav.Handler // shareID -> handler (holds its locks)
 }
 
 // NewWebDAVHandler creates a new WebDAV handler
-func NewWebDAVHandler(shareStore *shares.Store, deviceMgr *nosync.DeviceManager, logger zerolog.Logger) *WebDAVHandler {
+func NewWebDAVHandler(shareStore *shares.Store, deviceMgr *nosync.DeviceManager, access shareAccessChecker, logger zerolog.Logger) *WebDAVHandler {
 	return &WebDAVHandler{
 		shareStore: shareStore,
+		access:     access,
 		deviceMgr:  deviceMgr,
 		logger:     logger.With().Str("component", "webdav").Logger(),
 		handlers:   make(map[string]*webdav.Handler),
@@ -89,24 +94,20 @@ func (h *WebDAVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check user access
-	hasAccess := false
-	if len(share.Users) == 0 {
-		hasAccess = true // No restrictions
-	} else {
-		for _, u := range share.Users {
-			if u == device.UserID {
-				hasAccess = true
-				break
-			}
-		}
+	// Same rule as Samba and the folder ACLs: readers may read, owners may
+	// also change files.
+	read, write := h.access.ShareAccess(share, device.UserID)
+	if !read {
+		http.Error(w, "Share not found", http.StatusNotFound)
+		return
 	}
-	if !hasAccess {
-		http.Error(w, "Access denied", http.StatusForbidden)
+	if !write && !webdavReadOnlyMethod(r.Method) {
+		http.Error(w, "Read-only access", http.StatusForbidden)
 		return
 	}
 
 	// Get or create handler for this share
+	h.mu.Lock()
 	handler, ok := h.handlers[shareID]
 	if !ok {
 		handler = &webdav.Handler{
@@ -130,9 +131,19 @@ func (h *WebDAVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		h.handlers[shareID] = handler
 	}
+	h.mu.Unlock()
 
 	// Serve WebDAV request
 	handler.ServeHTTP(w, r)
+}
+
+// webdavReadOnlyMethod reports whether method only reads.
+func webdavReadOnlyMethod(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions, "PROPFIND":
+		return true
+	}
+	return false
 }
 
 // shareFileSystem implements webdav.FileSystem for a share

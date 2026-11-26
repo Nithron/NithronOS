@@ -26,12 +26,31 @@ type SyncHandler struct {
 	conflictStore      *nosync.ConflictStore
 	activityStore      *nosync.ActivityStore
 	collaborationStore *nosync.CollaborationStore
+	access             shareAccessChecker
 	logger             zerolog.Logger
 	cfg                config.Config
 }
 
+// shareAccessChecker says what a nOS user (by id) may do in a share.
+type shareAccessChecker interface {
+	ShareAccess(sh shares.Share, userID string) (read, write bool)
+}
+
+// readableShare returns the share if the request's device user may read it.
+// A share the user can't read looks the same as a missing one.
+func (h *SyncHandler) readableShare(r *http.Request, shareID string) (shares.Share, bool) {
+	sh, ok := h.shareStore.Get(shareID)
+	if !ok {
+		return shares.Share{}, false
+	}
+	if read, _ := h.access.ShareAccess(sh, r.Header.Get("X-Device-User-ID")); !read {
+		return shares.Share{}, false
+	}
+	return sh, true
+}
+
 // NewSyncHandler creates a new sync handler
-func NewSyncHandler(cfg config.Config, shareStore *shares.Store, logger zerolog.Logger) (*SyncHandler, error) {
+func NewSyncHandler(cfg config.Config, shareStore *shares.Store, access shareAccessChecker, logger zerolog.Logger) (*SyncHandler, error) {
 	// Initialize sync store
 	syncBasePath := filepath.Join(filepath.Dir(cfg.UsersPath), "sync")
 	syncStore, err := nosync.NewStore(syncBasePath)
@@ -82,6 +101,7 @@ func NewSyncHandler(cfg config.Config, shareStore *shares.Store, logger zerolog.
 		conflictStore:      conflictStore,
 		activityStore:      activityStore,
 		collaborationStore: collaborationStore,
+		access:             access,
 		logger:             logger.With().Str("component", "sync-handler").Logger(),
 		cfg:                cfg,
 	}, nil
@@ -339,15 +359,7 @@ func (h *SyncHandler) ListSyncShares(w http.ResponseWriter, r *http.Request) {
 	var syncShares []nosync.SyncShare
 
 	for _, share := range allShares {
-		// Check if user has access (simplified - in production check ACLs)
-		accessible := false
-		for _, u := range share.Users {
-			if u == userID {
-				accessible = true
-				break
-			}
-		}
-		if !accessible && len(share.Users) > 0 {
+		if read, _ := h.access.ShareAccess(share, userID); !read {
 			continue
 		}
 
@@ -418,7 +430,7 @@ func (h *SyncHandler) GetChanges(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get share
-	share, ok := h.shareStore.Get(shareID)
+	share, ok := h.readableShare(r, shareID)
 	if !ok {
 		httpx.WriteTypedError(w, http.StatusNotFound, "share.not_found", "Share not found", 0)
 		return
@@ -451,7 +463,7 @@ func (h *SyncHandler) GetFileMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	share, ok := h.shareStore.Get(shareID)
+	share, ok := h.readableShare(r, shareID)
 	if !ok {
 		httpx.WriteTypedError(w, http.StatusNotFound, "share.not_found", "Share not found", 0)
 		return
@@ -482,7 +494,7 @@ func (h *SyncHandler) GetFilesMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	share, ok := h.shareStore.Get(shareID)
+	share, ok := h.readableShare(r, shareID)
 	if !ok {
 		httpx.WriteTypedError(w, http.StatusNotFound, "share.not_found", "Share not found", 0)
 		return
@@ -514,7 +526,7 @@ func (h *SyncHandler) GetBlockHashes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	share, ok := h.shareStore.Get(shareID)
+	share, ok := h.readableShare(r, shareID)
 	if !ok {
 		httpx.WriteTypedError(w, http.StatusNotFound, "share.not_found", "Share not found", 0)
 		return
@@ -536,6 +548,10 @@ func (h *SyncHandler) GetBlockHashes(w http.ResponseWriter, r *http.Request) {
 func (h *SyncHandler) GetSyncState(w http.ResponseWriter, r *http.Request) {
 	shareID := chi.URLParam(r, "share_id")
 	deviceID := r.Header.Get("X-Device-ID")
+	if _, ok := h.readableShare(r, shareID); !ok {
+		httpx.WriteTypedError(w, http.StatusNotFound, "share.not_found", "Share not found", 0)
+		return
+	}
 
 	state, ok := h.syncStore.GetState(deviceID, shareID)
 	if !ok {
@@ -555,6 +571,10 @@ func (h *SyncHandler) GetSyncState(w http.ResponseWriter, r *http.Request) {
 func (h *SyncHandler) UpdateSyncState(w http.ResponseWriter, r *http.Request) {
 	shareID := chi.URLParam(r, "share_id")
 	deviceID := r.Header.Get("X-Device-ID")
+	if _, ok := h.readableShare(r, shareID); !ok {
+		httpx.WriteTypedError(w, http.StatusNotFound, "share.not_found", "Share not found", 0)
+		return
+	}
 
 	var state nosync.SyncState
 	if err := json.NewDecoder(r.Body).Decode(&state); err != nil {

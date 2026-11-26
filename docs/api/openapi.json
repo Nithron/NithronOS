@@ -700,6 +700,116 @@
         ]
       }
     },
+    "/api/v1/groups": {
+      "get": {
+        "operationId": "getGroups",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      },
+      "post": {
+        "operationId": "postGroups",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/v1/groups/{name}": {
+      "delete": {
+        "operationId": "deleteGroupsName",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      },
+      "get": {
+        "operationId": "getGroupsName",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      },
+      "patch": {
+        "operationId": "patchGroupsName",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      },
+      "put": {
+        "operationId": "putGroupsName",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
     "/api/v1/health": {
       "get": {
         "operationId": "getHealth",
@@ -1545,6 +1655,30 @@
         ]
       }
     },
+    "/api/v1/policy": {
+      "get": {
+        "operationId": "getPolicy",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "policy"
+        ]
+      },
+      "put": {
+        "operationId": "putPolicy",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "policy"
+        ]
+      }
+    },
     "/api/v1/pools": {
       "get": {
         "operationId": "getPools",
@@ -2245,13 +2379,39 @@
         ]
       }
     },
-    "/api/v1/shares/{id}": {
+    "/api/v1/shares/apply": {
+      "post": {
+        "operationId": "postSharesApply",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "shares"
+        ]
+      }
+    },
+    "/api/v1/shares/apply-status": {
+      "get": {
+        "operationId": "getSharesApplyStatus",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "shares"
+        ]
+      }
+    },
+    "/api/v1/shares/{name}": {
       "delete": {
-        "operationId": "deleteSharesId",
+        "operationId": "deleteSharesName",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
+            "name": "name",
             "required": true,
             "schema": {
               "type": "string"
@@ -2268,11 +2428,32 @@
         ]
       },
       "get": {
-        "operationId": "getSharesId",
+        "operationId": "getSharesName",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "shares"
+        ]
+      },
+      "patch": {
+        "operationId": "patchSharesName",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
             "required": true,
             "schema": {
               "type": "string"
@@ -2289,11 +2470,11 @@
         ]
       },
       "put": {
-        "operationId": "putSharesId",
+        "operationId": "putSharesName",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
+            "name": "name",
             "required": true,
             "schema": {
               "type": "string"
@@ -2310,59 +2491,13 @@
         ]
       }
     },
-    "/api/v1/shares/{id}/disable": {
+    "/api/v1/shares/{name}/test": {
       "post": {
-        "operationId": "postSharesIdDisable",
+        "operationId": "postSharesNameTest",
         "parameters": [
           {
             "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "shares"
-        ]
-      }
-    },
-    "/api/v1/shares/{id}/enable": {
-      "post": {
-        "operationId": "postSharesIdEnable",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "shares"
-        ]
-      }
-    },
-    "/api/v1/shares/{id}/test": {
-      "post": {
-        "operationId": "postSharesIdTest",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
+            "name": "name",
             "required": true,
             "schema": {
               "type": "string"

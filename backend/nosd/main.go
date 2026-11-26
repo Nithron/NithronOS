@@ -26,7 +26,8 @@ func main() {
 	ensureSecret(cfg.SecretPath)
 	ensureAgentToken("/etc/nos/agent-token")
 
-	r := server.NewRouter(cfg)
+	r, startBackground := server.NewServer(cfg)
+	startBackground()
 
 	// graceful shutdown context
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

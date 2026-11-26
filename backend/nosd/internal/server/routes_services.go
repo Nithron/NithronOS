@@ -40,12 +40,19 @@ func (d *routeDeps) registerServices(pr chi.Router) {
 	schedulesHandler := NewSchedulesHandler()
 	pr.Mount("/api/v1/schedules", schedulesHandler.Routes())
 
-	// Share endpoints (v1 API) - use real implementation
+	// Shares, groups and the policy. No mock fallback: when a store can't be
+	// read, the API says so instead of showing fake data.
 	if sharesHandler != nil {
-		pr.Mount("/api/v1/shares", sharesHandler.Routes())
+		pr.Mount("/api/v1/shares", sharesHandler.Routes(d.adminRequired))
+		pr.Mount("/api/v1/groups", d.groupsHandler.Routes(d.adminRequired))
 	} else {
-		// No mock fallback: report the failure instead of showing fake shares.
-		pr.Mount("/api/v1/shares", unavailable("shares.unavailable", "Shares are unavailable: the shares store could not be opened (see the nosd log)"))
+		pr.Mount("/api/v1/shares", unavailable("shares.unavailable", "Shares are unavailable: the shares, groups or policy store could not be opened (see the nosd log)"))
+		pr.Mount("/api/v1/groups", unavailable("groups.unavailable", "Groups are unavailable: the shares, groups or policy store could not be opened (see the nosd log)"))
+	}
+	if d.policyHandler != nil {
+		pr.Mount("/api/v1/policy", d.policyHandler.Routes(d.adminRequired))
+	} else {
+		pr.Mount("/api/v1/policy", unavailable("policy.unavailable", "The policy could not be read (see the nosd log)"))
 	}
 
 	// Jobs endpoints are already defined above

@@ -16,28 +16,28 @@ case "$1" in
         mkdir -p /etc/avahi/services
         chmod 755 /etc/avahi/services
         
-        # Initialize shares.json if missing
-        if [ ! -f /etc/nos/shares.json ]; then
-            mkdir -p /etc/nos
-            echo '{"version":1,"items":[]}' > /etc/nos/shares.json
-            chmod 600 /etc/nos/shares.json
-            
-            # Set ownership if nosd user exists
-            if id -u nosd >/dev/null 2>&1; then
-                chown nosd:nosd /etc/nos/shares.json
+        # nosd keeps the shares in /etc/nos/shares.json (a missing file is an
+        # empty list) and nos-agent writes them to one Samba include file and
+        # one exports file. Samba's include doesn't expand globs, so the
+        # include names the file. (Earlier versions added
+        # "include = /etc/samba/smb.conf.d/*.conf", which Samba never read.)
+        SMB_INCLUDE=/etc/samba/smb.conf.d/nos-shares.conf
+        if [ ! -e "$SMB_INCLUDE" ]; then
+            printf '# Managed by nOS (nos-agent). Changes here are overwritten.\n' > "$SMB_INCLUDE"
+            chmod 644 "$SMB_INCLUDE"
+        fi
+        if [ ! -e /etc/exports.d/nos.exports ]; then
+            printf '# Managed by nOS (nos-agent). Changes here are overwritten.\n' > /etc/exports.d/nos.exports
+            chmod 644 /etc/exports.d/nos.exports
+        fi
+        if [ -f /etc/samba/smb.conf ]; then
+            if grep -q '^[[:space:]]*include = /etc/samba/smb.conf.d/\*\.conf' /etc/samba/smb.conf; then
+                sed -i "s|^\([[:space:]]*\)include = /etc/samba/smb.conf.d/\*\.conf|\1include = $SMB_INCLUDE|" /etc/samba/smb.conf
+            elif ! grep -qF "include = $SMB_INCLUDE" /etc/samba/smb.conf; then
+                printf '\n# nOS managed shares\n[global]\n    include = %s\n' "$SMB_INCLUDE" >> /etc/samba/smb.conf
             fi
         fi
-        
-        # Ensure Samba includes our config directory
-        if ! grep -q "include = /etc/samba/smb.conf.d/\*.conf" /etc/samba/smb.conf 2>/dev/null; then
-            cat >> /etc/samba/smb.conf <<EOF
 
-# nOS managed shares
-[global]
-    include = /etc/samba/smb.conf.d/*.conf
-EOF
-        fi
-        
         # Enable and start services
         if [ -d /run/systemd/system ]; then
             systemctl daemon-reload || true

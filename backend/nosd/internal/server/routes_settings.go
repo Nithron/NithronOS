@@ -37,6 +37,7 @@ func (d *routeDeps) registerSettings(pr chi.Router) {
 
 	// Users management endpoints
 	usersHandler := NewUsersHandler(users, mgr, cfg)
+	usersHandler.onDeleted = d.forgetUser
 	pr.With(adminRequired).Mount("/api/v1/users", usersHandler.Routes())
 
 	// Appearance settings endpoints

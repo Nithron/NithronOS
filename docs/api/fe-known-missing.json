@@ -144,12 +144,6 @@
     ]
   },
   {
-    "path": "/api/v1/groups",
-    "files": [
-      "web/src/api/client.ts"
-    ]
-  },
-  {
     "path": "/api/v1/metrics/stream",
     "files": [
       "web/src/hooks/use-system-vitals.ts"
@@ -303,12 +297,6 @@
     "path": "/api/v1/network/wireguard/toggle",
     "files": [
       "web/src/pages/SettingsNetwork.tsx"
-    ]
-  },
-  {
-    "path": "/api/v1/policy",
-    "files": [
-      "web/src/api/client.ts"
     ]
   },
   {

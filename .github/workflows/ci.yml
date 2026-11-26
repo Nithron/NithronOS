@@ -201,6 +201,9 @@ jobs:
       - name: Test the NithronOS -> nOS upgrade migration
         run: sh deploy/scripts/test-migrate-from-nithronos.sh
 
+      - name: Shares against real Samba (container)
+        run: sh scripts/test-shares-integration.sh
+
       - name: Web tests
         working-directory: web
         run: |

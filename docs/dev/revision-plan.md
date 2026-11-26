@@ -151,7 +151,7 @@ Grouped by feature. Each item lists the evidence.
 
 **Storage**: `pools.json` has two incompatible schemas: `pools_options.go` writes `{records:[...]}` while `pools_import.go` and `pools_apply_create.go` write a bare list, so each overwrites the other's data. Pick one store. Balance start/cancel (`balance_handler.go:75,104`), scrub cancel (`router.go:1143`), SMART self-test trigger (`smart_handler.go:283,344`), `/pools/{id}/subvolumes`, and the mock pools/devices in `storage_handler.go:270,302`.
 
-**Shares (found in phase 3)**: the shares API now loads and saves one store (`internal/shares`), but SMB shares still never reach Samba: nosd writes `/etc/samba/shares.d/<id>.conf`, while `nos-shares`' postinst adds `include = /etc/samba/smb.conf.d/*.conf` to `smb.conf` (and Samba's `include` doesn't expand globs). Generate one included file (e.g. `/etc/samba/smb.conf.d/nos-shares.conf`) from the store, and check that nosd's unit may write it and reload smbd. `PUT /shares/{id}` always resets enabled/readOnly/guestAccess to the request body; make it a full replacement or use pointer fields. The UI's shares client (`web/src/api/client.ts`) calls `PATCH /v1/shares/{name}` and `/v1/shares/{name}/test`; the API is `PUT /shares/{id}` and `POST /shares/{id}/test`. Prove a share end to end (create in the UI, mount over SMB and NFS) in the QEMU test.
+**Shares (found in phase 3)**: done in phase 4. The API now uses the UI's model: a share is `/srv/shares/<name>`, exported over SMB and/or NFS (`smb`, `nfs`), with `owners` (read/write) and `readers` as `user:<name>`/`group:<name>` principals (`group:users` is everyone; no owners and readers means closed). Old one-protocol records convert on load. After each change nosd sends the whole state to nos-agent's new `/v1/shares/apply`, which validates it again, mirrors nOS groups as Unix groups `nos-<name>`, creates the folder (a Btrfs subvolume when it can) and sets its ACL, writes one `smb.conf.d/nos-shares.conf` and one `exports.d/nos.exports` (testparm first), and reloads smbd and the exports; nosd also applies once at startup. nos-shares' postinst now includes that file (the old glob include was never read). `PATCH`/`PUT` change only the fields sent. NithronSync and WebDAV use the same access rule (WebDAV writes need owner access; sync endpoints checked no access at all). Found and fixed: the agent put SMB passwords into an `sh -c` command line (a password `$(...)` ran as root), and the WebDAV handler map had no lock. `scripts/test-shares-integration.sh` (in CI) runs the apply against real Samba in a container and checks owner/reader/guest access with smbclient. Still to do: the share end to end over SMB and NFS in the QEMU install test.
 
 **Dashboard**: shares and apps widgets return mock data (`internal/api/dashboard_handler.go:192,253,271`).
 
@@ -170,7 +170,7 @@ Grouped by feature. Each item lists the evidence.
 - Confirm Caddy and nosd can reach app containers by name (shared Docker network) or proxy to the published host port instead; confirm the source network of Caddy's traffic for `X-Forwarded-For` trust.
 - Read access to shares for indexing apps (nAI): a dedicated group added to share readers, passed via `group_add`/`PGID`.
 
-**Users / RBAC**: `/v1/groups` and `/v1/policy` are called by the UI but don't exist. Decide scope (README A4) and either implement minimal groups or remove them from the UI.
+**Users / RBAC**: minimal groups and policy done in phase 4: `/api/v1/groups` (CRUD; a group a share uses can't be deleted; deleting a user takes them out of groups and shares) and `/api/v1/policy` (`shares.guest_access_forbidden`). A groups management page is Phase 5.
 
 **System**: `/system/config` and `/settings/advanced` (used by `SettingsConnected.tsx`); real service CPU/log data (`services_health_handler.go:276,322`, `system_handler.go:142,154`).
 
@@ -274,5 +274,7 @@ The README overstates completion. Proposed re-baseline:
 6. **NithronSync desktop and mobile clients**: required for v1 (not deferred). Phase 7 is in scope for v1.
 7. **Workflow**: one branch and one pull request per phase (`revision/phase-N-<slug>`).
 8. **Name**: nOS, with NithronOS as the long form. Everything is renamed, including package names, paths and the GitHub repository (Nithron/nOS); its own PR after Phase 3, with a migration for existing installs.
+
+Open for later: the domain nOS uses. Placeholder `nithronos.com`/`.org` addresses remain in `docs/updates.md` (apt repository URL) and `docs-site/mkdocs.yml` (`site_url`) until the maintainer picks one.
 
 Open for later: Debian base. The ISO targets bookworm (Debian 12, now in LTS); moving to trixie (Debian 13) belongs in Phase 6.

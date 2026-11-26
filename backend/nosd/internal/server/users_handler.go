@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/rs/zerolog/log"
@@ -57,6 +58,9 @@ type UsersHandler struct {
 	store    *userstore.Store
 	sessions userSessions
 	config   config.Config
+	// onDeleted runs after a user is deleted (takes them out of groups and
+	// share access lists). Nil does nothing.
+	onDeleted func(ctx context.Context, username string)
 }
 
 // userSessions is what UsersHandler needs from the session store.
@@ -281,6 +285,8 @@ func (h *UsersHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	gone, findErr := h.store.FindByID(userID)
+
 	// The store refuses to delete the last administrator. (This used to refuse
 	// every admin, and for other users it re-saved the remaining users without
 	// ever removing the deleted one, so nobody was actually deleted.)
@@ -298,6 +304,9 @@ func (h *UsersHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	// A deleted user's browsers are signed out at once.
 	if err := h.sessions.RevokeAll(userID); err != nil {
 		log.Error().Err(err).Str("uid", userID).Msg("revoke sessions of deleted user")
+	}
+	if findErr == nil && h.onDeleted != nil {
+		h.onDeleted(r.Context(), gone.Username)
 	}
 
 	w.WriteHeader(http.StatusNoContent)
