@@ -1,7 +1,6 @@
 package session
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"net"
@@ -91,7 +90,7 @@ func (m *Manager) persistLocked() error {
 		}
 		used[uid] = ids
 	}
-	return fsatomic.SaveJSON(context.TODO(), m.path, diskFile{Version: 1, Sessions: sessions, UsedRefresh: used, RevokedBefore: m.revokedBefore}, 0o600)
+	return fsatomic.SaveJSON(m.path, diskFile{Version: 1, Sessions: sessions, UsedRefresh: used, RevokedBefore: m.revokedBefore}, 0o600)
 }
 
 func (m *Manager) Create(uid, ua, ip string, ttl time.Duration) (Record, error) {

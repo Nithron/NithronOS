@@ -1,7 +1,6 @@
 package notifications
 
 import (
-	"context"
 	"fmt"
 	"net/smtp"
 	"os"
@@ -134,7 +133,7 @@ func (m *Manager) save() error {
 	}
 
 	notifPath := filepath.Join(m.storePath, "notifications.json")
-	if err := fsatomic.SaveJSON(context.Background(), notifPath, notifications, 0600); err != nil {
+	if err := fsatomic.SaveJSON(notifPath, notifications, 0600); err != nil {
 		return err
 	}
 
@@ -145,7 +144,7 @@ func (m *Manager) save() error {
 	}
 
 	channelsPath := filepath.Join(m.storePath, "channels.json")
-	return fsatomic.SaveJSON(context.Background(), channelsPath, channels, 0600)
+	return fsatomic.SaveJSON(channelsPath, channels, 0600)
 }
 
 func (m *Manager) addDefaultChannels() {

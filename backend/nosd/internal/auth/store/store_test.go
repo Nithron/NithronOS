@@ -1,7 +1,6 @@
 package store
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -52,7 +51,7 @@ func TestCrashRecoveryFromTmp(t *testing.T) {
 
 	// Write a good file first
 	good := dbFile{Version: 1, Users: []User{{ID: "x", Username: "x"}}}
-	if err := fsatomic.SaveJSON(context.TODO(), path, good, 0o600); err != nil {
+	if err := fsatomic.SaveJSON(path, good, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	// Create a broken crash artifact

@@ -1,7 +1,6 @@
 package store
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -91,7 +90,7 @@ func (s *Store) writeUsers(list []User) error {
 	s.ioMu.Lock()
 	defer s.ioMu.Unlock()
 	return fsatomic.WithLock(s.path, func() error {
-		return fsatomic.SaveJSON(context.Background(), s.path, data, fs.FileMode(0o600))
+		return fsatomic.SaveJSON(s.path, data, fs.FileMode(0o600))
 	})
 }
 

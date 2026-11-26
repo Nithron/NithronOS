@@ -1,7 +1,6 @@
 package snapdb
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"io/fs"
@@ -122,5 +121,5 @@ func readAll() ([]UpdateTx, error) {
 func writeAll(items []UpdateTx) error {
 	path := pathIndex()
 	// Save with 0644 as this is non-sensitive metadata
-	return fsatomic.SaveJSON(context.Background(), path, items, fs.FileMode(0o644))
+	return fsatomic.SaveJSON(path, items, fs.FileMode(0o644))
 }

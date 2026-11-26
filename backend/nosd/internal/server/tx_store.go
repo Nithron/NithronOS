@@ -2,7 +2,6 @@ package server
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -26,7 +25,7 @@ func txLogPath(id string) string { return filepath.Join(txDir(), id+".log") }
 
 func saveTx(t pools.Tx) error {
 	_ = os.MkdirAll(txDir(), 0o755)
-	return fsatomic.SaveJSON(context.TODO(), txPath(t.ID), t, 0o600)
+	return fsatomic.SaveJSON(txPath(t.ID), t, 0o600)
 }
 
 func appendTxLog(id string, level, stepID, msg string) {

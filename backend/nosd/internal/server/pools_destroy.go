@@ -144,5 +144,5 @@ func removeLinesContaining(ctx context.Context, path, contains string) error {
 			out = append(out, ln)
 		}
 	}
-	return fsatomic.SaveJSON(ctx, path, strings.Join(out, "\n"), 0o644)
+	return fsatomic.SaveJSON(path, strings.Join(out, "\n"), 0o644)
 }

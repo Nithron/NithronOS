@@ -383,7 +383,7 @@ func NewRouter(cfg config.Config) http.Handler {
 		rec := agentRec{ID: id, Token: tok, Node: body.Node, Arch: body.Arch, OS: body.OS, CreatedAt: time.Now().UTC().Format(time.RFC3339)}
 		list = append(list, rec)
 		_ = os.MkdirAll(filepath.Dir(agentsPath), 0o755)
-		_ = fsatomic.SaveJSON(r.Context(), agentsPath, list, 0o600)
+		_ = fsatomic.SaveJSON(agentsPath, list, 0o600)
 		writeJSON(w, map[string]any{"id": id, "token": tok})
 	})
 

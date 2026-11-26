@@ -1,7 +1,6 @@
 package shares
 
 import (
-	"context"
 	"io/fs"
 	"sync"
 
@@ -69,7 +68,7 @@ func (s *Store) Add(sh Share) error {
 	copy(data, s.list)
 	s.mu.Unlock()
 	return fsatomic.WithLock(s.path, func() error {
-		return fsatomic.SaveJSON(context.TODO(), s.path, data, fs.FileMode(0o600))
+		return fsatomic.SaveJSON(s.path, data, fs.FileMode(0o600))
 	})
 }
 
@@ -97,6 +96,6 @@ func (s *Store) Delete(id string) error {
 	copy(data, s.list)
 	s.mu.Unlock()
 	return fsatomic.WithLock(s.path, func() error {
-		return fsatomic.SaveJSON(context.TODO(), s.path, data, fs.FileMode(0o600))
+		return fsatomic.SaveJSON(s.path, data, fs.FileMode(0o600))
 	})
 }

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -88,7 +87,7 @@ func (s *SharesStore) save() error {
 		shares = append(shares, share)
 	}
 
-	return fsatomic.SaveJSON(context.Background(), s.path, shares, 0600)
+	return fsatomic.SaveJSON(s.path, shares, 0600)
 }
 
 func (s *SharesStore) List() []*ShareConfig {

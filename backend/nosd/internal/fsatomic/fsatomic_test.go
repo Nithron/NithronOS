@@ -1,7 +1,6 @@
 package fsatomic
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -21,7 +20,7 @@ func TestConcurrentSaveJSON(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			err := WithLock(path, func() error {
-				return SaveJSON(context.TODO(), path, map[string]int{"i": i}, 0)
+				return SaveJSON(path, map[string]int{"i": i}, 0)
 			})
 			if err != nil {
 				errCh <- err
@@ -57,7 +56,7 @@ func TestLoadIgnoresTmp(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "state.json")
 	// write good file
-	if err := SaveJSON(context.TODO(), path, map[string]string{"a": "b"}, 0o600); err != nil {
+	if err := SaveJSON(path, map[string]string{"a": "b"}, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	// create crash artifact

@@ -25,6 +25,20 @@ var agentSocketPath = "/run/nos-agent.sock"
 // seam for tests
 var devicePollInterval = 3 * time.Second
 
+// Pool transactions run in the background after the request has returned, so
+// their agent calls can't use the request context. Each call gets a deadline
+// instead of none: quick calls (status polls, fstab edits, disk listing) a
+// short one, long steps (mkfs, device add/remove, replace) a ceiling that
+// still lets a multi-hour data move finish.
+const (
+	poolQuickCallTimeout = 30 * time.Second
+	poolLongStepTimeout  = 24 * time.Hour
+)
+
+func poolCallCtx(d time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), d)
+}
+
 // txWorkers tracks running pool device transactions (tests wait on it so a
 // transaction never outlives the test that started it).
 var txWorkers sync.WaitGroup
@@ -215,7 +229,9 @@ func handleApplyDevice(cfg config.Config) http.HandlerFunc {
 							Stdout string
 						}
 					}
-					_ = client.PostJSON(context.TODO(), "/v1/run", map[string]any{"steps": []map[string]any{{"cmd": parts[0], "args": parts[1:]}}}, &resp)
+					ctx, cancel := poolCallCtx(poolLongStepTimeout)
+					_ = client.PostJSON(ctx, "/v1/run", map[string]any{"steps": []map[string]any{{"cmd": parts[0], "args": parts[1:]}}}, &resp)
+					cancel()
 					code := 0
 					out := ""
 					if len(resp.Results) > 0 {
@@ -254,7 +270,9 @@ func handleApplyDevice(cfg config.Config) http.HandlerFunc {
 							clearBtrfsBalanceProgress()
 						} else {
 							for j := 0; j < 10; j++ {
-								bs, _ := client.BalanceStatus(context.TODO(), mount)
+								ctx, cancel := poolCallCtx(poolQuickCallTimeout)
+								bs, _ := client.BalanceStatus(ctx, mount)
+								cancel()
 								if bs != nil {
 									entry := map[string]any{"event": "balance", "percent": bs.Percent}
 									if bs.Left != nil {
@@ -285,7 +303,9 @@ func handleApplyDevice(cfg config.Config) http.HandlerFunc {
 							setReplacePercent(-1)
 						} else {
 							for j := 0; j < 10; j++ {
-								rs, _ := client.ReplaceStatus(context.TODO(), mount)
+								ctx, cancel := poolCallCtx(poolQuickCallTimeout)
+								rs, _ := client.ReplaceStatus(ctx, mount)
+								cancel()
 								if rs != nil {
 									entry := map[string]any{"event": "replace", "percent": rs.Percent}
 									if rs.Completed != nil {
@@ -313,7 +333,9 @@ func handleApplyDevice(cfg config.Config) http.HandlerFunc {
 				_ = saveTx(cur)
 				// Post-success: best-effort refresh device list for this pool
 				if mount != "" {
-					devList, _ := disks.Collect(context.TODO())
+					ctx, cancel := poolCallCtx(poolQuickCallTimeout)
+					devList, _ := disks.Collect(ctx)
+					cancel()
 					devices := []string{}
 					for _, d := range devList {
 						if d.Mountpoint != nil && *d.Mountpoint == mount {

@@ -122,7 +122,7 @@ func handleHealthScan(cfg config.Config) http.HandlerFunc {
 			}
 		}
 		_ = os.MkdirAll(filepath.Dir(alertsPath()), 0o755)
-		_ = fsatomic.SaveJSON(r.Context(), alertsPath(), out, 0o600)
+		_ = fsatomic.SaveJSON(alertsPath(), out, 0o600)
 		writeJSON(w, map[string]any{"ok": true, "alerts": out})
 	}
 }

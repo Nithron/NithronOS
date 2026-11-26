@@ -15,7 +15,7 @@ import (
 // It writes to path+".tmp", fsyncs, fsyncs the parent directory, renames into place,
 // then fsyncs the parent directory again. On any error, it removes the temp file.
 // If perm is 0, 0600 is used.
-func SaveJSON(ctx context.Context, path string, v any, perm fs.FileMode) error {
+func SaveJSON(path string, v any, perm fs.FileMode) error {
 	if perm == 0 {
 		perm = 0o600
 	}
@@ -103,7 +103,7 @@ func LoadJSON(path string, v any) (bool, error) {
 // WriteJSONAtomic writes JSON atomically with default permissions (0600).
 // It ensures the parent directory exists with 0770 permissions.
 func WriteJSONAtomic(ctx context.Context, path string, v any) error {
-	return SaveJSON(ctx, path, v, 0)
+	return SaveJSON(path, v, 0)
 }
 
 // ReadJSON loads JSON and removes any orphan .tmp file first.
