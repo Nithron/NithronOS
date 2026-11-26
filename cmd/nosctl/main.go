@@ -25,10 +25,10 @@ var (
 // rootCmd represents the base command
 var rootCmd = &cobra.Command{
 	Use:   "nosctl",
-	Short: "NithronOS command-line interface",
-	Long: `nosctl is the command-line interface for NithronOS.
+	Short: "nOS command-line interface",
+	Long: `nosctl is the command-line interface for nOS.
 
-It allows you to manage your NithronOS system from the terminal,
+It allows you to manage your nOS system from the terminal,
 including storage, applications, backups, and more.`,
 	SilenceUsage: true,
 }
@@ -38,7 +38,7 @@ func init() {
 
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/nos/cli.yaml)")
-	rootCmd.PersistentFlags().StringVar(&baseURL, "url", "", "NithronOS API URL")
+	rootCmd.PersistentFlags().StringVar(&baseURL, "url", "", "nOS API URL")
 	rootCmd.PersistentFlags().StringVar(&token, "token", "", "API token")
 	rootCmd.PersistentFlags().BoolVar(&outputJSON, "json", false, "output in JSON format")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")

@@ -8,8 +8,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
-	"nithronos/backend/nosd/pkg/alerts"
-	"nithronos/backend/nosd/pkg/monitor"
+	"nos/backend/nosd/pkg/alerts"
+	"nos/backend/nosd/pkg/monitor"
 )
 
 // MonitorHandler provides API handlers for monitoring

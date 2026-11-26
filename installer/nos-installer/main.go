@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"nithronos/installer/internal/installer"
+	"nos/installer/internal/installer"
 )
 
 var (
@@ -19,8 +19,8 @@ func main() {
 
 	var rootCmd = &cobra.Command{
 		Use:   "nos-installer",
-		Short: "NithronOS guided installer",
-		Long:  `NithronOS installer creates a fresh installation with Btrfs subvolumes and proper system configuration.`,
+		Short: "nOS guided installer",
+		Long:  `nOS installer creates a fresh installation with Btrfs subvolumes and proper system configuration.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			runInstaller()
 		},

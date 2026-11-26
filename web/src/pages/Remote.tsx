@@ -360,7 +360,7 @@ function DestinationForm({
             value={formData.path}
             onChange={(e) => setFormData({ ...formData, path: e.target.value })}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            placeholder="/backup/nithronos"
+            placeholder="/backup/nos"
             required
           />
         </div>

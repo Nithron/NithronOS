@@ -1,12 +1,12 @@
 #!/bin/bash
-# CI Smoke Test for NithronOS Debian Installer
+# CI Smoke Test for nOS Debian Installer
 # Tests that the installer boots and reaches the language selection menu
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ISO_PATH="${1:-$REPO_ROOT/dist/iso/NithronOS*.iso}"
+ISO_PATH="${1:-$REPO_ROOT/dist/iso/nOS*.iso}"
 
 # Find the ISO file
 ISO_FILE=""

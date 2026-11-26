@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 
 	"github.com/go-chi/chi/v5"
 
@@ -92,7 +92,7 @@ type BIOSInfo struct {
 
 // SoftwareInfo represents software version information
 type SoftwareInfo struct {
-	NithronOS     string            `json:"nithronos_version"`
+	NOSVersion    string            `json:"nos_version"`
 	APIVersion    string            `json:"api_version"`
 	WebUIVersion  string            `json:"webui_version"`
 	AgentVersion  string            `json:"agent_version"`
@@ -114,7 +114,7 @@ type LicenseInfo struct {
 
 // SupportInfo represents support information
 type SupportInfo struct {
-	Email         string `json:"email"`
+	Email         string `json:"email,omitempty"`
 	Website       string `json:"website"`
 	Documentation string `json:"documentation"`
 	Forum         string `json:"forum"`
@@ -316,7 +316,7 @@ func (h *AboutHandler) getMotherboardInfo() string {
 
 func (h *AboutHandler) getSoftwareInfo() SoftwareInfo {
 	info := SoftwareInfo{
-		NithronOS:    "0.9.5-pre-alpha",
+		NOSVersion:   "0.9.5-pre-alpha",
 		APIVersion:   "1.0.0",
 		WebUIVersion: "1.0.0",
 		AgentVersion: "1.0.0",
@@ -390,12 +390,11 @@ func (h *AboutHandler) getLicenseInfo() LicenseInfo {
 
 func (h *AboutHandler) getSupportInfo() SupportInfo {
 	return SupportInfo{
-		Email:         "support@nithronos.com",
-		Website:       "https://nithronos.com",
-		Documentation: "https://docs.nithronos.com",
-		Forum:         "https://forum.nithronos.com",
-		Discord:       "https://discord.gg/nithronos",
-		GitHub:        "https://github.com/nithronos/nithronos",
+		Website:       "https://github.com/Nithron/nOS",
+		Documentation: "https://github.com/Nithron/nOS/tree/main/docs",
+		Forum:         "https://github.com/Nithron/nOS/discussions",
+		Discord:       "https://discord.gg/qzB37WS5AT",
+		GitHub:        "https://github.com/Nithron/nOS",
 	}
 }
 

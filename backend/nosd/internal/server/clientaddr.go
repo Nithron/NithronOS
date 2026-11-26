@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 )
 
 // isLocalRequest reports whether r was made directly from this machine: the

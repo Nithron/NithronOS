@@ -26,7 +26,7 @@ mkdir -p "$HOME/.local/share/applications"
 cat > "$HOME/.local/share/applications/nithron-sync.desktop" << EOF
 [Desktop Entry]
 Name=NithronSync
-Comment=File Synchronization for NithronOS
+Comment=File Synchronization for nOS
 Exec=/usr/bin/nithron-sync
 Icon=nithron-sync
 Terminal=false

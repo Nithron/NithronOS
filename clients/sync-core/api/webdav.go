@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"nithronos/clients/sync-core/config"
+	"nos/clients/sync-core/config"
 )
 
 // WebDAVClient provides WebDAV file operations.

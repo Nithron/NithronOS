@@ -12,13 +12,13 @@ Depends: ${misc:Depends},
          nos-apps-runtime,
          caddy | caddy-custom
 Recommends: nos-agent
-Description: NithronOS App Catalog and Templates
- Provides the app catalog and templates for NithronOS applications:
+Description: nOS App Catalog and Templates
+ Provides the app catalog and templates for nOS applications:
  - Built-in app catalog with popular applications
  - Docker Compose templates for each app
  - JSON Schema definitions for configuration
  - App icons and metadata
- - Integration with NithronOS web UI
+ - Integration with nOS web UI
  .
  This package contains the catalog data and templates that define
- available applications in the NithronOS App Store.
+ available applications in the nOS App Store.

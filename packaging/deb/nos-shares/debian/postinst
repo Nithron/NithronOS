@@ -32,7 +32,7 @@ case "$1" in
         if ! grep -q "include = /etc/samba/smb.conf.d/\*.conf" /etc/samba/smb.conf 2>/dev/null; then
             cat >> /etc/samba/smb.conf <<EOF
 
-# NithronOS managed shares
+# nOS managed shares
 [global]
     include = /etc/samba/smb.conf.d/*.conf
 EOF

@@ -11,7 +11,7 @@ override_dh_auto_build:
 	# packaging/deb/nosd -> repo root is ../../../
 	# Version comes from the repository's VERSION file
 	cd ../../../backend/nosd && CGO_ENABLED=0 go build -trimpath \
-		-ldflags "-s -w -X nithronos/backend/nosd/internal/version.Version=$$(cat ../../VERSION)" \
+		-ldflags "-s -w -X nos/backend/nosd/internal/version.Version=$$(cat ../../VERSION)" \
 		-o ../../packaging/deb/nosd/deb-build/nosd .
 
 override_dh_auto_install:

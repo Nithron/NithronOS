@@ -1,0 +1,15 @@
+report-deps.sh usr/lib/nos/
+nos-deps-report.service lib/systemd/system/
+nos-smart-scan.service lib/systemd/system/
+nos-smart-scan.timer lib/systemd/system/
+smart-scan.sh usr/lib/nos/
+nos-btrfs-scrub@.service lib/systemd/system/
+nos-btrfs-scrub@.timer lib/systemd/system/
+nos-fstrim.service lib/systemd/system/
+nos-fstrim.timer lib/systemd/system/
+../../../deploy/scripts/gen-local-cert.sh usr/lib/nos/
+nos-certgen.service lib/systemd/system/
+# no longer install Caddyfile to avoid dpkg conflict with distro caddy
+# OTP announcement moved to nosd package
+
+

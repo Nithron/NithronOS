@@ -4,9 +4,9 @@ import (
 	"crypto/subtle"
 	"strings"
 
-	userstore "nithronos/backend/nosd/internal/auth/store"
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/pkg/auth"
+	userstore "nos/backend/nosd/internal/auth/store"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/pkg/auth"
 )
 
 // userHasTOTP reports whether two-factor sign-in is enabled for u. "pending"

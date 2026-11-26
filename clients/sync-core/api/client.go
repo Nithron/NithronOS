@@ -1,4 +1,4 @@
-// Package api provides the HTTP client for communicating with NithronOS server.
+// Package api provides the HTTP client for communicating with nOS server.
 package api
 
 import (
@@ -12,10 +12,10 @@ import (
 	"sync"
 	"time"
 
-	"nithronos/clients/sync-core/config"
+	"nos/clients/sync-core/config"
 )
 
-// Client is the API client for NithronOS sync endpoints.
+// Client is the API client for nOS sync endpoints.
 type Client struct {
 	cfg        *config.Config
 	httpClient *http.Client

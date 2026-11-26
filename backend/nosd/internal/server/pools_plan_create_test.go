@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 )
 
 func TestPlanCreateSingleDisk(t *testing.T) {

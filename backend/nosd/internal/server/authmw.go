@@ -3,7 +3,7 @@ package server
 import (
 	"net/http"
 
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/pkg/httpx"
 )
 
 type ctxKey string

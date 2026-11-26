@@ -159,7 +159,7 @@ function OverviewTab() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Hostname</p>
-              <p className="font-medium mt-1">{status?.hostname || 'nithronos'}</p>
+              <p className="font-medium mt-1">{status?.hostname || 'nos'}</p>
             </div>
             <Server className="h-8 w-8 text-muted-foreground" />
           </div>

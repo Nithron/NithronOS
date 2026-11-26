@@ -8,9 +8,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/pkg/httpx"
-	"nithronos/backend/nosd/pkg/sync/offline"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/pkg/sync/offline"
 )
 
 // OfflineHandler handles offline sync API endpoints

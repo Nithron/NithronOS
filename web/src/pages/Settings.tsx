@@ -60,7 +60,7 @@ const quickLinks = [
 // General Settings
 function GeneralSettings() {
   const [settings, setSettings] = useState({
-    hostname: 'nithronos',
+    hostname: 'nos',
     timezone: 'America/New_York',
     language: 'en-US',
     dateFormat: 'MM/DD/YYYY',
@@ -499,14 +499,14 @@ function AboutSection() {
   
   return (
     <div className="space-y-6">
-      <Card title="NithronOS">
+      <Card title="nOS">
         <div className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
               <Server className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold">NithronOS</h3>
+              <h3 className="text-lg font-semibold">nOS</h3>
               <p className="text-sm text-muted-foreground">Open Source NAS & HomeLab Platform</p>
               <p className="text-xs text-muted-foreground mt-1">Version {systemInfo?.version || '2.1.0'}</p>
             </div>
@@ -533,7 +533,7 @@ function AboutSection() {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-muted-foreground">Hostname</p>
-            <p className="font-medium">{systemInfo?.hostname || 'nithronos'}</p>
+            <p className="font-medium">{systemInfo?.hostname || 'nos'}</p>
           </div>
           <div>
             <p className="text-muted-foreground">Architecture</p>
@@ -572,7 +572,7 @@ function AboutSection() {
             <ChevronRight className="h-4 w-4" />
           </a>
           
-          <a href="https://github.com/Nithron/NithronOS" target="_blank" rel="noopener noreferrer"
+          <a href="https://github.com/Nithron/nOS" target="_blank" rel="noopener noreferrer"
              className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50">
             <div className="flex items-center gap-3">
               <Globe className="h-5 w-5 text-muted-foreground" />

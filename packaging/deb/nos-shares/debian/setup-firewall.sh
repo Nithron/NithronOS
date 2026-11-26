@@ -1,5 +1,5 @@
 #!/bin/bash
-# Setup firewall rules for NithronOS shares
+# Setup firewall rules for nOS shares
 # This script is idempotent - safe to run multiple times
 
 set -e

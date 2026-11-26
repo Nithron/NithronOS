@@ -7,9 +7,9 @@ LB_BOOTLOADERS="grub-efi,grub-pc"
 LB_GRUB_SPLASH=""
 
 # ISO options
-LB_ISO_APPLICATION="NithronOS"
-LB_ISO_PUBLISHER="NithronOS Project"
-LB_ISO_VOLUME="NithronOS"
+LB_ISO_APPLICATION="nOS"
+LB_ISO_PUBLISHER="nOS Project"
+LB_ISO_VOLUME="nOS"
 
 # Binary filesystem
 LB_BINARY_FILESYSTEM="fat32"

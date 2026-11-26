@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/pkg/httpx"
 )
 
 const (

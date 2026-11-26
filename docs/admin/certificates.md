@@ -1,8 +1,8 @@
-# NithronOS Certificate Configuration Guide
+# nOS Certificate Configuration Guide
 
 ## Overview
 
-NithronOS supports multiple certificate strategies depending on your deployment scenario:
+nOS supports multiple certificate strategies depending on your deployment scenario:
 
 1. **Self-Signed Certificates** (Default) - For development and internal networks
 2. **Let's Encrypt** - For production with public domain
@@ -11,7 +11,7 @@ NithronOS supports multiple certificate strategies depending on your deployment 
 
 ## Current Setup
 
-By default, NithronOS uses Caddy's `tls internal` directive which:
+By default, nOS uses Caddy's `tls internal` directive which:
 - Automatically generates self-signed certificates
 - Works with IP addresses
 - Requires accepting certificate warning in browser
@@ -24,8 +24,8 @@ By default, NithronOS uses Caddy's `tls internal` directive which:
 This approach uses a local domain name that works on your network:
 
 ```bash
-# Run on NithronOS:
-sudo /usr/local/bin/nithronos-setup-local-domain.sh
+# Run on nOS:
+sudo /usr/local/bin/nos-setup-local-domain.sh
 ```
 
 This sets up:
@@ -44,7 +44,7 @@ If you need external access with valid certificates:
    ```
 
 2. **Configure port forwarding** on your router:
-   - Forward ports 80 and 443 to NithronOS
+   - Forward ports 80 and 443 to nOS
 
 3. **Update Caddyfile**:
    ```caddyfile
@@ -57,7 +57,7 @@ If you need external access with valid certificates:
      }
      
      handle {
-       root * /usr/share/nithronos/web
+       root * /usr/share/nos/web
        try_files {path} /index.html
        file_server
      }
@@ -69,7 +69,7 @@ If you need external access with valid certificates:
 Similar to your Fritz!Box setup, you can:
 
 1. **Use router's local DNS**:
-   - Add DNS entry: `nithron.home → NithronOS-IP`
+   - Add DNS entry: `nithron.home → nOS-IP`
    - Access via: `https://nithron.home`
 
 2. **Use Pi-hole or similar**:
@@ -129,14 +129,14 @@ nithron.local {
 To handle changing IPs, add to startup:
 
 ```bash
-# In /etc/systemd/system/nithronos-update-domain.service
+# In /etc/systemd/system/nos-update-domain.service
 [Unit]
-Description=Update NithronOS Domain on IP Change
+Description=Update nOS Domain on IP Change
 After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/nithronos-setup-local-domain.sh
+ExecStart=/usr/local/bin/nos-setup-local-domain.sh
 RemainAfterExit=yes
 
 [Install]
@@ -200,7 +200,7 @@ systemctl start caddy
 
 ```bash
 # For local network access (recommended)
-sudo /usr/local/bin/nithronos-setup-local-domain.sh
+sudo /usr/local/bin/nos-setup-local-domain.sh
 
 # Then access at:
 https://nithron.local

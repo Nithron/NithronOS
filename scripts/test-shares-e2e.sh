@@ -57,7 +57,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Main test
-echo "=== NithronOS Shares E2E Test ==="
+echo "=== nOS Shares E2E Test ==="
 echo ""
 
 # Check prerequisites

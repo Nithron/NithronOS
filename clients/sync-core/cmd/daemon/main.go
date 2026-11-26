@@ -13,8 +13,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"nithronos/clients/sync-core/config"
-	"nithronos/clients/sync-core/engine"
+	"nos/clients/sync-core/config"
+	"nos/clients/sync-core/engine"
 )
 
 var (

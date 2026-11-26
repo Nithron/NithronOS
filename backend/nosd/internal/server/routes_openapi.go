@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/go-chi/chi/v5"
-	// "nithronos/backend/nosd/pkg/firewall"
+	// "nos/backend/nosd/pkg/firewall"
 )
 
 // registerOpenAPI serves the OpenAPI document, generated from the router on

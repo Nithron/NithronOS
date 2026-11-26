@@ -75,7 +75,7 @@ func handleUpdatesApply(w http.ResponseWriter, r *http.Request) {
 
 func appendUpdateLog(ts time.Time, changed []string) error {
 	line := ts.Format(time.RFC3339) + " updates: " + strings.Join(changed, ",") + "\n"
-	f, err := os.OpenFile("/var/log/nithronos-updates.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	f, err := os.OpenFile("/var/log/nos-updates.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"nithronos/backend/nosd/internal/fsatomic"
+	"nos/backend/nosd/internal/fsatomic"
 )
 
 // Store handles persistence of sync-related data

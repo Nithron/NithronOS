@@ -15,7 +15,7 @@ import (
 )
 
 // DefaultIssuePath is where the console banner is written. The nosd package
-// links /etc/issue.d/50-nithronos-setup.issue to it (tmpfiles.d), so agetty
+// links /etc/issue.d/50-nos-setup.issue to it (tmpfiles.d), so agetty
 // shows it above every login prompt, and a systemd path unit runs
 // `agetty --reload` whenever it changes.
 const DefaultIssuePath = "/run/nos/firstboot.issue"
@@ -42,7 +42,7 @@ func (a *IssueAnnouncer) Announce(st *State) {
 	defer a.mu.Unlock()
 	addrs := a.addrs()
 	if a.Log != nil && st.OTP != a.lastCode {
-		_, _ = fmt.Fprintf(a.Log, "NithronOS first-boot setup code: %s (valid until %s); open %s\n",
+		_, _ = fmt.Fprintf(a.Log, "nOS first-boot setup code: %s (valid until %s); open %s\n",
 			st.OTP, a.expiry(st), strings.Join(urls(addrs), " or "))
 	}
 	a.lastCode = st.OTP
@@ -85,7 +85,7 @@ func (a *IssueAnnouncer) expiry(st *State) string {
 func (a *IssueAnnouncer) render(st *State, addrs []string) []byte {
 	var b strings.Builder
 	b.WriteString("\n")
-	b.WriteString("  NithronOS first-boot setup\n")
+	b.WriteString("  nOS first-boot setup\n")
 	b.WriteString("  --------------------------\n")
 	if u := urls(addrs); len(u) > 0 {
 		b.WriteString("  Open in a browser:     " + u[0] + "\n")

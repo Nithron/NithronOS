@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"nithronos/backend/nosd/pkg/shell"
+	"nos/backend/nosd/pkg/shell"
 )
 
 // ListPools attempts to discover mounted btrfs filesystems and returns size/usage details.

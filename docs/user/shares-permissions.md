@@ -2,13 +2,13 @@ make su # Shares & Permissions User Guide
 
 ## Overview
 
-NithronOS provides a powerful and intuitive interface for managing network file shares. Whether you need to share files with Windows computers, set up Time Machine backups for Macs, or provide network storage for Linux systems, NithronOS makes it simple.
+nOS provides a powerful and intuitive interface for managing network file shares. Whether you need to share files with Windows computers, set up Time Machine backups for Macs, or provide network storage for Linux systems, nOS makes it simple.
 
 ## Getting Started
 
 ### Accessing the Shares Interface
 
-1. Log in to the NithronOS web interface
+1. Log in to the nOS web interface
 2. Click **Shares** in the sidebar
 3. You'll see the shares dashboard showing all configured shares
 
@@ -98,7 +98,7 @@ Click **Create Share** to save your configuration. The share will be immediately
 ### From Windows
 
 1. Open File Explorer
-2. In the address bar, type: `\\nithronos.local` or `\\<server-ip>`
+2. In the address bar, type: `\\nos.local` or `\\<server-ip>`
 3. Double-click your share
 4. Enter credentials if prompted
 
@@ -108,7 +108,7 @@ Click **Create Share** to save your configuration. The share will be immediately
 
 1. Open Finder
 2. Press `Cmd+K` or go to **Go → Connect to Server**
-3. Enter: `smb://nithronos.local` or `smb://<server-ip>`
+3. Enter: `smb://nos.local` or `smb://<server-ip>`
 4. Select your share and click Connect
 
 ![macOS Access](../images/macos-share-access.png)
@@ -116,7 +116,7 @@ Click **Create Share** to save your configuration. The share will be immediately
 For Time Machine:
 1. Open System Preferences → Time Machine
 2. Click "Select Disk"
-3. Choose your NithronOS Time Machine share
+3. Choose your nOS Time Machine share
 4. Enter credentials
 
 ### From Linux
@@ -125,18 +125,18 @@ For Time Machine:
 Most file managers support network shares:
 1. Open your file manager
 2. Look for "Network" or "Other Locations"
-3. Enter: `smb://nithronos.local` or use the server IP
+3. Enter: `smb://nos.local` or use the server IP
 
 #### Command Line (NFS)
 ```bash
 # List available NFS exports
-showmount -e nithronos.local
+showmount -e nos.local
 
 # Mount NFS share
-sudo mount -t nfs nithronos.local:/srv/shares/documents /mnt/documents
+sudo mount -t nfs nos.local:/srv/shares/documents /mnt/documents
 
 # For permanent mounting, add to /etc/fstab:
-nithronos.local:/srv/shares/documents /mnt/documents nfs defaults 0 0
+nos.local:/srv/shares/documents /mnt/documents nfs defaults 0 0
 ```
 
 ## Managing Existing Shares
@@ -319,10 +319,10 @@ Power users can manage shares programmatically:
 
 ```bash
 # List all shares
-curl http://nithronos.local:9000/api/v1/shares
+curl http://nos.local:9000/api/v1/shares
 
 # Create a new share
-curl -X POST http://nithronos.local:9000/api/v1/shares \
+curl -X POST http://nos.local:9000/api/v1/shares \
   -H "Content-Type: application/json" \
   -d '{
     "name": "api-share",
@@ -342,7 +342,7 @@ For complex scenarios:
 
 ### Integration with Other Services
 
-- **Backup Software**: Point to NithronOS shares
+- **Backup Software**: Point to nOS shares
 - **Media Servers**: Use shares as media libraries
 - **Development**: Store code repositories
 - **Virtualization**: ISO and VM storage
@@ -350,8 +350,8 @@ For complex scenarios:
 ## Getting Help
 
 - Check the [Admin Guide](../admin/shares.md) for technical details
-- Visit our [Community Forum](https://community.nithronos.org)
-- Report issues on [GitHub](https://github.com/nithronos/nithronos/issues)
+- Visit our [GitHub Discussions](https://github.com/Nithron/nOS/discussions)
+- Report issues on [GitHub](https://github.com/Nithron/nOS/issues)
 
 ## Quick Reference
 
@@ -373,10 +373,10 @@ For complex scenarios:
 ### Useful Commands
 ```bash
 # Test SMB connection
-smbclient -L //nithronos.local -U username
+smbclient -L //nos.local -U username
 
 # List NFS exports
-showmount -e nithronos.local
+showmount -e nos.local
 
 # Check share permissions
 getfacl /srv/shares/sharename
@@ -384,4 +384,4 @@ getfacl /srv/shares/sharename
 
 ---
 
-*Last updated: November 2024 | NithronOS M2 Release*
+*Last updated: November 2024 | nOS M2 Release*

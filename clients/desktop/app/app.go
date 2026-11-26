@@ -11,9 +11,9 @@ import (
 	"github.com/rs/zerolog"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"nithronos/clients/sync-core/config"
-	"nithronos/clients/sync-core/db"
-	"nithronos/clients/sync-core/engine"
+	"nos/clients/sync-core/config"
+	"nos/clients/sync-core/db"
+	"nos/clients/sync-core/engine"
 )
 
 // App represents the main application.
@@ -320,7 +320,7 @@ func (a *App) OpenSyncFolder() error {
 	return exec.Command(cmd, args...).Start()
 }
 
-// OpenWebUI opens the NithronOS web UI in the browser.
+// OpenWebUI opens the nOS web UI in the browser.
 func (a *App) OpenWebUI() error {
 	if a.cfg.ServerURL == "" {
 		return fmt.Errorf("server not configured")

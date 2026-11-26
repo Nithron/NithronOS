@@ -12,7 +12,7 @@ echo "[info] PKG_ROOT=$PKG_ROOT"
 mkdir -p "$DIST_DIR"
 
 # List of package folders under packaging/deb/
-packages=(nosd nos-agent nos-web nos-shares nos-apps-runtime nos-apps nithronos)
+packages=(nosd nos-agent nos-web nos-shares nos-apps-runtime nos-apps nos)
 
 for pkg in "${packages[@]}"; do
   DIR="$PKG_ROOT/$pkg"

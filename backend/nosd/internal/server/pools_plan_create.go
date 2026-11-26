@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"nithronos/backend/nosd/internal/pools"
-	"nithronos/backend/nosd/pkg/httpx"
-	"nithronos/backend/nosd/pkg/shell"
+	"nos/backend/nosd/internal/pools"
+	"nos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/pkg/shell"
 )
 
 type planCreateRequest struct {

@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"nithronos/backend/nosd/internal/apps"
-	pkgapps "nithronos/backend/nosd/pkg/apps"
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/internal/apps"
+	pkgapps "nos/backend/nosd/pkg/apps"
+	"nos/backend/nosd/pkg/httpx"
 
 	"github.com/go-chi/chi/v5"
 )

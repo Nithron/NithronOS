@@ -1,13 +1,13 @@
 #!/bin/bash
 set -e
 
-# NithronOS Apps Runtime pre-removal script
+# nOS Apps Runtime pre-removal script
 
 case "$1" in
     remove|upgrade|deconfigure)
         # Stop all running apps
         if systemctl is-active --quiet nos-apps.target; then
-            echo "Stopping all NithronOS apps..."
+            echo "Stopping all nOS apps..."
             systemctl stop nos-apps.target || true
         fi
         

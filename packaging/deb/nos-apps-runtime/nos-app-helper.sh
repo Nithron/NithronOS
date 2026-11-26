@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# NithronOS App Helper - CLI utilities for Docker/Compose operations
+# nOS App Helper - CLI utilities for Docker/Compose operations
 # Called by nosd and systemd units for app lifecycle management
 
 APPS_ROOT="/srv/apps"

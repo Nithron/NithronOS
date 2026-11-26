@@ -2,7 +2,7 @@
 
 Until the first administrator exists, `nosd` keeps one valid 6-digit setup code. It is the only component that creates, shows or removes it.
 
-- **Where it is shown**: above the login prompt on the machine's screen and serial console (nosd writes `/run/nos/firstboot.issue`, which `/etc/issue.d/50-nithronos-setup.issue` links to; `nos-issue-reload.path` refreshes the prompts), and once per code in the nosd journal:
+- **Where it is shown**: above the login prompt on the machine's screen and serial console (nosd writes `/run/nos/firstboot.issue`, which `/etc/issue.d/50-nos-setup.issue` links to; `nos-issue-reload.path` refreshes the prompts), and once per code in the nosd journal:
 
   ```
   sudo journalctl -u nosd | grep 'setup code' | tail -n 1
@@ -14,15 +14,15 @@ Until the first administrator exists, `nosd` keeps one valid 6-digit setup code.
 
 ### HTTPS on first boot (self-signed)
 
-On first boot, a local ECDSA certificate is generated with SANs for `127.0.0.1`, the primary IPv4, and `nithronos.local`. Caddy serves HTTPS using this cert. Browsers will warn because it is self-signed; this is expected. The certificate and key live under `/etc/nithronos/tls/cert.pem` and `/etc/nithronos/tls/key.pem`.
+On first boot, a local ECDSA certificate is generated with SANs for `127.0.0.1`, the primary IPv4, and `nos.local`. Caddy serves HTTPS using this cert. Browsers will warn because it is self-signed; this is expected. The certificate and key live under `/etc/ssl/nos/cert.pem` and `/etc/ssl/nos/key.pem`.
 
 The console shows a banner after services start:
 
-`NithronOS UI → https://<this-ip>/  (self-signed)`
+`nOS UI → https://<this-ip>/  (self-signed)`
 
 To get a new code right away (local recovery mode only): `POST /api/v1/recovery/generate-otp`.
 
-Where the local cert lives: `/etc/nithronos/tls`.
+Where the local cert lives: `/etc/ssl/nos`.
 
 #### Recovery endpoint (localhost only)
 

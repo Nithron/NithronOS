@@ -8,11 +8,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	pwhash "nithronos/backend/nosd/internal/auth/hash"
-	userstore "nithronos/backend/nosd/internal/auth/store"
+	pwhash "nos/backend/nosd/internal/auth/hash"
+	userstore "nos/backend/nosd/internal/auth/store"
 
-	// "nithronos/backend/nosd/pkg/firewall"
-	"nithronos/backend/nosd/pkg/httpx"
+	// "nos/backend/nosd/pkg/firewall"
+	"nos/backend/nosd/pkg/httpx"
 )
 
 // registerRecovery serves the local-only recovery API (recovery mode only).

@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-NithronSync is a cross-platform file synchronization application that works like OneDrive/Dropbox, enabling seamless file access and synchronization between NithronOS NAS servers and client devices (Windows, Linux, Android, iOS). This document outlines the requirements, specifications, backend changes, and implementation plan.
+NithronSync is a cross-platform file synchronization application that works like OneDrive/Dropbox, enabling seamless file access and synchronization between nOS NAS servers and client devices (Windows, Linux, Android, iOS). This document outlines the requirements, specifications, backend changes, and implementation plan.
 
 ---
 
@@ -11,7 +11,7 @@ NithronSync is a cross-platform file synchronization application that works like
 1. [Product Vision](#product-vision)
 2. [Requirements](#requirements)
 3. [Technical Specifications](#technical-specifications)
-4. [Backend Changes to NithronOS](#backend-changes-to-nithronos)
+4. [Backend Changes to nOS](#backend-changes-to-nos)
 5. [Client Applications](#client-applications)
 6. [Security Model](#security-model)
 7. [Implementation Plan](#implementation-plan)
@@ -23,17 +23,17 @@ NithronSync is a cross-platform file synchronization application that works like
 
 ### Goals
 
-1. **Seamless File Access**: Files stored on NithronOS are accessible from any device
+1. **Seamless File Access**: Files stored on nOS are accessible from any device
 2. **Automatic Sync**: Changes made on any device automatically propagate to all others
 3. **Offline Support**: Work with files offline; changes sync when reconnected
 4. **Cross-Platform**: Native apps for Windows, Linux, Android, and iOS
-5. **Privacy-First**: All data stays on user's NithronOS server; no cloud intermediaries
-6. **Integration**: Extends existing NithronOS shares infrastructure
+5. **Privacy-First**: All data stays on user's nOS server; no cloud intermediaries
+6. **Integration**: Extends existing nOS shares infrastructure
 
 ### Non-Goals (v1)
 
 - End-to-end encryption (server already has access to files)
-- Peer-to-peer sync between devices without NithronOS
+- Peer-to-peer sync between devices without nOS
 - Real-time collaborative editing
 - File versioning in mobile apps (rely on server snapshots)
 
@@ -47,7 +47,7 @@ NithronSync is a cross-platform file synchronization application that works like
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR1.1 | Users authenticate with NithronOS credentials | P0 |
+| FR1.1 | Users authenticate with nOS credentials | P0 |
 | FR1.2 | Support 2FA (TOTP) during device registration | P0 |
 | FR1.3 | Each device gets a unique device token | P0 |
 | FR1.4 | Device tokens can be revoked from web UI | P0 |
@@ -58,7 +58,7 @@ NithronSync is a cross-platform file synchronization application that works like
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR2.1 | Two-way sync between device and NithronOS | P0 |
+| FR2.1 | Two-way sync between device and nOS | P0 |
 | FR2.2 | Selective sync (choose folders/shares to sync) | P0 |
 | FR2.3 | Conflict detection and resolution | P0 |
 | FR2.4 | Delta sync (only transfer changed blocks) | P1 |
@@ -123,7 +123,7 @@ NithronSync is a cross-platform file synchronization application that works like
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         NithronOS Server                         │
+│                         nOS Server                         │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
 │  │   nosd      │  │ nos-agent   │  │     Caddy Proxy         │  │
@@ -366,7 +366,7 @@ type SyncShare struct {
 
 ---
 
-## Backend Changes to NithronOS
+## Backend Changes to nOS
 
 ### 1. New Package: `pkg/sync`
 
@@ -529,7 +529,7 @@ func (n *NosWebDAV) Stat(ctx context.Context, name string) (os.FileInfo, error)
 
 ### 5. Caddy Configuration Updates
 
-**File**: `packaging/deb/caddy-nithronos/Caddyfile`
+**File**: `packaging/deb/nos-caddy/Caddyfile`
 
 Add WebDAV routing:
 
@@ -757,7 +757,7 @@ Add sync configuration tab:
 #### Configuration Storage
 
 - Windows: `%APPDATA%\NithronSync\config.json`
-- Linux: `~/.config/nithronos/sync.json`
+- Linux: `~/.config/nos/sync.json`
 
 ### Mobile App (Android/iOS)
 
@@ -797,7 +797,7 @@ Add sync configuration tab:
 Device Registration:
                                                           
 ┌─────────┐        ┌─────────────┐        ┌─────────────┐
-│  User   │        │  Sync App   │        │  NithronOS  │
+│  User   │        │  Sync App   │        │  nOS  │
 └────┬────┘        └──────┬──────┘        └──────┬──────┘
      │                    │                      │
      │  Enter server URL  │                      │
@@ -1009,7 +1009,7 @@ Device Registration:
 3. **Shared Folders**: Collaborative folders with multiple users
 4. **Version History**: Browse file versions from client apps
 5. **Smart Sync**: ML-based prediction of file access patterns
-6. **Backup Integration**: Integrate with NithronOS backup system
+6. **Backup Integration**: Integrate with nOS backup system
 7. **macOS Client**: Native macOS support with Finder integration
 8. **Web File Manager**: Browser-based file access
 
@@ -1067,7 +1067,7 @@ Device Registration:
 
 ## Appendix C: Related Roadmap Items
 
-This plan aligns with existing NithronOS roadmap items:
+This plan aligns with existing nOS roadmap items:
 
 - **A6 — Remote Access Plus**: Device tokens, 2FA gating *(direct dependency)*
 - **A10 — Desktop Companion**: LAN discovery, share mapping, notifications *(this is it)*
@@ -1102,7 +1102,7 @@ web/src/
 clients/
 ├── desktop/              # New repository or monorepo path
 │   ├── cmd/
-│   │   └── nithronos-sync/
+│   │   └── nos-sync/
 │   ├── internal/
 │   │   ├── api/
 │   │   ├── sync/
@@ -1135,7 +1135,7 @@ web/src/
 └── App.tsx                          # Add sync routes
 
 packaging/
-├── deb/caddy-nithronos/Caddyfile   # Add WebDAV routes
+├── deb/nos-caddy/Caddyfile   # Add WebDAV routes
 └── deb/nosd/debian/conffiles        # Add sync config files
 ```
 
@@ -1143,5 +1143,5 @@ packaging/
 
 *Document Version: 1.0*  
 *Last Updated: December 2024*  
-*Authors: NithronOS Development Team*
+*Authors: nOS Development Team*
 

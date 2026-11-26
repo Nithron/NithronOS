@@ -41,7 +41,7 @@ export function AboutScreen(): React.JSX.Element {
       {/* Description */}
       <View style={[styles.card, {backgroundColor: colors.card, borderColor: colors.border}]}>
         <Text style={[styles.description, {color: `${colors.text}80`}]}>
-          NithronSync is the official mobile client for NithronOS file synchronization.
+          NithronSync is the official mobile client for nOS file synchronization.
           Keep your files in sync across all your devices with secure, private, self-hosted storage.
         </Text>
       </View>

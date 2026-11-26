@@ -31,7 +31,7 @@ type Installer struct {
 func New() *Installer {
 	return &Installer{
 		targetMount: "/mnt",
-		hostname:    "nithronos",
+		hostname:    "nos",
 		timezone:    "UTC",
 	}
 }
@@ -90,11 +90,11 @@ func (i *Installer) Run() error {
 }
 
 func (i *Installer) setupLogging() error {
-	logPath := "/var/log/nithronos-installer.log"
+	logPath := "/var/log/nos-installer.log"
 	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		// Try current directory as fallback
-		logFile, err = os.OpenFile("nithronos-installer.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		logFile, err = os.OpenFile("nos-installer.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
 			return err
 		}
@@ -102,13 +102,13 @@ func (i *Installer) setupLogging() error {
 	
 	i.logFile = logFile
 	i.logger = log.New(io.MultiWriter(os.Stdout, logFile), "[INSTALLER] ", log.LstdFlags)
-	i.logger.Println("Starting NithronOS installation")
+	i.logger.Println("Starting nOS installation")
 	return nil
 }
 
 func (i *Installer) showWelcome() {
 	color.Blue("\n╔═══════════════════════════════════════╗")
-	color.Blue("║     NithronOS Guided Installer        ║")
+	color.Blue("║     nOS Guided Installer        ║")
 	color.Blue("╚═══════════════════════════════════════╝\n")
 	
 	fmt.Println("This installer will guide you through the installation process.")
@@ -260,7 +260,7 @@ func (i *Installer) createBtrfsLayout() error {
 	
 	// Format root as Btrfs
 	bar.Describe("Creating Btrfs filesystem")
-	if err := i.runCmd("mkfs.btrfs", "-f", "-L", "NithronOS", i.rootPartition); err != nil {
+	if err := i.runCmd("mkfs.btrfs", "-f", "-L", "nOS", i.rootPartition); err != nil {
 		return fmt.Errorf("failed to create Btrfs filesystem: %w", err)
 	}
 	bar.Add(1)
@@ -337,7 +337,7 @@ func (i *Installer) bootstrapSystem() error {
 	i.logger.Println("Bootstrapping system")
 	
 	// Check if we should copy from live system or use debootstrap
-	if _, err := os.Stat("/usr/share/nithronos/live-base.tar.gz"); err == nil {
+	if _, err := os.Stat("/usr/share/nos/live-base.tar.gz"); err == nil {
 		return i.bootstrapFromLive()
 	}
 	
@@ -348,7 +348,7 @@ func (i *Installer) bootstrapFromLive() error {
 	bar := progressbar.Default(3, "Copying system from live image")
 	
 	bar.Describe("Extracting base system")
-	cmd := exec.Command("tar", "-xzf", "/usr/share/nithronos/live-base.tar.gz", "-C", i.targetMount)
+	cmd := exec.Command("tar", "-xzf", "/usr/share/nos/live-base.tar.gz", "-C", i.targetMount)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to extract base system: %w", err)
 	}
@@ -443,8 +443,8 @@ deb http://security.debian.org/debian-security bookworm-security main contrib no
 	}
 	bar.Add(1)
 	
-	// Install NithronOS packages if available
-	bar.Describe("Installing NithronOS packages")
+	// Install nOS packages if available
+	bar.Describe("Installing nOS packages")
 	nosPackages := []string{"nosd", "nos-agent", "nos-web", "caddy"}
 	for _, pkg := range nosPackages {
 		debPath := fmt.Sprintf("/tmp/%s.deb", pkg)
@@ -482,7 +482,7 @@ func (i *Installer) installBootloader() error {
 	
 	// Install GRUB
 	bar.Describe("Installing GRUB to ESP")
-	if err := i.chrootRun("grub-install", "--target=x86_64-efi", "--efi-directory=/boot/efi", "--bootloader-id=NithronOS", "--recheck"); err != nil {
+	if err := i.chrootRun("grub-install", "--target=x86_64-efi", "--efi-directory=/boot/efi", "--bootloader-id=nOS", "--recheck"); err != nil {
 		return fmt.Errorf("failed to install GRUB: %w", err)
 	}
 	bar.Add(1)
@@ -491,7 +491,7 @@ func (i *Installer) installBootloader() error {
 	bar.Describe("Configuring GRUB")
 	grubDefault := `GRUB_DEFAULT=0
 GRUB_TIMEOUT=5
-GRUB_DISTRIBUTOR="NithronOS"
+GRUB_DISTRIBUTOR="nOS"
 GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"
 GRUB_CMDLINE_LINUX="rootflags=subvol=@"
 `
@@ -503,14 +503,14 @@ GRUB_CMDLINE_LINUX="rootflags=subvol=@"
 	
 	// Copy branding if available
 	bar.Describe("Adding branding")
-	brandingSource := "/usr/share/nithronos/grub-theme"
-	brandingTarget := filepath.Join(i.targetMount, "boot/grub/themes/nithronos")
+	brandingSource := "/usr/share/nos/grub-theme"
+	brandingTarget := filepath.Join(i.targetMount, "boot/grub/themes/nos")
 	if _, err := os.Stat(brandingSource); err == nil {
 		os.MkdirAll(brandingTarget, 0755)
 		i.runCmd("cp", "-r", brandingSource+"/*", brandingTarget)
 		
 		// Add theme to config
-		grubDefault += `GRUB_THEME="/boot/grub/themes/nithronos/theme.txt"
+		grubDefault += `GRUB_THEME="/boot/grub/themes/nos/theme.txt"
 `
 		os.WriteFile(grubPath, []byte(grubDefault), 0644)
 	}
@@ -596,15 +596,15 @@ ff02::2		ip6-allrouters
 	
 	// Write os-release
 	bar.Describe("Writing os-release")
-	osRelease := `NAME="NithronOS"
+	osRelease := `NAME="nOS"
 VERSION="1.0"
-ID=nithronos
+ID=nos
 ID_LIKE=debian
-PRETTY_NAME="NithronOS 1.0"
+PRETTY_NAME="nOS 1.0"
 VERSION_ID="1.0"
-HOME_URL="https://nithronos.io"
-SUPPORT_URL="https://github.com/nithronos/nithronos"
-BUG_REPORT_URL="https://github.com/nithronos/nithronos/issues"
+HOME_URL="https://github.com/Nithron/nOS"
+SUPPORT_URL="https://github.com/Nithron/nOS"
+BUG_REPORT_URL="https://github.com/Nithron/nOS/issues"
 `
 	osReleasePath := filepath.Join(i.targetMount, "etc/os-release")
 	if err := os.WriteFile(osReleasePath, []byte(osRelease), 0644); err != nil {
@@ -660,7 +660,7 @@ func (i *Installer) configureCaddy() error {
 	}
 	
 	handle {
-		root * /usr/share/nithronos/web
+		root * /usr/share/nos/web
 		file_server
 		try_files {path} /index.html
 	}
@@ -690,7 +690,7 @@ func (i *Installer) finalize() error {
 	
 	// Copy install log to target
 	bar.Describe("Copying installation log")
-	logDst := filepath.Join(i.targetMount, "var/log/nithronos-installer.log")
+	logDst := filepath.Join(i.targetMount, "var/log/nos-installer.log")
 	os.MkdirAll(filepath.Dir(logDst), 0755)
 	if i.logFile != nil {
 		i.logFile.Sync()

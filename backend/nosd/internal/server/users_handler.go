@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"time"
 
-	"nithronos/backend/nosd/internal/auth/hash"
-	userstore "nithronos/backend/nosd/internal/auth/store"
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/internal/auth/hash"
+	userstore "nos/backend/nosd/internal/auth/store"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/pkg/httpx"
 
 	"github.com/go-chi/chi/v5"
 )

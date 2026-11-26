@@ -1,4 +1,4 @@
-module nithronos/clients/desktop
+module nos/clients/desktop
 
 go 1.24
 
@@ -6,7 +6,7 @@ require (
 	github.com/getlantern/systray v1.2.2
 	github.com/rs/zerolog v1.33.0
 	github.com/wailsapp/wails/v2 v2.9.2
-	nithronos/clients/sync-core v0.0.0
+	nos/clients/sync-core v0.0.0
 )
 
 require (
@@ -50,5 +50,5 @@ require (
 	golang.org/x/text v0.16.0 // indirect
 )
 
-replace nithronos/clients/sync-core => ../sync-core
+replace nos/clients/sync-core => ../sync-core
 

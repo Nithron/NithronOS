@@ -2,7 +2,7 @@
 
 ## Overview
 
-After installing NithronOS, the first-boot process guides you through initial system configuration via a web-based setup wizard. This ensures your system is properly configured and secured before use.
+After installing nOS, the first-boot process guides you through initial system configuration via a web-based setup wizard. This ensures your system is properly configured and secured before use.
 
 ## First-Boot Process
 
@@ -17,7 +17,7 @@ When the system boots for the first time after installation:
 ### 2. Setup code
 
 ```
-  NithronOS first-boot setup
+  nOS first-boot setup
   --------------------------
   Open in a browser:     https://192.168.1.100/
   One-time setup code:   123 456

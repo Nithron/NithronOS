@@ -144,7 +144,7 @@ func (u *Updater) GetVersion() (*SystemVersion, error) {
 	}
 
 	// Get OS version
-	osVersion := "NithronOS"
+	osVersion := "nOS"
 	if data, err := os.ReadFile("/etc/os-release"); err == nil {
 		lines := strings.Split(string(data), "\n")
 		for _, line := range lines {

@@ -1,11 +1,11 @@
 #!/bin/bash
 set -e
 
-# NithronOS Apps Runtime post-removal script
+# nOS Apps Runtime post-removal script
 
 case "$1" in
     purge)
-        echo "Purging NithronOS Apps Runtime configuration..."
+        echo "Purging nOS Apps Runtime configuration..."
         
         # Remove configuration files
         rm -rf /etc/nos/apps
@@ -18,7 +18,7 @@ case "$1" in
         # rm -rf /srv/apps
         
         # Remove shared app catalog
-        rm -rf /usr/share/nithronos/apps
+        rm -rf /usr/share/nos/apps
         
         # Note: We don't remove the service user from docker group
         # or remove Docker itself as it may be used by other services

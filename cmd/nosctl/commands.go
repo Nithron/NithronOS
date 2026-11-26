@@ -15,8 +15,8 @@ import (
 func newLoginCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",
-		Short: "Authenticate with NithronOS",
-		Long:  `Authenticate with NithronOS using an API token.`,
+		Short: "Authenticate with nOS",
+		Long:  `Authenticate with nOS using an API token.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fmt.Print("Enter API token: ")
 			var inputToken string
@@ -65,7 +65,7 @@ func newStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Show system status",
-		Long:  `Display the current status of the NithronOS system.`,
+		Long:  `Display the current status of the nOS system.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient(baseURL, token)
 

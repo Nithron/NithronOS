@@ -1,5 +1,5 @@
 // Package sync provides file synchronization functionality for NithronSync clients.
-// It enables cross-platform file sync between NithronOS and desktop/mobile devices.
+// It enables cross-platform file sync between nOS and desktop/mobile devices.
 package sync
 
 import (

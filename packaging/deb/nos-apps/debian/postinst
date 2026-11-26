@@ -1,11 +1,11 @@
 #!/bin/bash
 set -e
 
-# NithronOS Apps Catalog post-installation script
+# nOS Apps Catalog post-installation script
 
 case "$1" in
     configure)
-        echo "Setting up NithronOS App Catalog..."
+        echo "Setting up nOS App Catalog..."
         
         # Create required directories
         mkdir -p /srv/apps
@@ -72,13 +72,13 @@ case "$1" in
         # Create initial catalog cache
         if [ ! -f /var/lib/nos/apps/catalog.cache.json ]; then
             # Copy built-in catalog as initial cache
-            if [ -f /usr/share/nithronos/apps/catalog.yaml ]; then
+            if [ -f /usr/share/nos/apps/catalog.yaml ]; then
                 echo "Creating initial catalog cache..."
                 # Simple YAML to JSON conversion (requires yq or python)
                 if command -v python3 &>/dev/null; then
                     python3 -c "
 import yaml, json, sys
-with open('/usr/share/nithronos/apps/catalog.yaml') as f:
+with open('/usr/share/nos/apps/catalog.yaml') as f:
     data = yaml.safe_load(f)
 with open('/var/lib/nos/apps/catalog.cache.json', 'w') as f:
     json.dump(data, f, indent=2)
@@ -88,9 +88,9 @@ with open('/var/lib/nos/apps/catalog.cache.json', 'w') as f:
             fi
         fi
         
-        echo "NithronOS App Catalog setup complete"
+        echo "nOS App Catalog setup complete"
         echo ""
-        echo "App templates installed in: /usr/share/nithronos/apps/templates/"
+        echo "App templates installed in: /usr/share/nos/apps/templates/"
         echo "App data will be stored in: /srv/apps/"
         echo ""
         echo "Access the App Catalog at: https://your-server/apps"

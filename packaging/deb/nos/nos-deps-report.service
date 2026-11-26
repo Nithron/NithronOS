@@ -1,0 +1,12 @@
+[Unit]
+Description=nOS dependencies version report (one-time)
+ConditionPathExists=!/var/lib/nos/deps-reported
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/nos/report-deps.sh
+
+[Install]
+WantedBy=multi-user.target
+
+

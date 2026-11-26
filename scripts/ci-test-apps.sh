@@ -269,25 +269,25 @@ for APP_ID in $(echo "$CATALOG" | jq -r '.entries[].id'); do
     log_info "  Checking template for: $APP_ID"
     
     # Check compose file exists
-    if [ ! -f "usr/share/nithronos/apps/templates/$APP_ID/compose.yaml" ]; then
+    if [ ! -f "usr/share/nos/apps/templates/$APP_ID/compose.yaml" ]; then
         log_error "  Missing compose.yaml for $APP_ID"
         TEMPLATE_ERRORS=$((TEMPLATE_ERRORS + 1))
     fi
     
     # Check schema file exists
-    if [ ! -f "usr/share/nithronos/apps/templates/$APP_ID/schema.json" ]; then
+    if [ ! -f "usr/share/nos/apps/templates/$APP_ID/schema.json" ]; then
         log_error "  Missing schema.json for $APP_ID"
         TEMPLATE_ERRORS=$((TEMPLATE_ERRORS + 1))
     fi
     
     # Check README exists
-    if [ ! -f "usr/share/nithronos/apps/templates/$APP_ID/README.md" ]; then
+    if [ ! -f "usr/share/nos/apps/templates/$APP_ID/README.md" ]; then
         log_warn "  Missing README.md for $APP_ID (optional)"
     fi
     
     # Validate schema.json is valid JSON
-    if [ -f "usr/share/nithronos/apps/templates/$APP_ID/schema.json" ]; then
-        if ! jq empty "usr/share/nithronos/apps/templates/$APP_ID/schema.json" 2>/dev/null; then
+    if [ -f "usr/share/nos/apps/templates/$APP_ID/schema.json" ]; then
+        if ! jq empty "usr/share/nos/apps/templates/$APP_ID/schema.json" 2>/dev/null; then
             log_error "  Invalid JSON in schema.json for $APP_ID"
             TEMPLATE_ERRORS=$((TEMPLATE_ERRORS + 1))
         fi

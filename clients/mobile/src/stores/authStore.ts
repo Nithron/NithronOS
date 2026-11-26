@@ -52,7 +52,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             currentDevice: device,
             serverInfo: {
               url: apiClient.getServerUrl(),
-              name: 'NithronOS',
+              name: 'nOS',
               version: 'unknown',
               features: [],
             },
@@ -137,7 +137,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         serverInfo: {
           url: apiClient.getServerUrl(),
-          name: 'NithronOS',
+          name: 'nOS',
           version: 'unknown',
           features: [],
         },

@@ -1,6 +1,6 @@
 # HTTPS (self-signed) on first boot
 
-On first boot, NithronOS generates a self-signed TLS certificate with SANs for:
+On first boot, nOS generates a self-signed TLS certificate with SANs for:
 - 127.0.0.1
 - The device's primary LAN IP
 - nithron.os
@@ -13,8 +13,8 @@ Notes:
 - The cert regenerates if the primary IP changes.
 
 Files:
-- TLS: `/etc/nithronos/tls/cert.pem`, `/etc/nithronos/tls/key.pem`
+- TLS: `/etc/ssl/nos/cert.pem`, `/etc/ssl/nos/key.pem`
 - Caddyfile: `/etc/caddy/Caddyfile`
-- TLS generator: `/usr/lib/nithronos/nos-tls-gen.sh` (systemd unit `nos-tls-gen.service`)
+- TLS generator: `/usr/lib/nos/nos-tls-gen.sh` (systemd unit `nos-tls-gen.service`)
 
 

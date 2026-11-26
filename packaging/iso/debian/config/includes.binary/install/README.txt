@@ -1,4 +1,4 @@
-NithronOS Installer
+nOS Installer
 ===================
 
 This installer uses the standard Debian installer to:
@@ -10,7 +10,7 @@ This installer uses the standard Debian installer to:
 After installation:
 - Reboot the system
 - Navigate to http://your-server-ip in a web browser
-- Complete the NithronOS web setup
+- Complete the nOS web setup
 
 The installer is fully automated using preseed configuration.
 If you need to customize the installation, you can edit the

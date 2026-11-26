@@ -129,10 +129,10 @@ export function ManualSetupScreen(): React.JSX.Element {
         {step === 'server' && (
           <View style={styles.stepContent}>
             <Text style={[styles.stepTitle, {color: colors.text}]}>
-              Connect to your NithronOS server
+              Connect to your nOS server
             </Text>
             <Text style={[styles.stepDescription, {color: `${colors.text}80`}]}>
-              Enter the URL of your NithronOS server to get started
+              Enter the URL of your nOS server to get started
             </Text>
 
             <View style={[styles.inputContainer, {borderColor: colors.border}]}>
@@ -173,7 +173,7 @@ export function ManualSetupScreen(): React.JSX.Element {
             <View style={styles.helpSection}>
               <Icon name="help-circle-outline" size={18} color={`${colors.text}60`} />
               <Text style={[styles.helpText, {color: `${colors.text}60`}]}>
-                You can find your server URL in the NithronOS dashboard under Settings → Remote Access
+                You can find your server URL in the nOS dashboard under Settings → Remote Access
               </Text>
             </View>
           </View>

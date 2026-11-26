@@ -4,12 +4,12 @@ set -e
 echo "[*] Checking Caddy config"
 
 # Create temporary TLS certificates if they don't exist
-if [ ! -f /etc/nithronos/tls/cert.pem ] || [ ! -f /etc/nithronos/tls/key.pem ]; then
+if [ ! -f /etc/ssl/nos/cert.pem ] || [ ! -f /etc/ssl/nos/key.pem ]; then
     echo "[*] Creating temporary TLS certificates for validation..."
-    mkdir -p /etc/nithronos/tls
+    mkdir -p /etc/ssl/nos
     openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
-        -keyout /etc/nithronos/tls/key.pem \
-        -out /etc/nithronos/tls/cert.pem \
+        -keyout /etc/ssl/nos/key.pem \
+        -out /etc/ssl/nos/cert.pem \
         -subj "/CN=localhost" 2>/dev/null || true
 fi
 

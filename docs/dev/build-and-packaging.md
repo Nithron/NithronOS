@@ -17,7 +17,7 @@ make web-dev
 
 ### Web reverse proxy (Caddy conf.d)
 
-nos-web ships a snippet to `/etc/caddy/conf.d/nithronos.caddy` (HTTP-only). The package postinst ensures `/etc/caddy/Caddyfile` exists and imports `conf.d/*.caddy` if not already present. This avoids overwriting admin-managed Caddyfiles.
+nos-web ships a snippet to `/etc/caddy/conf.d/nos.caddy` (HTTP-only). The package postinst ensures `/etc/caddy/Caddyfile` exists and imports `conf.d/*.caddy` if not already present. This avoids overwriting admin-managed Caddyfiles.
 
 Snippet content:
 ```
@@ -25,7 +25,7 @@ Snippet content:
 handle @api {
   reverse_proxy 127.0.0.1:9000
 }
-root * /usr/share/nithronos/web
+root * /usr/share/nos/web
 try_files {path} /index.html
 file_server
 ```
@@ -35,7 +35,7 @@ Notes:
 - Optional: add `nithron.os` to your hosts file pointing at the device IP
 
 ### Deps
-- Runtime tools installed by default via meta `nithronos`:
+- Runtime tools installed by default via meta `nos`:
   - btrfs-progs, smartmontools, cryptsetup, util-linux, coreutils, findutils
 - Suggested (pulled on ISO, optional in package mgr):
   - mdadm, lvm2

@@ -1,8 +1,8 @@
-# NithronOS Network Shares Administration Guide
+# nOS Network Shares Administration Guide
 
 ## Overview
 
-NithronOS provides integrated network share management with support for SMB/CIFS and NFS protocols. The system includes advanced features like Time Machine support, recycle bins, and simple ACL management.
+nOS provides integrated network share management with support for SMB/CIFS and NFS protocols. The system includes advanced features like Time Machine support, recycle bins, and simple ACL management.
 
 ## Features
 
@@ -123,7 +123,7 @@ When `time_machine: true` is enabled:
 **macOS Client Setup:**
 1. Open System Preferences → Time Machine
 2. Click "Select Disk"
-3. Choose the NithronOS share
+3. Choose the nOS share
 4. Enter credentials if required
 
 ## NFS Configuration
@@ -142,13 +142,13 @@ NFS exports are restricted by network:
 ### Client Mount
 ```bash
 # List available exports
-showmount -e nithronos.local
+showmount -e nos.local
 
 # Mount NFS share
-sudo mount -t nfs nithronos.local:/srv/shares/documents /mnt/documents
+sudo mount -t nfs nos.local:/srv/shares/documents /mnt/documents
 
 # Persistent mount (add to /etc/fstab)
-nithronos.local:/srv/shares/documents /mnt/documents nfs defaults 0 0
+nos.local:/srv/shares/documents /mnt/documents nfs defaults 0 0
 ```
 
 ## Service Management
@@ -218,8 +218,8 @@ pdbedit -L
 exportfs -v
 
 # Test from client
-rpcinfo -p nithronos.local
-showmount -e nithronos.local
+rpcinfo -p nos.local
+showmount -e nos.local
 
 # Check logs
 journalctl -u nfs-server -n 50
@@ -239,7 +239,7 @@ systemctl status avahi-daemon
 avahi-browse -a -t
 
 # Verify service file
-cat /etc/avahi/services/nithronos-tm.service
+cat /etc/avahi/services/nos-tm.service
 
 # Restart discovery
 systemctl restart avahi-daemon

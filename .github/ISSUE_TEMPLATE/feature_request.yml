@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest an idea for NithronOS
+description: Suggest an idea for nOS
 labels: [enhancement]
 body:
   - type: textarea

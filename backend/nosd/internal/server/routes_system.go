@@ -8,10 +8,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"nithronos/backend/nosd/pkg/agentclient"
+	"nos/backend/nosd/pkg/agentclient"
 
-	// "nithronos/backend/nosd/pkg/firewall"
-	"nithronos/backend/nosd/pkg/httpx"
+	// "nos/backend/nosd/pkg/firewall"
+	"nos/backend/nosd/pkg/httpx"
 )
 
 // registerSystem serves system settings (/api/v1/system, /network, /telemetry); during setup the setup token is accepted too.

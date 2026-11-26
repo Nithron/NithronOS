@@ -1,0 +1,15 @@
+nos (0.9.5~pre-alpha-1) unstable; urgency=medium
+
+  * Renamed from nithronos: NithronOS is now nOS. The nithronos package is
+    now a transitional package that depends on nos.
+  * nos-certgen.service is installed under /lib/systemd/system.
+  * Align the package version with the nOS release (0.9.5-pre-alpha); the
+    VERSION file at the repository root is now the single source.
+
+ -- nOS Maintainers <maintainers@nithron.com>  Thu, 26 Nov 2026 13:30:00 +0100
+
+nithronos (0.1.1-1) unstable; urgency=medium
+
+  * Initial Debian packaging.
+
+ -- nOS Maintainers <maintainers@nithron.com>  Wed, 20 Aug 2025 12:00:00 +0000

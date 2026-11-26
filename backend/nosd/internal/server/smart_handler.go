@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/pkg/agentclient"
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/pkg/agentclient"
+	"nos/backend/nosd/pkg/httpx"
 )
 
 // SMARTDevice represents SMART data for a storage device

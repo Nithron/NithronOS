@@ -10,10 +10,10 @@ import (
 	"regexp"
 	"strings"
 
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/internal/fsatomic"
-	"nithronos/backend/nosd/pkg/agentclient"
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/fsatomic"
+	"nos/backend/nosd/pkg/agentclient"
+	"nos/backend/nosd/pkg/httpx"
 )
 
 type discoveredPool struct {

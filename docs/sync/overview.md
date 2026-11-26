@@ -1,6 +1,6 @@
 # NithronSync Overview
 
-NithronSync is NithronOS's built-in file synchronization system, providing OneDrive-like functionality for your self-hosted storage. It enables seamless file sync across Windows, Linux, macOS desktops, and iOS/Android mobile devices.
+NithronSync is nOS's built-in file synchronization system, providing OneDrive-like functionality for your self-hosted storage. It enables seamless file sync across Windows, Linux, macOS desktops, and iOS/Android mobile devices.
 
 ## Key Features
 
@@ -17,7 +17,7 @@ NithronSync is NithronOS's built-in file synchronization system, providing OneDr
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        NithronOS Server                         │
+│                        nOS Server                         │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
 │  │  Sync API   │  │   WebDAV    │  │    Change Tracker       │ │

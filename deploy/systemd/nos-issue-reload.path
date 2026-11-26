@@ -1,5 +1,5 @@
 [Unit]
-Description=Refresh login prompts when the NithronOS setup banner changes
+Description=Refresh login prompts when the nOS setup banner changes
 Documentation=file:///usr/share/doc/nosd/README
 
 [Path]

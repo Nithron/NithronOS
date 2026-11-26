@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 
 	"github.com/go-chi/chi/v5"
 )

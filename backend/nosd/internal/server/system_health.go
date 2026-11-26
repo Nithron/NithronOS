@@ -6,9 +6,9 @@ import (
 	"runtime"
 	"time"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 
-	// "nithronos/backend/nosd/pkg/firewall"
+	// "nos/backend/nosd/pkg/firewall"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"

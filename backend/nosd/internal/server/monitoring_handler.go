@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 )
 
 // Event represents a system event
@@ -122,7 +122,7 @@ func handleMonitoringLogs(cfg config.Config) http.HandlerFunc {
 			// Fallback for non-Linux systems - read from log files
 			logDir := "/var/log"
 			if runtime.GOOS == "windows" {
-				logDir = `C:\ProgramData\NithronOS\logs`
+				logDir = `C:\ProgramData\nOS\logs`
 			}
 
 			// Read nosd.log if it exists
@@ -158,7 +158,7 @@ func handleMonitoringEvents(cfg config.Config) http.HandlerFunc {
 		// Read events from event log file
 		eventFile := filepath.Join("/var/lib/nos/events.jsonl")
 		if runtime.GOOS == "windows" {
-			eventFile = filepath.Join(`C:\ProgramData\NithronOS\events.jsonl`)
+			eventFile = filepath.Join(`C:\ProgramData\nOS\events.jsonl`)
 		}
 
 		if file, err := os.Open(eventFile); err == nil {
@@ -585,8 +585,8 @@ func mapJournaldPriority(priority any) string {
 
 func getServiceDisplayName(name string) string {
 	displayNames := map[string]string{
-		"nosd":       "NithronOS Daemon",
-		"nos-agent":  "NithronOS Agent",
+		"nosd":       "nOS Daemon",
+		"nos-agent":  "nOS Agent",
 		"caddy":      "Web Server (Caddy)",
 		"smbd":       "SMB/CIFS Server",
 		"nfs-server": "NFS Server",

@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"nithronos/backend/nosd/internal/auth/session"
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/auth/session"
+	"nos/backend/nosd/internal/config"
 
 	"github.com/gorilla/securecookie"
 )

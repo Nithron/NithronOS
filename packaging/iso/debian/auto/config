@@ -1,5 +1,5 @@
 #!/bin/sh
-# NithronOS ISO Build Configuration
+# nOS ISO Build Configuration
 
 set -e
 
@@ -20,15 +20,15 @@ lb config noauto \
     --cache-packages true \
     --debconf-frontend noninteractive \
     --debootstrap-options "--variant=minbase" \
-    --iso-application "NithronOS" \
-    --iso-publisher "NithronOS Project" \
-    --iso-volume "NithronOS $(date +%Y%m%d)" \
+    --iso-application "nOS" \
+    --iso-publisher "nOS Project" \
+    --iso-volume "nOS $(date +%Y%m%d)" \
     --memtest none \
     --win32-loader false \
     --loadlin false \
     --bootappend-live "boot=live components quiet splash" \
     --bootappend-live-failsafe "boot=live components memtest noapic noapm nodma nomce nolapic nomodeset nosmp nosplash vga=normal" \
-    --bootappend-install "vga=788 auto=true priority=critical preseed/file=/cdrom/preseed.cfg locale=en_US.UTF-8 keymap=us hostname=nithronos domain=local quiet" \
+    --bootappend-install "vga=788 auto=true priority=critical preseed/file=/cdrom/preseed.cfg locale=en_US.UTF-8 keymap=us hostname=nos domain=local quiet" \
     "${@}"
 
 # Ensure installer is included
@@ -45,7 +45,7 @@ echo "deb [arch=amd64] https://download.docker.com/linux/debian bookworm stable"
 curl -fsSL https://download.docker.com/linux/debian/gpg > config/archives/docker.key.chroot
 
 # Package lists
-cat > config/package-lists/nithronos-base.list.chroot << EOF
+cat > config/package-lists/nos-base.list.chroot << EOF
 # Base system
 sudo
 vim

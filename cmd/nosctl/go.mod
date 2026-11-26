@@ -1,4 +1,4 @@
-module nithronos/cmd/nosctl
+module nos/cmd/nosctl
 
 go 1.26.0
 

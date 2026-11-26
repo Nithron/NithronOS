@@ -1,6 +1,6 @@
 [Unit]
-Description=NithronOS Applications
-Documentation=https://github.com/NotTekk/NithronOS
+Description=nOS Applications
+Documentation=https://github.com/Nithron/nOS
 After=docker.service network-online.target multi-user.target
 
 [Install]

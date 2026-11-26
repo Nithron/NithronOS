@@ -11,13 +11,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/internal/disks"
-	"nithronos/backend/nosd/internal/fsatomic"
-	"nithronos/backend/nosd/internal/pools"
-	btrfsplan "nithronos/backend/nosd/internal/storage/btrfs"
-	"nithronos/backend/nosd/pkg/agentclient"
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/disks"
+	"nos/backend/nosd/internal/fsatomic"
+	"nos/backend/nosd/internal/pools"
+	btrfsplan "nos/backend/nosd/internal/storage/btrfs"
+	"nos/backend/nosd/pkg/agentclient"
+	"nos/backend/nosd/pkg/httpx"
 )
 
 var agentSocketPath = "/run/nos-agent.sock"

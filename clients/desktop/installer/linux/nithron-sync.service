@@ -1,6 +1,6 @@
 [Unit]
 Description=NithronSync File Synchronization Service
-Documentation=https://github.com/Nithron/NithronOS
+Documentation=https://github.com/Nithron/nOS
 After=network-online.target
 Wants=network-online.target
 

@@ -1,0 +1,26 @@
+Source: nos
+Section: metapackages
+Priority: optional
+Maintainer: nOS Maintainers <maintainers@nithron.com>
+Standards-Version: 4.6.2
+Build-Depends: debhelper-compat (= 13)
+Rules-Requires-Root: no
+
+Package: nos
+Architecture: all
+Depends: ${misc:Depends}, nosd, nos-agent, nos-web, caddy, openssl, nftables, fail2ban, docker.io, samba, nfs-kernel-server, btrfs-progs, smartmontools, cryptsetup, util-linux, coreutils, findutils, wireguard
+Recommends: nvme-cli
+Suggests: mdadm, lvm2
+Breaks: nithronos (<< ${source:Version})
+Replaces: nithronos (<< ${source:Version})
+Description: nOS meta package (pulls core services and deps)
+ nOS (NithronOS) is a Linux-based OS for NAS and homelabs. This package
+ pulls in the nOS services and the system tools they use.
+
+Package: nithronos
+Architecture: all
+Section: oldlibs
+Depends: ${misc:Depends}, nos (= ${source:Version})
+Description: transitional package for nos
+ NithronOS is now called nOS and its meta package is nos. This package
+ only pulls in nos and can be removed.

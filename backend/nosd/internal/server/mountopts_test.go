@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"nithronos/backend/nosd/internal/disks"
+	"nos/backend/nosd/internal/disks"
 )
 
 func TestComputeDefaultMountOptsFromDisks_AllSSD(t *testing.T) {

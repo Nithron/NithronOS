@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/go-chi/chi/v5"
-	// "nithronos/backend/nosd/pkg/firewall"
+	// "nos/backend/nosd/pkg/firewall"
 )
 
 // registerProtected serves everything that needs a signed-in user.

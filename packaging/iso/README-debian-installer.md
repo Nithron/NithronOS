@@ -1,17 +1,17 @@
-# NithronOS installer
+# nOS installer
 
 The ISO has two parts:
 
-- **NithronOS Live** (`/live`): the full system, including the NithronOS packages (nosd, nos-agent, nos-web, ...).
-- **Install NithronOS** (`/install`): live-build's Debian installer (`--debian-installer live`). It copies the
+- **nOS Live** (`/live`): the full system, including the nOS packages (nosd, nos-agent, nos-web, ...).
+- **Install nOS** (`/install`): live-build's Debian installer (`--debian-installer live`). It copies the
   live system to the disk with `live-installer`, so nothing is downloaded during the install.
 
 `packaging/iso/build.sh` builds both.
 
-## How the NithronOS packages get onto the disk
+## How the nOS packages get onto the disk
 
 `build.sh` copies the `.deb`s to `config/packages.chroot/` and lists them in
-`config/package-lists/nithronos-local.list.chroot` (both generated, git-ignored). live-build then installs them
+`config/package-lists/nos-local.list.chroot` (both generated, git-ignored). live-build then installs them
 like any other package. The post-build check fails the build if any of them is missing from
 `live/filesystem.packages` or appears in `live/filesystem.packages-remove` (the list of live-only packages the
 installer removes from the installed system).
@@ -21,7 +21,7 @@ installer removes from the installed system).
 | File | Purpose |
 |---|---|
 | `debian/config/includes.installer/preseed.cfg` | Embedded in `/install/initrd.gz` and loaded automatically. |
-| `debian/config/includes.installer/usr/lib/nithronos-installer/late-command.sh` | Runs at the end of the install: checks that nosd, nos-agent and the web UI are on the disk (stops with an error otherwise), writes the APT sources (Debian, updates, security), enables the services, adds the console administrator to `sudo`. |
+| `debian/config/includes.installer/usr/lib/nos-installer/late-command.sh` | Runs at the end of the install: checks that nosd, nos-agent and the web UI are on the disk (stops with an error otherwise), writes the APT sources (Debian, updates, security), enables the services, adds the console administrator to `sudo`. |
 | `debian/config/includes.binary/isolinux/isolinux.cfg` | BIOS boot menu. |
 | `debian/config/includes.binary/boot/grub/grub.cfg` | UEFI boot menu. |
 

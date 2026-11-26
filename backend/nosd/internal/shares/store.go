@@ -20,7 +20,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"nithronos/backend/nosd/internal/fsatomic"
+	"nos/backend/nosd/internal/fsatomic"
 )
 
 // ErrNotFound is returned for an unknown share id.

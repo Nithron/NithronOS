@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"nithronos/backend/nosd/internal/fsatomic"
-	"nithronos/backend/nosd/internal/pools"
+	"nos/backend/nosd/internal/fsatomic"
+	"nos/backend/nosd/internal/pools"
 )
 
 func txDir() string {

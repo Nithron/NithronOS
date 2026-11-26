@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	ipools "nithronos/backend/nosd/internal/pools"
+	ipools "nos/backend/nosd/internal/pools"
 )
 
 // Root represents an allowed mount root (reserved for future fields)

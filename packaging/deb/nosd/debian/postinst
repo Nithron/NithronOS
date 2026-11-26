@@ -5,6 +5,9 @@ case "$1" in
     configure)
         # Create system user and directories for state/config
         systemd-sysusers || true
+        # Systems installed as NithronOS: move files to the nOS names first
+        # (needs the nos user; tmpfiles below then creates the new links).
+        sh /usr/lib/nos/migrate-from-nithronos.sh || echo "nosd: NithronOS -> nOS migration failed; see above" >&2
         systemd-tmpfiles --create || true
         chown -R nos:nos /etc/nos /var/lib/nos 2>/dev/null || true
         chmod 0770 /etc/nos /var/lib/nos 2>/dev/null || true

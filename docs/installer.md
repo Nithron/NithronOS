@@ -1,9 +1,9 @@
-# NithronOS Installer Guide
+# nOS Installer Guide
 
 ## Overview
 
-The NithronOS ISO boots into a menu with **NithronOS Live** and **Install NithronOS**. The installer is the Debian
-installer, preconfigured for NithronOS: it copies the complete NithronOS system from the ISO to the disk (no
+The nOS ISO boots into a menu with **nOS Live** and **Install nOS**. The installer is the Debian
+installer, preconfigured for nOS: it copies the complete nOS system from the ISO to the disk (no
 downloads needed) and asks only what a person has to decide.
 
 ## Requirements
@@ -16,7 +16,7 @@ downloads needed) and asks only what a person has to decide.
 
 ## Installing
 
-1. Boot the ISO and choose **Install NithronOS**. Use **Install NithronOS (Serial console @ttyS0)** for machines
+1. Boot the ISO and choose **Install nOS**. Use **Install nOS (Serial console @ttyS0)** for machines
    without a screen, and **Safe graphics** if the screen stays blank.
 2. **Console password**: choose the password for `nosadmin`, the console/SSH administrator account (it has `sudo`;
    there is no root password). This is not the web UI login; that account is created in the setup wizard.
@@ -38,10 +38,10 @@ GPT, so the same disk boots on UEFI and BIOS machines:
 
 ### What the installer sets up
 
-- The NithronOS services (`nosd`, `nos-agent`, `caddy`, the web UI) are installed and enabled; the install stops
+- The nOS services (`nosd`, `nos-agent`, `caddy`, the web UI) are installed and enabled; the install stops
   with an error if they are missing from the ISO.
 - APT sources for Debian, its updates and **security updates**.
-- Hostname `nithronos`, time zone UTC (both can be changed in the setup wizard).
+- Hostname `nos`, time zone UTC (both can be changed in the setup wizard).
 
 ## Post-Installation
 
@@ -129,7 +129,7 @@ mount /var/lib/docker
 
 ### Secure Boot
 
-NithronOS currently does not support Secure Boot. If you encounter boot issues:
+nOS currently does not support Secure Boot. If you encounter boot issues:
 
 1. Disable Secure Boot in the UEFI settings
 2. Boot in UEFI mode, or in legacy/CSM mode; both are supported
@@ -140,7 +140,7 @@ NithronOS currently does not support Secure Boot. If you encounter boot issues:
 
 The installer reads its answers from `config/includes.installer/preseed.cfg` (embedded in the ISO). For a fully
 unattended install, also answer the three questions it leaves open, for example in a preseed served over HTTP and
-passed on the installer's boot line as `url=http://<server>/nithronos.cfg`:
+passed on the installer's boot line as `url=http://<server>/nos.cfg`:
 
 ```
 d-i passwd/user-password-crypted password <hash from: mkpasswd -m sha-512>

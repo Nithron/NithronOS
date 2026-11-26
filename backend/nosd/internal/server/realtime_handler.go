@@ -7,7 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
-	"nithronos/backend/nosd/pkg/sync/realtime"
+	"nos/backend/nosd/pkg/sync/realtime"
 )
 
 // RealtimeHandler handles real-time WebSocket connections

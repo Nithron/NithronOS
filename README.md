@@ -1,11 +1,11 @@
-# NithronOS (nOS)
-![NithronOS](./assets/brand/nithronos-readme-banner.svg)
+# nOS
+![nOS](./assets/brand/nos-readme-banner.svg)
 
-[![CI](https://github.com/Nithron/NithronOS/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Nithron/NithronOS/actions/workflows/ci.yml)
+[![CI](https://github.com/Nithron/nOS/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Nithron/nOS/actions/workflows/ci.yml)
 [![Snapshots On Update](https://img.shields.io/badge/Snapshots%20On%20Update-Enabled%20by%20default-2D7FF9)](docs/updates.md)
-[![Release](https://img.shields.io/badge/NithronOS-v0.9.5--pre--alpha-yellow)](https://github.com/Nithron/NithronOS/releases/tag/v0.9.5-pre-alpha)
+[![Release](https://img.shields.io/badge/nOS-v0.9.5--pre--alpha-yellow)](https://github.com/Nithron/nOS/releases/tag/v0.9.5-pre-alpha)
 
-**Open-source Linux-based OS for NAS & homelabs.**  
+**nOS** (short for NithronOS) is an open-source, Linux-based OS for NAS and homelabs.  
 Local-first storage management (Btrfs/ZFS*), snapshots, shares, backups, and a modern web dashboard with an optional app catalog — all without cloud lock-in.
 
 > **Status:** v0.9.5 **pre-alpha** (public preview) - Real-time monitoring, health system, and Debian installer now available.
@@ -23,7 +23,7 @@ Local-first storage management (Btrfs/ZFS*), snapshots, shares, backups, and a m
 ---
 
 ## Table of Contents
-- [Why NithronOS?](#why-nithronos)
+- [Why nOS?](#why-nos)
 - [Architecture](#architecture)
 - [Quickstart (Dev)](#quickstart-dev)
 - [First Boot & Auth](#first-boot--auth)
@@ -40,7 +40,7 @@ Local-first storage management (Btrfs/ZFS*), snapshots, shares, backups, and a m
 
 ---
 
-## Why NithronOS?
+## Why nOS?
 - **Local-first, privacy-first** — admin UI served on your LAN by default; remote access is opt-in.
 - **Btrfs-first** — snapshots, send/receive; optional ZFS via DKMS*.
 - **NithronSync** — OneDrive-like file sync across Windows, Linux, macOS, iOS, and Android devices.
@@ -77,8 +77,8 @@ Observability → [docs/dev/observability.md](docs/dev/observability.md) (scrape
 **Requires:** Go 1.23+, Node 20+, npm, make (optional), Docker (for app catalog dev)
 
     # clone
-    git clone https://github.com/Nithron/NithronOS.git
-    cd NithronOS
+    git clone https://github.com/Nithron/nOS.git
+    cd nOS
 
     # web deps
     cd web && npm install && cd ..
@@ -147,7 +147,7 @@ See [docs/updates.md](docs/updates.md) for workflow and CLI.
 ---
 
 ## ISO Build
-Build a bootable ISO (Debian live) with NithronOS preinstalled.
+Build a bootable ISO (Debian live) with nOS preinstalled.
 
     # 1) Build local .debs (to dist/deb)
     bash packaging/build-all.sh
@@ -155,25 +155,25 @@ Build a bootable ISO (Debian live) with NithronOS preinstalled.
     # 2) Build ISO (stages local debs automatically)
     sudo bash packaging/iso/build.sh packaging/iso/local-debs
 
-    # Output -> dist/iso/nithronos-<tag>-<date>-amd64.iso
+    # Output -> dist/iso/nos-<tag>-<date>-amd64.iso
 
 > **UEFI / Secure Boot:** The preview ISO is not shim-signed yet. **Disable Secure Boot** in your VM/UEFI (e.g., Hyper-V Gen2 → uncheck *Enable Secure Boot*). If your platform can’t disable it, use a legacy/BIOS VM for now.
 
 At first boot the system prints the UI URL + one-time OTP to the console.
 
 Boot menu provides:
-- **NithronOS Live** (default)
-- **Install NithronOS (Debian Installer - Text)** — text frontend, `fb=false nomodeset` to avoid KMS blank screens
-- **Install NithronOS (Safe graphics)** — text frontend, `nomodeset` fallback
-- **Install NithronOS (Serial console @ttyS0)** — text frontend on serial
+- **nOS Live** (default)
+- **Install nOS (Debian Installer - Text)** — text frontend, `fb=false nomodeset` to avoid KMS blank screens
+- **Install nOS (Safe graphics)** — text frontend, `nomodeset` fallback
+- **Install nOS (Serial console @ttyS0)** — text frontend on serial
 The Debian Installer is fully functional with preseed automation and service auto-enablement.
 
-> **Hyper-V:** Use “NithronOS Live”. The “Kernel fallback (no ACPI)” entry is **not** for Hyper-V; use “safe graphics” instead if you only need to disable GPU modesetting.
+> **Hyper-V:** Use “nOS Live”. The “Kernel fallback (no ACPI)” entry is **not** for Hyper-V; use “safe graphics” instead if you only need to disable GPU modesetting.
 
 ---
 
 ## Firewall (LAN-only by default)
-NithronOS ships an **nftables** policy exposing the web UI (443) to LAN (RFC1918) only.
+nOS ships an **nftables** policy exposing the web UI (443) to LAN (RFC1918) only.
 
     sudo bash deploy/firewall/apply.sh
     sudo systemctl enable --now nftables.service
@@ -319,7 +319,7 @@ All contributions are made under the **Nithron Community License (NCL)**; see [L
 
 ## Branding
 Colors align with Nithron’s palette (dark UI, electric blue `#2D7FF9`, lime `#A4F932`).  
-“Nithron”, “NithronOS”, and “nOS” are trademarks of Nithron — see [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md).
+“Nithron”, “NithronOS” and “nOS” are trademarks of Nithron — see [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md).
 
 ---
 

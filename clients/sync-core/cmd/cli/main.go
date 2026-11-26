@@ -10,9 +10,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"nithronos/clients/sync-core/api"
-	"nithronos/clients/sync-core/config"
-	"nithronos/clients/sync-core/db"
+	"nos/clients/sync-core/api"
+	"nos/clients/sync-core/config"
+	"nos/clients/sync-core/db"
 )
 
 var (

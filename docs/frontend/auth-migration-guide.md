@@ -1,6 +1,6 @@
 # Authentication Migration Guide
 
-This guide covers the changes made to the authentication and setup flows in NithronOS.
+This guide covers the changes made to the authentication and setup flows in nOS.
 
 ## Summary of Changes
 

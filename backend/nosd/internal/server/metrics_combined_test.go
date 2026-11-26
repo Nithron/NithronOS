@@ -19,23 +19,23 @@ func (f fakeAgentCombined) FetchMetrics(ctx context.Context) ([]byte, error) { r
 func TestCombinedMetricsHandler(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	c := prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "nithronos_dummy_total",
+		Name: "nos_dummy_total",
 		Help: "dummy",
 	})
 	reg.MustRegister(c)
 	c.Inc()
 
-	fa := fakeAgentCombined{payload: []byte("nithronos_agent_build_info 1\n")}
+	fa := fakeAgentCombined{payload: []byte("nos_agent_build_info 1\n")}
 
 	req := httptest.NewRequest("GET", "/metrics/all", nil)
 	rr := httptest.NewRecorder()
 	NewCombinedMetricsHandler(reg, fa).ServeHTTP(rr, req)
 
 	body := rr.Body.String()
-	if !strings.Contains(body, "nithronos_dummy_total") {
+	if !strings.Contains(body, "nos_dummy_total") {
 		t.Fatalf("missing nosd metric")
 	}
-	if !strings.Contains(body, "nithronos_agent_build_info") {
+	if !strings.Contains(body, "nos_agent_build_info") {
 		t.Fatalf("missing agent metric")
 	}
 }

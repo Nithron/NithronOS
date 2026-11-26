@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# NithronOS App Snapshot Helper - Btrfs-aware snapshot management
+# nOS App Snapshot Helper - Btrfs-aware snapshot management
 # Provides snapshot and rollback functionality for app data directories
 
 APPS_ROOT="/srv/apps"

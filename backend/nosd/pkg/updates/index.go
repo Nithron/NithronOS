@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"nithronos/backend/nosd/internal/fsatomic"
+	"nos/backend/nosd/internal/fsatomic"
 )
 
 type SnapshotRef struct {

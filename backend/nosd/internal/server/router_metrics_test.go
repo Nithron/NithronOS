@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 )
 
 // Regression: the metrics routes were registered before the session

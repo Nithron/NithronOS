@@ -115,7 +115,7 @@ export function RemoteAccessWizard() {
                     <span className="font-semibold">LAN Only (Recommended)</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Access NithronOS only from your local network. Most secure option.
+                    Access nOS only from your local network. Most secure option.
                   </p>
                 </Label>
               </div>
@@ -150,7 +150,7 @@ export function RemoteAccessWizard() {
                     <Badge variant="secondary">Advanced</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Expose NithronOS to the internet with HTTPS and domain.
+                    Expose nOS to the internet with HTTPS and domain.
                   </p>
                 </Label>
               </div>
@@ -357,7 +357,7 @@ export function RemoteAccessWizard() {
           <CardHeader>
             <CardTitle>LAN Only Configuration</CardTitle>
             <CardDescription>
-              Your NithronOS instance will only be accessible from your local network
+              Your nOS instance will only be accessible from your local network
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -506,7 +506,7 @@ export function RemoteAccessWizard() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Remote Access Wizard</h1>
         <p className="text-muted-foreground mt-2">
-          Configure how you access NithronOS from outside your local network
+          Configure how you access nOS from outside your local network
         </p>
       </div>
 

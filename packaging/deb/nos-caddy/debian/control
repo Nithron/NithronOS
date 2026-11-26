@@ -1,0 +1,14 @@
+Source: nos-caddy
+Section: admin
+Priority: optional
+Maintainer: nOS Maintainers <maintainers@nithron.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.0
+Homepage: https://github.com/Nithron/nOS
+
+Package: nos-caddy
+Architecture: all
+Depends: ${misc:Depends}, caddy
+Description: Caddy configuration for nOS
+ Provides default Caddy configuration for nOS web interface
+ with HTTPS, reverse proxy to API, and static file serving.

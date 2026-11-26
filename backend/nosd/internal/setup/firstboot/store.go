@@ -1,5 +1,5 @@
 // Package firstboot owns the one-time setup code (OTP) that lets the first
-// administrator be created on a fresh NithronOS install.
+// administrator be created on a fresh nOS install.
 //
 // nosd is the only component that creates, rotates, displays or removes the
 // code. The code lives in one JSON file (Store), is replaced automatically when

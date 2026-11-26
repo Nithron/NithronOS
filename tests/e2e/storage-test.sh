@@ -146,7 +146,7 @@ test_create_btrfs() {
 
 # Test 2: Create expected subvolume layout
 test_subvolume_layout() {
-    # Create NithronOS standard subvolumes
+    # Create nOS standard subvolumes
     btrfs subvolume create "$MOUNT_POINT/@" > /dev/null
     btrfs subvolume create "$MOUNT_POINT/@home" > /dev/null
     btrfs subvolume create "$MOUNT_POINT/@var" > /dev/null

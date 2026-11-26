@@ -88,8 +88,8 @@ Priority: optional
 Architecture: amd64
 Depends: libgtk-3-0, libwebkit2gtk-4.0-37
 Maintainer: Nithron <hello@nithron.com>
-Description: NithronSync - File Synchronization for NithronOS
- Cross-platform file sync client for NithronOS servers.
+Description: NithronSync - File Synchronization for nOS
+ Cross-platform file sync client for nOS servers.
 EOF
     
     # Copy binary
@@ -100,7 +100,7 @@ EOF
     cat > "$PKG_DIR/usr/share/applications/nithron-sync.desktop" << EOF
 [Desktop Entry]
 Name=NithronSync
-Comment=File Synchronization for NithronOS
+Comment=File Synchronization for nOS
 Exec=/usr/bin/nithron-sync
 Icon=nithron-sync
 Terminal=false

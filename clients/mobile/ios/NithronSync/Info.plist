@@ -73,7 +73,7 @@
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>nithronos</string>
+				<string>nos</string>
 			</array>
 			<key>CFBundleURLName</key>
 			<string>com.nithron.sync</string>

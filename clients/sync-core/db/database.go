@@ -10,7 +10,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	"nithronos/clients/sync-core/config"
+	"nos/clients/sync-core/config"
 )
 
 // Database represents the local sync state database.

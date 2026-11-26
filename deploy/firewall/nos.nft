@@ -1,4 +1,4 @@
-# NithronOS nftables policy template
+# nOS nftables policy template
 
 table inet filter {
   chains {

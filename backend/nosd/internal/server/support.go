@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 )
 
 var redactionPatterns = []*regexp.Regexp{

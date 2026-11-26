@@ -14,8 +14,8 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
-	"nithronos/clients/desktop/app"
-	"nithronos/clients/sync-core/config"
+	"nos/clients/desktop/app"
+	"nos/clients/sync-core/config"
 )
 
 //go:embed all:frontend/dist
@@ -96,7 +96,7 @@ func main() {
 			WindowIsTranslucent:  false,
 			About: &mac.AboutInfo{
 				Title:   "NithronSync",
-				Message: "File synchronization for NithronOS\n\nVersion 1.0.0",
+				Message: "File synchronization for nOS\n\nVersion 1.0.0",
 				Icon:    icon,
 			},
 		},

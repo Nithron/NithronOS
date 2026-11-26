@@ -304,7 +304,7 @@ function StepWelcome({ onContinue }: { onContinue: () => void }) {
   return (
     <div className="space-y-6">
       <div className="text-center space-y-3">
-        <h2 className="text-2xl font-semibold">Welcome to NithronOS!</h2>
+        <h2 className="text-2xl font-semibold">Welcome to nOS!</h2>
         <p className="text-muted-foreground">
           Let's get your system set up and ready to use.
         </p>
@@ -333,11 +333,11 @@ function StepWelcome({ onContinue }: { onContinue: () => void }) {
            className="text-primary hover:underline flex-1 text-center">
           📚 Documentation
         </a>
-        <a href="https://github.com/Nithron/NithronOS/discussions" target="_blank" rel="noopener noreferrer" 
+        <a href="https://github.com/Nithron/nOS/discussions" target="_blank" rel="noopener noreferrer" 
            className="text-primary hover:underline flex-1 text-center">
           💬 Community
         </a>
-        <a href="https://github.com/Nithron/NithronOS/issues" target="_blank" rel="noopener noreferrer" 
+        <a href="https://github.com/Nithron/nOS/issues" target="_blank" rel="noopener noreferrer" 
            className="text-primary hover:underline flex-1 text-center">
           🐛 Issues
         </a>
@@ -780,7 +780,7 @@ function StepTOTPEnroll({
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'nithronos-recovery-codes.txt'
+      a.download = 'nos-recovery-codes.txt'
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -911,7 +911,7 @@ function StepDone({ onContinue }: { onContinue: () => void }) {
       <div className="text-4xl mb-4">✅</div>
       <h2 className="text-lg font-semibold">Setup Complete!</h2>
       <p className="text-sm text-muted-foreground">
-        Your NithronOS admin account has been created successfully.
+        Your nOS admin account has been created successfully.
         You can now sign in to access the dashboard.
       </p>
       <button
@@ -1017,7 +1017,7 @@ function StepSystemConfig({ onSuccess }: { onSuccess: () => void }) {
           id="hostname"
           type="text"
           className="w-full rounded bg-card p-2"
-          placeholder="nithronos"
+          placeholder="nos"
           value={hostname}
           onChange={(e) => setHostname(e.target.value)}
           disabled={loading}
@@ -1336,7 +1336,7 @@ function StepTelemetry({ onSuccess }: { onSuccess: () => void }) {
       
       toast.success(
         consent 
-          ? 'Thank you for helping improve NithronOS!' 
+          ? 'Thank you for helping improve nOS!' 
           : 'Telemetry disabled'
       )
       onSuccess()
@@ -1349,10 +1349,10 @@ function StepTelemetry({ onSuccess }: { onSuccess: () => void }) {
   
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <h2 className="text-lg font-semibold">Help Improve NithronOS</h2>
+      <h2 className="text-lg font-semibold">Help Improve nOS</h2>
       
       <p className="text-sm text-muted-foreground">
-        Would you like to share anonymous usage data to help us improve NithronOS? 
+        Would you like to share anonymous usage data to help us improve nOS? 
         This is completely optional and can be changed later in settings.
       </p>
       

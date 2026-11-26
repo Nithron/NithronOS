@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"nithronos/backend/nosd/internal/version"
-	"nithronos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/internal/version"
+	"nos/backend/nosd/pkg/httpx"
 	"strings"
 	"time"
 

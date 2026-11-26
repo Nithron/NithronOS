@@ -9,9 +9,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/pkg/httpx"
-	"nithronos/backend/nosd/pkg/sync/crypto"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/pkg/httpx"
+	"nos/backend/nosd/pkg/sync/crypto"
 )
 
 // EncryptionHandler handles encryption-related API endpoints

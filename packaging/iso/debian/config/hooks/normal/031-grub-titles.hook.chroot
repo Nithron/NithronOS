@@ -19,26 +19,26 @@ update_grub_titles() {
     
     # Update menu entry titles while preserving kernel parameters
     # Pattern 1: Main live entry
-    sed -i "s/menuentry 'Debian GNU\/Linux - live'/menuentry 'NithronOS Live (amd64)'/g" "$grub_cfg"
-    sed -i "s/menuentry 'Debian GNU\/Linux Live'/menuentry 'NithronOS Live (amd64)'/g" "$grub_cfg"
-    sed -i "s/menuentry 'Live system (amd64)'/menuentry 'NithronOS Live (amd64)'/g" "$grub_cfg"
+    sed -i "s/menuentry 'Debian GNU\/Linux - live'/menuentry 'nOS Live (amd64)'/g" "$grub_cfg"
+    sed -i "s/menuentry 'Debian GNU\/Linux Live'/menuentry 'nOS Live (amd64)'/g" "$grub_cfg"
+    sed -i "s/menuentry 'Live system (amd64)'/menuentry 'nOS Live (amd64)'/g" "$grub_cfg"
     
     # Pattern 2: Installer entries
-    sed -i "s/menuentry 'Debian Installer'/menuentry 'Install NithronOS'/g" "$grub_cfg"
-    sed -i "s/menuentry 'Install'/menuentry 'Install NithronOS'/g" "$grub_cfg"
-    sed -i "s/menuentry 'Graphical install'/menuentry 'Install NithronOS (Graphical)'/g" "$grub_cfg"
+    sed -i "s/menuentry 'Debian Installer'/menuentry 'Install nOS'/g" "$grub_cfg"
+    sed -i "s/menuentry 'Install'/menuentry 'Install nOS'/g" "$grub_cfg"
+    sed -i "s/menuentry 'Graphical install'/menuentry 'Install nOS (Graphical)'/g" "$grub_cfg"
     
     # Pattern 3: Safe graphics mode
-    sed -i "s/menuentry 'Debian GNU\/Linux - live (safe graphics)'/menuentry 'NithronOS Live (safe graphics)'/g" "$grub_cfg"
-    sed -i "s/menuentry 'Live system (safe graphics)'/menuentry 'NithronOS Live (safe graphics)'/g" "$grub_cfg"
-    sed -i "s/menuentry '.*safe graphics.*'/menuentry 'NithronOS Live (safe graphics)'/g" "$grub_cfg"
+    sed -i "s/menuentry 'Debian GNU\/Linux - live (safe graphics)'/menuentry 'nOS Live (safe graphics)'/g" "$grub_cfg"
+    sed -i "s/menuentry 'Live system (safe graphics)'/menuentry 'nOS Live (safe graphics)'/g" "$grub_cfg"
+    sed -i "s/menuentry '.*safe graphics.*'/menuentry 'nOS Live (safe graphics)'/g" "$grub_cfg"
     
     # Pattern 4: Failsafe/recovery modes
-    sed -i "s/menuentry 'Live system (failsafe)'/menuentry 'NithronOS Live (failsafe)'/g" "$grub_cfg"
-    sed -i "s/menuentry '.*failsafe.*'/menuentry 'NithronOS Live (failsafe)'/g" "$grub_cfg"
+    sed -i "s/menuentry 'Live system (failsafe)'/menuentry 'nOS Live (failsafe)'/g" "$grub_cfg"
+    sed -i "s/menuentry '.*failsafe.*'/menuentry 'nOS Live (failsafe)'/g" "$grub_cfg"
     
     # Pattern 5: Advanced options
-    sed -i "s/submenu 'Advanced options for Debian GNU\/Linux - live'/submenu 'Advanced options for NithronOS'/g" "$grub_cfg"
+    sed -i "s/submenu 'Advanced options for Debian GNU\/Linux - live'/submenu 'Advanced options for nOS'/g" "$grub_cfg"
     
     # Count changes made
     if diff -q "$grub_cfg" "${grub_cfg}.orig" >/dev/null 2>&1; then

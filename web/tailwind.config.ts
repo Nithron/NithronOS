@@ -7,7 +7,7 @@ export default {
 	theme: {
 		extend: {
 			colors: {
-				// NithronOS brand palette
+				// nOS brand palette
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
 				card: {

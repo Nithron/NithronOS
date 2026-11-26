@@ -1,6 +1,6 @@
 [Unit]
-Description=NithronOS App - %i
-Documentation=https://github.com/NotTekk/NithronOS
+Description=nOS App - %i
+Documentation=https://github.com/Nithron/nOS
 After=docker.service network-online.target
 Requires=docker.service
 PartOf=nos-apps.target

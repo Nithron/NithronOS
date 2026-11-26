@@ -29,18 +29,18 @@ chmod 755 /etc/avahi/services
 # Ensure Samba includes our config directory
 if ! grep -q "include = /etc/samba/smb.conf.d/\*.conf" /etc/samba/smb.conf 2>/dev/null; then
     echo "" >> /etc/samba/smb.conf
-    echo "# NithronOS Share Definitions" >> /etc/samba/smb.conf
+    echo "# nOS Share Definitions" >> /etc/samba/smb.conf
     echo "include = /etc/samba/smb.conf.d/*.conf" >> /etc/samba/smb.conf
 fi
 
 # Ensure NFS includes our exports directory
 if [ ! -f /etc/exports ]; then
-    echo "# NithronOS NFS Exports" > /etc/exports
+    echo "# nOS NFS Exports" > /etc/exports
 fi
 
 # Add exports.d include if not present
 if ! grep -q "/etc/exports.d" /etc/exports 2>/dev/null; then
-    echo "# Include NithronOS share exports" >> /etc/exports
+    echo "# Include nOS share exports" >> /etc/exports
     echo "# Included via /etc/exports.d/*.exports" >> /etc/exports
 fi
 

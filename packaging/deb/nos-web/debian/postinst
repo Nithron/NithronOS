@@ -4,11 +4,11 @@ set -e
 # Ensure directories
 install -d -o root -g root -m 0755 /etc/caddy
 install -d -o root -g root -m 0755 /etc/systemd/system/caddy.service.d
-install -d -o root -g root -m 0755 /usr/share/nithronos/web
+install -d -o root -g root -m 0755 /usr/share/nos/web
 install -d -o root -g root -m 0755 /var/log/caddy
 
 # Own web assets by www-data (best effort)
-chown -R www-data:www-data /usr/share/nithronos/web 2>/dev/null || true
+chown -R www-data:www-data /usr/share/nos/web 2>/dev/null || true
 
 # Set ownership for caddy log directory
 chown caddy:caddy /var/log/caddy 2>/dev/null || true

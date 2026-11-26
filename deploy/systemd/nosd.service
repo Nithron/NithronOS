@@ -1,5 +1,5 @@
 [Unit]
-Description=NithronOS API Server (nosd)
+Description=nOS API Server (nosd)
 After=network.target
 
 [Service]

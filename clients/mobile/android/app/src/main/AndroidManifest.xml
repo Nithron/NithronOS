@@ -48,12 +48,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Deep link handler for nithronos:// URLs -->
+            <!-- Deep link handler for nos:// URLs -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="nithronos" />
+                <data android:scheme="nos" />
             </intent-filter>
 
             <!-- Handle share intents -->

@@ -1,4 +1,6 @@
-# NithronOS Revision Plan
+# nOS Revision Plan
+
+NithronOS was renamed nOS (NithronOS stays the long form) between phases 3 and 4; see "Rename to nOS" below. Older sections keep the names they were written with.
 
 Status: draft, 2026-11-21. Based on a full audit of `main` @ `ce063da`.
 
@@ -123,6 +125,22 @@ The backend grew by adding parallel implementations instead of finishing one. Co
 
 ---
 
+## Rename to nOS (between phases 3 and 4)
+
+Done on `revision/rename-nos`. Display name nOS; identifiers `nithronos` became `nos`:
+
+- Go modules `nos/backend/nosd`, `nos/agent/nos-agent`, `nos/clients/...`, `nos/cmd/nosctl`, `nos/installer`.
+- Packages: meta package `nos` (with a transitional `nithronos` package for upgrades, left out of the ISO), `nos-caddy`.
+- Paths: `/usr/share/nos`, `/usr/lib/nos`, `/var/lib/nos`; `/etc/nithronos` merged into `/etc/nos`, which also fixes nosd (user `nos`) not being able to write `/etc/nithronos/firewall.nft` and `update/channel`. TLS moved to `/etc/ssl/nos` (Caddy reads it; `/etc/nos` is private to `nos`).
+- Units `nos-*`, default hostname `nos` (`nos.local`), os-release `ID=nos`, metrics `nos_*`, the sync clients' URL scheme `nos://`, ISO `nOS - <arch> - <tag>.iso`.
+- Repository: github.com/Nithron/nOS (GitHub redirects the old URLs).
+
+Existing installs: nosd ships `/usr/lib/nos/migrate-from-nithronos.sh` and its postinst runs it on every configure (it does nothing once nothing old is left). It moves config, state and TLS to the new paths, renames files named after NithronOS (nftables, timesyncd, avahi, apt source and keyring, presets), renames the units the ISO installed and keeps their enablement, rewrites old paths in the Caddyfile, unit files and presets, and rebrands os-release, issue and motd. It never overwrites: if the old and the new file both exist, the new one stays. `deploy/scripts/test-migrate-from-nithronos.sh` (in CI) runs it on a fake NithronOS root. `nos-web` now depends on `nosd`, so the migration runs before nos-web restarts Caddy. The hostname of an installed system is left alone.
+
+Left unchanged on purpose: the license texts (`LICENSE` stays byte-identical with nAI's; it and `TRADEMARK_POLICY.md` already name both), the nAI template (`NAI_NAS_PLATFORM=nithronos` is nAI's identifier), CHANGELOG history, and the placeholder `nithronos.com`/`.org` domains (the apt repository URL in `docs/updates.md`, `site_url` in `docs-site/mkdocs.yml`): which domain nOS uses is the maintainer's call.
+
+---
+
 ## Phase 4: Implement missing backend functionality
 
 Grouped by feature. Each item lists the evidence.
@@ -192,7 +210,7 @@ Grouped by feature. Each item lists the evidence.
    - add the capabilities it needs (`CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_NET_ADMIN CAP_SYS_RAWIO CAP_MKNOD`)
    - `RestrictAddressFamilies=AF_UNIX` blocks its own registration call to `127.0.0.1:9000` and docker compose networking
 3. nosd: `ProtectSystem=full` is fine with `ReadWritePaths=/etc/nos`. Add `RuntimeDirectory=nos` for `/run/nos`. Remove the writes to `/tmp` (it has `PrivateTmp`).
-4. Decide on `installer/nos-installer` (a Go installer that isn't built or shipped) and the placeholder `/usr/sbin/nos-installer` shell script on the ISO: delete both, or make the Go tool a supported alternative to the Debian installer.
+4. Decide on `installer/nos-installer` (a Go installer that isn't built or shipped; its module also has no `go.sum` entries, so it doesn't build) and the live-system `/usr/sbin/nos-installer` shell script (the rename replaced the placeholder with the former `nithronos-installer` script): delete both, or make one a supported alternative to the Debian installer.
 5. Prune `hooks/normal/` (25 hooks, several overlapping: `10-enable-services`, `91-enable-nos-services`, `95-ensure-caddy-enabled`, `041-enable-otp-announce`, `96-setup-otp-generator`) and the preset file.
 5. Caddy: verify the shipped Caddyfile serves the UI and proxies `/api` and WebDAV, with the self-signed TLS path (`nos-tls-gen`).
 6. Secure Boot: track shim signing as a known limitation.
@@ -255,5 +273,6 @@ The README overstates completion. Proposed re-baseline:
 5. **Groups/policy (A4) and DNS settings**: build minimal working versions now.
 6. **NithronSync desktop and mobile clients**: required for v1 (not deferred). Phase 7 is in scope for v1.
 7. **Workflow**: one branch and one pull request per phase (`revision/phase-N-<slug>`).
+8. **Name**: nOS, with NithronOS as the long form. Everything is renamed, including package names, paths and the GitHub repository (Nithron/nOS); its own PR after Phase 3, with a migration for existing installs.
 
 Open for later: Debian base. The ISO targets bookworm (Debian 12, now in LTS); moving to trixie (Debian 13) belongs in Phase 6.

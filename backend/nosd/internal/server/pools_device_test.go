@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 )
 
 func TestApplyDeviceConfirmValidation(t *testing.T) {

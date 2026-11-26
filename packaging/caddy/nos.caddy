@@ -1,0 +1,33 @@
+# nOS managed Caddyfile
+{
+  admin localhost:2019
+}
+
+http://:80 {
+  @api path /api/*
+  reverse_proxy @api 127.0.0.1:9000
+  redir https://{host}{uri} 308
+}
+
+https://:443 {
+  tls internal
+
+  encode gzip zstd
+  header {
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "no-referrer"
+    Cross-Origin-Opener-Policy "same-origin"
+    Cross-Origin-Embedder-Policy "require-corp"
+  }
+
+  @api path /api/*
+  reverse_proxy @api 127.0.0.1:9000
+
+  handle {
+    root * /usr/share/nos/web
+    try_files {path} /index.html
+    file_server
+  }
+}
+
+

@@ -41,7 +41,7 @@ func (t *TrayManager) onReady() {
 	systray.AddSeparator()
 	
 	mOpenFolder := systray.AddMenuItem("Open Sync Folder", "Open the sync folder in file manager")
-	mOpenWeb := systray.AddMenuItem("Open Web UI", "Open NithronOS in browser")
+	mOpenWeb := systray.AddMenuItem("Open Web UI", "Open nOS in browser")
 	systray.AddSeparator()
 	
 	mStatus := systray.AddMenuItem("Status: Idle", "Current sync status")

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-CERT_DIR=/etc/nithronos/tls
+CERT_DIR=/etc/ssl/nos
 umask 027
 mkdir -p "$CERT_DIR"
 
@@ -31,12 +31,12 @@ subjectAltName = @alt_names
 [alt_names]
 IP.1 = 127.0.0.1
 IP.2 = ${ip}
-DNS.1 = nithronos.local
+DNS.1 = nos.local
 EOF
   openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
-    -days 3650 -sha256 -nodes -subj "/CN=NithronOS" \
+    -days 3650 -sha256 -nodes -subj "/CN=nOS" \
     -keyout "$key" -out "$cert" \
-    -addext "subjectAltName=IP:127.0.0.1,IP:${ip},DNS:nithronos.local"
+    -addext "subjectAltName=IP:127.0.0.1,IP:${ip},DNS:nos.local"
   rm -f "$tmpcnf"
 fi
 

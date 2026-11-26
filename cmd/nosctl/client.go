@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// APIClient handles communication with the NithronOS API
+// APIClient handles communication with the nOS API
 type APIClient struct {
 	baseURL    string
 	token      string

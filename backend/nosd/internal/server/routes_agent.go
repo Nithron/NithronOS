@@ -11,9 +11,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	// "nithronos/backend/nosd/pkg/firewall"
+	// "nos/backend/nosd/pkg/firewall"
 
-	"nithronos/backend/nosd/internal/fsatomic"
+	"nos/backend/nosd/internal/fsatomic"
 )
 
 // registerAgent lets nos-agent register with the bootstrap token.

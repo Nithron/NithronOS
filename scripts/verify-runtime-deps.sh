@@ -2,13 +2,13 @@
 set -euo pipefail
 
 # Verifies that:
-#  - Meta package "nithronos" Depends/Recommends/Suggests include required tools
+#  - Meta package "nos" Depends/Recommends/Suggests include required tools
 #  - ISO package list includes the essential runtime tools
 #
 # Exits non-zero on failure with actionable messages.
 
-CONTROL="packaging/deb/nithronos/debian/control"
-ISO_LIST="packaging/iso/debian/config/package-lists/nithronos.list.chroot"
+CONTROL="packaging/deb/nos/debian/control"
+ISO_LIST="packaging/iso/debian/config/package-lists/nos.list.chroot"
 
 REQ_DEP=(btrfs-progs smartmontools cryptsetup util-linux coreutils findutils)
 REC_DEP=(nvme-cli)
@@ -74,9 +74,9 @@ main() {
   need_file "$ISO_LIST" "ISO package list"
 
   local depends recommends suggests
-  depends="$(extract_field_for_pkg "$CONTROL" "nithronos" "Depends" || true)"
-  recommends="$(extract_field_for_pkg "$CONTROL" "nithronos" "Recommends" || true)"
-  suggests="$(extract_field_for_pkg "$CONTROL" "nithronos" "Suggests" || true)"
+  depends="$(extract_field_for_pkg "$CONTROL" "nos" "Depends" || true)"
+  recommends="$(extract_field_for_pkg "$CONTROL" "nos" "Recommends" || true)"
+  suggests="$(extract_field_for_pkg "$CONTROL" "nos" "Suggests" || true)"
 
   local failed=0
 

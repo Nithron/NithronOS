@@ -1,5 +1,5 @@
 [Unit]
-Description=NithronOS Privileged Agent (nos-agent)
+Description=nOS Privileged Agent (nos-agent)
 After=network.target
 
 [Service]

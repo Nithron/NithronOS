@@ -2,7 +2,7 @@
 set -euo pipefail
 
 cat <<'EOF'
-NithronOS Recovery Mode
+nOS Recovery Mode
 =======================
 
 Overview

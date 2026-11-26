@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# NithronOS Apps Runtime post-installation script
+# nOS Apps Runtime post-installation script
 
 # Determine the service user (nos or nosd)
 SERVICE_USER="nos"
@@ -58,7 +58,7 @@ case "$1" in
         install -d -m 0700 -o "$SERVICE_USER" -g "$SERVICE_USER" /etc/nos/apps
         
         # Shared app catalog (read-only)
-        install -d -m 0755 /usr/share/nithronos/apps
+        install -d -m 0755 /usr/share/nos/apps
         
         # Apply Docker daemon configuration
         if [[ -f /etc/docker/daemon.json ]]; then
@@ -100,7 +100,7 @@ case "$1" in
 {
     "version": "1.0",
     "channel": "stable",
-    "catalog_url": "https://raw.githubusercontent.com/NotTekk/NithronOS/main/app-catalog/catalog.json",
+    "catalog_url": "https://raw.githubusercontent.com/NotTekk/nOS/main/app-catalog/catalog.json",
     "auto_update": false,
     "last_updated": null
 }
@@ -110,8 +110,8 @@ EOF
         fi
         
         # Create example app catalog entry
-        mkdir -p /usr/share/nithronos/apps/templates
-        cat > /usr/share/nithronos/apps/templates/hello-world.json <<'EOF'
+        mkdir -p /usr/share/nos/apps/templates
+        cat > /usr/share/nos/apps/templates/hello-world.json <<'EOF'
 {
     "id": "hello-world",
     "name": "Hello World",
@@ -140,7 +140,7 @@ EOF
 }
 EOF
         
-        echo "NithronOS Apps Runtime installation completed successfully"
+        echo "nOS Apps Runtime installation completed successfully"
         
         # Show status
         if docker info &>/dev/null; then

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 )
 
 // Regression (S4): middleware.RealIP copied a client-supplied X-Forwarded-For

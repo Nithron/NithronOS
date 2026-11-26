@@ -1,8 +1,8 @@
-# NithronOS Updates & Releases
+# nOS Updates & Releases
 
 ## Overview
 
-NithronOS provides atomic system updates with automatic rollback capabilities, ensuring your system remains stable and recoverable even if an update fails.
+nOS provides atomic system updates with automatic rollback capabilities, ensuring your system remains stable and recoverable even if an update fails.
 
 ## Key Features
 
@@ -136,23 +136,23 @@ curl -X POST http://localhost:9000/api/v1/updates/rollback \
 By default, the system keeps the 3 most recent update snapshots. Older snapshots are automatically pruned to save disk space.
 
 To modify retention:
-- Edit `/etc/nithronos/update/config.json`
+- Edit `/etc/nos/update/config.json`
 - Set `snapshot_retention` to desired number
 - Restart the update service
 
 ## Repository Configuration
 
-### Adding the NithronOS Repository
+### Adding the nOS Repository
 
 ```bash
 # Import GPG key
-wget -qO - https://apt.nithronos.com/nithronos-release.gpg | \
-  sudo gpg --dearmor -o /usr/share/keyrings/nithronos-archive-keyring.gpg
+wget -qO - https://apt.nithronos.com/nos-release.gpg | \
+  sudo gpg --dearmor -o /usr/share/keyrings/nos-archive-keyring.gpg
 
 # Add repository
-echo "deb [signed-by=/usr/share/keyrings/nithronos-archive-keyring.gpg] \
+echo "deb [signed-by=/usr/share/keyrings/nos-archive-keyring.gpg] \
   https://apt.nithronos.com stable main" | \
-  sudo tee /etc/apt/sources.list.d/nithronos.list
+  sudo tee /etc/apt/sources.list.d/nos.list
 
 # Update package lists
 sudo apt update
@@ -162,7 +162,7 @@ sudo apt update
 
 APT preferences are automatically configured to prevent cross-channel package drift:
 - Packages from the selected channel have priority 1001
-- Other NithronOS packages have priority 900
+- Other nOS packages have priority 900
 - System packages maintain default priority
 
 ## Safety Features
@@ -204,7 +204,7 @@ APT preferences are automatically configured to prevent cross-channel package dr
 
 ### Repository Issues
 - Verify GPG key: `apt-key list`
-- Check sources: `cat /etc/apt/sources.list.d/nithronos.list`
+- Check sources: `cat /etc/apt/sources.list.d/nos.list`
 - Test signature verification:
   ```bash
   apt-get update -o Debug::Acquire::gpgv=true
@@ -220,7 +220,7 @@ APT preferences are automatically configured to prevent cross-channel package dr
 
 ## Security Considerations
 
-- All packages are GPG-signed with NithronOS release key
+- All packages are GPG-signed with nOS release key
 - HTTPS is used for all repository communications
 - Signature verification is mandatory (cannot be bypassed)
 - Failed signature checks prevent any package installation

@@ -1,6 +1,6 @@
 # Auth & Sessions (Admin Guide)
 
-This guide summarizes authentication, sessions, and recovery for NithronOS.
+This guide summarizes authentication, sessions, and recovery for nOS.
 
 ## Login
 - Username + password (Argon2id, PHC format)
@@ -29,7 +29,7 @@ This guide summarizes authentication, sessions, and recovery for NithronOS.
 - `POST /api/v1/auth/refresh` extends the session and replaces the refresh token; the session id stays the same.
 - The token that was just replaced is accepted for 30 more seconds, so two tabs refreshing at once don't sign each other out.
 - An older refresh token means the cookie was copied: every session of that user ends.
-- Sessions from before this scheme (NithronOS 0.9.x) are not carried over; users sign in once more after upgrading.
+- Sessions from before this scheme (nOS 0.9.x) are not carried over; users sign in once more after upgrading.
 
 ## Rate limits
 - OTP: default 5/min per IP; configurable window and limit

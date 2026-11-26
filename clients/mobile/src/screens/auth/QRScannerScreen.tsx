@@ -1,6 +1,6 @@
 /**
  * QR Scanner Screen
- * Scan QR code from NithronOS dashboard for quick setup
+ * Scan QR code from nOS dashboard for quick setup
  */
 
 import React, {useState, useCallback} from 'react';
@@ -45,8 +45,8 @@ export function QRScannerScreen(): React.JSX.Element {
 
       try {
         // Validate QR code format
-        if (!data.startsWith('nithronos://')) {
-          throw new Error('Invalid QR code. Please scan a NithronOS setup QR code.');
+        if (!data.startsWith('nos://')) {
+          throw new Error('Invalid QR code. Please scan a nOS setup QR code.');
         }
 
         await registerFromQRCode(data);
@@ -73,7 +73,7 @@ export function QRScannerScreen(): React.JSX.Element {
     // In development, allow testing with a mock QR code
     Alert.prompt(
       'Enter QR Code Data',
-      'Paste the nithronos:// URL for testing:',
+      'Paste the nos:// URL for testing:',
       [
         {text: 'Cancel', style: 'cancel'},
         {
@@ -86,7 +86,7 @@ export function QRScannerScreen(): React.JSX.Element {
         },
       ],
       'plain-text',
-      'nithronos://sync?server=https://your-server.com&token=...'
+      'nos://sync?server=https://your-server.com&token=...'
     );
   };
 
@@ -160,7 +160,7 @@ export function QRScannerScreen(): React.JSX.Element {
       {/* Instructions */}
       <View style={styles.instructions}>
         <Text style={styles.instructionText}>
-          Point your camera at the QR code from your NithronOS dashboard
+          Point your camera at the QR code from your nOS dashboard
         </Text>
         
         <View style={styles.helpRow}>

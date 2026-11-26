@@ -1,15 +1,15 @@
 Source: nos-web
 Section: web
 Priority: optional
-Maintainer: NithronOS Maintainers <maintainers@nithron.com>
+Maintainer: nOS Maintainers <maintainers@nithron.com>
 Standards-Version: 4.6.2
 Build-Depends: debhelper-compat (= 13)
 Rules-Requires-Root: no
 
 Package: nos-web
 Architecture: all
-Depends: ${misc:Depends}
+Depends: ${misc:Depends}, nosd
 Recommends: caddy
-Description: NithronOS web UI (static assets)
+Description: nOS web UI (static assets)
 
 

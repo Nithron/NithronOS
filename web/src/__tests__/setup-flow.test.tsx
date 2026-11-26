@@ -349,7 +349,7 @@ describe.skip('Setup Flow', () => {
       
       vi.mocked(http.auth.totp.enroll).mockResolvedValueOnce({
 
-        otpauth_url: 'otpauth://totp/NithronOS:admin?secret=MOCK_SECRET',
+        otpauth_url: 'otpauth://totp/nOS:admin?secret=MOCK_SECRET',
       })
       
       renderSetup()
@@ -391,7 +391,7 @@ describe.skip('Setup Flow', () => {
       // TOTP enrollment
       vi.mocked(http.auth.totp.enroll).mockResolvedValueOnce({
 
-        otpauth_url: 'otpauth://totp/NithronOS:admin?secret=MOCK_SECRET',
+        otpauth_url: 'otpauth://totp/nOS:admin?secret=MOCK_SECRET',
       })
       
       // TOTP verification
@@ -438,7 +438,7 @@ describe.skip('Setup Flow', () => {
       
       vi.mocked(http.auth.totp.enroll).mockResolvedValueOnce({
 
-        otpauth_url: 'otpauth://totp/NithronOS:admin?secret=MOCK_SECRET',
+        otpauth_url: 'otpauth://totp/nOS:admin?secret=MOCK_SECRET',
       })
       
       renderSetup()

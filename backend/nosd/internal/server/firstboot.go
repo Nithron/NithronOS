@@ -4,9 +4,9 @@ import (
 	"os"
 	"sync"
 
-	userstore "nithronos/backend/nosd/internal/auth/store"
-	"nithronos/backend/nosd/internal/config"
-	"nithronos/backend/nosd/internal/setup/firstboot"
+	userstore "nos/backend/nosd/internal/auth/store"
+	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/setup/firstboot"
 )
 
 var (

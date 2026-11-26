@@ -19,7 +19,7 @@
   }
 
   handle {
-    root * /usr/share/nithronos/web
+    root * /usr/share/nos/web
     try_files {path} /index.html
     file_server
   }

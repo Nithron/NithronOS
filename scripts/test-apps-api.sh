@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# NithronOS App API integration test
+# nOS App API integration test
 # Tests the M3 App Catalog API endpoints
 
 RED='\033[0;31m'
@@ -173,7 +173,7 @@ test_operations() {
 
 # Main test execution
 main() {
-    log "Starting NithronOS App API tests..."
+    log "Starting nOS App API tests..."
     
     # Check if nosd is running
     if ! curl -sf "http://localhost:9000/api/health" >/dev/null 2>&1; then

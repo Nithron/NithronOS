@@ -1,5 +1,5 @@
 #!/bin/bash
-# NithronOS Installer Test Script
+# nOS Installer Test Script
 # Tests the installer in a QEMU VM
 
 set -e
@@ -11,12 +11,12 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-VM_NAME="nithronos-installer-test"
+VM_NAME="nos-installer-test"
 VM_DISK="/tmp/${VM_NAME}.qcow2"
 VM_SIZE="20G"
 VM_RAM="2048"
 VM_CPUS="2"
-ISO_PATH="${1:-nithronos-live.iso}"
+ISO_PATH="${1:-nos-live.iso}"
 LOG_FILE="/tmp/${VM_NAME}.log"
 
 # Functions
@@ -236,7 +236,7 @@ verify_installation() {
 
 # Main execution
 main() {
-    log_info "NithronOS Installer Test"
+    log_info "nOS Installer Test"
     log_info "========================"
     
     # Set up cleanup on exit

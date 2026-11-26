@@ -1,0 +1,57 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        # Verify required binaries exist; log to journal
+        REQUIRED_CMDS="btrfs smartctl cryptsetup lsblk mount mdadm lvm"
+        for cmd in $REQUIRED_CMDS; do
+            if command -v "$cmd" >/dev/null 2>&1; then
+                logger -t nos-deps "found $cmd: $(command -v "$cmd")"
+            else
+                logger -t nos-deps "MISSING $cmd - please install required runtime tools"
+            fi
+        done
+
+        # Log versions on first install
+        if command -v btrfs >/dev/null 2>&1; then logger -t nos-deps "$(btrfs --version)"; fi
+        if command -v smartctl >/dev/null 2>&1; then logger -t nos-deps "$(smartctl -V | head -1)"; fi
+        if command -v cryptsetup >/dev/null 2>&1; then logger -t nos-deps "$(cryptsetup --version)"; fi
+        if command -v lsblk >/dev/null 2>&1; then logger -t nos-deps "$(lsblk --version | head -1)"; fi
+
+        # Install-time: ensure systemd sees our unit; enable for first boot
+        systemctl daemon-reload || true
+        chmod 0755 /usr/lib/nos/report-deps.sh || true
+        systemctl enable nos-deps-report.service || true
+        # Ensure permissions for installed helpers
+        chmod 0755 /usr/lib/nos/gen-local-cert.sh || true
+        # Enable TLS generator and core services
+        systemctl enable nos-certgen.service || true
+        # Ensure Caddy is definitely enabled and will start on boot
+        systemctl enable caddy.service || true
+        systemctl daemon-reload || true
+        # Create startup override to ensure Caddy always starts
+        mkdir -p /etc/systemd/system/caddy.service.d
+        cat > /etc/systemd/system/caddy.service.d/override.conf <<EOF
+[Unit]
+# Ensure Caddy starts after network and nosd
+After=network-online.target nosd.service
+Wants=network-online.target
+
+[Install]
+# Make sure it's wanted by multi-user.target
+WantedBy=multi-user.target
+EOF
+        systemctl daemon-reload || true
+        systemctl enable nosd.service || true
+        systemctl enable nos-agent.service || true
+        # OTP announcer moved to nosd package
+        chmod 0755 /usr/lib/nos/smart-scan.sh || true
+        systemctl enable --now nos-smart-scan.timer || true
+        systemctl enable --now nos-fstrim.timer || true
+        ;;
+esac
+
+exit 0
+
+

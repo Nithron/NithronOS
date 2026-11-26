@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"nithronos/backend/nosd/internal/shares"
+	"nos/backend/nosd/internal/shares"
 	"os"
 	"path/filepath"
 	"strings"

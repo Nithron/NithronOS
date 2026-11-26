@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
-	"nithronos/backend/nosd/pkg/backup"
+	"nos/backend/nosd/pkg/backup"
 )
 
 // BackupHandler provides API handlers for backup operations

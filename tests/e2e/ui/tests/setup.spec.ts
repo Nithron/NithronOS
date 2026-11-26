@@ -61,7 +61,7 @@ test.describe('First Boot Setup', () => {
     await expect(page.getByRole('heading', { name: /System Configuration/i })).toBeVisible();
     
     // Set hostname
-    await page.getByLabel(/Hostname/i).fill('nithronos-test');
+    await page.getByLabel(/Hostname/i).fill('nos-test');
     
     // Set timezone
     await page.getByLabel(/Timezone/i).selectOption('America/New_York');
@@ -85,7 +85,7 @@ test.describe('First Boot Setup', () => {
     
     // Step 6: Setup Complete
     await expect(page.getByRole('heading', { name: /Setup Complete/i })).toBeVisible();
-    await expect(page.getByText(/NithronOS is ready/i)).toBeVisible();
+    await expect(page.getByText(/nOS is ready/i)).toBeVisible();
     
     await page.getByRole('button', { name: /Go to Dashboard/i }).click();
     

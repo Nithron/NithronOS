@@ -110,8 +110,8 @@ Configuration is stored in:
 ### Initial Setup
 
 1. Open NithronSync
-2. Enter your NithronOS server URL
-3. Paste the device token from NithronOS (Settings → Sync → Devices → Add)
+2. Enter your nOS server URL
+3. Paste the device token from nOS (Settings → Sync → Devices → Add)
 4. Choose your sync folder location
 5. Click Connect
 

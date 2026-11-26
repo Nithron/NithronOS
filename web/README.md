@@ -1,6 +1,6 @@
-# NithronOS Web Frontend
+# nOS Web Frontend
 
-React + TypeScript frontend for NithronOS.
+React + TypeScript frontend for nOS.
 
 ## Development
 

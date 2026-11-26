@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-echo "[grub-binary-theme] Setting up NithronOS GRUB theme for ISO boot..."
+echo "[grub-binary-theme] Setting up nOS GRUB theme for ISO boot..."
 echo "[grub-binary-theme] Current directory: $(pwd)"
 
 # We're already in the binary directory when this hook runs
@@ -66,7 +66,7 @@ if [ -d EFI ]; then
         
         # Create themed version
         cat > EFI/boot/grub.cfg.new << 'EOF'
-# NithronOS EFI Boot Configuration
+# nOS EFI Boot Configuration
 
 # Load modules
 insmod all_video
@@ -109,7 +109,7 @@ if [ -f ../isolinux/grub.cfg ]; then
     # Ensure it references the theme
     if ! grep -q "set theme=" ../isolinux/grub.cfg; then
         sed -i '1i\
-# NithronOS Theme\
+# nOS Theme\
 insmod all_video\
 insmod gfxterm\
 insmod gfxmenu\

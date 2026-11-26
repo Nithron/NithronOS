@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"nithronos/backend/nosd/internal/fsatomic"
+	"nos/backend/nosd/internal/fsatomic"
 )
 
 // SnapshotTarget describes one snapshot created for a target path as part of an update transaction.

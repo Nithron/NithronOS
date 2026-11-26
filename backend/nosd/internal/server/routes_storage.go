@@ -7,15 +7,15 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"nithronos/backend/nosd/internal/disks"
-	"nithronos/backend/nosd/internal/pools"
-	"nithronos/backend/nosd/pkg/agentclient"
+	"nos/backend/nosd/internal/disks"
+	"nos/backend/nosd/internal/pools"
+	"nos/backend/nosd/pkg/agentclient"
 
-	// "nithronos/backend/nosd/pkg/firewall"
-	"nithronos/backend/nosd/pkg/httpx"
-	poolroots "nithronos/backend/nosd/pkg/pools"
+	// "nos/backend/nosd/pkg/firewall"
+	"nos/backend/nosd/pkg/httpx"
+	poolroots "nos/backend/nosd/pkg/pools"
 
-	"nithronos/backend/nosd/internal/fsatomic"
+	"nos/backend/nosd/internal/fsatomic"
 
 	"strconv"
 )

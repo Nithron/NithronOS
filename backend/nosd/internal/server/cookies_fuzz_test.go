@@ -4,7 +4,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"nithronos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/config"
 )
 
 // Fuzz token/cookie parsers to ensure no panics and safe failures.

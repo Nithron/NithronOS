@@ -9,7 +9,7 @@
 
 :443 {
   # If you have certs on disk (recommended for IP SAN):
-  tls /etc/nithronos/tls/cert.pem /etc/nithronos/tls/key.pem
+  tls /etc/ssl/nos/cert.pem /etc/ssl/nos/key.pem
 
   encode gzip zstd
 
@@ -27,7 +27,7 @@
   }
 
   handle {
-    root * /usr/share/nithronos/web
+    root * /usr/share/nos/web
     try_files {path} /index.html
     file_server
   }

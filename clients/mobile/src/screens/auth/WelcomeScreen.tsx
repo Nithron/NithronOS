@@ -81,7 +81,7 @@ export function WelcomeScreen(): React.JSX.Element {
 
       {/* Footer */}
       <Text style={[styles.footer, {color: colors.text}]}>
-        Visit your NithronOS dashboard to get a QR code
+        Visit your nOS dashboard to get a QR code
       </Text>
     </View>
   );

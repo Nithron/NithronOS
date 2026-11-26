@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1600" height="400" viewBox="0 0 1600 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#121622"/>
+      <stop offset="100%" stop-color="#0B0E13"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00D1FF"/>
+      <stop offset="100%" stop-color="#A4F932"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="400" fill="url(#bg)"/>
+  <g transform="translate(80,50) scale(0.6)">
+    <path d="M256 24 L444 132 Q456 139 456 154 L456 358 Q456 373 444 380 L256 488 L68 380 Q56 373 56 358 L56 154 Q56 139 68 132 Z"
+          fill="none" stroke="url(#ring)" stroke-width="22" stroke-linejoin="round"/>
+    <path d="M168 360 L168 164 L188 164 L344 328 L344 164 L364 164 L364 360 L344 360 L188 196 L188 360 Z"
+          fill="#E6EDF7"/>
+  </g>
+  <text x="450" y="180" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="112" fill="#E6EDF7" font-weight="800">nOS</text>
+  <text x="455" y="240" font-family="JetBrains Mono,Consolas,monospace" font-size="34" fill="#9AA7B8">Your data. Your apps. No cloud required.</text>
+</svg>
+

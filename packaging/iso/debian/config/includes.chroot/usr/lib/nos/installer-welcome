@@ -1,0 +1,47 @@
+#!/bin/bash
+# Display welcome message for installer mode
+
+# Colors
+BLUE='\033[0;34m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+# Create welcome file for login banner
+cat > /etc/motd << 'EOF'
+================================================================================
+            ___  ____  
+     _ __  / _ \/ ___| 
+    | '_ \| | | \___ \ 
+    | | | | |_| |___) |
+    |_| |_|\___/|____/ 
+                       
+                                                  
+                    INSTALLATION MODE
+
+Welcome to nOS Installation Environment!
+
+To install nOS to your hard drive:
+
+1. Login with:
+   Username: user
+   Password: live
+
+2. Run the installer:
+   $ sudo nos-installer
+
+3. Follow the installation wizard
+
+The installer will:
+- Partition your disk (EFI + Btrfs)
+- Install the base system
+- Configure bootloader
+- Set up nOS services
+
+Need help? Visit: https://github.com/Nithron/nOS/blob/main/docs/installer.md
+================================================================================
+EOF
+
+# Also display on current console
+clear
+cat /etc/motd
