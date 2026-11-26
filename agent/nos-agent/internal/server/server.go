@@ -87,6 +87,10 @@ func buildMux() http.Handler {
 	mux.HandleFunc("/v1/crypttab/remove", handleCrypttabRemove)
 	mux.HandleFunc("/v1/btrfs/scrub/start", handleBtrfsScrubStart)
 	mux.HandleFunc("/v1/btrfs/scrub/status", handleBtrfsScrubStatus)
+	mux.HandleFunc("/v1/btrfs/scrub/cancel", handleBtrfsScrubCancel)
+	mux.HandleFunc("/v1/btrfs/balance/start", handleBtrfsBalanceStart)
+	mux.HandleFunc("/v1/btrfs/balance/cancel", handleBtrfsBalanceCancel)
+	mux.HandleFunc("/v1/btrfs/subvolumes", handleBtrfsSubvolumes)
 	mux.HandleFunc("/v1/btrfs/check-repair", handleBtrfsCheckRepair)
 	mux.HandleFunc("/v1/btrfs/usage", handleBtrfsUsage)
 	mux.HandleFunc("/v1/smb/user-create", handleSMBUserCreate)
@@ -100,6 +104,7 @@ func buildMux() http.Handler {
 	mux.HandleFunc("/v1/snapshot/prune", handleSnapshotPrune)
 	mux.HandleFunc("/v1/storage/lsblk", handleStorageLsblk)
 	mux.HandleFunc("/v1/smart", handleSmartSummary)
+	mux.HandleFunc("/v1/smart/test", handleSmartTest)
 	// Prometheus metrics on the same unix socket
 	mux.Handle("/metrics", metricsHandler())
 	return mux

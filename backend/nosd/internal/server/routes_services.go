@@ -8,7 +8,7 @@ import (
 	// "nos/backend/nosd/pkg/firewall"
 )
 
-// registerServices serves dashboard status, health, storage, Btrfs, schedules, shares and backup.
+// registerServices serves dashboard status, health, storage, schedules, shares and backup.
 func (d *routeDeps) registerServices(pr chi.Router) {
 	cfg := d.cfg
 	sharesHandler := d.sharesHandler
@@ -31,10 +31,6 @@ func (d *routeDeps) registerServices(pr chi.Router) {
 	// Storage endpoints
 	storageHandler := NewStorageHandler(agentclient.New(cfg.AgentSocket()))
 	pr.Mount("/api/v1/storage", storageHandler.Routes())
-
-	// Btrfs endpoints
-	btrfsHandler := NewBtrfsHandler(agentclient.New(cfg.AgentSocket()))
-	pr.Mount("/api/v1/btrfs", btrfsHandler.Routes())
 
 	// Schedule endpoints
 	schedulesHandler := NewSchedulesHandler()

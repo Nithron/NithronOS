@@ -13,6 +13,8 @@ import (
 	"nos/backend/nosd/internal/pools"
 	"nos/backend/nosd/pkg/agentclient"
 	"nos/backend/nosd/pkg/httpx"
+
+	"github.com/rs/zerolog/log"
 )
 
 type applyCreateRequest struct {
@@ -136,30 +138,23 @@ func executePlan(txID string, req applyCreateRequest, cfg config.Config) {
 	tx.OK = true
 	tx.FinishedAt = &now
 	_ = saveTx(tx)
-	// Persist pool record (best-effort minimal)
-	type PoolRecord struct {
-		Name, Mount  string
-		Devices      []string
-		MountOptions string
-		CreatedAt    time.Time
-	}
-	// derive mount options from fstab
-	mountOpts := ""
+	// Remember the pool: its mount point, UUID and options come from the
+	// fstab line the plan wrote.
 	for _, ln := range req.Fstab {
 		if strings.HasPrefix(ln, "[crypttab]") {
 			continue
 		}
 		parts := strings.Fields(ln)
-		if len(parts) >= 4 && parts[2] == "btrfs" {
-			mountOpts = parts[3]
-			break
+		if len(parts) < 4 || parts[2] != "btrfs" {
+			continue
 		}
+		rec := poolOptionsRecord{Mount: parts[1], MountOptions: parts[3], Name: filepath.Base(parts[1])}
+		if uuid, ok := strings.CutPrefix(parts[0], "UUID="); ok {
+			rec.UUID = uuid
+		}
+		if err := recordPool(cfg, rec); err != nil {
+			log.Error().Err(err).Str("mount", rec.Mount).Msg("pools: could not record the new pool")
+		}
+		break
 	}
-	rec := PoolRecord{Name: "pool", Mount: "", Devices: nil, MountOptions: mountOpts, CreatedAt: time.Now().UTC()}
-	_ = fsatomic.WithLock(filepath.Join(cfg.EtcDir, "nos", "pools.json"), func() error {
-		var list []PoolRecord
-		_, _ = fsatomic.LoadJSON(filepath.Join(cfg.EtcDir, "nos", "pools.json"), &list)
-		list = append(list, rec)
-		return fsatomic.SaveJSON(filepath.Join(cfg.EtcDir, "nos", "pools.json"), list, 0o600)
-	})
 }

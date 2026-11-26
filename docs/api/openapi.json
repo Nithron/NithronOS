@@ -570,84 +570,6 @@
         ]
       }
     },
-    "/api/v1/btrfs/balance/cancel": {
-      "post": {
-        "operationId": "postBtrfsBalanceCancel",
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "btrfs"
-        ]
-      }
-    },
-    "/api/v1/btrfs/balance/start": {
-      "post": {
-        "operationId": "postBtrfsBalanceStart",
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "btrfs"
-        ]
-      }
-    },
-    "/api/v1/btrfs/balance/status": {
-      "get": {
-        "operationId": "getBtrfsBalanceStatus",
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "btrfs"
-        ]
-      }
-    },
-    "/api/v1/btrfs/scrub/cancel": {
-      "post": {
-        "operationId": "postBtrfsScrubCancel",
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "btrfs"
-        ]
-      }
-    },
-    "/api/v1/btrfs/scrub/start": {
-      "post": {
-        "operationId": "postBtrfsScrubStart",
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "btrfs"
-        ]
-      }
-    },
-    "/api/v1/btrfs/scrub/status": {
-      "get": {
-        "operationId": "getBtrfsScrubStatus",
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "btrfs"
-        ]
-      }
-    },
     "/api/v1/dashboard": {
       "get": {
         "operationId": "getDashboard",
@@ -2125,6 +2047,29 @@
         ]
       }
     },
+    "/api/v1/pools/{id}/subvolumes": {
+      "get": {
+        "operationId": "getPoolsIdSubvolumes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "pools"
+        ]
+      }
+    },
     "/api/v1/remote/status": {
       "get": {
         "operationId": "getRemoteStatus",
@@ -2722,50 +2667,6 @@
     "/api/v1/storage/pools/{uuid}": {
       "get": {
         "operationId": "getStoragePoolsUuid",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "uuid",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "storage"
-        ]
-      }
-    },
-    "/api/v1/storage/pools/{uuid}/options": {
-      "get": {
-        "operationId": "getStoragePoolsUuidOptions",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "uuid",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "storage"
-        ]
-      },
-      "put": {
-        "operationId": "putStoragePoolsUuidOptions",
         "parameters": [
           {
             "in": "path",

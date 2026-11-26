@@ -300,12 +300,6 @@
     ]
   },
   {
-    "path": "/api/v1/pools/{}/subvolumes",
-    "files": [
-      "web/src/lib/api.ts"
-    ]
-  },
-  {
     "path": "/api/v1/remote/destinations",
     "files": [
       "web/src/lib/api.ts"

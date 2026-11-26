@@ -139,3 +139,51 @@ func TestUpdatePoolOptionsDoesNotDeadlock(t *testing.T) {
 		t.Fatalf("want 3 records, got %d", len(st.Records))
 	}
 }
+
+// Import and create used to write pools.json as a bare list, and options as
+// {"records": [...]}; each wiped the other's data.
+func TestPoolsFileFormatsMerge(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.EtcDir = t.TempDir()
+	if err := os.MkdirAll(filepath.Join(cfg.EtcDir, "nos"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	legacy := `[{"Name":"old","Mount":"/mnt/old","Devices":["/dev/sdb"],"MountOptions":"compress=zstd:3","CreatedAt":"2026-01-01T00:00:00Z"}]`
+	if err := os.WriteFile(poolsStorePath(cfg), []byte(legacy), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := recordPool(cfg, poolOptionsRecord{Name: "new", Mount: "/mnt/new", UUID: "u-1", MountOptions: "noatime"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := updatePoolOptions(cfg, func(st *poolOptionsStore) { st.Records[0].MountOptions = "compress=zstd:5" }); err != nil {
+		t.Fatal(err)
+	}
+	if err := recordPool(cfg, poolOptionsRecord{Mount: "/mnt/new", Devices: []string{"/dev/sdc"}}); err != nil {
+		t.Fatal(err)
+	}
+	st, err := loadPoolOptions(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(st.Records) != 2 {
+		t.Fatalf("records: %+v", st.Records)
+	}
+	old, cur := st.Records[0], st.Records[1]
+	if old.Name != "old" || old.MountOptions != "compress=zstd:5" || old.Devices[0] != "/dev/sdb" || old.CreatedAt.Year() != 2026 {
+		t.Errorf("legacy record lost data: %+v", old)
+	}
+	if cur.UUID != "u-1" || cur.MountOptions != "noatime" || cur.Devices[0] != "/dev/sdc" || cur.CreatedAt.IsZero() {
+		t.Errorf("new record: %+v", cur)
+	}
+
+	// A file that can't be parsed is never overwritten.
+	if err := os.WriteFile(poolsStorePath(cfg), []byte(`{"records": [`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := recordPool(cfg, poolOptionsRecord{Mount: "/mnt/x"}); err == nil {
+		t.Fatal("write over an unreadable pools.json must fail")
+	}
+	if b, _ := os.ReadFile(poolsStorePath(cfg)); string(b) != `{"records": [` {
+		t.Fatalf("unreadable pools.json overwritten: %s", b)
+	}
+}
