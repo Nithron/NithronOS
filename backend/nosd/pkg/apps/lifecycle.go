@@ -7,23 +7,42 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-// LifecycleManager handles app lifecycle operations
+// LifecycleManager handles app lifecycle operations. nosd runs as the nos
+// user: it writes the app's compose and env files into the config folder
+// (which belongs to nos) and asks nos-agent for every privileged step
+// (folders and ownership, the systemd unit, snapshots, the Caddy proxy).
+// Those steps used to run here directly and failed on installed systems.
 type LifecycleManager struct {
-	catalogMgr   *CatalogManager
-	stateStore   *StateStore
-	renderer     *TemplateRenderer
-	appsRoot     string
-	agentPath    string
-	helperPath   string
-	snapshotPath string
-	caddyPath    string
-	eventLogger  EventLogger
+	catalogMgr  *CatalogManager
+	stateStore  *StateStore
+	renderer    *TemplateRenderer
+	appsRoot    string
+	host        HostOps
+	eventLogger EventLogger
+}
+
+// AppOp is one privileged step, run by nos-agent's /v1/apps/op.
+type AppOp struct {
+	Op       string `json:"op"`
+	AppID    string `json:"app_id"`
+	UID      int    `json:"uid,omitempty"`
+	GID      int    `json:"gid,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Snapshot string `json:"snapshot,omitempty"`
+	KeepData bool   `json:"keep_data,omitempty"`
+	Port     int    `json:"port,omitempty"`
+}
+
+// HostOps runs AppOps (nos-agent; a fake in tests).
+type HostOps interface {
+	AppOp(ctx context.Context, op AppOp) (output string, err error)
 }
 
 // EventLogger interface for logging events
@@ -37,19 +56,16 @@ func NewLifecycleManager(
 	stateStore *StateStore,
 	renderer *TemplateRenderer,
 	appsRoot string,
-	agentPath string,
+	host HostOps,
 	eventLogger EventLogger,
 ) *LifecycleManager {
 	return &LifecycleManager{
-		catalogMgr:   catalogMgr,
-		stateStore:   stateStore,
-		renderer:     renderer,
-		appsRoot:     appsRoot,
-		agentPath:    agentPath,
-		helperPath:   "/usr/lib/nos/apps/nos-app-helper.sh",
-		snapshotPath: "/usr/lib/nos/apps/nos-app-snapshot.sh",
-		caddyPath:    "/etc/caddy/Caddyfile.d",
-		eventLogger:  eventLogger,
+		catalogMgr:  catalogMgr,
+		stateStore:  stateStore,
+		renderer:    renderer,
+		appsRoot:    appsRoot,
+		host:        host,
+		eventLogger: eventLogger,
 	}
 }
 
@@ -77,54 +93,44 @@ func (lm *LifecycleManager) InstallApp(ctx context.Context, req InstallRequest, 
 		"params":  req.Params,
 	})
 
-	// Create app directories
+	// The app's folders: config (nos writes it) and data (a Btrfs subvolume
+	// when possible, owned by the user the containers run as).
 	appDir := filepath.Join(lm.appsRoot, req.ID)
 	configDir := filepath.Join(appDir, "config")
-	// dataDir := filepath.Join(appDir, "data") // TODO: Use for data persistence
-
-	if err := os.MkdirAll(configDir, 0700); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
+	uid, gid := containerIDs(req.Params)
+	if _, err := lm.host.AppOp(ctx, AppOp{Op: "prepare", AppID: req.ID, UID: uid, GID: gid}); err != nil {
+		return fmt.Errorf("failed to prepare the app folders: %w", err)
 	}
-
-	// Ensure data directory is a subvolume if on Btrfs
-	if err := lm.ensureDataSubvolume(req.ID); err != nil {
-		return fmt.Errorf("failed to create data directory: %w", err)
-	}
+	cleanup := func() { _, _ = lm.host.AppOp(context.Background(), AppOp{Op: "remove", AppID: req.ID}) }
 
 	// Render compose file
 	composeContent, err := lm.renderer.RenderComposeFile(entry, req.Params)
 	if err != nil {
-		os.RemoveAll(appDir)
+		cleanup()
 		return fmt.Errorf("failed to render compose file: %w", err)
 	}
 
 	composePath := filepath.Join(configDir, "docker-compose.yml")
 	if err := os.WriteFile(composePath, composeContent, 0600); err != nil {
-		os.RemoveAll(appDir)
+		cleanup()
 		return fmt.Errorf("failed to write compose file: %w", err)
 	}
 
 	// Render environment file
 	envContent, err := lm.renderer.RenderEnvFile(req.Params)
 	if err != nil {
-		os.RemoveAll(appDir)
+		cleanup()
 		return fmt.Errorf("failed to render env file: %w", err)
 	}
 
 	envPath := filepath.Join(configDir, ".env")
 	if err := os.WriteFile(envPath, envContent, 0600); err != nil {
-		os.RemoveAll(appDir)
+		cleanup()
 		return fmt.Errorf("failed to write env file: %w", err)
 	}
 
-	// Set ownership
-	if err := lm.setAppOwnership(appDir); err != nil {
-		os.RemoveAll(appDir)
-		return fmt.Errorf("failed to set ownership: %w", err)
-	}
-
 	// Create initial snapshot
-	snapshotID, err := lm.createSnapshot(req.ID, "post-install")
+	snapshotID, err := lm.createSnapshot(ctx, req.ID, "post-install")
 	if err != nil {
 		// Log warning but continue
 		fmt.Fprintf(os.Stderr, "Warning: failed to create post-install snapshot: %v\n", err)
@@ -133,13 +139,13 @@ func (lm *LifecycleManager) InstallApp(ctx context.Context, req InstallRequest, 
 	// Start the app
 	if err := lm.startApp(ctx, req.ID); err != nil {
 		// Rollback on failure
-		os.RemoveAll(appDir)
+		cleanup()
 		return fmt.Errorf("failed to start app: %w", err)
 	}
 
 	// Setup reverse proxy if ports are exposed
 	if len(entry.Defaults.Ports) > 0 {
-		if err := lm.setupReverseProxy(req.ID, entry.Defaults.Ports); err != nil {
+		if err := lm.setupReverseProxy(ctx, req.ID, entry.Defaults.Ports); err != nil {
 			// Log warning but continue
 			fmt.Fprintf(os.Stderr, "Warning: failed to setup reverse proxy: %v\n", err)
 		}
@@ -176,7 +182,7 @@ func (lm *LifecycleManager) InstallApp(ctx context.Context, req InstallRequest, 
 		if stopErr := lm.stopApp(ctx, req.ID); stopErr != nil {
 			fmt.Printf("Failed to stop app during cleanup: %v\n", stopErr)
 		}
-		os.RemoveAll(appDir)
+		cleanup()
 		return fmt.Errorf("failed to save app state: %w", err)
 	}
 
@@ -184,13 +190,6 @@ func (lm *LifecycleManager) InstallApp(ctx context.Context, req InstallRequest, 
 	lm.logEvent("app.install.complete", req.ID, userID, map[string]interface{}{
 		"version": entry.Version,
 	})
-
-	// Run post-install script if exists
-	if err := lm.runPostInstallScript(entry, appDir); err != nil {
-		// Log warning but don't fail
-		fmt.Fprintf(os.Stderr, "Warning: post-install script failed: %v\n", err)
-	}
-
 	return nil
 }
 
@@ -215,7 +214,7 @@ func (lm *LifecycleManager) UpgradeApp(ctx context.Context, appID string, req Up
 	})
 
 	// Create pre-upgrade snapshot
-	snapshotID, err := lm.createSnapshot(appID, "pre-upgrade")
+	snapshotID, err := lm.createSnapshot(ctx, appID, "pre-upgrade")
 	if err != nil {
 		return fmt.Errorf("failed to create pre-upgrade snapshot: %w", err)
 	}
@@ -389,29 +388,18 @@ func (lm *LifecycleManager) DeleteApp(ctx context.Context, appID string, keepDat
 	})
 
 	// Remove from systemd
-	if err := lm.disableSystemdService(appID); err != nil {
+	if err := lm.disableSystemdService(ctx, appID); err != nil {
 		fmt.Printf("Failed to disable systemd service: %v\n", err)
 	}
 
-	// Remove Caddy configuration
-	caddyPath := filepath.Join(lm.caddyPath, fmt.Sprintf("app-%s.caddy", appID))
-	os.Remove(caddyPath)
-	if err := lm.reloadCaddy(); err != nil {
-		fmt.Printf("Failed to reload Caddy after app removal: %v\n", err)
+	// Remove the Caddy proxy
+	if _, err := lm.host.AppOp(ctx, AppOp{Op: "unproxy", AppID: appID}); err != nil {
+		fmt.Printf("Failed to remove the app's proxy: %v\n", err)
 	}
 
-	// Remove app directory if not keeping data
-	if !keepData {
-		appDir := filepath.Join(lm.appsRoot, appID)
-		if err := lm.removeAppDirectory(appDir); err != nil {
-			return fmt.Errorf("failed to remove app directory: %w", err)
-		}
-
-		// Remove snapshots
-		snapshotDir := filepath.Join(lm.appsRoot, ".snapshots", appID)
-		if err := lm.removeAppDirectory(snapshotDir); err != nil {
-			fmt.Printf("Failed to remove snapshot directory: %v\n", err)
-		}
+	// Remove the config folder, and the data and snapshots unless kept
+	if _, err := lm.host.AppOp(ctx, AppOp{Op: "remove", AppID: appID, KeepData: keepData}); err != nil {
+		return fmt.Errorf("failed to remove app files: %w", err)
 	}
 
 	// Remove from state
@@ -449,91 +437,88 @@ func (lm *LifecycleManager) RollbackApp(ctx context.Context, appID string, snaps
 // Helper methods
 
 func (lm *LifecycleManager) startApp(ctx context.Context, appID string) error {
-	cmd := exec.CommandContext(ctx, "systemctl", "start", fmt.Sprintf("nos-app@%s.service", appID))
-	return cmd.Run()
+	_, err := lm.host.AppOp(ctx, AppOp{Op: "start", AppID: appID})
+	return err
 }
 
 func (lm *LifecycleManager) stopApp(ctx context.Context, appID string) error {
-	cmd := exec.CommandContext(ctx, "systemctl", "stop", fmt.Sprintf("nos-app@%s.service", appID))
-	return cmd.Run()
+	_, err := lm.host.AppOp(ctx, AppOp{Op: "stop", AppID: appID})
+	return err
 }
 
 func (lm *LifecycleManager) restartApp(ctx context.Context, appID string) error {
-	cmd := exec.CommandContext(ctx, "systemctl", "restart", fmt.Sprintf("nos-app@%s.service", appID))
-	return cmd.Run()
+	_, err := lm.host.AppOp(ctx, AppOp{Op: "restart", AppID: appID})
+	return err
 }
 
-func (lm *LifecycleManager) disableSystemdService(appID string) error {
-	cmd := exec.Command("systemctl", "disable", fmt.Sprintf("nos-app@%s.service", appID))
-	return cmd.Run()
+func (lm *LifecycleManager) disableSystemdService(ctx context.Context, appID string) error {
+	_, err := lm.host.AppOp(ctx, AppOp{Op: "disable", AppID: appID})
+	return err
 }
 
 func (lm *LifecycleManager) pullImages(ctx context.Context, appID string) error {
-	configDir := filepath.Join(lm.appsRoot, appID, "config")
-	cmd := exec.CommandContext(ctx, lm.helperPath, "compose-pull", configDir)
-	return cmd.Run()
+	_, err := lm.host.AppOp(ctx, AppOp{Op: "pull", AppID: appID})
+	return err
 }
 
-func (lm *LifecycleManager) ensureDataSubvolume(appID string) error {
-	cmd := exec.Command(lm.snapshotPath, "ensure-subvolume", appID)
-	return cmd.Run()
-}
-
-func (lm *LifecycleManager) createSnapshot(appID, name string) (string, error) {
-	cmd := exec.Command(lm.snapshotPath, "snapshot-pre", appID, name)
-	output, err := cmd.Output()
+// createSnapshot snapshots the app's data and returns the snapshot's name
+// (the last element of the path the snapshot script prints).
+func (lm *LifecycleManager) createSnapshot(ctx context.Context, appID, name string) (string, error) {
+	out, err := lm.host.AppOp(ctx, AppOp{Op: "snapshot", AppID: appID, Name: name})
 	if err != nil {
 		return "", err
 	}
-
-	// Extract snapshot ID from output
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "/srv/apps/.snapshots/") {
-			parts := strings.Split(line, "/")
-			if len(parts) > 0 {
-				return parts[len(parts)-1], nil
-			}
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, "/.snapshots/") {
+			return filepath.Base(strings.TrimSpace(line)), nil
 		}
 	}
-
 	return "", fmt.Errorf("snapshot ID not found in output")
 }
 
 func (lm *LifecycleManager) rollbackSnapshot(ctx context.Context, appID, snapshotTS string) error {
-	cmd := exec.CommandContext(ctx, lm.snapshotPath, "rollback", appID, snapshotTS)
-	return cmd.Run()
+	_, err := lm.host.AppOp(ctx, AppOp{Op: "rollback", AppID: appID, Snapshot: snapshotTS})
+	return err
 }
 
-func (lm *LifecycleManager) setAppOwnership(appDir string) error {
-	cmd := exec.Command("chown", "-R", "nos:nos", appDir)
-	return cmd.Run()
+// containerIDs is the user and group the app's containers run as (PUID and
+// PGID, 1000 by default); its data folder belongs to them.
+func containerIDs(params map[string]interface{}) (int, int) {
+	id := func(key string) int {
+		if v, err := strconv.Atoi(fmt.Sprint(params[key])); err == nil && v > 0 {
+			return v
+		}
+		return 1000
+	}
+	return id("PUID"), id("PGID")
 }
 
-func (lm *LifecycleManager) setupReverseProxy(appID string, ports []PortMapping) error {
-	// Generate Caddy snippet
-	snippet, err := lm.renderer.RenderCaddySnippet(appID, ports)
-	if err != nil {
-		return err
-	}
+// helperScript reads app status with docker (nos is in the docker group).
+const helperScript = "/usr/lib/nos/apps/nos-app-helper.sh"
 
-	if snippet == nil {
-		return nil // No proxy needed
+// proxyPort is the host port Caddy forwards /apps/<id>/ to: the one
+// published for a usual HTTP container port, or else the first published.
+func proxyPort(ports []PortMapping) int {
+	for _, p := range ports {
+		if p.Host > 0 && (p.Container == 80 || p.Container == 8080 || p.Container == 3000 || p.Container == 8000) {
+			return p.Host
+		}
 	}
-
-	// Write to Caddyfile.d
-	snippetPath := filepath.Join(lm.caddyPath, fmt.Sprintf("app-%s.caddy", appID))
-	if err := os.WriteFile(snippetPath, snippet, 0644); err != nil {
-		return fmt.Errorf("failed to write Caddy snippet: %w", err)
+	for _, p := range ports {
+		if p.Host > 0 {
+			return p.Host
+		}
 	}
-
-	// Reload Caddy
-	return lm.reloadCaddy()
+	return 0
 }
 
-func (lm *LifecycleManager) reloadCaddy() error {
-	cmd := exec.Command("systemctl", "reload", "caddy")
-	return cmd.Run()
+func (lm *LifecycleManager) setupReverseProxy(ctx context.Context, appID string, ports []PortMapping) error {
+	port := proxyPort(ports)
+	if port == 0 {
+		return nil // nothing published
+	}
+	_, err := lm.host.AppOp(ctx, AppOp{Op: "proxy", AppID: appID, Port: port})
+	return err
 }
 
 func (lm *LifecycleManager) generateAppURLs(appID string, ports []PortMapping) []string {
@@ -557,7 +542,7 @@ func (lm *LifecycleManager) waitForHealth(ctx context.Context, appID string, tim
 
 	for time.Now().Before(deadline) {
 		// Check container status
-		cmd := exec.CommandContext(ctx, lm.helperPath, "app-status", appID)
+		cmd := exec.CommandContext(ctx, helperScript, "app-status", appID)
 		output, err := cmd.Output()
 		if err == nil {
 			var status map[string]interface{}
@@ -585,40 +570,6 @@ func (lm *LifecycleManager) copyFile(src, dst string) error {
 		return err
 	}
 	return os.WriteFile(dst, input, 0600)
-}
-
-func (lm *LifecycleManager) removeAppDirectory(dir string) error {
-	// Check if it's a Btrfs subvolume
-	cmd := exec.Command(lm.snapshotPath, "is-btrfs", dir)
-	output, _ := cmd.Output()
-
-	if strings.TrimSpace(string(output)) == "yes" {
-		// Remove as Btrfs subvolume
-		cmd = exec.Command("btrfs", "subvolume", "delete", dir)
-		if err := cmd.Run(); err != nil {
-			// Fall back to regular removal
-			return os.RemoveAll(dir)
-		}
-		return nil
-	}
-
-	return os.RemoveAll(dir)
-}
-
-func (lm *LifecycleManager) runPostInstallScript(entry *CatalogEntry, appDir string) error {
-	scriptPath := filepath.Join(lm.catalogMgr.builtinPath, "templates", entry.ID, "post_install.sh")
-	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-		return nil // No script
-	}
-
-	cmd := exec.Command("/bin/bash", scriptPath)
-	cmd.Dir = appDir
-	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("APP_ID=%s", entry.ID),
-		fmt.Sprintf("APP_DIR=%s", appDir),
-	)
-
-	return cmd.Run()
 }
 
 func (lm *LifecycleManager) logEvent(eventType, appID, userID string, details interface{}) {

@@ -10,10 +10,22 @@ import type {
   AppEvent,
 } from './apps.types';
 
+/** An app's install form: a JSON Schema object (the template's schema.json). */
+export interface AppSchema {
+  type?: string;
+  title?: string;
+  properties?: Record<string, any>;
+  required?: string[];
+}
+
 export const appsApi = {
   // Catalog operations
   getCatalog: () =>
     http.get<Catalog>('/v1/apps/catalog'),
+
+  // The install form (JSON Schema) of a catalog app.
+  getSchema: (id: string) =>
+    http.get<AppSchema>(`/v1/apps/catalog/${encodeURIComponent(id)}/schema`),
 
   getInstalledApps: () =>
     http.get<{ items: InstalledApp[] }>('/v1/apps/installed'),

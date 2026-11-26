@@ -1,16 +1,21 @@
 package apps
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"nos/backend/nosd/pkg/agentclient"
 	"nos/backend/nosd/pkg/apps"
 )
 
@@ -157,7 +162,7 @@ func NewManager(config *Config) (*Manager, error) {
 		stateStore,
 		renderer,
 		config.AppsRoot,
-		config.AgentPath,
+		agentHostOps{client: agentclient.New(config.AgentPath)},
 		eventLogger,
 	)
 
@@ -287,10 +292,86 @@ func (m *Manager) RollbackApp(ctx context.Context, appID string, snapshotTS stri
 	return m.lifecycleMgr.RollbackApp(ctx, appID, snapshotTS, userID)
 }
 
-// GetAppLogs gets logs for an app
+// GetSchema returns the install form schema of a catalog app.
+func (m *Manager) GetSchema(appID string) ([]byte, error) {
+	entry, err := m.catalogMgr.GetEntry(appID)
+	if err != nil {
+		return nil, err
+	}
+	return m.renderer.Schema(entry)
+}
+
+// reContainer is a compose service name.
+var reContainer = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$`)
+
+// logsCommand is `docker compose logs` for an installed app (nos is in the
+// docker group). follow keeps it running until ctx ends.
+func (m *Manager) logsCommand(ctx context.Context, appID string, o apps.LogStreamOptions) (*exec.Cmd, error) {
+	if _, err := m.stateStore.GetApp(appID); err != nil {
+		return nil, fmt.Errorf("app not found: %s", appID)
+	}
+	if o.Container != "" && !reContainer.MatchString(o.Container) {
+		return nil, fmt.Errorf("invalid container name")
+	}
+	if o.Tail <= 0 || o.Tail > 10000 {
+		o.Tail = 100
+	}
+	dir := filepath.Join(m.config.AppsRoot, appID)
+	args := []string{"compose", "--project-directory", dir,
+		"-f", filepath.Join(dir, "config", "docker-compose.yml"),
+		"--env-file", filepath.Join(dir, "config", ".env"),
+		"--project-name", "nos-app-" + appID,
+		"logs", "--no-color", "--tail", strconv.Itoa(o.Tail)}
+	if o.Timestamps {
+		args = append(args, "--timestamps")
+	}
+	if o.Follow {
+		args = append(args, "--follow")
+	}
+	if o.Container != "" {
+		args = append(args, o.Container)
+	}
+	return exec.CommandContext(ctx, "docker", args...), nil
+}
+
+// GetAppLogs returns the last lines of an app's container logs.
 func (m *Manager) GetAppLogs(ctx context.Context, appID string, options apps.LogStreamOptions) ([]byte, error) {
-	// TODO: Implement log streaming
-	return nil, fmt.Errorf("log streaming not yet implemented")
+	options.Follow = false
+	cmd, err := m.logsCommand(ctx, appID, options)
+	if err != nil {
+		return nil, err
+	}
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("docker compose logs: %s", strings.TrimSpace(string(out)))
+	}
+	return out, nil
+}
+
+// StreamAppLogs sends log lines to line until ctx ends or the logs end.
+func (m *Manager) StreamAppLogs(ctx context.Context, appID string, options apps.LogStreamOptions, line func(string) error) error {
+	options.Follow = true
+	cmd, err := m.logsCommand(ctx, appID, options)
+	if err != nil {
+		return err
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	cmd.Stderr = cmd.Stdout
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	defer func() { _ = cmd.Wait() }()
+	sc := bufio.NewScanner(stdout)
+	sc.Buffer(make([]byte, 64<<10), 1<<20)
+	for sc.Scan() {
+		if err := line(sc.Text()); err != nil {
+			return err
+		}
+	}
+	return sc.Err()
 }
 
 // GetEvents returns recent events for an app
@@ -306,4 +387,17 @@ func (m *Manager) ForceHealthCheck(ctx context.Context, appID string) error {
 // SyncCatalogs manually triggers catalog sync
 func (m *Manager) SyncCatalogs() error {
 	return m.catalogMgr.SyncRemoteCatalogs()
+}
+
+// agentHostOps runs the app's privileged steps through nos-agent.
+type agentHostOps struct{ client *agentclient.Client }
+
+func (a agentHostOps) AppOp(ctx context.Context, op apps.AppOp) (string, error) {
+	var resp struct {
+		Output string `json:"output"`
+	}
+	if err := a.client.PostJSON(ctx, "/v1/apps/op", op, &resp); err != nil {
+		return "", err
+	}
+	return resp.Output, nil
 }

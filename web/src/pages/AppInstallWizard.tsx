@@ -44,91 +44,31 @@ export function AppInstallWizard() {
 
   const app = catalog?.entries.find((entry: CatalogEntry) => entry.id === id);
 
-  // Load schema (in production this would be from server)
-  const [schema, setSchema] = useState<any>(null);
-  
+  // The app's install form (its template's schema.json).
+  const { data: schema = null } = useQuery({
+    queryKey: ['apps', 'schema', id],
+    queryFn: () => appsApi.getSchema(id!),
+    enabled: !!app?.id,
+  });
+
   useEffect(() => {
-    if (app?.schema) {
-      // For demo, we'll use inline schemas
-      // In production, fetch from server
-      const mockSchemas: Record<string, any> = {
-        whoami: {
-          type: "object",
-          properties: {
-            WHOAMI_PORT: {
-              type: "string",
-              title: "Port",
-              description: "Port to expose the service on",
-              default: "8080",
-              pattern: "^[0-9]{1,5}$"
-            },
-            WHOAMI_NAME: {
-              type: "string",
-              title: "Service Name",
-              description: "Name to display in responses",
-              default: "nOS Test App"
-            }
-          }
-        },
-        nextcloud: {
-          type: "object",
-          properties: {
-            NEXTCLOUD_PORT: {
-              type: "string",
-              title: "Web Port",
-              description: "Port to expose Nextcloud on",
-              default: "8081",
-              pattern: "^[0-9]{1,5}$"
-            },
-            NEXTCLOUD_ADMIN_USER: {
-              type: "string",
-              title: "Admin Username",
-              description: "Username for the Nextcloud admin account",
-              default: "admin",
-              minLength: 3,
-              maxLength: 32
-            },
-            NEXTCLOUD_ADMIN_PASSWORD: {
-              type: "string",
-              title: "Admin Password",
-              description: "Password for the Nextcloud admin account",
-              format: "password",
-              minLength: 8
-            },
-            POSTGRES_PASSWORD: {
-              type: "string",
-              title: "Database Password",
-              description: "Password for the PostgreSQL database",
-              format: "password",
-              minLength: 8
-            }
-          },
-          required: ["NEXTCLOUD_ADMIN_PASSWORD", "POSTGRES_PASSWORD"]
+    if (!app || !schema) return;
+    // Defaults: the schema's, then the catalog entry's env.
+    const defaults: FormData = {};
+    Object.entries(schema.properties || {}).forEach(([key, prop]: [string, any]) => {
+      if (prop.default !== undefined) {
+        defaults[key] = prop.default;
+      }
+    });
+    if (app.defaults?.env) {
+      Object.entries(app.defaults.env).forEach(([key, value]) => {
+        if (defaults[key] === undefined) {
+          defaults[key] = value;
         }
-      };
-      
-      setSchema(mockSchemas[app.id] || { type: "object", properties: {} });
-      
-      // Initialize form data with defaults
-      const defaults: FormData = {};
-      if (mockSchemas[app.id]?.properties) {
-        Object.entries(mockSchemas[app.id].properties).forEach(([key, prop]: [string, any]) => {
-          if (prop.default !== undefined) {
-            defaults[key] = prop.default;
-          }
-        });
-      }
-      // Merge with app defaults
-      if (app.defaults?.env) {
-        Object.entries(app.defaults.env).forEach(([key, value]) => {
-          if (defaults[key] === undefined) {
-            defaults[key] = value;
-          }
-        });
-      }
-      setFormData(defaults);
+      });
     }
-  }, [app]);
+    setFormData(defaults);
+  }, [app, schema]);
 
   // Install mutation
   const installMutation = useMutation({

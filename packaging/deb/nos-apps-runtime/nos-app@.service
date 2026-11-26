@@ -8,11 +8,15 @@ PartOf=nos-apps.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-WorkingDirectory=/srv/apps/%i/config
+# The project directory is the app's folder, so a template's relative
+# ./data is /srv/apps/<id>/data, the snapshotted data subvolume (with
+# --project-directory config it landed in config/data, outside it).
+WorkingDirectory=/srv/apps/%i
+Environment=COMPOSE_ARGS="--project-directory /srv/apps/%i -f /srv/apps/%i/config/docker-compose.yml --env-file /srv/apps/%i/config/.env --project-name nos-app-%i"
 ExecStartPre=/usr/lib/nos/apps/nos-app-helper.sh pre-start %i
-ExecStart=/usr/bin/docker compose --project-directory /srv/apps/%i/config --project-name nos-app-%i up -d --remove-orphans
-ExecStop=/usr/bin/docker compose --project-directory /srv/apps/%i/config --project-name nos-app-%i down
-ExecReload=/usr/bin/docker compose --project-directory /srv/apps/%i/config --project-name nos-app-%i restart
+ExecStart=/usr/bin/docker compose $COMPOSE_ARGS up -d --remove-orphans
+ExecStop=/usr/bin/docker compose $COMPOSE_ARGS down
+ExecReload=/usr/bin/docker compose $COMPOSE_ARGS restart
 TimeoutStartSec=300
 TimeoutStopSec=25
 Restart=on-failure

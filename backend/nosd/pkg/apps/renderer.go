@@ -51,7 +51,7 @@ func (tr *TemplateRenderer) RenderComposeFile(entry *CatalogEntry, params map[st
 	}
 
 	// Apply security defaults
-	rendered = tr.applySecurityDefaults(rendered, entry.NeedsPrivileged)
+	rendered = tr.applySecurityDefaults(rendered, entry.NeedsPrivileged, entry.Defaults.Resources)
 
 	return []byte(rendered), nil
 }
@@ -222,7 +222,7 @@ func (tr *TemplateRenderer) replaceVariables(content string, env map[string]stri
 }
 
 // applySecurityDefaults adds security configurations to compose file
-func (tr *TemplateRenderer) applySecurityDefaults(content string, needsPrivileged bool) string {
+func (tr *TemplateRenderer) applySecurityDefaults(content string, needsPrivileged bool, res ResourceLimits) string {
 	// Parse YAML
 	var compose map[string]interface{}
 	if err := yaml.Unmarshal([]byte(content), &compose); err != nil {
@@ -281,14 +281,20 @@ func (tr *TemplateRenderer) applySecurityDefaults(content string, needsPrivilege
 			svc["restart"] = "unless-stopped"
 		}
 
-		// Add resource limits if specified
+		// Resource limits for templates that set none: the catalog entry's
+		// (defaults.resources), else 2 CPUs and 1 GiB. (The catalog's
+		// values used to be ignored, capping e.g. Nextcloud at 1 GiB.)
 		if _, ok := svc["deploy"]; !ok && !needsPrivileged {
+			cpus, mem := "2.0", "1024M"
+			if res.CPULimit != "" {
+				cpus = res.CPULimit
+			}
+			if res.MemoryLimit != "" {
+				mem = res.MemoryLimit
+			}
 			svc["deploy"] = map[string]interface{}{
 				"resources": map[string]interface{}{
-					"limits": map[string]interface{}{
-						"cpus":   "2.0",
-						"memory": "1024M",
-					},
+					"limits": map[string]interface{}{"cpus": cpus, "memory": mem},
 				},
 			}
 		}
@@ -370,4 +376,19 @@ handle_path /apps/{{ .AppID }}/* {
 	}
 
 	return buffer.Bytes(), nil
+}
+
+// Schema returns the install form schema (JSON Schema) of a catalog entry.
+// The path comes from the catalog, which may be a remote one, so it must
+// stay inside the templates folder.
+func (tr *TemplateRenderer) Schema(entry *CatalogEntry) ([]byte, error) {
+	if entry.Schema == "" {
+		return []byte(`{"type":"object","properties":{}}`), nil
+	}
+	base := filepath.Clean(tr.templateDir)
+	p := filepath.Clean(filepath.Join(base, entry.Schema))
+	if !strings.HasPrefix(p, base+string(filepath.Separator)) {
+		return nil, fmt.Errorf("schema path outside the templates folder: %s", entry.Schema)
+	}
+	return os.ReadFile(p)
 }

@@ -71,6 +71,29 @@
         ]
       }
     },
+    "/api/v1/apps/catalog/{id}/schema": {
+      "get": {
+        "operationId": "getAppsCatalogIdSchema",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "apps"
+        ]
+      }
+    },
     "/api/v1/apps/install": {
       "post": {
         "operationId": "postAppsInstall",

@@ -23,6 +23,7 @@ func (d *routeDeps) registerApps(pr chi.Router) {
 
 		// Catalog and installed apps
 		pr.Get("/api/v1/apps/catalog", handleGetCatalog(appsManager))
+		pr.Get("/api/v1/apps/catalog/{id}/schema", handleGetAppSchema(appsManager))
 		pr.Get("/api/v1/apps/installed", handleGetInstalledApps(appsManager))
 
 		// Individual app operations
