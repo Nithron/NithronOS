@@ -333,7 +333,14 @@ func (s *Service) addAgentLog(lines []string) {
 }
 
 func (s *Service) finish(reboot bool) {
+	// The record first: once the state says success, it is complete.
 	s.mu.Lock()
+	recID := s.st.RecordID
+	s.mu.Unlock()
+	s.markRecord(recID, true, "")
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	now := time.Now().UTC()
 	p := &s.st.Progress
 	p.State, p.Phase, p.Progress, p.CompletedAt, p.RebootRequired = StateSuccess, PhasePostflight, 100, &now, reboot
@@ -341,26 +348,26 @@ func (s *Service) finish(reboot bool) {
 	if reboot {
 		p.Message = "Update installed; restart the system to finish"
 	}
-	recID := s.st.RecordID
 	s.running = false
 	s.saveLocked()
 	s.publishLocked()
-	s.mu.Unlock()
-	s.markRecord(recID, true, "")
 }
 
 func (s *Service) fail(msg string) {
 	s.mu.Lock()
+	recID := s.st.RecordID
+	s.mu.Unlock()
+	s.markRecord(recID, false, msg)
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	now := time.Now().UTC()
 	p := &s.st.Progress
 	p.State, p.Error, p.Message, p.CompletedAt = StateFailed, msg, "Update failed", &now
 	p.Logs = append(p.Logs, LogEntry{Timestamp: now, Level: "error", Message: msg, Phase: p.Phase})
-	recID := s.st.RecordID
 	s.running = false
 	s.saveLocked()
 	s.publishLocked()
-	s.mu.Unlock()
-	s.markRecord(recID, false, msg)
 }
 
 func (s *Service) step(phase Phase, pct int, msg string) {
