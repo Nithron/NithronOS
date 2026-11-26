@@ -16,6 +16,10 @@ services:
     container_name: nos-app-nai-app-1
     restart: unless-stopped
     user: "${PUID:-1000}:${PGID:-1000}"
+    # nOS writes NOS_APP_GID (group nos-app-nai) on install/update; it can read only the shares the admin
+    # opened to nAI, read-only. Older nOS without it: 1000, already the PGID, so nothing changes.
+    group_add:
+      - "${NOS_APP_GID:-1000}"
     ports:
       - "${NAI_PORT:-8090}:8000"
     volumes:

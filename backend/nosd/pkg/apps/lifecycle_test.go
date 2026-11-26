@@ -106,3 +106,22 @@ func TestRendererUsesCatalogResources(t *testing.T) {
 		t.Fatalf("default limits:\n%s", out)
 	}
 }
+
+// The nAI template joins the group nOS hands it, so it can read the shares
+// opened to it.
+func TestNAITemplateGetsTheShareGroup(t *testing.T) {
+	_, here, _, _ := runtime.Caller(0)
+	builtin := filepath.Join(filepath.Dir(here), "..", "..", "..", "..", "usr", "share", "nos", "apps")
+	catalog := NewCatalogManager(builtin, filepath.Join(t.TempDir(), "cache.json"), filepath.Join(t.TempDir(), "sources"))
+	entry, err := catalog.GetEntry("nai")
+	if err != nil {
+		t.Skipf("no nai entry in the built-in catalog: %v", err)
+	}
+	out, err := NewTemplateRenderer(builtin).RenderComposeFile(entry, map[string]interface{}{AppGIDParam: "977"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out), `- "977"`) {
+		t.Fatalf("group_add does not carry NOS_APP_GID:\n%s", out)
+	}
+}
