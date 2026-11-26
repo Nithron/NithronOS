@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -160,5 +162,30 @@ func TestSystemSettingsNeedAnAdmin(t *testing.T) {
 	// An admin with the token gets through to validation.
 	if res := e.call(http.MethodPost, "/api/v1/system/hostname", `{"hostname":"bad host"}`, admin, csrf); res.Code != http.StatusBadRequest {
 		t.Errorf("admin hostname change: %d %s", res.Code, res.Body.String())
+	}
+}
+
+// The setup token expires after 10 minutes; the administrator the wizard
+// created, signed in, finishes setup without it (CSRF-checked, admins only).
+func TestAdminSessionFinishesSetup(t *testing.T) {
+	etc := t.TempDir()
+	t.Setenv("NOS_ETC_DIR", etc)
+	e := newLoginEnv(t, false)
+	admin, csrf := e.signIn(t)
+	if res := e.call(http.MethodPost, "/api/v1/users", `{"username":"bob","password":"Bob-Secret-1"}`, admin, csrf); res.Code != http.StatusCreated {
+		t.Fatalf("create bob: %d", res.Code)
+	}
+	bob, bobCSRF := e.signInAs(t, "bob", "Bob-Secret-1")
+	if res := e.call(http.MethodPost, "/api/v1/setup/complete", `{}`, bob, bobCSRF); res.Code != http.StatusForbidden {
+		t.Fatalf("a user finished setup: %d", res.Code)
+	}
+	if res := e.call(http.MethodPost, "/api/v1/setup/complete", `{}`, admin, ""); res.Code != http.StatusUnauthorized {
+		t.Fatalf("without the CSRF token: %d", res.Code)
+	}
+	if res := e.call(http.MethodPost, "/api/v1/setup/complete", `{}`, admin, csrf); res.Code != http.StatusNoContent {
+		t.Fatalf("admin session: %d %s", res.Code, res.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(etc, "nos", "setup-complete")); err != nil {
+		t.Fatalf("setup not marked complete: %v", err)
 	}
 }

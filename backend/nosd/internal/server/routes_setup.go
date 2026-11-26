@@ -191,7 +191,11 @@ func (d *routeDeps) registerSetup(r chi.Router) {
 		})
 
 		// Mark setup as complete - called after all setup steps are done
-		sr.With(requireSetupAuth(cfg)).Post("/complete", func(w http.ResponseWriter, r *http.Request) {
+		// The setup token lasts 10 minutes and the wizard's later steps often
+		// take longer; by then the new administrator is signed in, so their
+		// session (with the CSRF token) may finish setup too. (Finishing used
+		// to fail silently once the token expired.)
+		sr.With(d.setupTokenOrAdmin(requireSetupAuth(cfg))).Post("/complete", func(w http.ResponseWriter, r *http.Request) {
 			// Check if already complete
 			setupCompleteFile := filepath.Join(cfg.EtcDir, "nos", "setup-complete")
 			if _, err := os.Stat(setupCompleteFile); err == nil {
@@ -222,4 +226,20 @@ func (d *routeDeps) registerSetup(r chi.Router) {
 		})
 	})
 
+}
+
+// setupTokenOrAdmin lets a signed-in administrator through (CSRF-checked),
+// and anyone else through the setup token check.
+func (d *routeDeps) setupTokenOrAdmin(tokenAuth func(http.Handler) http.Handler) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		viaToken := tokenAuth(next)
+		viaSession := requireCSRF(d.adminRequired(next))
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if _, ok := signedInUID(r); ok {
+				viaSession.ServeHTTP(w, r)
+				return
+			}
+			viaToken.ServeHTTP(w, r)
+		})
+	}
 }
