@@ -220,7 +220,11 @@ func NewRouter(cfg config.Config) http.Handler {
 	if v := os.Getenv("NOS_APPS_STATE"); v != "" {
 		appManagerConfig.StateFile = v
 	}
-	appsManager, _ := apps.NewManager(appManagerConfig)
+	appsManager, err := apps.NewManager(appManagerConfig)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to initialize the app manager; /api/v1/apps answers 503")
+		appsManager = nil
+	}
 	// Disk-backed session and ratelimit stores
 	rlStore := ratelimit.New(cfg.RateLimitPath)
 	mgr := session.New(cfg.SessionsPath)
@@ -1138,7 +1142,7 @@ func NewRouter(cfg config.Config) http.Handler {
 			// Start app manager
 			go func() {
 				if err := appsManager.Start(context.Background()); err != nil {
-					fmt.Printf("Failed to start apps manager: %v\n", err)
+					log.Error().Err(err).Msg("Failed to start the app manager")
 				}
 			}()
 
@@ -1295,78 +1299,11 @@ func NewRouter(cfg config.Config) http.Handler {
 		aboutHandler := NewAboutHandler(cfg)
 		pr.Mount("/api/v1/about", aboutHandler.Routes())
 
-		// Apps catalog
-		pr.Get("/api/v1/apps", func(w http.ResponseWriter, r *http.Request) {
-			if appsManager != nil {
-				catalog, _ := appsManager.GetCatalog()
-				writeJSON(w, catalog)
-			} else {
-				writeJSON(w, apps.Catalog(cfg.AppsInstallDir))
-			}
-		})
-
-		pr.Get("/api/v1/apps/{id}/status", func(w http.ResponseWriter, r *http.Request) {
-			id := chi.URLParam(r, "id")
-			if appsManager != nil {
-				app, err := appsManager.GetApp(id)
-				if err != nil {
-					httpx.WriteError(w, http.StatusNotFound, "not found")
-					return
-				}
-				writeJSON(w, app)
-			} else {
-				for _, a := range apps.Catalog(cfg.AppsInstallDir) {
-					if a.ID == id {
-						writeJSON(w, a)
-						return
-					}
-				}
-				httpx.WriteError(w, http.StatusNotFound, "not found")
-			}
-		})
-
-		pr.With(adminRequired).Post("/api/v1/apps/install", func(w http.ResponseWriter, r *http.Request) {
-			var body struct {
-				ID     string
-				Config map[string]any
-			}
-			_ = json.NewDecoder(r.Body).Decode(&body)
-			if body.ID == "" {
-				httpx.WriteError(w, http.StatusBadRequest, "id required")
-				return
-			}
-			dir := filepath.Join(cfg.AppsInstallDir, body.ID)
-			_ = os.MkdirAll(dir, 0o755)
-			compose := apps.ComposeTemplate(body.ID)
-			if err := os.WriteFile(filepath.Join(dir, "docker-compose.yml"), []byte(compose), 0o644); err != nil {
-				httpx.WriteError(w, http.StatusInternalServerError, err.Error())
-				return
-			}
-			unit := apps.UnitTemplate(body.ID, dir)
-			client := agentclient.New("/run/nos-agent.sock")
-			_ = client.PostJSON(r.Context(), "/v1/systemd/install-app", map[string]any{"id": body.ID, "unit_text": unit}, nil)
-			_ = client.PostJSON(r.Context(), "/v1/app/compose-up", map[string]any{"id": body.ID, "dir": dir}, nil)
-			writeJSON(w, map[string]any{"ok": true})
-		})
-
-		pr.With(adminRequired).Post("/api/v1/apps/uninstall", func(w http.ResponseWriter, r *http.Request) {
-			var body struct {
-				ID    string
-				Force bool
-			}
-			_ = json.NewDecoder(r.Body).Decode(&body)
-			if body.ID == "" {
-				httpx.WriteError(w, http.StatusBadRequest, "id required")
-				return
-			}
-			dir := filepath.Join(cfg.AppsInstallDir, body.ID)
-			client := agentclient.New("/run/nos-agent.sock")
-			_ = client.PostJSON(r.Context(), "/v1/app/compose-down", map[string]any{"id": body.ID, "dir": dir}, nil)
-			_ = client.PostJSON(r.Context(), "/v1/systemd/disable-app", map[string]any{"id": body.ID}, nil)
-			_ = os.Remove(filepath.Join(dir, "docker-compose.yml"))
-			_ = os.Remove(dir)
-			writeJSON(w, map[string]any{"ok": true})
-		})
+		// (A second, older apps API used to be registered here: GET
+		// /api/v1/apps, /apps/{id}/status, /apps/uninstall and POST
+		// /apps/install. The last replaced the app manager's install, so
+		// catalog installs ran a hard-coded template list and ignored every
+		// error.)
 
 		pr.Get("/api/v1/remote/status", func(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, map[string]any{"mode": "lan-only", "https": true})
