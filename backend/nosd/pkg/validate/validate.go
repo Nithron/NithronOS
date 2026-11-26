@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 var (
@@ -21,7 +22,9 @@ func ShareName(s string) error {
 }
 
 func PathUnder(roots []string, p string) error {
-	if p == "" {
+	// Relative paths and control characters (a newline would start a new
+	// line in smb.conf or /etc/exports) are never allowed.
+	if !filepath.IsAbs(p) || strings.IndexFunc(p, unicode.IsControl) >= 0 || strings.ContainsAny(p, `"\`) {
 		return ErrBadPath
 	}
 	ap := filepath.Clean(p)

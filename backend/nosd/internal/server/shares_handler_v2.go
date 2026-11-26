@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"nithronos/backend/nosd/pkg/validate"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -316,7 +317,7 @@ func (m *NFSManager) ApplyShare(share *ShareConfig) error {
 	}
 
 	// Build export line
-	export := fmt.Sprintf("%s ", share.Path)
+	export := fmt.Sprintf("%q ", share.Path) // quoted: paths may contain spaces
 
 	if len(share.Hosts) == 0 {
 		// Default to local network
@@ -461,6 +462,15 @@ func (h *SharesHandlerV2) CreateShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := validateShareFields(&share); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// The ID names the share's file under /etc/samba/shares.d, so it is
+	// always assigned here and never taken from the request.
+	share.ID = ""
+
 	// Check if path exists
 	if _, err := os.Stat(share.Path); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "Share path does not exist")
@@ -493,6 +503,15 @@ func (h *SharesHandlerV2) UpdateShare(w http.ResponseWriter, r *http.Request) {
 	var updates ShareConfig
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if updates.Protocol != "" && updates.Protocol != "smb" && updates.Protocol != "nfs" {
+		httpx.WriteError(w, http.StatusBadRequest, "Protocol must be 'smb' or 'nfs'")
+		return
+	}
+	if err := validateShareFields(&updates); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -670,4 +689,38 @@ func (h *SharesHandlerV2) removeShare(share *ShareConfig) error {
 	default:
 		return fmt.Errorf("unknown protocol: %s", share.Protocol)
 	}
+}
+
+// validateShareFields checks every field that is written into smb.conf or
+// /etc/exports. Before this, a newline in the name, path or description could
+// add any Samba directive, and the path could be anywhere (/, /etc). Empty
+// name and path pass here because an update keeps the old values; CreateShare
+// requires them.
+func validateShareFields(s *ShareConfig) error {
+	if s.Name != "" {
+		if err := validate.ShareName(s.Name); err != nil {
+			return fmt.Errorf("share name: use 1-32 letters, digits, '-' or '_'")
+		}
+	}
+	if s.Path != "" {
+		if err := validate.PathUnder(validate.ShareRoots, s.Path); err != nil {
+			return fmt.Errorf("share path must be inside %s", strings.Join(validate.ShareRoots, " or "))
+		}
+	}
+	if err := validate.Description(s.Description); err != nil {
+		return err
+	}
+	for _, list := range [][]string{s.Users, s.Groups} {
+		for _, p := range list {
+			if err := validate.Principal(p); err != nil {
+				return fmt.Errorf("%w: %q", err, p)
+			}
+		}
+	}
+	for _, c := range s.Hosts {
+		if err := validate.NFSClient(c); err != nil {
+			return fmt.Errorf("%w: %q", err, c)
+		}
+	}
+	return nil
 }
