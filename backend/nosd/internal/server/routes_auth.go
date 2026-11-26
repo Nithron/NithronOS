@@ -111,7 +111,7 @@ func (d *routeDeps) registerAuth(r chi.Router) {
 		u.LockedUntil = ""
 		_ = users.UpsertUser(u)
 		// Start the server-side session and set its cookies.
-		rec, err := mgr.Create(u.ID, r.Header.Get("User-Agent"), r.RemoteAddr, sessionTTL, body.RememberMe)
+		rec, err := mgr.Create(u.ID, r.Header.Get("User-Agent"), r.RemoteAddr, cfg.RefreshTTL(), body.RememberMe)
 		if err == nil {
 			err = issueAuthCookies(w, cfg, rec)
 		}
@@ -135,7 +135,7 @@ func (d *routeDeps) registerAuth(r chi.Router) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		rec, err := mgr.Refresh(sid, uid, rid, sessionTTL)
+		rec, err := mgr.Refresh(sid, uid, rid, cfg.RefreshTTL())
 		if err != nil {
 			if errors.Is(err, session.ErrRefreshReuse) {
 				Logger(cfg).Warn().Str("event", "auth.refresh.reuse").Str("uid", uid).Msg("refresh token reused; revoking all sessions")
@@ -180,7 +180,7 @@ func (d *routeDeps) registerAuth(r chi.Router) {
 					"roles":    u.Roles,
 					"isAdmin":  hasRole(u.Roles, "admin"),
 				},
-				"expiresAt": time.Now().Add(15 * time.Minute).UTC().Format(time.RFC3339),
+				"expiresAt": time.Now().Add(cfg.AccessTTL()).UTC().Format(time.RFC3339),
 			})
 			return
 		}

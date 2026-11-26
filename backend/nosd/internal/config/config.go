@@ -289,3 +289,21 @@ func applyEnv(cfg Config) Config {
 	}
 	return cfg
 }
+
+// AccessTTL is the lifetime of the nos_session access cookie
+// (sessions.accessTTL, NOS_SESSION_ACCESS_TTL; default 15m).
+func (c Config) AccessTTL() time.Duration {
+	if c.SessionAccessTTLSeconds > 0 {
+		return time.Duration(c.SessionAccessTTLSeconds) * time.Second
+	}
+	return 15 * time.Minute
+}
+
+// RefreshTTL is how long a session lasts after its last refresh
+// (sessions.refreshTTL, NOS_SESSION_REFRESH_TTL; default 7 days).
+func (c Config) RefreshTTL() time.Duration {
+	if c.SessionRefreshTTLSeconds > 0 {
+		return time.Duration(c.SessionRefreshTTLSeconds) * time.Second
+	}
+	return 7 * 24 * time.Hour
+}

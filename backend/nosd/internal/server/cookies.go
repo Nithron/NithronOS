@@ -18,16 +18,13 @@ const (
 	cookieCSRF    = "nos_csrf"
 )
 
-// Lifetimes: the access cookie is short; the server-side session (and the
-// refresh cookie) lasts sessionTTL and is extended on every refresh.
-const (
-	accessTTL  = 15 * time.Minute
-	sessionTTL = 7 * 24 * time.Hour
-)
+// Lifetimes come from the config (sessions.accessTTL and refreshTTL, which
+// used to be ignored): the access cookie is short; the server-side session
+// and the refresh cookie last RefreshTTL and are extended on every refresh.
 
 // issueAccessCookie sets nos_session, which names the server-side session.
 func issueAccessCookie(w http.ResponseWriter, cfg config.Config, uid, sid string) error {
-	exp := time.Now().UTC().Add(accessTTL)
+	exp := time.Now().UTC().Add(cfg.AccessTTL())
 	val, err := encodeOpaque(cfg, cookieSession, map[string]any{"uid": uid, "sid": sid, "exp": exp.Unix()})
 	if err != nil {
 		return err
@@ -40,7 +37,7 @@ func issueAccessCookie(w http.ResponseWriter, cfg config.Config, uid, sid string
 // refresh id. Without "remember me" it is a browser-session cookie, so closing
 // the browser signs the user out.
 func issueRefreshCookie(w http.ResponseWriter, cfg config.Config, uid, sid, rid string, persistent bool) error {
-	exp := time.Now().UTC().Add(sessionTTL)
+	exp := time.Now().UTC().Add(cfg.RefreshTTL())
 	val, err := encodeOpaque(cfg, cookieRefresh, map[string]any{"uid": uid, "sid": sid, "rid": rid, "exp": exp.Unix()})
 	if err != nil {
 		return err

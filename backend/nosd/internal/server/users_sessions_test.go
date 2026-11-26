@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -100,4 +101,21 @@ func TestDeleteUserRevokesSessions(t *testing.T) {
 	if len(rec.all) != 1 || rec.all[0] != "u-bob" {
 		t.Fatalf("sessions not revoked: %v", rec.all)
 	}
+}
+
+// sessions.accessTTL / NOS_SESSION_ACCESS_TTL used to be ignored (15m fixed).
+func TestConfiguredAccessTTL(t *testing.T) {
+	t.Setenv("NOS_SESSION_ACCESS_TTL", "2m")
+	e := newLoginEnv(t, false)
+	cookies, _ := e.signIn(t)
+	for _, c := range cookies {
+		if c.Name != cookieSession {
+			continue
+		}
+		if left := time.Until(c.Expires); left > 2*time.Minute+5*time.Second || left < time.Minute {
+			t.Fatalf("access cookie expires in %v, want about 2m", left)
+		}
+		return
+	}
+	t.Fatal("no session cookie")
 }
