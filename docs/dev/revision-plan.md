@@ -189,6 +189,28 @@ Grouped by feature. Each item lists the evidence.
 7. `react-router-dom` 6 has a moderate advisory fixed only in 7 (major upgrade); do it with the routing cleanup.
 8. Error and empty states: every page should show a typed error (backend `httpx.WriteTypedError` codes), never a blank card or a crash when an endpoint 404s or 503s.
 
+
+**Phase 5 status (done):**
+- (1) One client: see above.
+- (2) Every path the UI calls is served (`fe-known-missing.json` is empty). The check also flags client calls outside `/v1`, after it missed `/api/pools` and `/api/pools/{id}/snapshots`.
+- (3) The orphan pages are removed. Where the routed page was the stub (Users, Settings), the real one was written against the API.
+- (4) No mock data is left in the routed UI. The services list, the alerts bell, app snapshots and dashboard disk health are real; the dashboard's made-up event and scan time are gone.
+- (5) The setup wizard survives its 10-minute token.
+- (6) The live UI pass (`scripts/live-ui/run.sh`) is the CI "UI E2E" job: real nosd and nos-agent in a container, and every page and the first pool's page opened by Playwright.
+- (7) react-router 7.
+- (8) Errors show the backend's typed message (the client read the wrong JSON shape before), in the page's cards.
+
+Also done in phase 5:
+- Apps can read shares through `nos-app-<id>` (nAI).
+- Users and SMB accounts are kept in step, with a self-service password change.
+- Only admins change system settings.
+- There is a Groups page.
+- One notification system remains (alerts).
+- Pool discovery works as the nos user.
+- Pool ids are URL-safe.
+- SSE streams work.
+- `lsblk` runs on Debian 12.
+
 ---
 
 ## Phase 6: Packaging, systemd and ISO
