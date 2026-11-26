@@ -1,9 +1,15 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	stdnet "net"
 	"net/http"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
@@ -21,14 +27,16 @@ type NetHandler struct {
 }
 
 // NewNetHandler creates a new networking handler
-func NewNetHandler(logger zerolog.Logger) (*NetHandler, error) {
+func NewNetHandler(logger zerolog.Logger, agent AgentClient) (*NetHandler, error) {
 	wgMgr, err := net.NewWireGuardManager()
 	if err != nil {
 		return nil, err
 	}
+	fw := net.NewFirewallManager()
+	fw.SetNFTables(agentNFTables{agent: agent})
 
 	return &NetHandler{
-		firewallMgr: net.NewFirewallManager(),
+		firewallMgr: fw,
 		wgMgr:       wgMgr,
 		httpsMgr:    net.NewHTTPSManager(),
 		logger:      logger,
@@ -349,18 +357,12 @@ func (h *NetHandler) WizardNext(w http.ResponseWriter, r *http.Request) {
 
 	case 2: // WireGuard configuration
 		if state.AccessMode == net.AccessModeWireGuard {
-			// TODO: Store WireGuard config
-			// This will be implemented when WireGuard configuration is added
-			// state.WireGuardConfig = extractWireGuardConfig(stepData)
-			_ = state // placeholder to satisfy linter until implementation
+			state.WireGuardConfig = wizardWireGuard(stepData)
 		}
 
 	case 3: // HTTPS configuration
 		if state.AccessMode == net.AccessModePublicHTTPS {
-			// TODO: Store HTTPS config
-			// This will be implemented when HTTPS configuration is added
-			// state.HTTPSConfig = extractHTTPSConfig(stepData)
-			_ = state // placeholder to satisfy linter until implementation
+			state.HTTPSConfig = wizardHTTPS(stepData)
 		}
 
 	case 4: // Firewall plan
@@ -396,29 +398,30 @@ func (h *NetHandler) CompleteWizard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Apply all configurations
-
-	// 1. Apply WireGuard if configured
-	if state.WireGuardConfig != nil && state.WireGuardConfig.Enabled {
-		// TODO: Enable WireGuard
-		// This will be implemented when WireGuard manager is added
-		// err := h.wgMgr.Enable(state.WireGuardConfig)
-		// if err != nil { ... }
-		_ = state // placeholder to satisfy linter until implementation
+	// Apply all configurations, stopping at the first failure.
+	fail := func(step string, err error) {
+		state.Error = step + ": " + err.Error()
+		h.storeWizardState(sessionID, state)
+		h.writeError(w, http.StatusBadGateway, state.Error)
 	}
-
-	// 2. Apply HTTPS if configured
-	if state.HTTPSConfig != nil {
-		// TODO: Configure HTTPS
-		// h.httpsMgr.Configure(...)
-		_ = state // placeholder to satisfy linter until implementation
+	if wg := state.WireGuardConfig; wg != nil && wg.Enabled {
+		if err := h.wgMgr.Enable(wg.ServerCIDR, wg.ListenPort, wg.EndpointHostname, wg.DNS); err != nil {
+			fail("WireGuard", err)
+			return
+		}
 	}
-
-	// 3. Apply firewall plan
+	if hc := state.HTTPSConfig; hc != nil {
+		if err := h.httpsMgr.Configure(hc.Mode, hc.Domain, hc.Email, hc.DNSProvider, hc.DNSAPIKey); err != nil {
+			fail("HTTPS", err)
+			return
+		}
+	}
 	if state.FirewallPlan != nil {
-		// TODO: Apply firewall
-		// h.firewallMgr.ApplyPlan(...)
-		_ = state // placeholder to satisfy linter until implementation
+		// Applied with the usual confirm-or-roll-back window.
+		if err := h.firewallMgr.ApplyPlan(state.FirewallPlan.ID, 120); err != nil {
+			fail("firewall", err)
+			return
+		}
 	}
 
 	state.Completed = true
@@ -449,28 +452,97 @@ func (h *NetHandler) writeError(w http.ResponseWriter, code int, message string)
 	}
 }
 
+// getSessionID keys the wizard by the signed-in user. (It returned the
+// constant "session-123", so every user shared one wizard.)
 func (h *NetHandler) getSessionID(r *http.Request) string {
-	// Extract from cookie or header
-	// Placeholder implementation
-	return "session-123"
+	uid, _ := signedInUID(r)
+	return "user-" + uid
 }
 
-func (h *NetHandler) getExternalIP() string {
-	// Get external IP
-	// Placeholder - would call external service
-	return "203.0.113.1"
-}
+// getExternalIP is unknown: nOS doesn't ask an outside service for it (it
+// returned a made-up documentation address).
+func (h *NetHandler) getExternalIP() string { return "" }
 
+// getInternalIPs lists the addresses of the up, non-loopback interfaces.
 func (h *NetHandler) getInternalIPs() []string {
-	// Get internal IPs
-	// Placeholder - would enumerate interfaces
-	return []string{"192.168.1.100", "10.0.0.5"}
+	out := []string{}
+	ifaces, err := stdnet.Interfaces()
+	if err != nil {
+		return out
+	}
+	for _, ifc := range ifaces {
+		if ifc.Flags&stdnet.FlagUp == 0 || ifc.Flags&stdnet.FlagLoopback != 0 {
+			continue
+		}
+		addrs, _ := ifc.Addrs()
+		for _, a := range addrs {
+			if ipn, ok := a.(*stdnet.IPNet); ok && !ipn.IP.IsLinkLocalUnicast() {
+				out = append(out, ipn.IP.String())
+			}
+		}
+	}
+	return out
 }
 
+// getOpenPorts lists the TCP ports something listens on (/proc/net/tcp*).
 func (h *NetHandler) getOpenPorts() []int {
-	// Get open ports
-	// Placeholder - would check netstat/ss
-	return []int{22, 80, 443, 51820}
+	return listeningPorts("/proc/net/tcp", "/proc/net/tcp6")
+}
+
+func listeningPorts(files ...string) []int {
+	seen := map[int]bool{}
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		for _, line := range strings.Split(string(data), "\n")[1:] {
+			fields := strings.Fields(line)
+			if len(fields) < 4 || fields[3] != "0A" { // 0A = LISTEN
+				continue
+			}
+			if i := strings.LastIndex(fields[1], ":"); i >= 0 {
+				if p, err := strconv.ParseInt(fields[1][i+1:], 16, 32); err == nil {
+					seen[int(p)] = true
+				}
+			}
+		}
+	}
+	ports := make([]int, 0, len(seen))
+	for p := range seen {
+		ports = append(ports, p)
+	}
+	sort.Ints(ports)
+	return ports
+}
+
+// wizardWireGuard reads the wizard's WireGuard step.
+func wizardWireGuard(d map[string]interface{}) *net.WireGuardConfig {
+	c := &net.WireGuardConfig{Enabled: true, ListenPort: 51820, ServerCIDR: "10.8.0.1/24"}
+	if v, ok := d["server_cidr"].(string); ok && v != "" {
+		c.ServerCIDR = v
+	}
+	if v, ok := d["listen_port"].(float64); ok && v > 0 {
+		c.ListenPort = int(v)
+	}
+	if v, ok := d["endpoint_hostname"].(string); ok {
+		c.EndpointHostname = v
+	}
+	if list, ok := d["dns"].([]interface{}); ok {
+		for _, x := range list {
+			if s, ok := x.(string); ok {
+				c.DNS = append(c.DNS, s)
+			}
+		}
+	}
+	return c
+}
+
+// wizardHTTPS reads the wizard's HTTPS step.
+func wizardHTTPS(d map[string]interface{}) *net.HTTPSConfig {
+	str := func(k string) string { v, _ := d[k].(string); return v }
+	return &net.HTTPSConfig{Mode: net.HTTPSMode(str("mode")), Domain: str("domain"), Email: str("email"),
+		DNSProvider: str("dns_provider"), DNSAPIKey: str("dns_api_key")}
 }
 
 // Wizard state management (would be in session store)
@@ -487,4 +559,26 @@ func (h *NetHandler) getWizardState(sessionID string) *net.RemoteAccessWizardSta
 	wizardMu.RLock()
 	defer wizardMu.RUnlock()
 	return wizardStates[sessionID]
+}
+
+// agentNFTables reads and loads rulesets through nos-agent (it checks a
+// ruleset with nft -c and keeps a backup before loading it).
+type agentNFTables struct{ agent AgentClient }
+
+func (a agentNFTables) List(json bool) ([]byte, error) {
+	path := "/v1/firewall/ruleset"
+	if json {
+		path += "?json=1"
+	}
+	var out struct {
+		Ruleset string `json:"ruleset"`
+	}
+	if err := a.agent.GetJSON(context.Background(), path, &out); err != nil {
+		return nil, err
+	}
+	return []byte(out.Ruleset), nil
+}
+
+func (a agentNFTables) Apply(script string, persist bool) error {
+	return a.agent.PostJSON(context.Background(), "/v1/firewall/apply", map[string]any{"ruleset_text": script, "persist": persist}, nil)
 }

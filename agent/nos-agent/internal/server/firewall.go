@@ -94,3 +94,22 @@ func copyFileSimple(src, dst string, mode os.FileMode) error {
 	}
 	return os.WriteFile(dst, b, mode)
 }
+
+// handleFirewallRuleset returns the kernel's current ruleset (`nft list
+// ruleset`, `?json=1` for -j); nosd can't read it as the nos user.
+func handleFirewallRuleset(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeErr(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	args := []string{"list", "ruleset"}
+	if r.URL.Query().Get("json") == "1" {
+		args = append([]string{"-j"}, args...)
+	}
+	out, err := exec.Command("nft", args...).Output()
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "nft list ruleset failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"ruleset": string(out)})
+}

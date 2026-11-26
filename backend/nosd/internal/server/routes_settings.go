@@ -23,7 +23,7 @@ func (d *routeDeps) registerSettings(pr chi.Router) {
 
 	// Network endpoints (M4)
 	netLogger := Logger(cfg)
-	netHandler, err := NewNetHandler(*netLogger)
+	netHandler, err := NewNetHandler(*netLogger, d.agentClient)
 	if err != nil {
 		netLogger.Error().Err(err).Msg("Failed to create network handler")
 		// Continue without networking features

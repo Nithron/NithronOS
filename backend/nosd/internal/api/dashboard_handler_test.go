@@ -9,7 +9,9 @@ import (
 
 func TestDashboardUsesItsSources(t *testing.T) {
 	h := Dashboard(DashboardSources{
-		Shares: func() []ShareInfo { return []ShareInfo{{Name: "media", Proto: "SMB", Path: "/srv/shares/media", State: "active"}} },
+		Shares: func() []ShareInfo {
+			return []ShareInfo{{Name: "media", Proto: "SMB", Path: "/srv/shares/media", State: "active"}}
+		},
 	})
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/v1/dashboard", nil))

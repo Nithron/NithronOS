@@ -76,6 +76,7 @@ func buildMux() http.Handler {
 	mux.HandleFunc("/v1/service/reload", handleServiceReload)
 	mux.HandleFunc("/v1/apps/op", handleAppOp)
 	mux.HandleFunc("/v1/firewall/apply", handleFirewallApply)
+	mux.HandleFunc("/v1/firewall/ruleset", handleFirewallRuleset)
 	mux.HandleFunc("/v1/fs/write", handleFSWrite)
 	mux.HandleFunc("/v1/fs/mkdir", handleFSMkdir)
 	mux.HandleFunc("/v1/run", handleRun)
