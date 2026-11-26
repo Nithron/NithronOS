@@ -125,3 +125,29 @@ func TestNAITemplateGetsTheShareGroup(t *testing.T) {
 		t.Fatalf("group_add does not carry NOS_APP_GID:\n%s", out)
 	}
 }
+
+// A snapshot taken on request goes through the agent and is recorded.
+func TestSnapshotAppRecordsIt(t *testing.T) {
+	_, here, _, _ := runtime.Caller(0)
+	builtin := filepath.Join(filepath.Dir(here), "..", "..", "..", "..", "usr", "share", "nos", "apps")
+	tmp := t.TempDir()
+	testAppsRoot = filepath.Join(tmp, "srv-apps")
+	catalog := NewCatalogManager(builtin, filepath.Join(tmp, "cache.json"), filepath.Join(tmp, "sources"))
+	state, _ := NewStateStore(filepath.Join(tmp, "apps.json"))
+	host := &fakeHost{}
+	lm := NewLifecycleManager(catalog, state, NewTemplateRenderer(builtin), testAppsRoot, host, nil)
+	if _, err := lm.SnapshotApp(context.Background(), "whoami", "admin"); err == nil {
+		t.Fatal("snapshot of an app that isn't installed")
+	}
+	if err := lm.InstallApp(context.Background(), InstallRequest{ID: "whoami", Params: map[string]interface{}{}}, "admin"); err != nil {
+		t.Fatal(err)
+	}
+	snap, err := lm.SnapshotApp(context.Background(), "whoami", "admin")
+	if err != nil || snap.Name != "manual" || snap.ID != "20261126-120000-manual" {
+		t.Fatalf("snapshot: %+v %v", snap, err)
+	}
+	app, _ := state.GetApp("whoami")
+	if len(app.Snapshots) != 2 || app.Snapshots[1].ID != snap.ID {
+		t.Fatalf("recorded: %+v", app.Snapshots)
+	}
+}

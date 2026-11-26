@@ -293,6 +293,11 @@ func (m *Manager) RollbackApp(ctx context.Context, appID string, snapshotTS stri
 }
 
 // GetSchema returns the install form schema of a catalog app.
+// SnapshotApp takes a snapshot of an app's data now.
+func (m *Manager) SnapshotApp(ctx context.Context, appID string, userID string) (apps.AppSnapshot, error) {
+	return m.lifecycleMgr.SnapshotApp(ctx, appID, userID)
+}
+
 func (m *Manager) GetSchema(appID string) ([]byte, error) {
 	entry, err := m.catalogMgr.GetEntry(appID)
 	if err != nil {

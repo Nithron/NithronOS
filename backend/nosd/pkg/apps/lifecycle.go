@@ -476,6 +476,25 @@ func (lm *LifecycleManager) pullImages(ctx context.Context, appID string) error 
 
 // createSnapshot snapshots the app's data and returns the snapshot's name
 // (the last element of the path the snapshot script prints).
+// SnapshotApp takes a snapshot of an installed app's data on request and
+// records it, so it can be rolled back to.
+func (lm *LifecycleManager) SnapshotApp(ctx context.Context, appID, userID string) (AppSnapshot, error) {
+	if _, err := lm.stateStore.GetApp(appID); err != nil {
+		return AppSnapshot{}, fmt.Errorf("app not found: %s", appID)
+	}
+	id, err := lm.createSnapshot(ctx, appID, "manual")
+	if err != nil {
+		return AppSnapshot{}, fmt.Errorf("failed to snapshot the app: %w", err)
+	}
+	snap := AppSnapshot{ID: id, Timestamp: time.Now(), Type: "btrfs", Name: "manual",
+		Path: filepath.Join(lm.appsRoot, ".snapshots", appID, id)}
+	if err := lm.stateStore.AddSnapshot(appID, snap); err != nil {
+		return AppSnapshot{}, fmt.Errorf("failed to record the snapshot: %w", err)
+	}
+	lm.logEvent("app.snapshot", appID, userID, map[string]interface{}{"snapshot": id})
+	return snap, nil
+}
+
 func (lm *LifecycleManager) createSnapshot(ctx context.Context, appID, name string) (string, error) {
 	out, err := lm.host.AppOp(ctx, AppOp{Op: "snapshot", AppID: appID, Name: name})
 	if err != nil {

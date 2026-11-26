@@ -1,5 +1,6 @@
 import http from '@/lib/nos-client';
 import type {
+  AppSnapshot,
   Catalog,
   CatalogEntry,
   InstalledApp,
@@ -39,6 +40,10 @@ export const appsApi = {
 
   upgradeApp: (id: string, data: UpgradeRequest) =>
     http.post<{ message: string; version: string }>(`/v1/apps/${id}/upgrade`, data),
+
+  // A snapshot of the app's data, now.
+  snapshotApp: (id: string) =>
+    http.post<AppSnapshot>(`/v1/apps/${id}/snapshots`),
 
   startApp: (id: string) =>
     http.post<{ message: string }>(`/v1/apps/${id}/start`),

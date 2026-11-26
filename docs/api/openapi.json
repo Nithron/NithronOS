@@ -279,6 +279,29 @@
         ]
       }
     },
+    "/api/v1/apps/{id}/snapshots": {
+      "post": {
+        "operationId": "postAppsIdSnapshots",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "apps"
+        ]
+      }
+    },
     "/api/v1/apps/{id}/start": {
       "post": {
         "operationId": "postAppsIdStart",

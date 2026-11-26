@@ -19,6 +19,15 @@ export interface NTPConfig {
 	status: string
 }
 
+/** A system service as GET /api/v1/system/services reports it (systemd). */
+export interface ServiceState {
+	name: string
+	status: 'running' | 'stopped' | 'failed' | 'unknown'
+	enabled: boolean
+	/** seconds since it started, while running */
+	uptime?: number
+}
+
 /** The parts of GET /api/v1/about the UI shows. */
 export interface AboutInfo {
 	system: {
@@ -55,6 +64,7 @@ export const systemApi = {
 	ntp: () => http.get<NTPConfig>('/v1/system/ntp'),
 	setNTP: (cfg: Pick<NTPConfig, 'enabled' | 'servers'>) => http.post<NTPConfig>('/v1/system/ntp', cfg),
 	about: () => http.get<AboutInfo>('/v1/about'),
+	services: () => http.get<ServiceState[]>('/v1/system/services'),
 }
 
 export function useHostname() {
@@ -75,6 +85,10 @@ export function useNTP() {
 
 export function useAbout() {
 	return useQuery({ queryKey: ['system', 'about'], queryFn: systemApi.about, staleTime: 60_000 })
+}
+
+export function useServices() {
+	return useQuery({ queryKey: ['system', 'services'], queryFn: systemApi.services, refetchInterval: 15_000 })
 }
 
 export function useSystemMutations() {
