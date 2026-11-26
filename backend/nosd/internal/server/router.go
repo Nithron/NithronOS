@@ -32,7 +32,6 @@ import (
 	"nithronos/backend/nosd/internal/notifications"
 	"nithronos/backend/nosd/internal/pools"
 	"nithronos/backend/nosd/internal/ratelimit"
-	"nithronos/backend/nosd/internal/sessions"
 	"nithronos/backend/nosd/internal/shares"
 	"nithronos/backend/nosd/pkg/agentclient"
 	"nithronos/backend/nosd/pkg/auth"
@@ -220,7 +219,6 @@ func NewRouter(cfg config.Config) http.Handler {
 	}
 	appsManager, _ := apps.NewManager(appManagerConfig)
 	// Disk-backed session and ratelimit stores
-	sessStore := sessions.New(cfg.SessionsPath)
 	rlStore := ratelimit.New(cfg.RateLimitPath)
 	mgr := session.New(cfg.SessionsPath)
 
@@ -698,8 +696,6 @@ func NewRouter(cfg config.Config) http.Handler {
 			httpx.WriteError(w, http.StatusInternalServerError, "session error")
 			return
 		}
-		// persist session record (best-effort)
-		_ = sessStore.Upsert(sessions.Session{ID: generateUUID(), UserID: u.ID, Roles: u.Roles, ExpiresAt: time.Now().Add(15 * time.Minute).UTC().Format(time.RFC3339)})
 		// bind server-side session
 		ua := r.Header.Get("User-Agent")
 		ip = clientIP(r, cfg)
@@ -731,14 +727,12 @@ func NewRouter(cfg config.Config) http.Handler {
 			if reuse {
 				Logger(cfg).Warn().Str("event", "auth.refresh.reuse").Str("uid", uid).Msg("refresh token reused; revoking all sessions")
 				_ = mgr.RevokeAll(uid)
-				_ = sessStore.DeleteByUserID(uid)
 				clearAuthCookies(w)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 			newRID = next
 		}
-		_ = sessStore.Upsert(sessions.Session{ID: generateUUID(), UserID: uid, Roles: []string{"refresh"}, ExpiresAt: time.Now().Add(7 * 24 * time.Hour).UTC().Format(time.RFC3339)})
 		if err := issueSessionCookies(w, cfg, uid, false); err != nil {
 			httpx.WriteError(w, http.StatusInternalServerError, "session error")
 			return
@@ -753,7 +747,6 @@ func NewRouter(cfg config.Config) http.Handler {
 	// Logout: clear cookies and remove persisted sessions for this user (best-effort)
 	r.Post("/api/v1/auth/logout", func(w http.ResponseWriter, r *http.Request) {
 		if uid, ok := decodeSessionUID(r, cfg); ok {
-			_ = sessStore.DeleteByUserID(uid)
 			_ = mgr.RevokeAll(uid)
 		}
 		clearAuthCookies(w)

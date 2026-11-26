@@ -16,7 +16,6 @@ import (
 	"nithronos/backend/nosd/internal/config"
 	"nithronos/backend/nosd/internal/ratelimit"
 	"nithronos/backend/nosd/internal/server"
-	"nithronos/backend/nosd/internal/sessions"
 	"nithronos/backend/nosd/internal/shares"
 )
 
@@ -47,7 +46,6 @@ func main() {
 
 	// stores to flush on shutdown
 	rl := ratelimit.New(cfg.RateLimitPath)
-	sess := sessions.New(cfg.SessionsPath)
 
 	srv := &http.Server{
 		Addr:              cfg.Bind,
@@ -88,13 +86,10 @@ func main() {
 		t0 := time.Now()
 		_ = rl.Flush()
 		rlMs := time.Since(t0).Milliseconds()
-		t1 := time.Now()
-		_ = sess.Flush()
-		sessMs := time.Since(t1).Milliseconds()
 		sdCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		_ = srv.Shutdown(sdCtx)
 		cancel()
-		server.Logger(cfg).Info().Msgf("shutdown: http done; ratelimit=%dms sessions=%dms total=%dms", rlMs, sessMs, time.Since(start).Milliseconds())
+		server.Logger(cfg).Info().Msgf("shutdown: http done; ratelimit=%dms total=%dms", rlMs, time.Since(start).Milliseconds())
 	case err := <-errCh:
 		if err != nil && err != http.ErrServerClosed {
 			server.Logger(cfg).Fatal().Err(err).Msg("server exited")
