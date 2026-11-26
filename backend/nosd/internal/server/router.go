@@ -968,11 +968,8 @@ func NewRouter(cfg config.Config) http.Handler {
 					return
 				}
 			}
-			// Mock fallback
-			writeJSON(w, map[string]any{"disks": []map[string]any{
-				{"name": "sda", "kname": "sda", "path": "/dev/sda", "size": 1000204886016, "rota": true, "type": "disk", "tran": "sata", "vendor": "Mock", "model": "Disk A", "serial": "MOCKA123"},
-				{"name": "nvme0n1", "kname": "nvme0n1", "path": "/dev/nvme0n1", "size": 512110190592, "rota": false, "type": "disk", "tran": "nvme", "vendor": "Mock", "model": "NVMe 512G", "serial": "MOCKNVME"},
-			}})
+			// No mock fallback: say the disk list is unavailable.
+			httpx.WriteTypedError(w, http.StatusServiceUnavailable, "disks.unavailable", "Cannot list disks (lsblk unavailable or failed)", 0)
 		})
 
 		pr.Get("/api/v1/pools", func(w http.ResponseWriter, r *http.Request) {
@@ -1272,9 +1269,8 @@ func NewRouter(cfg config.Config) http.Handler {
 		if sharesHandler != nil {
 			pr.Mount("/api/v1/shares", sharesHandler.Routes())
 		} else {
-			// Fallback to mock handler if real one failed to initialize
-			sharesHandlerV1 := NewSharesHandlerV1()
-			pr.Mount("/api/v1/shares", sharesHandlerV1.Routes())
+			// No mock fallback: report the failure instead of showing fake shares.
+			pr.Mount("/api/v1/shares", unavailable("shares.unavailable", "Shares are unavailable: the shares store could not be opened (see the nosd log)"))
 		}
 
 		// Jobs endpoints are already defined above

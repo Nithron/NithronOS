@@ -41,86 +41,93 @@ type SMARTSummary struct {
 // handleSmartDevices returns SMART data for all devices
 func handleSmartDevices(cfg config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		devices := []SMARTDevice{}
+		writeJSON(w, collectSMARTDevices(r.Context()))
+	}
+}
 
-		// Get list of block devices
-		devicePaths := []string{}
-		if entries, err := os.ReadDir("/dev"); err == nil {
-			for _, entry := range entries {
-				name := entry.Name()
-				// Look for sd*, nvme*, hd* devices
-				if strings.HasPrefix(name, "sd") || strings.HasPrefix(name, "nvme") || strings.HasPrefix(name, "hd") {
-					// Filter out partitions (e.g., sda1, nvme0n1p1)
-					if !strings.ContainsAny(name[2:], "0123456789p") {
-						devicePaths = append(devicePaths, "/dev/"+name)
-					}
+// collectSMARTDevices lists whole disks (sd*, nvme*, hd*) and their SMART data
+// from the agent; disks the agent can't read are reported with health
+// "unknown" rather than guessed.
+func collectSMARTDevices(parent context.Context) []SMARTDevice {
+	devices := []SMARTDevice{}
+
+	// Get list of block devices
+	devicePaths := []string{}
+	if entries, err := os.ReadDir("/dev"); err == nil {
+		for _, entry := range entries {
+			name := entry.Name()
+			// Look for sd*, nvme*, hd* devices
+			if strings.HasPrefix(name, "sd") || strings.HasPrefix(name, "nvme") || strings.HasPrefix(name, "hd") {
+				// Filter out partitions (e.g., sda1, nvme0n1p1)
+				if !strings.ContainsAny(name[2:], "0123456789p") {
+					devicePaths = append(devicePaths, "/dev/"+name)
 				}
 			}
 		}
+	}
 
-		// Try to get SMART data from agent
-		agentSocket := "/run/nos-agent.sock"
-		if _, err := os.Stat(agentSocket); err == nil {
-			agent := agentclient.New(agentSocket)
-			for _, devPath := range devicePaths {
-				ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-				defer cancel()
+	// Try to get SMART data from agent
+	agentSocket := "/run/nos-agent.sock"
+	if _, err := os.Stat(agentSocket); err == nil {
+		agent := agentclient.New(agentSocket)
+		for _, devPath := range devicePaths {
+			ctx, cancel := context.WithTimeout(parent, 5*time.Second)
+			defer cancel()
 
-				var smartData map[string]any
-				req, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://unix/v1/smart?device=%s", devPath), nil)
-				if resp, err := agent.HTTP.Do(req); err == nil && resp.StatusCode == 200 {
-					defer resp.Body.Close()
-					_ = json.NewDecoder(resp.Body).Decode(&smartData)
+			var smartData map[string]any
+			req, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://unix/v1/smart?device=%s", devPath), nil)
+			if resp, err := agent.HTTP.Do(req); err == nil && resp.StatusCode == 200 {
+				defer resp.Body.Close()
+				_ = json.NewDecoder(resp.Body).Decode(&smartData)
 
-					device := SMARTDevice{
-						Device:      devPath,
-						Health:      "unknown",
-						LastChecked: time.Now(),
-						Attributes:  smartData,
-					}
-
-					// Parse SMART response
-					if passed, ok := smartData["passed"].(bool); ok {
-						if passed {
-							device.Health = "good"
-						} else {
-							device.Health = "critical"
-						}
-					}
-
-					if temp, ok := smartData["temperature_c"].(float64); ok {
-						device.Temperature = int(temp)
-						if device.Temperature > 50 {
-							device.Health = "warning"
-						}
-						if device.Temperature > 60 {
-							device.Health = "critical"
-						}
-					}
-
-					if hours, ok := smartData["power_on_hours"].(float64); ok {
-						device.PowerOnHours = int(hours)
-					}
-
-					devices = append(devices, device)
-				}
-			}
-		}
-
-		// Fallback if agent is not available - return mock data
-		if len(devices) == 0 && len(devicePaths) > 0 {
-			for _, devPath := range devicePaths {
-				devices = append(devices, SMARTDevice{
+				device := SMARTDevice{
 					Device:      devPath,
-					Model:       "Unknown Device",
 					Health:      "unknown",
 					LastChecked: time.Now(),
-				})
+					Attributes:  smartData,
+				}
+
+				// Parse SMART response
+				if passed, ok := smartData["passed"].(bool); ok {
+					if passed {
+						device.Health = "good"
+					} else {
+						device.Health = "critical"
+					}
+				}
+
+				if temp, ok := smartData["temperature_c"].(float64); ok {
+					device.Temperature = int(temp)
+					if device.Temperature > 50 {
+						device.Health = "warning"
+					}
+					if device.Temperature > 60 {
+						device.Health = "critical"
+					}
+				}
+
+				if hours, ok := smartData["power_on_hours"].(float64); ok {
+					device.PowerOnHours = int(hours)
+				}
+
+				devices = append(devices, device)
 			}
 		}
-
-		writeJSON(w, devices)
 	}
+
+	// Fallback if agent is not available - return mock data
+	if len(devices) == 0 && len(devicePaths) > 0 {
+		for _, devPath := range devicePaths {
+			devices = append(devices, SMARTDevice{
+				Device:      devPath,
+				Model:       "Unknown Device",
+				Health:      "unknown",
+				LastChecked: time.Now(),
+			})
+		}
+	}
+
+	return devices
 }
 
 // handleSmartSummary returns overall SMART health summary

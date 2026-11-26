@@ -1,9 +1,13 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"nithronos/backend/nosd/internal/disks"
+	"nithronos/backend/nosd/internal/pools"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
@@ -123,7 +127,7 @@ func (h *StorageHandler) GetPools(w http.ResponseWriter, r *http.Request) {
 	summary := r.URL.Query().Get("summary") == "1"
 
 	// Get pool data (in real implementation, this would use btrfs fi show, etc.)
-	pools := h.getPools()
+	pools := h.getPools(r.Context())
 
 	if summary {
 		// Return summary
@@ -165,7 +169,7 @@ func (h *StorageHandler) GetPools(w http.ResponseWriter, r *http.Request) {
 func (h *StorageHandler) GetPool(w http.ResponseWriter, r *http.Request) {
 	uuid := chi.URLParam(r, "uuid")
 
-	pools := h.getPools()
+	pools := h.getPools(r.Context())
 	for _, pool := range pools {
 		if pool.UUID == uuid || pool.ID == uuid {
 			w.Header().Set("Content-Type", "application/json")
@@ -259,7 +263,7 @@ func (h *StorageHandler) SetPoolMountOptions(w http.ResponseWriter, r *http.Requ
 // GetDevices returns all storage devices
 // GET /api/v1/storage/devices
 func (h *StorageHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
-	devices := h.getDevices()
+	devices := h.getDevices(r.Context())
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(devices); err != nil {
@@ -267,77 +271,65 @@ func (h *StorageHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Helper function to get pools (mock data for now)
-func (h *StorageHandler) getPools() []Pool {
-	// In real implementation, this would use btrfs commands
-	return []Pool{
-		{
-			ID:         "main-pool",
-			UUID:       "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-			Label:      "main",
-			Mountpoint: "/mnt/main",
-			Size:       2000000000000, // 2TB
-			Used:       1200000000000, // 1.2TB
-			Free:       800000000000,  // 800GB
-			Raid:       "raid1",
-			Status:     "online",
-			Devices: []PoolDevice{
-				{
-					Path:   "/dev/sda",
-					Size:   1000000000000,
-					Used:   600000000000,
-					Status: "online",
-				},
-				{
-					Path:   "/dev/sdb",
-					Size:   1000000000000,
-					Used:   600000000000,
-					Status: "online",
-				},
-			},
-		},
+// getPools lists the Btrfs pools found on this machine. (It used to return a
+// made-up 2 TB RAID1 pool.)
+func (h *StorageHandler) getPools(ctx context.Context) []Pool {
+	list, err := pools.ListPools(ctx)
+	if err != nil {
+		log.Warn().Err(err).Msg("list pools")
+		return []Pool{}
 	}
+	out := make([]Pool, 0, len(list))
+	for _, p := range list {
+		pool := Pool{ID: p.ID, UUID: p.UUID, Label: p.Label, Mountpoint: p.Mount, Size: p.Size, Used: p.Used, Free: p.Free, Raid: p.RAID, Status: "online"}
+		if p.Mount == "" {
+			pool.Status = "offline"
+		}
+		for _, d := range p.Devices {
+			pool.Devices = append(pool.Devices, PoolDevice{Path: d})
+		}
+		out = append(out, pool)
+	}
+	return out
 }
 
-// Helper function to get devices (mock data for now)
-func (h *StorageHandler) getDevices() []Device {
-	// In real implementation, this would use lsblk, smartctl, etc.
-	return []Device{
-		{
-			Path:   "/dev/sda",
-			Model:  "Samsung SSD 870",
-			Serial: "S5Y2NF0NA12345",
-			Size:   1000000000000,
-			Type:   "ssd",
-			InUse:  true,
-			Pool:   "main-pool",
-		},
-		{
-			Path:   "/dev/sdb",
-			Model:  "Samsung SSD 870",
-			Serial: "S5Y2NF0NA12346",
-			Size:   1000000000000,
-			Type:   "ssd",
-			InUse:  true,
-			Pool:   "main-pool",
-		},
-		{
-			Path:   "/dev/sdc",
-			Model:  "WD Red Plus",
-			Serial: "WX21A23C4567",
-			Size:   4000000000000,
-			Type:   "hdd",
-			InUse:  false,
-		},
-		{
-			Path:   "/dev/sdd",
-			Model:  "WD Red Plus",
-			Serial: "WX21A23C4568",
-			Size:   4000000000000,
-			Type:   "hdd",
-			InUse:  false,
-		},
+// getDevices lists the machine's disks (lsblk) and which pool uses them. (It
+// used to return four made-up disks.)
+func (h *StorageHandler) getDevices(ctx context.Context) []Device {
+	list, err := disks.Collect(ctx)
+	if err != nil {
+		log.Warn().Err(err).Msg("collect disks")
+		return []Device{}
 	}
+	inPool := map[string]string{}
+	for _, p := range h.getPools(ctx) {
+		for _, d := range p.Devices {
+			inPool[d.Path] = p.ID
+		}
+	}
+	out := []Device{}
+	for _, d := range list {
+		if d.Type != "disk" {
+			continue
+		}
+		dev := Device{Path: d.Path, Model: strings.TrimSpace(d.Model), Serial: d.Serial}
+		if d.SizeBytes > 0 {
+			dev.Size = uint64(d.SizeBytes)
+		}
+		if d.Rota != nil {
+			dev.Type = "ssd"
+			if *d.Rota {
+				dev.Type = "hdd"
+			}
+		}
+		if id, ok := inPool[d.Path]; ok {
+			dev.InUse, dev.Pool = true, id
+		} else if d.Mountpoint != nil || d.FSType != "" {
+			dev.InUse = true
+		}
+		out = append(out, dev)
+	}
+	return out
 }
 
 // BtrfsHandler handles Btrfs-specific endpoints

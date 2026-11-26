@@ -8,6 +8,7 @@ import (
 	pwhash "nithronos/backend/nosd/internal/auth/hash"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"nithronos/backend/nosd/internal/config"
@@ -116,8 +117,16 @@ func TestDisksShape(t *testing.T) {
 
 	r.ServeHTTP(res, req)
 
+	// Real disks (200) or an explicit error (503) when lsblk can't run here;
+	// never mock disks.
+	if res.Code == http.StatusServiceUnavailable {
+		if !strings.Contains(res.Body.String(), "disks.unavailable") {
+			t.Fatalf("503 without disks.unavailable: %s", res.Body.String())
+		}
+		return
+	}
 	if res.Code != 200 {
-		t.Fatalf("expected 200, got %d", res.Code)
+		t.Fatalf("expected 200 or 503, got %d", res.Code)
 	}
 	var body map[string]any
 	if err := json.Unmarshal(res.Body.Bytes(), &body); err != nil {
@@ -125,6 +134,9 @@ func TestDisksShape(t *testing.T) {
 	}
 	if _, ok := body["disks"]; !ok {
 		t.Fatalf("missing disks: %v", body)
+	}
+	if strings.Contains(res.Body.String(), "MOCK") {
+		t.Fatalf("mock disks returned: %s", res.Body.String())
 	}
 }
 
