@@ -28,7 +28,8 @@ import {
 	CommandItem,
 	CommandList,
 } from '@/components/ui/command'
-import { useUsers, useGroups } from '@/hooks/use-shares'
+import { useUserAccounts } from '@/api/users'
+import { useGroups } from '@/api/groups'
 
 interface PermissionsEditorProps {
 	owners: string[]
@@ -41,6 +42,10 @@ interface PermissionsEditorProps {
 type PrincipalType = 'user' | 'group'
 type PermissionLevel = 'owner' | 'reader'
 
+
+/** Every nOS user (the Unix group nos-users). */
+const EVERYONE = 'group:users'
+
 export function PermissionsEditor({
 	owners,
 	readers,
@@ -48,16 +53,18 @@ export function PermissionsEditor({
 	onReadersChange,
 	guestEnabled = false,
 }: PermissionsEditorProps) {
-	const { data: users = [] } = useUsers()
+	const { data: users = [] } = useUserAccounts()
 	const { data: groups = [] } = useGroups()
 	const [pickerOpen, setPickerOpen] = useState(false)
 	const [pickerTarget, setPickerTarget] = useState<PermissionLevel | null>(null)
 	const [searchQuery, setSearchQuery] = useState('')
 
 	// Parse principals into structured format
+	// group:users is every nOS user; it is shown as "Everyone".
 	const parsePrincipal = (principal: string) => {
 		const [type, name] = principal.split(':')
-		return { type: type as PrincipalType, name }
+		const display = principal === EVERYONE ? 'Everyone' : name
+		return { type: type as PrincipalType, name: display }
 	}
 
 	const ownersParsed = owners.map(parsePrincipal)
@@ -78,6 +85,10 @@ export function PermissionsEditor({
 				})
 			}
 		})
+
+		if (!assigned.has(EVERYONE)) {
+			principals.push({ type: 'group', name: 'users', display: 'Everyone (all users)' })
+		}
 
 		groups.forEach(group => {
 			const key = `group:${group.name}`

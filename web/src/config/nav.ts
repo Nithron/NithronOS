@@ -161,6 +161,11 @@ export const navItems: NavItem[] = [
         path: '/settings/users',
       },
       {
+        id: 'groups',
+        label: 'Groups',
+        path: '/settings/groups',
+      },
+      {
         id: 'schedules',
         label: 'Schedules',
         path: '/settings/schedules',

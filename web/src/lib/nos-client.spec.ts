@@ -137,7 +137,6 @@ describe('nos-client', () => {
 				'storage',
 				'pools',
 				'disks',
-				'snapshots',
 				'updates',
 				'shares',
 				'smb',

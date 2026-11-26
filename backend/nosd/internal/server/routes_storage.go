@@ -44,7 +44,7 @@ func (d *routeDeps) registerStorage(pr chi.Router) {
 
 	pr.Get("/api/v1/pools", func(w http.ResponseWriter, r *http.Request) {
 		list, _ := pools.ListPools(r.Context())
-		writeJSON(w, list)
+		writeJSON(w, withRAIDProfiles(r.Context(), d.agentClient, list))
 	})
 
 	// Pools: allowed roots for shares (mounted pool paths)

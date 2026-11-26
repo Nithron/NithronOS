@@ -26,9 +26,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { PermissionsEditor } from '@/components/shares/PermissionsEditor'
-import { usePolicy } from '@/hooks/use-shares'
+import { usePolicy, type Share, type CreateShareRequest, type UpdateShareRequest } from '@/api/shares'
 import { AppAccess } from '@/components/shares/AppAccess'
-import type { Share, CreateShareRequest, UpdateShareRequest } from '@/api/client'
 
 const shareNameSchema = z.string()
 	.min(2, 'Name must be at least 2 characters')

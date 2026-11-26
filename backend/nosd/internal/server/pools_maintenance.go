@@ -254,3 +254,31 @@ func (m poolMaintenance) op(agentPath string, start bool) http.HandlerFunc {
 		_ = json.NewEncoder(w).Encode(map[string]any{"results": results})
 	}
 }
+
+// withRAIDProfiles fills in each pool's data profile (single, raid1, ...)
+// from nos-agent: `btrfs filesystem usage` needs root. A pool the agent
+// can't describe keeps an empty profile.
+func withRAIDProfiles(ctx context.Context, agent AgentClient, list []pools.Pool) []pools.Pool {
+	if agent == nil {
+		return list
+	}
+	out := make([]pools.Pool, len(list))
+	for i, p := range list {
+		out[i] = p
+		if p.Mount == "" || p.RAID != "" {
+			continue
+		}
+		var usage struct {
+			Classes map[string]struct {
+				Profile string `json:"profile"`
+			} `json:"classes"`
+		}
+		c, cancel := context.WithTimeout(ctx, 3*time.Second)
+		err := agent.GetJSON(c, "/v1/btrfs/usage?mount="+url.QueryEscape(p.Mount), &usage)
+		cancel()
+		if err == nil {
+			out[i].RAID = strings.ToLower(usage.Classes["data"].Profile)
+		}
+	}
+	return out
+}

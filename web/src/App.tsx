@@ -11,6 +11,7 @@ import { Settings } from './pages/Settings'
 import { Users } from './pages/Users'
 import SettingsSchedules from './routes/settings/schedules'
 import { Remote } from './pages/Remote'
+import { Groups } from './pages/Groups'
 import { Login } from './pages/Login'
 import { NetworkSettings } from './pages/NetworkSettings'
 import { RemoteAccessWizard } from './pages/RemoteAccessWizard'
@@ -157,6 +158,7 @@ const router = createBrowserRouter([
           },
           { path: 'settings', element: <Settings /> },
           { path: 'settings/users', element: <Users /> },
+          { path: 'settings/groups', element: <Groups /> },
           { path: 'settings/schedules', element: <SettingsSchedules /> },
           { path: 'settings/updates', element: <Updates /> },
           { path: 'settings/network', element: <NetworkSettings /> },

@@ -18,7 +18,7 @@ export default defineConfig({
 		globals: true,
 		setupFiles: './vitest.setup.ts',
 	},
-	resolve: { alias: { '@': path.resolve(__dirname, 'src'), '@/api-types': path.resolve(__dirname, 'src/api/schema.ts') } },
+	resolve: { alias: { '@': path.resolve(__dirname, 'src') } },
 	server: { proxy: apiProxy },
 	preview: { proxy: apiProxy },
 })

@@ -43,6 +43,7 @@ const sections: Array<{ id: Section; label: string; icon: typeof Server }> = [
 
 const otherPages = [
 	{ label: 'Users', path: '/settings/users', icon: Users, adminOnly: true },
+	{ label: 'Groups', path: '/settings/groups', icon: Users, adminOnly: true },
 	{ label: 'Network', path: '/settings/network', icon: Network, adminOnly: true },
 	{ label: 'Schedules', path: '/settings/schedules', icon: Calendar, adminOnly: true },
 	{ label: 'Updates', path: '/settings/updates', icon: Download, adminOnly: true },

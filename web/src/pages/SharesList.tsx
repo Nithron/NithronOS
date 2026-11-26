@@ -14,7 +14,9 @@ import {
 	Server,
 	Share2
 } from 'lucide-react'
-import { useShares, useDeleteShare } from '@/hooks/use-shares'
+import { useShares, useShareMutations, type Share } from '@/api/shares'
+import { getErrorMessage } from '@/lib/nos-client'
+import { toast } from '@/components/ui/toast'
 import { PageHeader } from '@/components/layouts/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -38,12 +40,11 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import type { Share } from '@/api/client'
 
 export function SharesList() {
 	const navigate = useNavigate()
 	const { data: shares = [], isLoading } = useShares()
-	const deleteShare = useDeleteShare()
+	const { remove: deleteShare } = useShareMutations()
 	const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
 	const handleCreateShare = () => {
@@ -56,7 +57,12 @@ export function SharesList() {
 
 	const handleDeleteShare = async () => {
 		if (!deleteTarget) return
-		await deleteShare.mutateAsync(deleteTarget)
+		try {
+			await deleteShare.mutateAsync(deleteTarget)
+			toast.success(`Share "${deleteTarget}" deleted; its files stay in /srv/shares/${deleteTarget}`)
+		} catch (err) {
+			toast.error(getErrorMessage(err))
+		}
 		setDeleteTarget(null)
 	}
 

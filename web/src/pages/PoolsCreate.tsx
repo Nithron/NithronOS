@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api } from '../api/client'
+import { storageApi } from '@/api/storage'
 import { useNavigate } from 'react-router-dom'
 import { getErrorMessage } from '@/lib/nos-client'
 
@@ -20,8 +20,8 @@ export function PoolsCreate() {
   useEffect(() => {
     // A failed disk list is shown, not thrown (it used to be an unhandled
     // rejection and an empty page).
-    api.disks.get()
-      .then((d: any) => setDiskList(d.disks || []))
+    storageApi.disks()
+      .then((d) => setDiskList(d))
       .catch((e: unknown) => setError(`The disks could not be listed: ${getErrorMessage(e)}`))
       .finally(() => setDisksLoaded(true))
   }, [])
@@ -29,7 +29,7 @@ export function PoolsCreate() {
   async function doPlan() {
     setError(null)
     try {
-      const res = await api.pools.planCreateV1({ name: label, mountpoint, devices, raidData, raidMeta, encrypt })
+      const res = await storageApi.planCreate({ name: label, mountpoint, devices, raidData, raidMeta, encrypt })
       setPlan(res)
       setStep(5)
     } catch (e: any) {
@@ -40,7 +40,7 @@ export function PoolsCreate() {
   async function doCreate() {
     setError(null)
     try {
-      await api.pools.applyCreateV1({ plan: plan?.plan, fstab: plan?.fstab, confirm: 'CREATE' })
+      await storageApi.applyCreate({ plan: plan?.plan, fstab: plan?.fstab, confirm: 'CREATE' })
       const id = label
       nav(`/storage/${encodeURIComponent(id)}?mount=${encodeURIComponent(mountpoint)}`)
     } catch (e: any) {

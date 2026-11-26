@@ -173,7 +173,7 @@ Grouped by feature. Each item lists the evidence.
 
 ## Phase 5: Web UI
 
-1. **One API client.** Today there are `api/client.ts`, `api/http.ts`, `lib/nos-client.ts`, `lib/api.ts`, `hooks/use-api.ts` and per-feature `api/*.ts`. Keep `lib/nos-client.ts` (baseURL `/api`) plus generated OpenAPI types; port the callers and delete the rest.
+1. **One API client.** Today there are `api/client.ts`, `api/http.ts`, `lib/nos-client.ts`, `lib/api.ts`, `hooks/use-api.ts` and per-feature `api/*.ts`. Keep `lib/nos-client.ts` (baseURL `/api`) plus generated OpenAPI types; port the callers and delete the rest. **Done:** `lib/nos-client.ts` is the only transport. `api/client.ts`, `api/schema.ts`, `api/http.ts`, `lib/api.ts`, `hooks/use-api.ts` and `hooks/use-shares.ts` are gone; each area has a typed module in `api/` (users, system, storage, shares, groups, backup, apps, monitor, updates, net, sync). The types are written by hand from the Go structs: the route dump's OpenAPI has paths but no schemas, and the old generated `schema.ts` came from a spec that no longer existed.
 2. **FE/BE contract**: for each of the ~79 missing paths, implement it (Phase 4) or delete the caller. Make `scripts/verify-fe-be-contract.*` a required CI check against the live route dump (`cmd/route-dump`).
 3. **Orphan and duplicate pages**: decide which variant wins and delete the other:
    - `SettingsNetwork` (1295 lines, orphan) vs `NetworkSettings` (routed)
