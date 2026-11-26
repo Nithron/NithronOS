@@ -3,8 +3,9 @@ import { ArrowLeft, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/layouts/PageHeader'
 import { Button } from '@/components/ui/button'
 import { ShareForm } from '@/components/shares/ShareForm'
-import { useShare, useUpdateShare, useCreateShare } from '@/hooks/use-shares'
-import type { CreateShareRequest, UpdateShareRequest } from '@/api/client'
+import { useShare, useShareMutations, type CreateShareRequest, type UpdateShareRequest } from '@/api/shares'
+import { getErrorMessage } from '@/lib/nos-client'
+import { toast } from '@/components/ui/toast'
 
 export function ShareDetails() {
 	const { name } = useParams<{ name: string }>()
@@ -12,20 +13,21 @@ export function ShareDetails() {
 	const isNew = !name || name === 'new'
 	
 	const { data: share, isLoading } = useShare(isNew ? undefined : name)
-	const updateShare = useUpdateShare()
-	const createShare = useCreateShare()
+	const { create: createShare, update: updateShare } = useShareMutations()
 
 	const handleSubmit = async (data: CreateShareRequest | UpdateShareRequest) => {
 		try {
 			if (isNew) {
-				await createShare.mutateAsync(data as CreateShareRequest)
+				const created = await createShare.mutateAsync(data as CreateShareRequest)
+				toast.success(`Share "${created.name}" created`)
 				navigate('/shares')
 			} else if (name) {
 				await updateShare.mutateAsync({ name, data: data as UpdateShareRequest })
+				toast.success(`Share "${name}" saved`)
 				navigate('/shares')
 			}
 		} catch (err) {
-			console.error('Failed to save share:', err)
+			toast.error(getErrorMessage(err))
 		}
 	}
 

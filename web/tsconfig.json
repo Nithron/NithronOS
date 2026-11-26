@@ -16,8 +16,7 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@/api-types": ["src/api/schema.ts"]
+      "@/*": ["src/*"]
     }
   },
   "include": ["src", "vitest.setup.ts"],

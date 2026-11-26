@@ -1,166 +1,110 @@
 package pools
 
 import (
-	"bufio"
 	"context"
-	"os/exec"
+	"encoding/json"
+	"fmt"
+	"os"
 	"path/filepath"
-	"regexp"
-	"strconv"
-	"strings"
+	"syscall"
 	"time"
 
 	"nos/backend/nosd/pkg/shell"
 )
 
-// ListPools attempts to discover mounted btrfs filesystems and returns size/usage details.
+// ListPools lists the mounted Btrfs filesystems with their size and use. It
+// works as the unprivileged nos user: mounts come from findmnt (the mount
+// table) and sizes from statfs. (It searched lsblk's JSON for the text
+// "fstype":"btrfs" without the space lsblk prints, so it never found a
+// pool, and it asked `btrfs filesystem show`, which needs root, for the
+// label.) The RAID profile is filled in when the caller can ask nos-agent.
 func ListPools(ctx context.Context) ([]Pool, error) {
-	// Find btrfs mounts via lsblk
-	res, err := shell.Run(ctx, 3*time.Second, "lsblk", "-J", "-O")
+	res, err := shell.Run(ctx, 3*time.Second, "findmnt", "-J", "-t", "btrfs", "--nofsroot", "-o", "TARGET,SOURCE,UUID,LABEL")
 	if err != nil {
+		// findmnt exits 1 when nothing matches: no Btrfs mounted.
 		return []Pool{}, nil
 	}
-	mounts := findBtrfsMounts(res.Stdout)
-	pools := []Pool{}
-	for _, m := range mounts {
-		p := Pool{ID: m, Label: filepath.Base(m), Mount: m}
-		// fetch usage
-		size, used, free := btrfsUsage(ctx, m)
-		p.Size, p.Used, p.Free = size, used, free
-		// try to get label/uuid via `btrfs filesystem show`
-		label, uuid := btrfsShowForMount(ctx, m)
-		if label != "" {
-			p.Label = label
-		}
-		p.UUID = uuid
-		// RAID profile is best-effort via `btrfs fi usage`
-		p.RAID = btrfsRaidProfile(ctx, m)
-		pools = append(pools, p)
-	}
-	return pools, nil
+	return poolsFromFindmnt(res.Stdout, statfsUsage, isDir), nil
 }
 
-func findBtrfsMounts(lsblkJSON []byte) []string {
-	// naive search for '"fstype":"btrfs","mountpoint":"..."'
-	out := []string{}
-	s := string(lsblkJSON)
-	idx := 0
-	for {
-		i := strings.Index(s[idx:], "\"fstype\":\"btrfs\"")
-		if i < 0 {
-			break
-		}
-		i += idx
-		// find mountpoint after this
-		j := strings.Index(s[i:], "\"mountpoint\":")
-		if j < 0 {
-			break
-		}
-		j += i
-		k := strings.Index(s[j:], "\"")
-		if k < 0 {
-			break
-		}
-		j += k + 1
-		k2 := strings.Index(s[j:], "\"")
-		if k2 < 0 {
-			break
-		}
-		mount := s[j : j+k2]
-		if mount != "" && mount != "null" {
-			out = append(out, mount)
-		}
-		idx = j + k2
-	}
-	return uniqueStrings(out)
+type findmntJSON struct {
+	Filesystems []struct {
+		Target string `json:"target"`
+		Source string `json:"source"`
+		UUID   string `json:"uuid"`
+		Label  string `json:"label"`
+	} `json:"filesystems"`
 }
 
-func btrfsUsage(ctx context.Context, mount string) (uint64, uint64, uint64) {
-	cmd := exec.CommandContext(ctx, "btrfs", "filesystem", "usage", "-b", mount)
-	out, err := cmd.Output()
-	if err != nil {
-		return 0, 0, 0
+// poolsFromFindmnt makes one pool per filesystem (a filesystem mounted at
+// several places is listed once, at its shortest mount point). Mounts that
+// aren't directories (files bind-mounted into a container) are skipped.
+func poolsFromFindmnt(out []byte, usage func(string) (uint64, uint64, uint64), dir func(string) bool) []Pool {
+	var fm findmntJSON
+	if err := json.Unmarshal(out, &fm); err != nil {
+		return []Pool{}
 	}
-	var size, used, free uint64
-	scanner := bufio.NewScanner(strings.NewReader(string(out)))
-	re := regexp.MustCompile(`(?i)^(Device size|Used|Free).*?(\d+)`) // crude
-	for scanner.Scan() {
-		line := scanner.Text()
-		m := re.FindStringSubmatch(line)
-		if len(m) == 3 {
-			v, _ := strconv.ParseUint(m[2], 10, 64)
-			switch strings.ToLower(m[1]) {
-			case "device size":
-				size = v
-			case "used":
-				used = v
-			case "free":
-				free = v
+	byFS := map[string]Pool{}
+	order := []string{}
+	for _, f := range fm.Filesystems {
+		if f.Target == "" || !dir(f.Target) {
+			continue
+		}
+		key := f.UUID
+		if key == "" {
+			key = f.Source
+		}
+		if p, seen := byFS[key]; seen && len(p.Mount) <= len(f.Target) {
+			continue
+		} else if !seen {
+			order = append(order, key)
+		}
+		label := f.Label
+		if label == "" {
+			label = filepath.Base(f.Target)
+			if f.Target == "/" {
+				label = "system"
 			}
 		}
+		// The id goes into URLs (/pools/{id}/...): the UUID, or the label when
+		// udev doesn't know it; never the mount path, whose slashes broke
+		// every per-pool route.
+		id := f.UUID
+		if id == "" {
+			id = label
+		}
+		p := Pool{ID: id, Label: label, UUID: f.UUID, Mount: f.Target, Devices: []string{}}
+		if f.Source != "" {
+			p.Devices = []string{f.Source}
+		}
+		p.Size, p.Used, p.Free = usage(f.Target)
+		byFS[key] = p
 	}
+	pools := make([]Pool, 0, len(order))
+	used := map[string]int{}
+	for _, k := range order {
+		p := byFS[k]
+		if n := used[p.ID]; n > 0 { // two filesystems with the same label
+			p.ID = fmt.Sprintf("%s-%d", p.ID, n+1)
+		}
+		used[byFS[k].ID]++
+		pools = append(pools, p)
+	}
+	return pools
+}
+
+func statfsUsage(path string) (size, used, free uint64) {
+	var st syscall.Statfs_t
+	if err := syscall.Statfs(path, &st); err != nil {
+		return 0, 0, 0
+	}
+	bs := uint64(st.Bsize)
+	size, free = st.Blocks*bs, st.Bavail*bs
+	used = (st.Blocks - st.Bfree) * bs
 	return size, used, free
 }
 
-func btrfsRaidProfile(ctx context.Context, mount string) string {
-	cmd := exec.CommandContext(ctx, "btrfs", "filesystem", "usage", mount)
-	out, err := cmd.Output()
-	if err != nil {
-		return ""
-	}
-	for _, line := range strings.Split(string(out), "\n") {
-		if strings.Contains(strings.ToLower(line), "metadata,") {
-			// line like:  Metadata, RAID1: total=... used=...
-			parts := strings.Split(line, ":")
-			if len(parts) > 0 {
-				left := parts[0]
-				segs := strings.Split(left, ",")
-				if len(segs) > 1 {
-					return strings.TrimSpace(segs[1])
-				}
-			}
-		}
-	}
-	return ""
-}
-
-func btrfsShowForMount(ctx context.Context, mount string) (string, string) {
-	cmd := exec.CommandContext(ctx, "btrfs", "filesystem", "show")
-	out, err := cmd.Output()
-	if err != nil {
-		return "", ""
-	}
-	var currentLabel, currentUUID string
-	for _, line := range strings.Split(string(out), "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "Label:") {
-			// Label: 'pool1'  uuid: 1234-...
-			// extract between quotes
-			if i := strings.Index(line, "'"); i >= 0 {
-				if j := strings.Index(line[i+1:], "'"); j >= 0 {
-					currentLabel = line[i+1 : i+1+j]
-				}
-			}
-			if k := strings.Index(strings.ToLower(line), "uuid:"); k >= 0 {
-				currentUUID = strings.TrimSpace(line[k+5:])
-			}
-		}
-		if strings.Contains(line, mount) {
-			return currentLabel, currentUUID
-		}
-	}
-	return currentLabel, currentUUID
-}
-
-func uniqueStrings(in []string) []string {
-	seen := map[string]struct{}{}
-	out := []string{}
-	for _, s := range in {
-		if _, ok := seen[s]; ok {
-			continue
-		}
-		seen[s] = struct{}{}
-		out = append(out, s)
-	}
-	return out
+func isDir(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && fi.IsDir()
 }

@@ -2,22 +2,12 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from '../App'
+import http, { ProxyMisconfiguredError } from '@/lib/nos-client'
 
 describe('Global banner on proxy misconfig', () => {
   it('shows banner when /api/v1/setup/state returns HTML', async () => {
-    // HTML response for setup state
-    global.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url === '/api/v1/setup/state') {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          headers: { get: () => 'text/html' },
-          text: async () => '<!doctype html>nope',
-        })
-      }
-      // default other calls
-      return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => ({}) })
-    })
+    // The proxy serves HTML at /api: nos-client reports it as such.
+    vi.spyOn(http.setup, 'getState').mockRejectedValue(new ProxyMisconfiguredError('HTML at /api'))
 
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(

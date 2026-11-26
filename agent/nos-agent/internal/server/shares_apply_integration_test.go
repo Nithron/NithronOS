@@ -60,6 +60,9 @@ func TestSharesIntegration(t *testing.T) {
 	if _, err := os.Stat("/tmp/pwned"); err == nil {
 		t.Fatal("the SMB password was run as a shell command")
 	}
+	if gecos := strings.Split(sh(t, "getent", "passwd", "alice"), ":")[4]; gecos != nosAccountComment {
+		t.Fatalf("account not marked as nOS's: %q", gecos)
+	}
 	if rr := post("/v1/smb/user-create", map[string]string{"username": "root", "password": "rootpass1"}); rr.Code != http.StatusBadRequest {
 		t.Fatalf("SMB password for root: %d", rr.Code)
 	}
@@ -70,7 +73,7 @@ func TestSharesIntegration(t *testing.T) {
 		Shares: []applyShare{
 			{Name: "media", Path: "/srv/shares/media", Description: "Films",
 				SMB:    &applySMB{Enabled: true, Recycle: &applyRecyc{Enabled: true}},
-				Owners: []string{"user:alice"}, Readers: []string{"group:family"}},
+				Owners: []string{"user:alice"}, Readers: []string{"group:family"}, Apps: []string{"nai"}},
 			{Name: "public", Path: "/srv/shares/public", SMB: &applySMB{Enabled: true, Guest: true}},
 			{Name: "everyone", Path: "/srv/shares/everyone", SMB: &applySMB{Enabled: true}, Owners: []string{"group:users"}},
 			{Name: "closed", Path: "/srv/shares/closed", SMB: &applySMB{Enabled: true}},
@@ -127,6 +130,26 @@ func TestSharesIntegration(t *testing.T) {
 		t.Errorf("new file did not inherit the share ACL:\n%s", fa)
 	}
 
+	// An app opened to media reads it through nos-app-nai, as its container
+	// does (an unknown uid with that group added), and can't write; the same
+	// uid without the group can't read, nor can it read other shares.
+	gid := strings.Split(strings.TrimSpace(sh(t, "getent", "group", "nos-app-nai")), ":")[2]
+	asApp := func(groups string, args ...string) error {
+		return exec.Command("setpriv", append([]string{"--reuid=4242", "--regid=4242", "--groups=" + groups, "--"}, args...)...).Run()
+	}
+	if err := asApp(gid, "cat", "/srv/shares/media/f.txt"); err != nil {
+		t.Errorf("the app can't read a share opened to it: %v", err)
+	}
+	if err := asApp(gid, "touch", "/srv/shares/media/by-app.txt"); err == nil {
+		t.Error("the app could write to a share it may only read")
+	}
+	if err := asApp("4242", "cat", "/srv/shares/media/f.txt"); err == nil {
+		t.Error("the same uid without the app group could read")
+	}
+	if err := asApp(gid, "ls", "/srv/shares/everyone"); err == nil {
+		t.Error("the app could read a share not opened to it")
+	}
+
 	// Removing a share removes it from Samba; its files stay.
 	req.Shares = req.Shares[1:]
 	if rr := post("/v1/shares/apply", req); rr.Code != http.StatusOK {
@@ -137,5 +160,29 @@ func TestSharesIntegration(t *testing.T) {
 	}
 	if _, err := os.Stat("/srv/shares/media/f.txt"); err != nil {
 		t.Fatalf("removing a share must keep its files: %v", err)
+	}
+
+	// Deleting a nOS user: their SMB password and (nOS-made) account go; an
+	// account nOS didn't make keeps existing, without its SMB password.
+	sh(t, "useradd", "-M", "-c", "Console admin", "carol")
+	if rr := post("/v1/smb/user-create", map[string]string{"username": "carol", "password": "carol-pass-1"}); rr.Code != http.StatusOK {
+		t.Fatalf("SMB password for an existing account: %d %s", rr.Code, rr.Body.String())
+	}
+	for _, u := range []string{"bob", "carol"} {
+		if rr := post("/v1/smb/user-delete", map[string]string{"username": u}); rr.Code != http.StatusOK {
+			t.Fatalf("delete %s: %d %s", u, rr.Code, rr.Body.String())
+		}
+	}
+	if err := exec.Command("getent", "passwd", "bob").Run(); err == nil {
+		t.Error("the nOS-made account bob still exists")
+	}
+	if err := exec.Command("getent", "passwd", "carol").Run(); err != nil {
+		t.Error("an account nOS didn't make was deleted")
+	}
+	if out, _ := exec.Command("pdbedit", "-L").CombinedOutput(); strings.Contains(string(out), "bob:") || strings.Contains(string(out), "carol:") {
+		t.Errorf("SMB passwords left after delete:\n%s", out)
+	}
+	if out, err := smbclient("bob", bobPass, "everyone", "ls"); err == nil && !strings.Contains(out, "NT_STATUS") {
+		t.Errorf("a deleted user still reaches a share:\n%s", out)
 	}
 }

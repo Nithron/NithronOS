@@ -11,7 +11,7 @@ export function PoolDetails() {
   const [tab, setTab] = useState<'overview'|'snapshots'|'devices'>('overview')
 
   useEffect(() => {
-    http.pools.listUnversioned().then((data: any) => setPools(data))
+    http.pools.list().then((data: any) => setPools(data))
   }, [])
 
   if (!id) return <div className="p-4">Missing id</div>

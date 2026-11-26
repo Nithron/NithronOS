@@ -19,6 +19,7 @@ import (
 )
 
 type loginEnv struct {
+	agent  *fakeAgent
 	r      http.Handler
 	secret string // TOTP secret (base32)
 	users  string // users.json path
@@ -40,13 +41,14 @@ func newLoginEnv(t *testing.T, withTOTP bool, recovery ...string) loginEnv {
 	t.Setenv("NOS_SESSIONS_PATH", filepath.Join(dir, "sessions.json"))
 	t.Setenv("NOS_RATE_LOGIN_PER_15M", "1000")
 	t.Setenv("NOS_DISABLE_APP_EVENTS", "1")
+	t.Setenv("NOS_TEST_SKIP_AUTH", "0") // real sign-in, admin and CSRF checks
 
 	h, err := pwhash.HashPassword("Correct-Horse-9")
 	if err != nil {
 		t.Fatal(err)
 	}
 	u := userstore.User{ID: "u-alice", Username: "alice", PasswordHash: h, Roles: []string{"admin"}}
-	env := loginEnv{users: usersPath}
+	env := loginEnv{users: usersPath, agent: startFakeAgent(t)}
 	if withTOTP {
 		env.secret, _, err = auth.GenerateTOTPSecret("nOS", "alice")
 		if err != nil {
@@ -215,23 +217,14 @@ func TestRefreshTokenRotationAndReuse(t *testing.T) {
 // a valid code.
 func TestSettings2FAUsesUserStore(t *testing.T) {
 	e := newLoginEnv(t, false)
-	b, _ := json.Marshal(map[string]string{"username": "alice", "password": "Correct-Horse-9"})
-	res := httptest.NewRecorder()
-	e.r.ServeHTTP(res, httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(b)))
-	cookies := res.Result().Cookies()
+	cookies, csrf := e.signIn(t)
 	call := func(method, path, body string) *httptest.ResponseRecorder {
-		req := httptest.NewRequest(method, path, bytes.NewBufferString(body))
-		for _, c := range cookies {
-			req.AddCookie(c)
-		}
-		out := httptest.NewRecorder()
-		e.r.ServeHTTP(out, req)
-		return out
+		return e.call(method, path, body, cookies, csrf)
 	}
 	if res := call(http.MethodPost, "/api/v1/auth/2fa/enroll", `{"password":"wrong"}`); res.Code != http.StatusUnauthorized {
 		t.Fatalf("enroll with a wrong password: %d", res.Code)
 	}
-	res = call(http.MethodPost, "/api/v1/auth/2fa/enroll", `{"password":"Correct-Horse-9"}`)
+	res := call(http.MethodPost, "/api/v1/auth/2fa/enroll", `{"password":"Correct-Horse-9"}`)
 	var enr struct {
 		Secret      string   `json:"secret"`
 		BackupCodes []string `json:"backup_codes"`

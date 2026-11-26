@@ -38,6 +38,7 @@ func (d *routeDeps) registerApps(pr chi.Router) {
 		pr.With(adminRequired).Post("/api/v1/apps/{id}/stop", handleStopApp(appsManager))
 		pr.With(adminRequired).Post("/api/v1/apps/{id}/restart", handleRestartApp(appsManager))
 		pr.With(adminRequired).Post("/api/v1/apps/{id}/rollback", handleRollbackApp(appsManager))
+		pr.With(adminRequired).Post("/api/v1/apps/{id}/snapshots", handleSnapshotApp(appsManager))
 		pr.With(adminRequired).Delete("/api/v1/apps/{id}", handleDeleteApp(appsManager))
 		pr.With(adminRequired).Post("/api/v1/apps/{id}/health", handleForceHealthCheck(appsManager))
 

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -37,6 +38,13 @@ func (d *routeDeps) registerSetup(r chi.Router) {
 				// Evaluate setup completion from disk on every request (robust against file changes)
 				us, _ := userstore.New(cfg.UsersPath)
 				if us != nil && us.HasAdmin() {
+					// "Is this first boot?" has an answer, not an error: the
+					// UI asks on every page (a 410 here was logged as an
+					// error in the browser each time). Setup actions are gone.
+					if r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/state") {
+						writeJSON(w, map[string]any{"firstBoot": false, "otpRequired": false, "complete": true})
+						return
+					}
 					httpx.WriteTypedError(w, http.StatusGone, "setup.complete", "Setup already completed", 0)
 					return
 				}
@@ -128,11 +136,11 @@ func (d *routeDeps) registerSetup(r chi.Router) {
 			}
 			_ = json.NewDecoder(r.Body).Decode(&body)
 			uname := strings.TrimSpace(body.Username)
-			if !validUsername(uname) {
+			if !validAccountName(uname) {
 				httpx.WriteTypedError(w, http.StatusBadRequest, "input.invalid", "Invalid username", 0)
 				return
 			}
-			if !validPassword(body.Password) {
+			if !validPassword(body.Password) || passwordProblem(body.Password) != "" {
 				httpx.WriteTypedError(w, http.StatusBadRequest, "input.weak_password", "Choose a stronger password", 0)
 				return
 			}
@@ -164,6 +172,16 @@ func (d *routeDeps) registerSetup(r chi.Router) {
 				httpx.WriteErrorWithDetails(w, http.StatusInternalServerError, code, "Service cannot write /etc/nos/users.json", map[string]any{"path": cfg.UsersPath})
 				return
 			}
+			// The administrator's file-sharing (SMB) account, with the same
+			// password. Setup doesn't depend on it: a later password reset
+			// creates it too.
+			if d.agentClient != nil {
+				ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+				if err := (agentAccounts{agent: d.agentClient}).SetPassword(ctx, uname, body.Password); err != nil {
+					Logger(cfg).Warn().Str("event", "setup.smb_account").Err(err).Msg("the administrator's SMB account was not created")
+				}
+				cancel()
+			}
 			// The administrator exists: the setup code and its console banner go away.
 			if err := fb.Consume(); err != nil {
 				Logger(cfg).Warn().Str("event", "setup.otp.consume").Err(err).Msg("")
@@ -173,7 +191,11 @@ func (d *routeDeps) registerSetup(r chi.Router) {
 		})
 
 		// Mark setup as complete - called after all setup steps are done
-		sr.With(requireSetupAuth(cfg)).Post("/complete", func(w http.ResponseWriter, r *http.Request) {
+		// The setup token lasts 10 minutes and the wizard's later steps often
+		// take longer; by then the new administrator is signed in, so their
+		// session (with the CSRF token) may finish setup too. (Finishing used
+		// to fail silently once the token expired.)
+		sr.With(d.setupTokenOrAdmin(requireSetupAuth(cfg))).Post("/complete", func(w http.ResponseWriter, r *http.Request) {
 			// Check if already complete
 			setupCompleteFile := filepath.Join(cfg.EtcDir, "nos", "setup-complete")
 			if _, err := os.Stat(setupCompleteFile); err == nil {
@@ -204,4 +226,20 @@ func (d *routeDeps) registerSetup(r chi.Router) {
 		})
 	})
 
+}
+
+// setupTokenOrAdmin lets a signed-in administrator through (CSRF-checked),
+// and anyone else through the setup token check.
+func (d *routeDeps) setupTokenOrAdmin(tokenAuth func(http.Handler) http.Handler) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		viaToken := tokenAuth(next)
+		viaSession := requireCSRF(d.adminRequired(next))
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if _, ok := signedInUID(r); ok {
+				viaSession.ServeHTTP(w, r)
+				return
+			}
+			viaToken.ServeHTTP(w, r)
+		})
+	}
 }

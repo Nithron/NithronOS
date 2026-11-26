@@ -231,6 +231,25 @@ func handleDeleteApp(appManager *apps.Manager) http.HandlerFunc {
 	}
 }
 
+// handleSnapshotApp takes a snapshot of an app's data on request.
+func handleSnapshotApp(appManager *apps.Manager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		appID := chi.URLParam(r, "id")
+		uid, _ := signedInUID(r)
+		snap, err := appManager.SnapshotApp(r.Context(), appID, uid)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				httpx.WriteTypedError(w, http.StatusNotFound, "apps.not_found", "App not found", 0)
+				return
+			}
+			httpx.WriteTypedError(w, http.StatusBadGateway, "apps.snapshot_failed", err.Error(), 0)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		writeJSON(w, snap)
+	}
+}
+
 // handleRollbackApp rolls back an app to a snapshot
 func handleRollbackApp(appManager *apps.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

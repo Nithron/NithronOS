@@ -4,6 +4,8 @@ import (
 	"context"
 	"slices"
 	"sort"
+	"sync"
+	"time"
 
 	"github.com/rs/zerolog/log"
 
@@ -82,7 +84,7 @@ func (d *routeDeps) forgetUser(ctx context.Context, username string) {
 // dashboardSources feeds the dashboard's shares and apps widgets from the
 // real stores (one row per protocol a share is exported over).
 func (d *routeDeps) dashboardSources() api.DashboardSources {
-	src := api.DashboardSources{}
+	src := api.DashboardSources{Disks: d.smart.get}
 	if d.sharesStore != nil {
 		src.Shares = func() []api.ShareInfo {
 			out := []api.ShareInfo{}
@@ -114,4 +116,50 @@ func activeOrDisabled(on bool) string {
 		return "active"
 	}
 	return "disabled"
+}
+
+// smartCacheTTL is how often the dashboard's disk health is read again.
+const smartCacheTTL = 5 * time.Minute
+
+// smartCache holds the disks' SMART health; reading it takes seconds per
+// disk (through nos-agent: smartctl needs root), so it is refreshed in the
+// background and the dashboard shows the last result.
+type smartCache struct {
+	mu         sync.Mutex
+	summary    api.DisksSummary
+	at         time.Time
+	refreshing bool
+	collect    func(context.Context) []SMARTDevice
+}
+
+func (c *smartCache) get() api.DisksSummary {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.refreshing && time.Since(c.at) > smartCacheTTL {
+		c.refreshing = true
+		go c.refresh()
+	}
+	return c.summary
+}
+
+func (c *smartCache) refresh() {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	devices := c.collect(ctx)
+	s := api.DisksSummary{Total: len(devices), LastScanISO: time.Now().UTC().Format(time.RFC3339)}
+	for _, d := range devices {
+		switch d.Health {
+		case "good":
+			s.Healthy++
+		case "warning":
+			s.Warning++
+		case "critical":
+			s.Critical++
+		default:
+			s.Unknown++
+		}
+	}
+	c.mu.Lock()
+	c.summary, c.at, c.refreshing = s, time.Now(), false
+	c.mu.Unlock()
 }

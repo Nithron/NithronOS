@@ -51,6 +51,7 @@ type agentShare struct {
 	NFS         *shares.NFS `json:"nfs,omitempty"`
 	Owners      []string    `json:"owners"`
 	Readers     []string    `json:"readers"`
+	Apps        []string    `json:"apps"`
 }
 
 type agentGroup struct {
@@ -74,7 +75,7 @@ func (a *sharesApplier) Apply(ctx context.Context) applyStatus {
 	for _, sh := range a.shares.List() {
 		req.Shares = append(req.Shares, agentShare{
 			Name: sh.Name, Path: sh.Path, Description: sh.Description,
-			SMB: sh.SMB, NFS: sh.NFS, Owners: sh.Owners, Readers: sh.Readers,
+			SMB: sh.SMB, NFS: sh.NFS, Owners: sh.Owners, Readers: sh.Readers, Apps: nonNil(sh.Apps),
 		})
 	}
 	for _, g := range a.groups.List() {
@@ -123,4 +124,11 @@ func (a *sharesApplier) applyAtStartup() {
 		}
 		time.Sleep(10 * time.Second)
 	}
+}
+
+func nonNil(list []string) []string {
+	if list == nil {
+		return []string{}
+	}
+	return list
 }

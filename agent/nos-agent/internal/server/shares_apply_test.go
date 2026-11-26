@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -38,7 +39,13 @@ func (f *fakeSharesHost) WriteFile(p string, d []byte) error {
 func (f *fakeSharesHost) Run(name string, args ...string) ([]byte, error) {
 	f.ran = append(f.ran, name+" "+strings.Join(args, " "))
 	if name == "groupadd" {
-		f.groups[args[0]] = true
+		f.groups[args[len(args)-1]] = true
+	}
+	if name == "getent" {
+		if !f.groups[args[1]] {
+			return nil, errors.New("exit status 2")
+		}
+		return []byte(args[1] + ":x:997:\n"), nil
 	}
 	return nil, nil
 }
@@ -203,5 +210,56 @@ func TestSharesApplyRoute(t *testing.T) {
 	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/shares/apply", strings.NewReader(`{"shares":[{"name":"a","path":"/etc"}]}`)))
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("bad path: %d", rr.Code)
+	}
+}
+
+// An app the admin opens a share to reads it through its own system group,
+// separate from people; the app's install gets that group's GID.
+func TestShareOpenedToAnApp(t *testing.T) {
+	h := newFakeSharesHost()
+	req := SharesApplyRequest{Users: []string{"alice"}, Shares: []applyShare{
+		{Name: "media", Path: "/srv/shares/media", Owners: []string{"user:alice"}, Apps: []string{"nai"}},
+		{Name: "private", Path: "/srv/shares/private", Owners: []string{"user:alice"}},
+	}}
+	if err := validateSharesApply(&req); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := applyShares(h, req); err != nil {
+		t.Fatal(err)
+	}
+	if got := h.ranLike("groupadd --system nos-app-nai"); len(got) != 1 {
+		t.Fatalf("app group not created as a system group: %v", h.ran)
+	}
+	var mediaACL, privateACL string
+	for _, r := range h.ranLike("setfacl") {
+		if strings.HasSuffix(r, "/srv/shares/media") {
+			mediaACL = r
+		}
+		if strings.HasSuffix(r, "/srv/shares/private") {
+			privateACL = r
+		}
+	}
+	if !strings.Contains(mediaACL, "g:nos-app-nai:r-x") || !strings.Contains(mediaACL, "d:g:nos-app-nai:r-x") {
+		t.Fatalf("media must be readable (and inherit) for the app: %s", mediaACL)
+	}
+	if strings.Contains(privateACL, "nos-app-nai") {
+		t.Fatalf("a share not opened to the app must not list it: %s", privateACL)
+	}
+
+	// The install's group op returns the same group's GID.
+	gid, err := ensureAppGroup(h.Run, "nai")
+	if err != nil || gid != "997" {
+		t.Fatalf("gid: %q %v", gid, err)
+	}
+
+	for _, bad := range []string{"NAI", "a-very-long-app-id-over-24", "../x"} {
+		r := SharesApplyRequest{Shares: []applyShare{{Name: "m", Path: "/srv/shares/m", Apps: []string{bad}}}}
+		if validateSharesApply(&r) == nil {
+			t.Errorf("app id %q accepted", bad)
+		}
+	}
+	r := SharesApplyRequest{Groups: []applyGroup{{Name: "app-nai"}}}
+	if validateSharesApply(&r) == nil {
+		t.Error("a people group may not take an app group's name")
 	}
 }

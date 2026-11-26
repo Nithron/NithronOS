@@ -93,6 +93,7 @@ func buildMux() http.Handler {
 	mux.HandleFunc("/v1/btrfs/check-repair", handleBtrfsCheckRepair)
 	mux.HandleFunc("/v1/btrfs/usage", handleBtrfsUsage)
 	mux.HandleFunc("/v1/smb/user-create", handleSMBUserCreate)
+	mux.HandleFunc("/v1/smb/user-delete", handleSMBUserDelete)
 	mux.HandleFunc("/v1/smb/users", handleSMBUsersList)
 	mux.HandleFunc("/v1/shares/apply", handleSharesApply)
 	mux.HandleFunc("/v1/snapshot/create", handleSnapshotCreate)

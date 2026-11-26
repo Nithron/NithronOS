@@ -64,16 +64,20 @@ type NFS struct {
 
 // Share is one shared folder.
 type Share struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Path        string    `json:"path"`
-	Description string    `json:"description,omitempty"`
-	SMB         *SMB      `json:"smb,omitempty"`
-	NFS         *NFS      `json:"nfs,omitempty"`
-	Owners      []string  `json:"owners,omitempty"`  // read and write
-	Readers     []string  `json:"readers,omitempty"` // read only
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Path        string   `json:"path"`
+	Description string   `json:"description,omitempty"`
+	SMB         *SMB     `json:"smb,omitempty"`
+	NFS         *NFS     `json:"nfs,omitempty"`
+	Owners      []string `json:"owners,omitempty"`  // read and write
+	Readers     []string `json:"readers,omitempty"` // read only
+	// Apps lists installed apps (by id) that may read the share, e.g. an
+	// indexer. They read through their own group nos-app-<id>, apart from
+	// the people in Owners and Readers.
+	Apps      []string  `json:"apps,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 
 	// NithronSync settings.
 	SyncEnabled      bool     `json:"sync_enabled,omitempty"`
@@ -93,6 +97,7 @@ func (s Share) NFSEnabled() bool { return s.NFS != nil && s.NFS.Enabled }
 func (s Share) Clone() Share {
 	s.Owners = slices.Clone(s.Owners)
 	s.Readers = slices.Clone(s.Readers)
+	s.Apps = slices.Clone(s.Apps)
 	s.SyncExclude = slices.Clone(s.SyncExclude)
 	s.SyncAllowedUsers = slices.Clone(s.SyncAllowedUsers)
 	if s.SMB != nil {

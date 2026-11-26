@@ -12,6 +12,9 @@ import {
 import { navItems } from '@/config/nav'
 import { Toasts } from '../ui/toast'
 import { useAuth } from '@/lib/auth'
+import { useQuery } from '@tanstack/react-query'
+import { monitorApi } from '@/api/monitor'
+import type { AlertEvent } from '@/api/monitor.types'
 import { cn } from '@/lib/utils'
 
 interface SidebarItemProps {
@@ -77,9 +80,18 @@ function SidebarItem({ item, level = 0 }: SidebarItemProps) {
 export function AppShell({ children }: { children?: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const [alerts] = useState<any[]>([])
   const [alertsOpen, setAlertsOpen] = useState(false)
   const { logout, session } = useAuth()
+  // Firing alerts (admins only: the alert API is theirs). This polled
+  // nothing every 5 s before.
+  const isAdmin = Boolean(session?.user.isAdmin || session?.user.roles?.includes('admin'))
+  const { data: alertEvents } = useQuery({
+    queryKey: ['monitor', 'alerts', 'events'],
+    queryFn: () => monitorApi.alerts.events.list(50),
+    enabled: isAdmin,
+    refetchInterval: 30_000,
+  })
+  const alerts: AlertEvent[] = (alertEvents?.events ?? []).filter((e) => e.state === 'firing')
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -95,21 +107,6 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
     }
   }, [])
 
-  useEffect(() => {
-    let stop = false
-    async function pullAlerts() {
-      try {
-        // TODO: Restore when health API is available
-        // const r = await api.health.alerts()
-        // if (!stop) setAlerts(r.alerts || [])
-      } catch {}
-      if (!stop) setTimeout(pullAlerts, 5000)
-    }
-    pullAlerts()
-    return () => {
-      stop = true
-    }
-  }, [])
 
   const handleLogout = async () => {
     try {
@@ -255,22 +252,22 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
               </div>
             ) : (
               <div className="space-y-3">
-                {alerts.map((alert: any) => (
+                {alerts.map((alert) => (
                   <div
                     key={alert.id}
                     className={cn(
                       'rounded-lg border p-3',
-                      alert.severity === 'crit'
+                      alert.severity === 'critical'
                         ? 'border-destructive bg-destructive/10'
                         : 'border-yellow-600 bg-yellow-600/10'
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-mono text-sm">{alert.device}</span>
+                      <span className="text-sm font-medium">{alert.rule_name}</span>
                       <span
                         className={cn(
                           'rounded px-2 py-0.5 text-xs font-medium',
-                          alert.severity === 'crit'
+                          alert.severity === 'critical'
                             ? 'bg-destructive text-destructive-foreground'
                             : 'bg-yellow-600 text-yellow-50'
                         )}
@@ -279,10 +276,10 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
                       </span>
                     </div>
                     <div className="mt-2 text-sm">
-                      {(alert.messages || []).join('; ')}
+                      {alert.message}
                     </div>
                     <div className="mt-2 text-xs text-muted-foreground">
-                      {new Date(alert.createdAt).toLocaleString()}
+                      {new Date(alert.fired_at).toLocaleString()}
                     </div>
                   </div>
                 ))}

@@ -114,6 +114,12 @@ export const navItems: NavItem[] = [
         icon: Calendar,
         path: '/backup/schedules',
       },
+      {
+        id: 'remote',
+        label: 'Off-site copies',
+        icon: Globe,
+        path: '/backup/remote',
+      },
     ],
   },
   {
@@ -121,12 +127,6 @@ export const navItems: NavItem[] = [
     label: 'Apps',
     icon: Package,
     path: '/apps',
-  },
-  {
-    id: 'remote',
-    label: 'Remote',
-    icon: Globe,
-    path: '/remote',
   },
   {
     id: 'monitor',
@@ -159,6 +159,11 @@ export const navItems: NavItem[] = [
         id: 'users',
         label: 'Users',
         path: '/settings/users',
+      },
+      {
+        id: 'groups',
+        label: 'Groups',
+        path: '/settings/groups',
       },
       {
         id: 'schedules',

@@ -60,6 +60,8 @@ export default function Setup() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [setupToken, setSetupToken] = useState<string | null>(null)
+  // Why the wizard went back to the code step, if it did.
+  const [otpNotice, setOtpNotice] = useState<string | null>(null)
   const [adminCreds, setAdminCreds] = useState<{ username: string; password: string } | null>(null)
   const [enableTotp, setEnableTotp] = useState(false)
   
@@ -165,17 +167,30 @@ export default function Setup() {
             )}
             
             {step === 'otp' && (
-              <StepOTP 
-                onSuccess={(token) => {
-                  setSetupToken(token)
-                  setStep('admin')
-                }}
-              />
+              <>
+                {otpNotice && (
+                  <div role="status" className="mb-4 rounded-md border border-yellow-600/40 bg-yellow-600/10 p-3 text-sm">
+                    {otpNotice}
+                  </div>
+                )}
+                <StepOTP 
+                  onSuccess={(token) => {
+                    setOtpNotice(null)
+                    setSetupToken(token)
+                    setStep('admin')
+                  }}
+                />
+              </>
             )}
             
             {step === 'admin' && setupToken && (
               <StepCreateAdmin
                 token={setupToken}
+                onExpired={() => {
+                  setSetupToken(null)
+                  setOtpNotice('The setup session ended after 10 minutes. Enter the code shown on the server screen again; nothing was lost.')
+                  setStep('otp')
+                }}
                 onSuccess={(totpEnabled, creds) => {
                   if (creds) {
                     setAdminCreds(creds)
@@ -204,11 +219,13 @@ export default function Setup() {
                   if (enableTotp && adminCreds) {
                     setStep('totp')
                   } else {
-                    // Mark setup as complete if no TOTP
+                    // Mark setup as complete if no TOTP. The administrator is
+                    // signed in, which also works after the token expired.
                     try {
                       await api.setup.complete(setupToken)
                     } catch (err) {
-                      console.error('Failed to mark setup complete:', err)
+                      toast.error(`Setup could not be finished: ${getErrorMessage(err)}`)
+                      return
                     }
                     // Attempt to login so subsequent steps use nos-client session
                     try {
@@ -240,7 +257,8 @@ export default function Setup() {
                   try {
                     await api.setup.complete(setupToken)
                   } catch (err) {
-                    console.error('Failed to mark setup complete:', err)
+                    toast.error(`Setup could not be finished: ${getErrorMessage(err)}`)
+                    return
                   }
                   setStep('done')
                 }}
@@ -496,10 +514,13 @@ function StepOTP({ onSuccess }: { onSuccess: (token: string) => void }) {
 
 function StepCreateAdmin({ 
   token, 
-  onSuccess 
+  onSuccess,
+  onExpired,
 }: { 
   token: string
   onSuccess: (enableTotp: boolean, creds?: { username: string; password: string }) => void
+  /** The setup token (10 minutes) ran out: start again from the code. */
+  onExpired: () => void
 }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -555,6 +576,10 @@ function StepCreateAdmin({
       }
     } catch (err) {
       if (err instanceof APIError) {
+        if (err.code === 'setup.session.invalid') {
+          onExpired()
+          return
+        }
         if (err.code === 'setup.write_failed') {
           setError('Cannot write configuration. Check server permissions for /etc/nos/users.json')
         } else if (err.code === 'input.username_taken') {

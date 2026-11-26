@@ -14,6 +14,20 @@ var (
 	ErrBadPath = errors.New("path must be under an allowed root")
 )
 
+// reAppID is an app id as the catalog and nos-agent accept it.
+var reAppID = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
+
+// ErrBadAppID reports an app id that isn't lowercase letters, digits and '-'.
+var ErrBadAppID = errors.New("invalid app id")
+
+// AppID checks an app id.
+func AppID(s string) error {
+	if !reAppID.MatchString(s) {
+		return ErrBadAppID
+	}
+	return nil
+}
+
 func ShareName(s string) error {
 	if !reShare.MatchString(s) {
 		return ErrBadName

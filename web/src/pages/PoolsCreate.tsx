@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { api } from '../api/client'
+import { storageApi } from '@/api/storage'
 import { useNavigate } from 'react-router-dom'
+import { getErrorMessage } from '@/lib/nos-client'
 
 export function PoolsCreate() {
   const nav = useNavigate()
@@ -15,14 +16,20 @@ export function PoolsCreate() {
   const [plan, setPlan] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const [disksLoaded, setDisksLoaded] = useState(false)
   useEffect(() => {
-    api.disks.get().then((d: any) => setDiskList(d.disks || []))
+    // A failed disk list is shown, not thrown (it used to be an unhandled
+    // rejection and an empty page).
+    storageApi.disks()
+      .then((d) => setDiskList(d))
+      .catch((e: unknown) => setError(`The disks could not be listed: ${getErrorMessage(e)}`))
+      .finally(() => setDisksLoaded(true))
   }, [])
 
   async function doPlan() {
     setError(null)
     try {
-      const res = await api.pools.planCreateV1({ name: label, mountpoint, devices, raidData, raidMeta, encrypt })
+      const res = await storageApi.planCreate({ name: label, mountpoint, devices, raidData, raidMeta, encrypt })
       setPlan(res)
       setStep(5)
     } catch (e: any) {
@@ -33,7 +40,7 @@ export function PoolsCreate() {
   async function doCreate() {
     setError(null)
     try {
-      await api.pools.applyCreateV1({ plan: plan?.plan, fstab: plan?.fstab, confirm: 'CREATE' })
+      await storageApi.applyCreate({ plan: plan?.plan, fstab: plan?.fstab, confirm: 'CREATE' })
       const id = label
       nav(`/storage/${encodeURIComponent(id)}?mount=${encodeURIComponent(mountpoint)}`)
     } catch (e: any) {
@@ -50,6 +57,9 @@ export function PoolsCreate() {
           <div className="space-y-2">
             <div className="text-sm">Select devices <span className="text-red-500">(will be erased)</span></div>
             <div className="space-y-1">
+              {disksLoaded && diskList.length === 0 && !error && (
+                <div className="text-sm text-muted-foreground">No disks found.</div>
+              )}
               {diskList.map((d) => (
                 <label key={d.path || d.name} className="flex items-center gap-2">
                   <input type="checkbox" checked={devices.includes(d.path || d.name)} onChange={(e) => {

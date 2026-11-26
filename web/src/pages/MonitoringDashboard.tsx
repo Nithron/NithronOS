@@ -1,3 +1,5 @@
+import { useServices } from '@/api/system'
+import { getErrorMessage } from '@/lib/nos-client'
 import { motion } from 'framer-motion'
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { 
@@ -137,6 +139,17 @@ function ServiceCard({
   )
 }
 
+
+// What each systemd service is, in words.
+const serviceLabels: Record<string, { name: string; description: string }> = {
+  nosd: { name: 'nOS daemon', description: 'The web interface and API' },
+  'nos-agent': { name: 'nOS agent', description: 'Does the privileged work for nosd' },
+  caddy: { name: 'Caddy', description: 'HTTPS and the reverse proxy' },
+  docker: { name: 'Docker', description: 'Runs the installed apps' },
+  smbd: { name: 'Samba', description: 'Windows and macOS file sharing (SMB)' },
+  'nfs-server': { name: 'NFS server', description: 'Linux and Unix file sharing' },
+}
+
 export default function MonitoringDashboard() {
   const queryClient = useQueryClient()
   const { data: metrics, isLoading, error, refetch } = useMonitoringData()
@@ -188,13 +201,14 @@ export default function MonitoringDashboard() {
     setTimeout(() => setIsManualRefreshing(false), 1000)
   }
 
-  // Mock service status (would come from real API)
-  const services = [
-    { name: 'NOS Daemon', status: 'running' as const, description: 'Core system service' },
-    { name: 'NOS Agent', status: 'running' as const, description: 'System monitoring agent' },
-    { name: 'Caddy', status: 'running' as const, description: 'Web server' },
-    { name: 'SMB Server', status: 'stopped' as const, description: 'File sharing service' }
-  ]
+  // The services' real state from systemd. (This was a fixed list that
+  // always showed SMB "stopped" and everything else "running".)
+  const { data: serviceStates, error: servicesError } = useServices()
+  const services = (serviceStates ?? []).map((s) => ({
+    name: serviceLabels[s.name]?.name ?? s.name,
+    description: serviceLabels[s.name]?.description ?? s.name,
+    status: s.status === 'failed' ? ('error' as const) : s.status,
+  }))
 
   if (isLoading && !metrics) {
     return (
@@ -499,6 +513,9 @@ export default function MonitoringDashboard() {
                 <CardDescription>Status of core services</CardDescription>
               </CardHeader>
               <CardContent>
+                {servicesError && (
+                  <p className="text-sm text-destructive">The service states could not be read: {getErrorMessage(servicesError)}</p>
+                )}
                 <div className="grid gap-3 md:grid-cols-2">
                   {services.map((service) => (
                     <ServiceCard

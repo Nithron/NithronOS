@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getErrorMessage } from '@/lib/nos-client';
 import { 
   Package,
   Play,
@@ -67,6 +68,15 @@ export function AppDetails() {
       toast.success('App started');
       queryClient.invalidateQueries({ queryKey: ['apps', id] });
     },
+  });
+
+  const snapshotMutation = useMutation({
+    mutationFn: () => appsApi.snapshotApp(id!),
+    onSuccess: () => {
+      toast.success('Snapshot taken');
+      queryClient.invalidateQueries({ queryKey: ['apps', id] });
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
   });
 
   const stopMutation = useMutation({
@@ -552,10 +562,8 @@ export function AppDetails() {
               <h2 className="text-xl font-semibold">Snapshots</h2>
               <button
                 className="btn btn-secondary btn-sm"
-                onClick={() => {
-                  // In production, this would trigger a manual snapshot
-                  toast.info('Manual snapshots coming soon');
-                }}
+                onClick={() => snapshotMutation.mutate()}
+                disabled={snapshotMutation.isPending}
               >
                 <HardDrive className="w-4 h-4 mr-2" />
                 Create Snapshot

@@ -7,7 +7,6 @@ import { PoolDetails } from '../PoolDetails'
 vi.mock('@/lib/nos-client', () => {
   const pools = {
     list: vi.fn(),
-    listUnversioned: vi.fn(),
     get: vi.fn(),
     planDevice: vi.fn(),
     applyDevice: vi.fn(),
@@ -23,7 +22,7 @@ describe('Devices wizard warnings and confirm gating', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Mock the pool data
-    vi.mocked(http.pools.listUnversioned).mockResolvedValue([{ id:'p1', mount:'/mnt/p1', uuid:'U', raid:'raid1', size:1, used:0, free:1, devices:[] }] as any)
+    vi.mocked(http.pools.list).mockResolvedValue([{ id:'p1', mount:'/mnt/p1', uuid:'U', raid:'raid1', size:1, used:0, free:1, devices:[] }] as any)
     vi.mocked(http.pools.get).mockResolvedValue({
       id:'p1', 
       mount:'/mnt/p1', 

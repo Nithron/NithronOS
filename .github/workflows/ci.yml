@@ -515,52 +515,50 @@ jobs:
         run: node scripts/check-fe-api-paths.mjs
   
   ui-e2e:
+    # The live UI pass: the real nosd and nos-agent in a container, the built
+    # web UI, and Playwright opening every page (scripts/live-ui/run.sh). It
+    # used to run specs against a stack that never existed and never failed.
     name: UI E2E Tests (Playwright)
     needs: [build, test]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            backend/nosd/go.sum
+            agent/nos-agent/go.sum
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          
-      - name: Check if Playwright tests exist
-        id: check-tests
+
+      - name: Install the web UI and Playwright
         run: |
-          if [ -d "tests/e2e/ui" ]; then
-            echo "tests_exist=true" >> $GITHUB_OUTPUT
-          else
-            echo "tests_exist=false" >> $GITHUB_OUTPUT
-          fi
-          
-      - name: Install Playwright
-        if: steps.check-tests.outputs.tests_exist == 'true'
-        run: |
-          cd tests/e2e/ui
-          npm install
-          npx playwright install --with-deps chromium
-        continue-on-error: true
-          
-      - name: Run Playwright tests
-        if: steps.check-tests.outputs.tests_exist == 'true'
-        run: |
-          cd tests/e2e/ui
-          mkdir -p test-results playwright-report
-          npm run test || echo "Playwright tests not yet implemented"
-        continue-on-error: true
-          
-      - name: Upload test results
-        if: always() && steps.check-tests.outputs.tests_exist == 'true'
+          (cd web && npm ci)
+          (cd tests/e2e/ui && npm ci)
+
+      - name: Walk every page against a real nosd and nos-agent
+        # The runner's Google Chrome; no browser download.
+        env:
+          PW_CHANNEL: chrome
+        run: bash scripts/live-ui/run.sh
+
+      - name: Upload screenshots and the report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-results-${{ github.sha }}
+          name: live-ui-${{ github.sha }}
           path: |
             tests/e2e/ui/test-results/
-            tests/e2e/ui/playwright-report/
-        continue-on-error: true
+            tests/e2e/ui/live-report.json
+          if-no-files-found: ignore
 
   storage-e2e:
     name: Storage E2E Tests (Btrfs)

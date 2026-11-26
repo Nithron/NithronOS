@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -387,7 +388,7 @@ func (h *SyncHandler) ListSyncShares(w http.ResponseWriter, r *http.Request) {
 
 	// Get all shares accessible to this user
 	allShares := h.shareStore.List()
-	var syncShares []nosync.SyncShare
+	syncShares := []nosync.SyncShare{} // [] in JSON, not null
 
 	for _, share := range allShares {
 		if read, _ := h.access.ShareAccess(share, userID); !read {
@@ -640,18 +641,44 @@ func (h *SyncHandler) DeviceManager() *nosync.DeviceManager {
 
 // ==================== Conflict Handlers ====================
 
+// callerDevices is whose conflicts and activity a request sees: a sync
+// client its own device, the web UI (a signed-in user) all of that user's
+// devices. (Both used to require a device, so the web UI's sync pages got
+// 401.) ok is false when neither is known.
+func (h *SyncHandler) callerDevices(r *http.Request) (ids []string, actor string, ok bool) {
+	if id := r.Header.Get("X-Device-ID"); id != "" {
+		return []string{id}, id, true
+	}
+	uid := r.Header.Get("X-Device-User-ID")
+	if uid == "" {
+		return nil, "", false
+	}
+	ids = []string{}
+	for _, d := range h.deviceMgr.ListDevices(uid) {
+		ids = append(ids, d.ID)
+	}
+	return ids, "user:" + uid, true
+}
+
+func (h *SyncHandler) requireCaller(w http.ResponseWriter, r *http.Request) ([]string, string, bool) {
+	ids, actor, ok := h.callerDevices(r)
+	if !ok {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+	}
+	return ids, actor, ok
+}
+
 // ListConflicts returns all sync conflicts
 func (h *SyncHandler) ListConflicts(w http.ResponseWriter, r *http.Request) {
-	deviceID := r.Header.Get("X-Device-ID")
-	if deviceID == "" {
-		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+	devices, _, ok := h.requireCaller(w, r)
+	if !ok {
 		return
 	}
 
 	shareID := r.URL.Query().Get("share_id")
 	unresolvedOnly := r.URL.Query().Get("unresolved_only") == "true"
 
-	conflicts := h.conflictStore.ListConflicts(shareID, deviceID, unresolvedOnly)
+	conflicts := h.conflictStore.ListConflicts(shareID, devices, unresolvedOnly)
 	writeJSON(w, conflicts)
 }
 
@@ -663,8 +690,13 @@ func (h *SyncHandler) GetConflict(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	devices, _, ok := h.requireCaller(w, r)
+	if !ok {
+		return
+	}
+	// Another user's conflict is "not found" too.
 	conflict, err := h.conflictStore.GetConflict(conflictID)
-	if err != nil {
+	if err != nil || !slices.Contains(devices, conflict.DeviceID) {
 		httpx.WriteTypedError(w, http.StatusNotFound, "conflict.not_found", "Conflict not found", 0)
 		return
 	}
@@ -674,9 +706,8 @@ func (h *SyncHandler) GetConflict(w http.ResponseWriter, r *http.Request) {
 
 // ResolveConflict resolves a sync conflict
 func (h *SyncHandler) ResolveConflict(w http.ResponseWriter, r *http.Request) {
-	deviceID := r.Header.Get("X-Device-ID")
-	if deviceID == "" {
-		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+	devices, actor, ok := h.requireCaller(w, r)
+	if !ok {
 		return
 	}
 
@@ -702,14 +733,18 @@ func (h *SyncHandler) ResolveConflict(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conflict, err := h.conflictStore.ResolveConflict(conflictID, resolution, deviceID)
+	if c, err := h.conflictStore.GetConflict(conflictID); err != nil || !slices.Contains(devices, c.DeviceID) {
+		httpx.WriteTypedError(w, http.StatusNotFound, "conflict.not_found", "Conflict not found", 0)
+		return
+	}
+	conflict, err := h.conflictStore.ResolveConflict(conflictID, resolution, actor)
 	if err != nil {
 		httpx.WriteTypedError(w, http.StatusNotFound, "conflict.not_found", "Conflict not found", 0)
 		return
 	}
 
-	// Record activity
-	h.activityStore.RecordActivity(deviceID, conflict.ShareID, nosync.ActivityConflict, conflict.Path, 0)
+	// Recorded against the device whose conflict it was.
+	h.activityStore.RecordActivity(conflict.DeviceID, conflict.ShareID, nosync.ActivityConflict, conflict.Path, 0)
 
 	writeJSON(w, conflict)
 }
@@ -718,9 +753,8 @@ func (h *SyncHandler) ResolveConflict(w http.ResponseWriter, r *http.Request) {
 
 // ListActivity returns paginated sync activity
 func (h *SyncHandler) ListActivity(w http.ResponseWriter, r *http.Request) {
-	deviceID := r.Header.Get("X-Device-ID")
-	if deviceID == "" {
-		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+	devices, _, ok := h.requireCaller(w, r)
+	if !ok {
 		return
 	}
 
@@ -728,33 +762,31 @@ func (h *SyncHandler) ListActivity(w http.ResponseWriter, r *http.Request) {
 	page := parseIntWithDefault(r.URL.Query().Get("page"), 1)
 	pageSize := parseIntWithDefault(r.URL.Query().Get("page_size"), 50)
 
-	result := h.activityStore.ListActivities(deviceID, shareID, page, pageSize)
+	result := h.activityStore.ListActivities(devices, shareID, page, pageSize)
 	writeJSON(w, result)
 }
 
 // GetRecentActivity returns recent sync activity
 func (h *SyncHandler) GetRecentActivity(w http.ResponseWriter, r *http.Request) {
-	deviceID := r.Header.Get("X-Device-ID")
-	if deviceID == "" {
-		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+	devices, _, ok := h.requireCaller(w, r)
+	if !ok {
 		return
 	}
 
 	limit := parseIntWithDefault(r.URL.Query().Get("limit"), 20)
-	activities := h.activityStore.GetRecentActivities(deviceID, limit)
+	activities := h.activityStore.GetRecentActivities(devices, limit)
 	writeJSON(w, activities)
 }
 
 // GetActivityStats returns activity statistics
 func (h *SyncHandler) GetActivityStats(w http.ResponseWriter, r *http.Request) {
-	deviceID := r.Header.Get("X-Device-ID")
-	if deviceID == "" {
-		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Authentication required", 0)
+	devices, _, ok := h.requireCaller(w, r)
+	if !ok {
 		return
 	}
 
 	shareID := r.URL.Query().Get("share_id")
-	stats := h.activityStore.GetActivityStats(deviceID, shareID)
+	stats := h.activityStore.GetActivityStats(devices, shareID)
 	writeJSON(w, stats)
 }
 

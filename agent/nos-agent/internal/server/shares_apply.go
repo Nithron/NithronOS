@@ -77,6 +77,7 @@ type applyShare struct {
 	NFS         *applyNFS `json:"nfs,omitempty"`
 	Owners      []string  `json:"owners"`
 	Readers     []string  `json:"readers"`
+	Apps        []string  `json:"apps"` // app ids that may read, through nos-app-<id>
 }
 
 type applyGroup struct {
@@ -121,6 +122,11 @@ func validateSharesApply(req *SharesApplyRequest) error {
 				return fmt.Errorf("share %s: %w", s.Name, err)
 			}
 		}
+		for _, id := range s.Apps {
+			if err := validAppGroupID(id); err != nil {
+				return fmt.Errorf("share %s: %w", s.Name, err)
+			}
+		}
 		if s.SMB != nil && s.SMB.Recycle != nil && s.SMB.Recycle.Enabled && !validRecycleDir(s.SMB.Recycle.Directory) {
 			return fmt.Errorf("share %s: bad recycle directory", s.Name)
 		}
@@ -136,7 +142,7 @@ func validateSharesApply(req *SharesApplyRequest) error {
 		}
 	}
 	for _, g := range req.Groups {
-		if !reGroupName.MatchString(g.Name) || g.Name == "users" {
+		if !reGroupName.MatchString(g.Name) || g.Name == "users" || strings.HasPrefix(g.Name, "app-") {
 			return fmt.Errorf("group name %q", g.Name)
 		}
 		for _, m := range g.Members {
@@ -329,6 +335,11 @@ func shareACL(s applyShare, acc hostAccounts, warn func(string, ...any)) string 
 	}
 	for _, g := range rg {
 		if !slices.Contains(og, g) {
+			add("g", g, "r-x")
+		}
+	}
+	for _, id := range s.Apps {
+		if g := appGroupName(id); acc.GroupExists(g) {
 			add("g", g, "r-x")
 		}
 	}
@@ -539,6 +550,62 @@ func syncGroups(h sharesHost, req SharesApplyRequest, warn func(string, ...any))
 	for _, g := range req.Groups {
 		set(unixGroupPrefix+g.Name, g.Members)
 	}
+	// Apps read through their own system group, which has no members.
+	seen := map[string]bool{}
+	for _, s := range req.Shares {
+		for _, id := range s.Apps {
+			if seen[id] {
+				continue
+			}
+			seen[id] = true
+			if _, err := ensureAppGroup(h.Run, id); err != nil {
+				warn("app %s: %v", id, err)
+			}
+		}
+	}
+}
+
+// appGroupPrefix names the group an app reads shares through: nos-app-<id>.
+const appGroupPrefix = "nos-app-"
+
+// maxAppGroupID keeps nos-app-<id> within Unix's 32-character group names.
+const maxAppGroupID = 32 - len(appGroupPrefix)
+
+func appGroupName(appID string) string { return appGroupPrefix + appID }
+
+func validAppGroupID(id string) error {
+	if !reAppID.MatchString(id) || len(id) > maxAppGroupID {
+		return fmt.Errorf("app id %q (lowercase letters, digits and '-', at most %d)", id, maxAppGroupID)
+	}
+	return nil
+}
+
+// ensureAppGroup creates the app's system group if it is missing and returns
+// its GID. The group has no members: the app's containers join it with
+// group_add, so a share opened to the app is readable by them and nobody else.
+func ensureAppGroup(run func(string, ...string) ([]byte, error), appID string) (string, error) {
+	if err := validAppGroupID(appID); err != nil {
+		return "", err
+	}
+	name := appGroupName(appID)
+	out, err := run("getent", "group", name)
+	if err != nil {
+		if out, err := run("groupadd", "--system", name); err != nil {
+			return "", fmt.Errorf("groupadd %s: %s", name, strings.TrimSpace(string(out)))
+		}
+		if out, err = run("getent", "group", name); err != nil {
+			return "", fmt.Errorf("getent %s: %s", name, strings.TrimSpace(string(out)))
+		}
+	}
+	// name:x:gid:members
+	fields := strings.Split(strings.TrimSpace(string(out)), ":")
+	if len(fields) < 3 {
+		return "", fmt.Errorf("getent %s: unexpected %q", name, strings.TrimSpace(string(out)))
+	}
+	if _, err := strconv.Atoi(fields[2]); err != nil {
+		return "", fmt.Errorf("getent %s: unexpected gid %q", name, fields[2])
+	}
+	return fields[2], nil
 }
 
 // applyShareFolder creates the folder and sets its permissions. Folders under

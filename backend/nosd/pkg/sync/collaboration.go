@@ -149,7 +149,7 @@ func (s *CollaborationStore) ListSharedFolders(userID string) []*SharedFolder {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var result []*SharedFolder
+	result := []*SharedFolder{} // [] in JSON, not null
 	for _, folder := range s.sharedFolders {
 		for _, member := range folder.Members {
 			if member.UserID == userID {
@@ -166,7 +166,7 @@ func (s *CollaborationStore) ListOwnedFolders(userID string) []*SharedFolder {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var result []*SharedFolder
+	result := []*SharedFolder{} // [] in JSON, not null
 	for _, folder := range s.sharedFolders {
 		if folder.OwnerID == userID {
 			result = append(result, folder)
@@ -316,7 +316,7 @@ func (s *CollaborationStore) ListPendingInvites(userID string) []*ShareInvite {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var result []*ShareInvite
+	result := []*ShareInvite{} // [] in JSON, not null
 	now := time.Now()
 	for _, invite := range s.invites {
 		if invite.InviteeID == userID && invite.Status == InvitePending && invite.ExpiresAt.After(now) {

@@ -4,60 +4,88 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/rs/zerolog/log"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog/log"
 
 	"nos/backend/nosd/internal/auth/hash"
 	userstore "nos/backend/nosd/internal/auth/store"
 	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/pkg/agentclient"
 	"nos/backend/nosd/pkg/httpx"
-
-	"github.com/go-chi/chi/v5"
 )
 
-// UserAccount represents a user account in the API
+// The roles a user can have. Admins manage the system; users reach the
+// shares, apps and sync they are given.
+const (
+	roleAdmin = "admin"
+	roleUser  = "user"
+)
+
+// UserAccount is a user as the API shows it. (It used to also report an
+// email, a display name and an "enabled" flag that weren't stored: the email
+// was the username and every user was "enabled".)
 type UserAccount struct {
-	ID               string    `json:"id"`
-	Username         string    `json:"username"`
-	Email            string    `json:"email"`
-	DisplayName      string    `json:"display_name,omitempty"`
-	Roles            []string  `json:"roles"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	LastLoginAt      time.Time `json:"last_login_at,omitempty"`
-	Enabled          bool      `json:"enabled"`
-	TwoFactorEnabled bool      `json:"two_factor_enabled"`
+	ID               string     `json:"id"`
+	Username         string     `json:"username"`
+	Roles            []string   `json:"roles"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	LastLoginAt      *time.Time `json:"last_login_at,omitempty"`
+	TwoFactorEnabled bool       `json:"two_factor_enabled"`
+	// LockedUntil is set while too many failed sign-ins keep the user out.
+	LockedUntil *time.Time `json:"locked_until,omitempty"`
 }
 
-// CreateUserRequest represents a request to create a new user
+// CreateUserRequest is the body of POST /users.
 type CreateUserRequest struct {
-	Username    string   `json:"username"`
-	Email       string   `json:"email"`
-	Password    string   `json:"password"`
-	DisplayName string   `json:"display_name"`
-	Roles       []string `json:"roles"`
+	Username string   `json:"username"`
+	Password string   `json:"password"`
+	Roles    []string `json:"roles"`
 }
 
-// UpdateUserRequest represents a request to update a user
+// UpdateUserRequest is the body of PUT /users/{id}: only roles change. (It
+// used to take an "email" that silently renamed the account, which cut it
+// off from its SMB account and its share access.)
 type UpdateUserRequest struct {
-	DisplayName *string   `json:"display_name,omitempty"`
-	Email       *string   `json:"email,omitempty"`
-	Roles       *[]string `json:"roles,omitempty"`
-	Enabled     *bool     `json:"enabled,omitempty"`
+	Roles []string `json:"roles"`
 }
 
-// ChangePasswordRequest represents a password change request
+// ChangePasswordRequest is a signed-in user changing their own password.
 type ChangePasswordRequest struct {
 	CurrentPassword string `json:"current_password"`
 	NewPassword     string `json:"new_password"`
 }
 
-// UsersHandler handles user management endpoints
+// systemAccounts keeps a user's Unix/SMB account (file sharing) in step with
+// their nOS account: same name, same password.
+type systemAccounts interface {
+	SetPassword(ctx context.Context, username, password string) error
+	Remove(ctx context.Context, username string) error
+}
+
+// agentAccounts does it through nos-agent.
+type agentAccounts struct{ agent AgentClient }
+
+func (a agentAccounts) SetPassword(ctx context.Context, username, password string) error {
+	return a.agent.PostJSON(ctx, "/v1/smb/user-create", map[string]string{"username": username, "password": password}, nil)
+}
+
+func (a agentAccounts) Remove(ctx context.Context, username string) error {
+	return a.agent.PostJSON(ctx, "/v1/smb/user-delete", map[string]string{"username": username}, nil)
+}
+
+// UsersHandler serves /api/v1/users (admins) and a user's own password change.
 type UsersHandler struct {
 	store    *userstore.Store
 	sessions userSessions
 	config   config.Config
+	// system keeps the SMB account in step. Nil skips it (tests, no agent).
+	system systemAccounts
 	// onDeleted runs after a user is deleted (takes them out of groups and
 	// share access lists). Nil does nothing.
 	onDeleted func(ctx context.Context, username string)
@@ -69,227 +97,216 @@ type userSessions interface {
 	RevokeOthers(uid, keepSID string) error
 }
 
-// NewUsersHandler creates a new users handler
+// NewUsersHandler creates a new users handler.
 func NewUsersHandler(store *userstore.Store, sessions userSessions, cfg config.Config) *UsersHandler {
-	return &UsersHandler{
-		store:    store,
-		sessions: sessions,
-		config:   cfg,
-	}
+	return &UsersHandler{store: store, sessions: sessions, config: cfg}
 }
 
-// ListUsers returns all users
+// Routes are for admins.
+func (h *UsersHandler) Routes() chi.Router {
+	r := chi.NewRouter()
+	r.Get("/", h.ListUsers)
+	r.Post("/", h.CreateUser)
+	r.Get("/{id}", h.GetUser)
+	r.Put("/{id}", h.UpdateUser)
+	r.Delete("/{id}", h.DeleteUser)
+	r.Post("/{id}/reset-password", h.ResetPassword)
+	r.Post("/{id}/roles", h.UpdateUser)
+	// An admin can turn off a user's two-factor sign-in (a lost phone); only
+	// the user can turn it on. (A "toggle" here stored the word "pending" as
+	// the secret, and a recovery-code generator made codes from the clock.)
+	r.Post("/{id}/2fa/disable", h.DisableTwoFactor)
+	return r
+}
+
+// accountNameRe is a name that works as a Unix account (Samba, ACLs, groups).
+var accountNameRe = regexp.MustCompile(`^[a-z_][a-z0-9_-]{2,31}$`)
+
+func validAccountName(s string) bool { return accountNameRe.MatchString(s) }
+
+// passwordProblem says what is wrong with a new password, or "". SMB takes it
+// on one line, so line breaks are refused.
+func passwordProblem(p string) string {
+	switch {
+	case len(p) < 8:
+		return "Password must be at least 8 characters"
+	case len(p) > 256:
+		return "Password must be at most 256 characters"
+	case strings.ContainsAny(p, "\r\n\x00"):
+		return "Password can't contain line breaks"
+	}
+	return ""
+}
+
+func validRoles(roles []string) bool {
+	if len(roles) == 0 {
+		return false
+	}
+	for _, r := range roles {
+		if r != roleAdmin && r != roleUser {
+			return false
+		}
+	}
+	return true
+}
+
+func toAccount(u userstore.User) UserAccount {
+	a := UserAccount{
+		ID:               u.ID,
+		Username:         u.Username,
+		Roles:            u.Roles,
+		CreatedAt:        parseTime(u.CreatedAt),
+		UpdatedAt:        parseTime(u.UpdatedAt),
+		TwoFactorEnabled: userHasTOTP(u),
+	}
+	if a.Roles == nil {
+		a.Roles = []string{}
+	}
+	if t := parseTime(u.LastLoginAt); !t.IsZero() {
+		a.LastLoginAt = &t
+	}
+	if t := parseTime(u.LockedUntil); t.After(time.Now()) {
+		a.LockedUntil = &t
+	}
+	return a
+}
+
+func (h *UsersHandler) findOr404(w http.ResponseWriter, id string) (userstore.User, bool) {
+	u, err := h.store.FindByID(id)
+	switch {
+	case errors.Is(err, userstore.ErrUserNotFound):
+		httpx.WriteTypedError(w, http.StatusNotFound, "user.not_found", "User not found", 0)
+		return u, false
+	case err != nil:
+		httpx.WriteTypedError(w, http.StatusInternalServerError, "user.get_failed", "Failed to get user", 0)
+		return u, false
+	}
+	return u, true
+}
+
+// ListUsers returns all users.
 func (h *UsersHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := h.store.List()
 	if err != nil {
 		httpx.WriteTypedError(w, http.StatusInternalServerError, "users.list_failed", "Failed to list users", 0)
 		return
 	}
-
-	// Convert to API response format
-	apiUsers := make([]UserAccount, 0, len(users))
+	out := make([]UserAccount, 0, len(users))
 	for _, u := range users {
-		apiUser := UserAccount{
-			ID:               u.ID,
-			Username:         u.Username,
-			Email:            u.Username, // Username is email in current implementation
-			DisplayName:      "",         // Not in current store
-			Roles:            u.Roles,
-			CreatedAt:        parseTime(u.CreatedAt),
-			UpdatedAt:        parseTime(u.UpdatedAt),
-			Enabled:          true, // Not in current store
-			TwoFactorEnabled: u.TOTPEnc != "",
-		}
-		if u.LastLoginAt != "" {
-			apiUser.LastLoginAt = parseTime(u.LastLoginAt)
-		}
-		apiUsers = append(apiUsers, apiUser)
+		out = append(out, toAccount(u))
 	}
-
-	writeJSON(w, apiUsers)
+	writeJSON(w, out)
 }
 
-// GetUser returns a specific user
+// GetUser returns one user.
 func (h *UsersHandler) GetUser(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "id")
-	if userID == "" {
-		httpx.WriteTypedError(w, http.StatusBadRequest, "user.id_required", "User ID is required", 0)
-		return
+	if u, ok := h.findOr404(w, chi.URLParam(r, "id")); ok {
+		writeJSON(w, toAccount(u))
 	}
-
-	user, err := h.store.FindByID(userID)
-	if err != nil {
-		if err == userstore.ErrUserNotFound {
-			httpx.WriteTypedError(w, http.StatusNotFound, "user.not_found", "User not found", 0)
-		} else {
-			httpx.WriteTypedError(w, http.StatusInternalServerError, "user.get_failed", "Failed to get user", 0)
-		}
-		return
-	}
-
-	apiUser := UserAccount{
-		ID:               user.ID,
-		Username:         user.Username,
-		Email:            user.Username,
-		DisplayName:      "", // Not in current store
-		Roles:            user.Roles,
-		CreatedAt:        parseTime(user.CreatedAt),
-		UpdatedAt:        parseTime(user.UpdatedAt),
-		Enabled:          true, // Not in current store
-		TwoFactorEnabled: user.TOTPEnc != "",
-	}
-	if user.LastLoginAt != "" {
-		apiUser.LastLoginAt = parseTime(user.LastLoginAt)
-	}
-
-	writeJSON(w, apiUser)
 }
 
-// CreateUser creates a new user
+// CreateUser creates a user and their SMB account. (The username used to be
+// replaced by an "email" field, so new users got names no share could use.)
 func (h *UsersHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req CreateUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&req); err != nil {
 		httpx.WriteTypedError(w, http.StatusBadRequest, "user.invalid_request", "Invalid request body", 0)
 		return
 	}
-
-	// Validate request
-	if req.Username == "" || req.Email == "" {
-		httpx.WriteTypedError(w, http.StatusBadRequest, "user.missing_fields", "Username and email are required", 0)
+	req.Username = strings.TrimSpace(req.Username)
+	if !validAccountName(req.Username) {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "user.invalid_username",
+			"Username: 3-32 lowercase letters, digits, '-' or '_', starting with a letter", 0)
 		return
 	}
-
-	if req.Password == "" || len(req.Password) < 8 {
-		httpx.WriteTypedError(w, http.StatusBadRequest, "user.weak_password", "Password must be at least 8 characters", 0)
+	if p := passwordProblem(req.Password); p != "" {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "user.weak_password", p, 0)
 		return
 	}
-
-	// Check if user already exists
-	if _, err := h.store.FindByUsername(req.Email); err == nil {
-		httpx.WriteTypedError(w, http.StatusConflict, "user.already_exists", "User with this email already exists", 0)
+	if len(req.Roles) == 0 {
+		req.Roles = []string{roleUser}
+	}
+	if !validRoles(req.Roles) {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "user.invalid_roles", "Roles must be admin or user", 0)
 		return
 	}
-
-	// Hash password
-	hashedPassword, err := hash.HashPassword(req.Password)
+	if _, err := h.store.FindByUsername(req.Username); err == nil {
+		httpx.WriteTypedError(w, http.StatusConflict, "user.already_exists", "A user with this name already exists", 0)
+		return
+	}
+	hashed, err := hash.HashPassword(req.Password)
 	if err != nil {
 		httpx.WriteTypedError(w, http.StatusInternalServerError, "user.hash_failed", "Failed to hash password", 0)
 		return
 	}
-
-	// Create user
+	// The SMB account first: a name the system refuses (root, a daemon
+	// account) must not become a nOS user either.
+	if h.system != nil {
+		if err := h.system.SetPassword(r.Context(), req.Username, req.Password); err != nil {
+			log.Error().Err(err).Str("user", req.Username).Msg("create SMB account")
+			httpx.WriteTypedError(w, http.StatusBadGateway, "user.system_account_failed",
+				"The file-sharing account could not be created: "+agentErrorMessage(err), 0)
+			return
+		}
+	}
 	now := time.Now().UTC().Format(time.RFC3339)
-	newUser := userstore.User{
-		ID:           generateUUID(),
-		Username:     req.Email,
-		PasswordHash: hashedPassword,
-		Roles:        req.Roles,
-		CreatedAt:    now,
-		UpdatedAt:    now,
-	}
-
-	if len(newUser.Roles) == 0 {
-		newUser.Roles = []string{"user"}
-	}
-
-	// Save user
-	if err := h.store.UpsertUser(newUser); err != nil {
+	u := userstore.User{ID: generateUUID(), Username: req.Username, PasswordHash: hashed, Roles: req.Roles, CreatedAt: now, UpdatedAt: now}
+	if err := h.store.UpsertUser(u); err != nil {
+		if h.system != nil {
+			_ = h.system.Remove(context.Background(), req.Username)
+		}
 		httpx.WriteTypedError(w, http.StatusInternalServerError, "user.create_failed", "Failed to create user", 0)
 		return
 	}
-
-	// Return created user
-	apiUser := UserAccount{
-		ID:               newUser.ID,
-		Username:         newUser.Username,
-		Email:            newUser.Username,
-		DisplayName:      req.DisplayName,
-		Roles:            newUser.Roles,
-		CreatedAt:        parseTime(newUser.CreatedAt),
-		UpdatedAt:        parseTime(newUser.UpdatedAt),
-		Enabled:          true,
-		TwoFactorEnabled: false,
-	}
-
 	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, apiUser)
+	writeJSON(w, toAccount(u))
 }
 
-// UpdateUser updates an existing user
+// UpdateUser changes a user's roles. The last administrator stays one.
 func (h *UsersHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "id")
-	if userID == "" {
-		httpx.WriteTypedError(w, http.StatusBadRequest, "user.id_required", "User ID is required", 0)
-		return
-	}
-
 	var req UpdateUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&req); err != nil {
 		httpx.WriteTypedError(w, http.StatusBadRequest, "user.invalid_request", "Invalid request body", 0)
 		return
 	}
-
-	// Get existing user
-	user, err := h.store.FindByID(userID)
-	if err != nil {
-		if err == userstore.ErrUserNotFound {
-			httpx.WriteTypedError(w, http.StatusNotFound, "user.not_found", "User not found", 0)
-		} else {
-			httpx.WriteTypedError(w, http.StatusInternalServerError, "user.get_failed", "Failed to get user", 0)
-		}
+	if !validRoles(req.Roles) {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "user.invalid_roles", "Roles must be admin or user", 0)
 		return
 	}
-
-	// Update fields
-	// DisplayName not in store
-	if req.Email != nil {
-		user.Username = *req.Email
+	u, ok := h.findOr404(w, chi.URLParam(r, "id"))
+	if !ok {
+		return
 	}
-	if req.Roles != nil {
-		user.Roles = *req.Roles
+	if contains(u.Roles, roleAdmin) && !contains(req.Roles, roleAdmin) && h.adminCount() <= 1 {
+		httpx.WriteTypedError(w, http.StatusConflict, "user.last_admin", "The last administrator must stay an administrator", 0)
+		return
 	}
-	// Enabled/Disabled not in store
-
-	user.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
-
-	// Save updated user
-	if err := h.store.UpsertUser(user); err != nil {
+	u.Roles = req.Roles
+	u.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	if err := h.store.UpsertUser(u); err != nil {
 		httpx.WriteTypedError(w, http.StatusInternalServerError, "user.update_failed", "Failed to update user", 0)
 		return
 	}
-
-	// Return updated user
-	apiUser := UserAccount{
-		ID:               user.ID,
-		Username:         user.Username,
-		Email:            user.Username,
-		DisplayName:      "", // Not in store
-		Roles:            user.Roles,
-		CreatedAt:        parseTime(user.CreatedAt),
-		UpdatedAt:        parseTime(user.UpdatedAt),
-		Enabled:          true, // Not in store
-		TwoFactorEnabled: user.TOTPEnc != "",
-	}
-	if user.LastLoginAt != "" {
-		apiUser.LastLoginAt = parseTime(user.LastLoginAt)
-	}
-
-	writeJSON(w, apiUser)
+	writeJSON(w, toAccount(u))
 }
 
-// DeleteUser deletes a user
+func (h *UsersHandler) adminCount() int {
+	users, _ := h.store.List()
+	n := 0
+	for _, u := range users {
+		if contains(u.Roles, roleAdmin) {
+			n++
+		}
+	}
+	return n
+}
+
+// DeleteUser deletes a user, signs them out, takes them out of groups and
+// shares, and removes their SMB access.
 func (h *UsersHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "id")
-	if userID == "" {
-		httpx.WriteTypedError(w, http.StatusBadRequest, "user.id_required", "User ID is required", 0)
-		return
-	}
-
 	gone, findErr := h.store.FindByID(userID)
-
-	// The store refuses to delete the last administrator. (This used to refuse
-	// every admin, and for other users it re-saved the remaining users without
-	// ever removing the deleted one, so nobody was actually deleted.)
+	// The store refuses to delete the last administrator.
 	if err := h.store.DeleteUser(userID); err != nil {
 		switch {
 		case errors.Is(err, userstore.ErrUserNotFound):
@@ -301,342 +318,45 @@ func (h *UsersHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	// A deleted user's browsers are signed out at once.
 	if err := h.sessions.RevokeAll(userID); err != nil {
 		log.Error().Err(err).Str("uid", userID).Msg("revoke sessions of deleted user")
 	}
-	if findErr == nil && h.onDeleted != nil {
-		h.onDeleted(r.Context(), gone.Username)
+	if findErr == nil {
+		if h.onDeleted != nil {
+			h.onDeleted(r.Context(), gone.Username)
+		}
+		if h.system != nil {
+			if err := h.system.Remove(r.Context(), gone.Username); err != nil {
+				log.Error().Err(err).Str("user", gone.Username).Msg("remove SMB account of deleted user")
+			}
+		}
 	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// ChangePassword changes a user's password
-func (h *UsersHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "id")
-	if userID == "" {
-		httpx.WriteTypedError(w, http.StatusBadRequest, "user.id_required", "User ID is required", 0)
-		return
-	}
-
-	var req ChangePasswordRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpx.WriteTypedError(w, http.StatusBadRequest, "user.invalid_request", "Invalid request body", 0)
-		return
-	}
-
-	// The caller. (This read a context key nothing set, and the unchecked
-	// type assertion panicked, so changing a password always failed.)
-	caller, ok := signedInUser(r)
-	if !ok {
-		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Sign in required", 0)
-		return
-	}
-	currentUserID := caller.UID
-
-	// Users can only change their own password (unless admin)
-	if currentUserID != userID {
-		currentUser, _ := h.store.FindByID(currentUserID)
-		isAdmin := false
-		for _, role := range currentUser.Roles {
-			if role == "admin" {
-				isAdmin = true
-				break
-			}
-		}
-		if !isAdmin {
-			httpx.WriteTypedError(w, http.StatusForbidden, "user.forbidden", "You can only change your own password", 0)
-			return
-		}
-	}
-
-	// Get user
-	user, err := h.store.FindByID(userID)
+// setPassword sets u's password everywhere it is used: SMB first (so a
+// refused SMB password leaves nothing half-changed), then nOS.
+func (h *UsersHandler) setPassword(ctx context.Context, u *userstore.User, password string) (code, msg string, status int) {
+	hashed, err := hash.HashPassword(password)
 	if err != nil {
-		if err == userstore.ErrUserNotFound {
-			httpx.WriteTypedError(w, http.StatusNotFound, "user.not_found", "User not found", 0)
-		} else {
-			httpx.WriteTypedError(w, http.StatusInternalServerError, "user.get_failed", "Failed to get user", 0)
-		}
-		return
+		return "user.hash_failed", "Failed to hash password", http.StatusInternalServerError
 	}
-
-	// Verify current password (if not admin changing another user's password)
-	if currentUserID == userID {
-		if !hash.VerifyPassword(user.PasswordHash, req.CurrentPassword) {
-			httpx.WriteTypedError(w, http.StatusUnauthorized, "user.invalid_password", "Current password is incorrect", 0)
-			return
+	if h.system != nil {
+		if err := h.system.SetPassword(ctx, u.Username, password); err != nil {
+			log.Error().Err(err).Str("user", u.Username).Msg("set SMB password")
+			return "user.system_account_failed", "The file-sharing password could not be set: " + agentErrorMessage(err), http.StatusBadGateway
 		}
 	}
-
-	// Validate new password
-	if len(req.NewPassword) < 8 {
-		httpx.WriteTypedError(w, http.StatusBadRequest, "user.weak_password", "Password must be at least 8 characters", 0)
-		return
+	u.PasswordHash = hashed
+	u.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	if err := h.store.UpsertUser(*u); err != nil {
+		return "user.save_failed", "Failed to save the user", http.StatusInternalServerError
 	}
-
-	// Hash new password
-	hashedPassword, err := hash.HashPassword(req.NewPassword)
-	if err != nil {
-		httpx.WriteTypedError(w, http.StatusInternalServerError, "user.hash_failed", "Failed to hash password", 0)
-		return
-	}
-
-	// Update password
-	user.PasswordHash = hashedPassword
-	user.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
-
-	if err := h.store.UpsertUser(user); err != nil {
-		httpx.WriteTypedError(w, http.StatusInternalServerError, "user.update_failed", "Failed to update password", 0)
-		return
-	}
-	// The old password's sessions end; the browser that changed its own
-	// password stays signed in.
-	keep := ""
-	if currentUserID == userID {
-		keep = caller.SID
-	}
-	if err := h.sessions.RevokeOthers(userID, keep); err != nil {
-		log.Error().Err(err).Str("uid", userID).Msg("revoke sessions after password change")
-	}
-
-	writeJSON(w, map[string]bool{"success": true})
+	return "", "", 0
 }
 
-// Helper function to parse time
-func parseTime(s string) time.Time {
-	t, _ := time.Parse(time.RFC3339, s)
-	return t
-}
-
-// Helper function to check if string is in slice
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
-}
-
-// Routes returns the routes for the users handler
-func (h *UsersHandler) Routes() chi.Router {
-	r := chi.NewRouter()
-
-	// User CRUD operations
-	r.Get("/", h.ListUsers)
-	r.Post("/", h.CreateUser)
-	r.Get("/{id}", h.GetUser)
-	r.Put("/{id}", h.UpdateUser)
-	r.Delete("/{id}", h.DeleteUser)
-
-	// Password management
-	r.Post("/{id}/password", h.ChangePassword)
-	r.Post("/{id}/reset-password", h.ResetPassword)
-
-	// Role management
-	r.Post("/{id}/roles", h.SetUserRoles)
-
-	// 2FA management
-	r.Post("/{id}/2fa/toggle", h.ToggleUser2FA)
-	r.Post("/{id}/recovery-codes", h.GenerateRecoveryCodes)
-
-	return r
-}
-
-// SetUserRoles updates a user's roles
-func (h *UsersHandler) SetUserRoles(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "id")
-	if userID == "" {
-		httpx.WriteTypedError(w, http.StatusBadRequest, "user.id_required", "User ID is required", 0)
-		return
-	}
-
-	var req struct {
-		Roles []string `json:"roles"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpx.WriteTypedError(w, http.StatusBadRequest, "user.invalid_request", "Invalid request body", 0)
-		return
-	}
-
-	// Get user
-	user, err := h.store.FindByID(userID)
-	if err != nil {
-		if err == userstore.ErrUserNotFound {
-			httpx.WriteTypedError(w, http.StatusNotFound, "user.not_found", "User not found", 0)
-		} else {
-			httpx.WriteTypedError(w, http.StatusInternalServerError, "user.get_failed", "Failed to get user", 0)
-		}
-		return
-	}
-
-	// Check if removing admin role from last admin
-	if contains(user.Roles, "admin") && !contains(req.Roles, "admin") {
-		// Check if this is the last admin
-		users, _ := h.store.List()
-		adminCount := 0
-		for _, u := range users {
-			if contains(u.Roles, "admin") {
-				adminCount++
-			}
-		}
-		if adminCount <= 1 {
-			httpx.WriteTypedError(w, http.StatusForbidden, "user.last_admin", "Cannot remove admin role from the last admin", 0)
-			return
-		}
-	}
-
-	// Update roles
-	user.Roles = req.Roles
-	user.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
-
-	if err := h.store.UpsertUser(user); err != nil {
-		httpx.WriteTypedError(w, http.StatusInternalServerError, "user.update_failed", "Failed to update user roles", 0)
-		return
-	}
-
-	writeJSON(w, map[string]any{"success": true, "roles": user.Roles})
-}
-
-// ToggleUser2FA enables or disables 2FA for a user
-func (h *UsersHandler) ToggleUser2FA(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "id")
-	if userID == "" {
-		httpx.WriteTypedError(w, http.StatusBadRequest, "user.id_required", "User ID is required", 0)
-		return
-	}
-
-	var req struct {
-		Enable bool   `json:"enable"`
-		Code   string `json:"code,omitempty"` // Required when disabling
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpx.WriteTypedError(w, http.StatusBadRequest, "user.invalid_request", "Invalid request body", 0)
-		return
-	}
-
-	// Get user
-	user, err := h.store.FindByID(userID)
-	if err != nil {
-		if err == userstore.ErrUserNotFound {
-			httpx.WriteTypedError(w, http.StatusNotFound, "user.not_found", "User not found", 0)
-		} else {
-			httpx.WriteTypedError(w, http.StatusInternalServerError, "user.get_failed", "Failed to get user", 0)
-		}
-		return
-	}
-
-	// Check current user permissions
-	currentUserID := r.Context().Value("user_id")
-	if currentUserID != nil && currentUserID.(string) != userID {
-		// Only the user themselves or an admin can toggle 2FA
-		currentUser, _ := h.store.FindByID(currentUserID.(string))
-		if !contains(currentUser.Roles, "admin") {
-			httpx.WriteTypedError(w, http.StatusForbidden, "user.forbidden", "You can only manage your own 2FA settings", 0)
-			return
-		}
-	}
-
-	if req.Enable {
-		// Enable 2FA - mark as pending until verified
-		user.TOTPEnc = "pending"
-	} else {
-		// Disable 2FA - clear TOTP and recovery codes
-		user.TOTPEnc = ""
-		user.RecoveryHashes = nil
-	}
-
-	user.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
-	if err := h.store.UpsertUser(user); err != nil {
-		httpx.WriteTypedError(w, http.StatusInternalServerError, "user.update_failed", "Failed to update 2FA settings", 0)
-		return
-	}
-
-	writeJSON(w, map[string]any{
-		"success": true,
-		"enabled": req.Enable,
-	})
-}
-
-// GenerateRecoveryCodes generates new recovery codes for a user
-func (h *UsersHandler) GenerateRecoveryCodes(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "id")
-	if userID == "" {
-		httpx.WriteTypedError(w, http.StatusBadRequest, "user.id_required", "User ID is required", 0)
-		return
-	}
-
-	// Get user
-	user, err := h.store.FindByID(userID)
-	if err != nil {
-		if err == userstore.ErrUserNotFound {
-			httpx.WriteTypedError(w, http.StatusNotFound, "user.not_found", "User not found", 0)
-		} else {
-			httpx.WriteTypedError(w, http.StatusInternalServerError, "user.get_failed", "Failed to get user", 0)
-		}
-		return
-	}
-
-	// Check if 2FA is enabled
-	if user.TOTPEnc == "" || user.TOTPEnc == "pending" {
-		httpx.WriteTypedError(w, http.StatusBadRequest, "user.2fa_not_enabled", "2FA must be enabled to generate recovery codes", 0)
-		return
-	}
-
-	// Check current user permissions
-	currentUserID := r.Context().Value("user_id")
-	if currentUserID != nil && currentUserID.(string) != userID {
-		// Only the user themselves or an admin can generate recovery codes
-		currentUser, _ := h.store.FindByID(currentUserID.(string))
-		if !contains(currentUser.Roles, "admin") {
-			httpx.WriteTypedError(w, http.StatusForbidden, "user.forbidden", "You can only manage your own recovery codes", 0)
-			return
-		}
-	}
-
-	// Generate new recovery codes
-	codes := make([]string, 10)
-	hashes := make([]string, 10)
-	for i := 0; i < 10; i++ {
-		code := generateRecoveryCode()
-		codes[i] = code
-		// Hash the recovery code for storage
-		hashedCode, _ := hash.HashPassword(code)
-		hashes[i] = hashedCode
-	}
-
-	// Update user with new recovery code hashes
-	user.RecoveryHashes = hashes
-	user.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
-
-	if err := h.store.UpsertUser(user); err != nil {
-		httpx.WriteTypedError(w, http.StatusInternalServerError, "user.update_failed", "Failed to save recovery codes", 0)
-		return
-	}
-
-	// Return the plain codes (only shown once)
-	writeJSON(w, map[string]any{
-		"success": true,
-		"codes":   codes,
-		"message": "Save these codes in a safe place. They will not be shown again.",
-	})
-}
-
-// generateRecoveryCode generates a random recovery code
-func generateRecoveryCode() string {
-	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	b := make([]byte, 8)
-	for i := range b {
-		b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
-	}
-	return string(b)
-}
-
-// ResetPassword sets another user's password (the users API is for admins;
-// /{id}/password is a user changing their own, with the current one). The
-// user's sessions end and a lockout is cleared.
+// ResetPassword sets another user's password (an admin). The user's sessions
+// end and a lockout is cleared.
 func (h *UsersHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "id")
 	var req struct {
@@ -646,28 +366,101 @@ func (h *UsersHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteTypedError(w, http.StatusBadRequest, "user.invalid_body", "Invalid request body", 0)
 		return
 	}
-	if len(req.Password) < 8 {
-		httpx.WriteTypedError(w, http.StatusBadRequest, "user.weak_password", "Password must be at least 8 characters", 0)
+	if p := passwordProblem(req.Password); p != "" {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "user.weak_password", p, 0)
 		return
 	}
-	u, err := h.store.FindByID(userID)
-	if err != nil {
-		httpx.WriteTypedError(w, http.StatusNotFound, "user.not_found", "User not found", 0)
+	u, ok := h.findOr404(w, userID)
+	if !ok {
 		return
 	}
-	hashed, err := hash.HashPassword(req.Password)
-	if err != nil {
-		httpx.WriteTypedError(w, http.StatusInternalServerError, "user.hash_failed", "Failed to hash password", 0)
-		return
-	}
-	u.PasswordHash, u.FailedAttempts, u.LockedUntil = hashed, 0, ""
-	u.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
-	if err := h.store.UpsertUser(u); err != nil {
-		httpx.WriteTypedError(w, http.StatusInternalServerError, "user.save_failed", "Failed to save the user", 0)
+	u.FailedAttempts, u.LockedUntil = 0, ""
+	if code, msg, status := h.setPassword(r.Context(), &u, req.Password); status != 0 {
+		httpx.WriteTypedError(w, status, code, msg, 0)
 		return
 	}
 	if err := h.sessions.RevokeAll(userID); err != nil {
 		log.Error().Err(err).Str("uid", userID).Msg("revoke sessions after password reset")
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// ChangeOwnPassword is POST /api/v1/auth/password: any signed-in user, with
+// their current password. Their other sessions end; this one stays. (The
+// only password change used to be under the admin-only users API.)
+func (h *UsersHandler) ChangeOwnPassword(w http.ResponseWriter, r *http.Request) {
+	caller, ok := signedInUser(r)
+	if !ok {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Sign in required", 0)
+		return
+	}
+	var req ChangePasswordRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&req); err != nil {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "user.invalid_request", "Invalid request body", 0)
+		return
+	}
+	u, ok := h.findOr404(w, caller.UID)
+	if !ok {
+		return
+	}
+	if !hash.VerifyPassword(u.PasswordHash, req.CurrentPassword) {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "user.invalid_password", "Current password is incorrect", 0)
+		return
+	}
+	if p := passwordProblem(req.NewPassword); p != "" {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "user.weak_password", p, 0)
+		return
+	}
+	if code, msg, status := h.setPassword(r.Context(), &u, req.NewPassword); status != 0 {
+		httpx.WriteTypedError(w, status, code, msg, 0)
+		return
+	}
+	if err := h.sessions.RevokeOthers(u.ID, caller.SID); err != nil {
+		log.Error().Err(err).Str("uid", u.ID).Msg("revoke sessions after password change")
+	}
+	writeJSON(w, map[string]bool{"success": true})
+}
+
+// DisableTwoFactor turns off a user's two-factor sign-in and recovery codes.
+func (h *UsersHandler) DisableTwoFactor(w http.ResponseWriter, r *http.Request) {
+	u, ok := h.findOr404(w, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
+	u.TOTPEnc, u.RecoveryHashes = "", nil
+	u.TOTPPendingEnc, u.RecoveryPendingHashes = "", nil
+	u.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	if err := h.store.UpsertUser(u); err != nil {
+		httpx.WriteTypedError(w, http.StatusInternalServerError, "user.update_failed", "Failed to update the user", 0)
+		return
+	}
+	writeJSON(w, toAccount(u))
+}
+
+// agentErrorMessage is the part of an agent error worth showing.
+func agentErrorMessage(err error) string {
+	var he *agentclient.HTTPError
+	if errors.As(err, &he) {
+		var body struct {
+			Error string `json:"error"`
+		}
+		if json.Unmarshal([]byte(he.Body), &body) == nil && body.Error != "" {
+			return body.Error
+		}
+	}
+	return "the system agent did not answer"
+}
+
+func parseTime(s string) time.Time {
+	t, _ := time.Parse(time.RFC3339, s)
+	return t
+}
+
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }

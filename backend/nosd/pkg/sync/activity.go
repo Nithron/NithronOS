@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -160,14 +161,15 @@ func (s *ActivityStore) GetActivity(id string) (*SyncActivity, error) {
 }
 
 // ListActivities returns paginated activities
-func (s *ActivityStore) ListActivities(deviceID, shareID string, page, pageSize int) *ActivityListResponse {
+// ListActivities pages through the given devices' activity.
+func (s *ActivityStore) ListActivities(deviceIDs []string, shareID string, page, pageSize int) *ActivityListResponse {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	// Filter activities
 	var filtered []*SyncActivity
 	for _, a := range s.activities {
-		if deviceID != "" && a.DeviceID != deviceID {
+		if !slices.Contains(deviceIDs, a.DeviceID) {
 			continue
 		}
 		if shareID != "" && a.ShareID != shareID {
@@ -214,7 +216,8 @@ func (s *ActivityStore) ListActivities(deviceID, shareID string, page, pageSize 
 }
 
 // GetRecentActivities returns the most recent activities
-func (s *ActivityStore) GetRecentActivities(deviceID string, limit int) []*SyncActivity {
+// GetRecentActivities is the given devices' latest activity (never nil).
+func (s *ActivityStore) GetRecentActivities(deviceIDs []string, limit int) []*SyncActivity {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -225,9 +228,9 @@ func (s *ActivityStore) GetRecentActivities(deviceID string, limit int) []*SyncA
 		limit = 100
 	}
 
-	var result []*SyncActivity
+	result := []*SyncActivity{}
 	for _, a := range s.activities {
-		if deviceID != "" && a.DeviceID != deviceID {
+		if !slices.Contains(deviceIDs, a.DeviceID) {
 			continue
 		}
 		result = append(result, a)
@@ -239,14 +242,14 @@ func (s *ActivityStore) GetRecentActivities(deviceID string, limit int) []*SyncA
 	return result
 }
 
-// GetPendingActivities returns activities that are pending or in progress
-func (s *ActivityStore) GetPendingActivities(deviceID string) []*SyncActivity {
+// GetPendingActivities returns the given devices' pending or running activities.
+func (s *ActivityStore) GetPendingActivities(deviceIDs []string) []*SyncActivity {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var result []*SyncActivity
+	result := []*SyncActivity{}
 	for _, a := range s.activities {
-		if deviceID != "" && a.DeviceID != deviceID {
+		if !slices.Contains(deviceIDs, a.DeviceID) {
 			continue
 		}
 		if a.Status == StatusPending || a.Status == StatusInProgress {
@@ -257,7 +260,8 @@ func (s *ActivityStore) GetPendingActivities(deviceID string) []*SyncActivity {
 }
 
 // GetActivityStats returns statistics about activities
-func (s *ActivityStore) GetActivityStats(deviceID, shareID string) map[string]int64 {
+// GetActivityStats sums the given devices' activity.
+func (s *ActivityStore) GetActivityStats(deviceIDs []string, shareID string) map[string]int64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -273,7 +277,7 @@ func (s *ActivityStore) GetActivityStats(deviceID, shareID string) map[string]in
 	}
 
 	for _, a := range s.activities {
-		if deviceID != "" && a.DeviceID != deviceID {
+		if !slices.Contains(deviceIDs, a.DeviceID) {
 			continue
 		}
 		if shareID != "" && a.ShareID != shareID {

@@ -103,8 +103,14 @@ func (lm *LifecycleManager) InstallApp(ctx context.Context, req InstallRequest, 
 	}
 	cleanup := func() { _, _ = lm.host.AppOp(context.Background(), AppOp{Op: "remove", AppID: req.ID}) }
 
+	params, err := lm.withSystemParams(ctx, req.ID, req.Params)
+	if err != nil {
+		cleanup()
+		return err
+	}
+
 	// Render compose file
-	composeContent, err := lm.renderer.RenderComposeFile(entry, req.Params)
+	composeContent, err := lm.renderer.RenderComposeFile(entry, params)
 	if err != nil {
 		cleanup()
 		return fmt.Errorf("failed to render compose file: %w", err)
@@ -117,7 +123,7 @@ func (lm *LifecycleManager) InstallApp(ctx context.Context, req InstallRequest, 
 	}
 
 	// Render environment file
-	envContent, err := lm.renderer.RenderEnvFile(req.Params)
+	envContent, err := lm.renderer.RenderEnvFile(params)
 	if err != nil {
 		cleanup()
 		return fmt.Errorf("failed to render env file: %w", err)
@@ -242,7 +248,14 @@ func (lm *LifecycleManager) UpgradeApp(ctx context.Context, appID string, req Up
 
 	// Render new compose file
 	configDir := filepath.Join(lm.appsRoot, appID, "config")
-	composeContent, err := lm.renderer.RenderComposeFile(entry, params)
+	rendered, err := lm.withSystemParams(ctx, appID, params)
+	if err != nil {
+		if err := lm.stateStore.UpdateAppStatus(appID, StatusError); err != nil {
+			fmt.Printf("Failed to update app status: %v\n", err)
+		}
+		return err
+	}
+	composeContent, err := lm.renderer.RenderComposeFile(entry, rendered)
 	if err != nil {
 		if err := lm.stateStore.UpdateAppStatus(appID, StatusError); err != nil {
 			fmt.Printf("Failed to update app status: %v\n", err)
@@ -463,6 +476,25 @@ func (lm *LifecycleManager) pullImages(ctx context.Context, appID string) error 
 
 // createSnapshot snapshots the app's data and returns the snapshot's name
 // (the last element of the path the snapshot script prints).
+// SnapshotApp takes a snapshot of an installed app's data on request and
+// records it, so it can be rolled back to.
+func (lm *LifecycleManager) SnapshotApp(ctx context.Context, appID, userID string) (AppSnapshot, error) {
+	if _, err := lm.stateStore.GetApp(appID); err != nil {
+		return AppSnapshot{}, fmt.Errorf("app not found: %s", appID)
+	}
+	id, err := lm.createSnapshot(ctx, appID, "manual")
+	if err != nil {
+		return AppSnapshot{}, fmt.Errorf("failed to snapshot the app: %w", err)
+	}
+	snap := AppSnapshot{ID: id, Timestamp: time.Now(), Type: "btrfs", Name: "manual",
+		Path: filepath.Join(lm.appsRoot, ".snapshots", appID, id)}
+	if err := lm.stateStore.AddSnapshot(appID, snap); err != nil {
+		return AppSnapshot{}, fmt.Errorf("failed to record the snapshot: %w", err)
+	}
+	lm.logEvent("app.snapshot", appID, userID, map[string]interface{}{"snapshot": id})
+	return snap, nil
+}
+
 func (lm *LifecycleManager) createSnapshot(ctx context.Context, appID, name string) (string, error) {
 	out, err := lm.host.AppOp(ctx, AppOp{Op: "snapshot", AppID: appID, Name: name})
 	if err != nil {
@@ -591,4 +623,28 @@ func (lm *LifecycleManager) logEvent(eventType, appID, userID string, details in
 	if err := lm.eventLogger.LogEvent(event); err != nil {
 		fmt.Printf("Failed to log event: %v\n", err)
 	}
+}
+
+// AppGIDParam is the variable an app's compose template uses to join its
+// share-reader group (group_add: ["${NOS_APP_GID}"]). Shares the admin opens
+// to the app give that group read access.
+const AppGIDParam = "NOS_APP_GID"
+
+// withSystemParams returns a copy of params with the values nOS sets itself
+// (they replace anything the user sent under the same name).
+func (lm *LifecycleManager) withSystemParams(ctx context.Context, appID string, params map[string]interface{}) (map[string]interface{}, error) {
+	gid, err := lm.host.AppOp(ctx, AppOp{Op: "group", AppID: appID})
+	if err != nil {
+		return nil, fmt.Errorf("failed to set up the app's share group: %w", err)
+	}
+	gid = strings.TrimSpace(gid)
+	if _, err := strconv.Atoi(gid); err != nil {
+		return nil, fmt.Errorf("the app's share group has no numeric id: %q", gid)
+	}
+	out := make(map[string]interface{}, len(params)+1)
+	for k, v := range params {
+		out[k] = v
+	}
+	out[AppGIDParam] = gid
+	return out, nil
 }

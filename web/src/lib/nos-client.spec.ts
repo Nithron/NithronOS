@@ -21,10 +21,19 @@ vi.mock('axios', () => {
 });
 
 import axios from 'axios';
-import http, { openSSE, openWS } from './nos-client';
+import http, { openSSE, openWS, ProxyMisconfiguredError } from './nos-client';
 
 
 describe('nos-client', () => {
+	it('rejects an HTML answer as a misconfigured proxy', async () => {
+		const instance = (axios.create as any).mock.results[0].value;
+		const onSuccess = instance.interceptors.response.use.mock.calls[0][0];
+		await expect(onSuccess({ status: 200, headers: { 'content-type': 'text/html; charset=utf-8' }, data: '<!doctype html>' }))
+			.rejects.toBeInstanceOf(ProxyMisconfiguredError);
+		const ok = { status: 200, headers: { 'content-type': 'application/json' }, data: {} };
+		expect(onSuccess(ok)).toBe(ok);
+	});
+
 	let mockAxiosInstance: any;
 
 	beforeEach(() => {
@@ -128,7 +137,6 @@ describe('nos-client', () => {
 				'storage',
 				'pools',
 				'disks',
-				'snapshots',
 				'updates',
 				'shares',
 				'smb',

@@ -27,14 +27,10 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      // PW_CHANNEL=chromium runs headless on the full Chromium build (no
+      // separate headless-shell download); chrome uses an installed Chrome.
+      use: { ...devices['Desktop Chrome'], channel: process.env.PW_CHANNEL || undefined },
     },
   ],
-
-  webServer: process.env.CI ? undefined : {
-    command: 'docker-compose -f ../../docker-compose.yml up',
-    url: 'http://localhost:8080',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
-  },
+  // No webServer: scripts/live-ui/run.sh starts nosd, nos-agent and the UI.
 });

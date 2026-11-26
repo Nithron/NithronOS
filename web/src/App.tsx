@@ -11,6 +11,7 @@ import { Settings } from './pages/Settings'
 import { Users } from './pages/Users'
 import SettingsSchedules from './routes/settings/schedules'
 import { Remote } from './pages/Remote'
+import { Groups } from './pages/Groups'
 import { Login } from './pages/Login'
 import { NetworkSettings } from './pages/NetworkSettings'
 import { RemoteAccessWizard } from './pages/RemoteAccessWizard'
@@ -157,6 +158,7 @@ const router = createBrowserRouter([
           },
           { path: 'settings', element: <Settings /> },
           { path: 'settings/users', element: <Users /> },
+          { path: 'settings/groups', element: <Groups /> },
           { path: 'settings/schedules', element: <SettingsSchedules /> },
           { path: 'settings/updates', element: <Updates /> },
           { path: 'settings/network', element: <NetworkSettings /> },
@@ -171,7 +173,8 @@ const router = createBrowserRouter([
           { path: 'settings/sync/conflicts', element: <SyncConflicts /> },
           { path: 'settings/sync/sharing', element: <SyncSharing /> },
           { path: 'settings/sync/encryption', element: <SyncEncryption /> },
-          { path: 'remote', element: <Remote /> },
+          { path: 'backup/remote', element: <Remote /> },
+          { path: 'remote', element: <Navigate to="/backup/remote" replace /> },
           { path: 'storage/create', element: <PoolsCreate /> },
           { path: 'storage/:id', element: <PoolDetails /> },
           // Redirect old schedules route to new location

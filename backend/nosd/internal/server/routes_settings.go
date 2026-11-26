@@ -7,19 +7,26 @@ import (
 	// "nos/backend/nosd/pkg/firewall"
 )
 
-// registerSettings serves notifications, network, updates, users, appearance and about.
+// registerSettings serves network, updates, users, appearance and about.
 func (d *routeDeps) registerSettings(pr chi.Router) {
 	cfg := d.cfg
 	users := d.users
-	notificationManager := d.notificationManager
 	mgr := d.mgr
 	adminRequired := d.adminRequired
-	// Notification endpoints
-	if notificationManager != nil {
-		pr.Mount("/api/v1/notifications", NewNotificationHandler(notificationManager).Routes())
-	}
+	// (/api/v1/notifications, a second notification system with its own
+	// channels, is gone: nothing sent to it or read it, and any signed-in
+	// user could add a webhook and have nosd call any URL. Alerts and their
+	// channels are /api/v1/monitor/alerts.)
 
-	pr.Mount("/api/v1/auth", twoFactor{cfg: cfg, users: users}.settingsRoutes())
+	// Users: admins manage them; anyone signed in changes their own password.
+	usersHandler := NewUsersHandler(users, mgr, cfg)
+	usersHandler.onDeleted = d.forgetUser
+	if d.agentClient != nil {
+		usersHandler.system = agentAccounts{agent: d.agentClient}
+	}
+	authRoutes := twoFactor{cfg: cfg, users: users}.settingsRoutes()
+	authRoutes.Post("/password", usersHandler.ChangeOwnPassword)
+	pr.Mount("/api/v1/auth", authRoutes)
 
 	// Network endpoints (M4)
 	netLogger := Logger(cfg)
@@ -34,9 +41,6 @@ func (d *routeDeps) registerSettings(pr chi.Router) {
 	// Updates endpoints (M5)
 	d.registerUpdates(pr)
 
-	// Users management endpoints
-	usersHandler := NewUsersHandler(users, mgr, cfg)
-	usersHandler.onDeleted = d.forgetUser
 	pr.With(adminRequired).Mount("/api/v1/users", usersHandler.Routes())
 
 	// Appearance settings endpoints

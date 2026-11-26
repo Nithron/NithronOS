@@ -17,7 +17,7 @@ func (d *routeDeps) registerServices(pr chi.Router) {
 	pr.Get("/api/v1/health/system", handleSystemHealth(cfg))
 	pr.Get("/api/v1/metrics/stream", handleMetricsStream)
 	pr.Get("/api/v1/health/disks", handleDiskHealth(cfg))
-	pr.Get("/api/v1/health/disks/summary", api.HandleDisksSummary)
+	pr.Get("/api/v1/health/disks/summary", api.DisksSummaryHandler(d.dashboardSources()))
 	pr.Get("/api/v1/health/smart", handleSmartProxy)
 	pr.Get("/api/v1/dashboard", api.Dashboard(d.dashboardSources()))
 	pr.Get("/api/v1/storage/summary", api.HandleStorageSummary)

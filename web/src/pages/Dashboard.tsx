@@ -359,7 +359,7 @@ function DiskHealthWidget({ data, isLoading }: any) {
           Disk Health
         </CardTitle>
         <CardDescription>
-          Last scan: {disks.lastScanISO ? formatTimestamp(disks.lastScanISO) : 'Never'}
+          {disks.lastScanISO ? `SMART checked ${formatTimestamp(disks.lastScanISO)}` : 'Checking SMART…'}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -388,7 +388,12 @@ function DiskHealthWidget({ data, isLoading }: any) {
                 {disks.critical} Critical
               </Badge>
             )}
-            {disks.total === 0 && (
+            {disks.unknown > 0 && (
+              <Badge variant="outline" className="gap-1">
+                {disks.unknown} No SMART data
+              </Badge>
+            )}
+            {disks.lastScanISO && disks.total === 0 && (
               <span className="text-sm text-muted-foreground">No disks detected</span>
             )}
           </div>

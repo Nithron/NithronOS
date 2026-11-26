@@ -26,8 +26,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { PermissionsEditor } from '@/components/shares/PermissionsEditor'
-import { usePolicy } from '@/hooks/use-shares'
-import type { Share, CreateShareRequest, UpdateShareRequest } from '@/api/client'
+import { usePolicy, type Share, type CreateShareRequest, type UpdateShareRequest } from '@/api/shares'
+import { AppAccess } from '@/components/shares/AppAccess'
 
 const shareNameSchema = z.string()
 	.min(2, 'Name must be at least 2 characters')
@@ -58,6 +58,7 @@ const shareFormSchema = z.object({
 	}),
 	owners: z.array(z.string()),
 	readers: z.array(z.string()),
+	apps: z.array(z.string()),
 })
 
 type ShareFormData = z.infer<typeof shareFormSchema>
@@ -109,6 +110,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 			},
 			owners: share?.owners || [],
 			readers: share?.readers || [],
+			apps: share?.apps || [],
 		},
 	})
 
@@ -119,6 +121,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 	const watchNfsEnabled = watch('nfs.enabled')
 	const watchOwners = watch('owners')
 	const watchReaders = watch('readers')
+	const watchApps = watch('apps')
 	const watchSyncEnabled = watch('sync.enabled')
 	const watchSyncExcludePatterns = watch('sync.exclude_patterns')
 
@@ -470,6 +473,10 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 						onOwnersChange={(owners: string[]) => setValue('owners', owners)}
 						onReadersChange={(readers: string[]) => setValue('readers', readers)}
 						guestEnabled={watchSmbGuest}
+					/>
+					<AppAccess
+						selected={watchApps}
+						onChange={(apps: string[]) => setValue('apps', apps)}
 					/>
 				</TabsContent>
 			</Tabs>

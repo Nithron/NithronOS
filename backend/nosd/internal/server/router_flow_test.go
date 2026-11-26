@@ -109,13 +109,18 @@ func TestSetupFullFlowAnd410(t *testing.T) {
 		}
 	}
 
-	// state now 410
+	// state now says setup is done; setup actions are gone (410)
 	{
-		t.Log("state-410")
+		t.Log("state-after-setup")
 		res := httptest.NewRecorder()
 		r.ServeHTTP(res, httptest.NewRequest(http.MethodGet, "/api/v1/setup/state", nil))
+		if res.Code != http.StatusOK || !strings.Contains(res.Body.String(), `"firstBoot":false`) {
+			t.Fatalf("state after setup: %d %s", res.Code, res.Body.String())
+		}
+		res = httptest.NewRecorder()
+		r.ServeHTTP(res, httptest.NewRequest(http.MethodPost, "/api/v1/setup/otp/verify", strings.NewReader(`{"otp":"123456"}`)))
 		if res.Code != http.StatusGone {
-			t.Fatalf("state after setup: expected 410, got %d", res.Code)
+			t.Fatalf("otp/verify after setup: expected 410, got %d", res.Code)
 		}
 	}
 
@@ -380,12 +385,12 @@ func TestSetupCookiePathAndCookieAuth(t *testing.T) {
 		}
 	}
 
-	// state should now be 410
+	// state now says setup is done
 	{
 		res := httptest.NewRecorder()
 		r.ServeHTTP(res, httptest.NewRequest(http.MethodGet, "/api/v1/setup/state", nil))
-		if res.Code != http.StatusGone {
-			t.Fatalf("state after setup: expected 410, got %d", res.Code)
+		if res.Code != http.StatusOK || !strings.Contains(res.Body.String(), `"firstBoot":false`) {
+			t.Fatalf("state after setup: %d %s", res.Code, res.Body.String())
 		}
 	}
 }
@@ -622,12 +627,12 @@ func TestSetupTransition_DeleteUsersRestoresFirstBoot(t *testing.T) {
 		}
 	}
 
-	// Now gated: /state returns 410
+	// Now done: /state says so
 	{
 		res := httptest.NewRecorder()
 		r.ServeHTTP(res, httptest.NewRequest(http.MethodGet, "/api/v1/setup/state", nil))
-		if res.Code != http.StatusGone {
-			t.Fatalf("after setup: expected 410, got %d", res.Code)
+		if res.Code != http.StatusOK || !strings.Contains(res.Body.String(), `"firstBoot":false`) {
+			t.Fatalf("after setup: %d %s", res.Code, res.Body.String())
 		}
 	}
 

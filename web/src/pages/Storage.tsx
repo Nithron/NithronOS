@@ -5,36 +5,45 @@ import {
   Activity,
   Plus,
   RefreshCw,
-  AlertTriangle,
-  CheckCircle,
   ChevronRight,
   Thermometer,
   Clock,
-  AlertCircle
 } from 'lucide-react'
 import { ColumnDef } from '@tanstack/react-table'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card } from '@/components/ui/card-enhanced'
 import { EmptyState } from '@/components/ui/empty-state'
-import { StatusPill, HealthBadge } from '@/components/ui/status'
+import { StatusPill } from '@/components/ui/status'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { 
-  usePools, 
-  useDevices, 
+import {
+  usePools,
+  useDevices,
   useSmartDevice,
   useScrubStatus,
   useBalanceStatus,
-  useStartScrub,
-  useStartBalance,
-  useApiStatus
-} from '@/hooks/use-api'
+  useMaintenanceMutations,
+  type Device,
+  type Pool,
+} from '@/api/storage'
 import { cn } from '@/lib/utils'
-// import type { Device, Pool } from '@/lib/api'
-type Device = any
-type Pool = any
+import { getErrorMessage } from '@/lib/nos-client'
+import { toast } from '@/components/ui/toast'
+
+// A device's kind: rotational disks are HDDs.
+function deviceKind(d: Device): string {
+  if (d.rota === undefined) return 'Unknown'
+  return d.rota ? 'HDD' : 'SSD'
+}
+
+// What a device already holds, if anything.
+function deviceUse(d: Device): string | null {
+  if (d.btrfsMember) return 'Btrfs pool member'
+  if (d.luks) return 'Encrypted (LUKS)'
+  if (d.fsType) return d.fsType
+  return null
+}
 
 // Helper functions
 function formatBytes(bytes: number): string {
@@ -72,21 +81,21 @@ const deviceColumns: ColumnDef<Device>[] = [
     header: 'Type',
     cell: ({ row }) => (
       <span className="uppercase text-xs font-medium">
-        {row.original.type || 'Unknown'}
+        {deviceKind(row.original)}
       </span>
     ),
   },
   {
-    accessorKey: 'inUse',
+    accessorKey: 'fsType',
     header: 'Status',
-    cell: ({ row }) => (
-      <StatusPill 
-        status={row.original.inUse ? 'active' : 'inactive'} 
-        size="sm"
-      >
-        {row.original.inUse ? `In use (${row.original.pool})` : 'Available'}
-      </StatusPill>
-    ),
+    cell: ({ row }) => {
+      const use = deviceUse(row.original)
+      return (
+        <StatusPill status={use ? 'active' : 'inactive'} size="sm">
+          {use ? `In use: ${use}` : 'Available'}
+        </StatusPill>
+      )
+    },
   },
   {
     accessorKey: 'actions',
@@ -95,7 +104,7 @@ const deviceColumns: ColumnDef<Device>[] = [
       <Button 
         variant="ghost" 
         size="icon"
-        disabled={row.original.inUse}
+        disabled={deviceUse(row.original) !== null}
       >
         <ChevronRight className="h-4 w-4" />
       </Button>
@@ -113,7 +122,7 @@ const poolColumns: ColumnDef<Pool>[] = [
         <Database className="h-4 w-4 text-muted-foreground" />
         <div>
           <div className="font-medium">{row.original.label || row.original.id}</div>
-          <div className="text-xs text-muted-foreground">{row.original.mountpoint}</div>
+          <div className="text-xs text-muted-foreground">{row.original.mount ?? 'Not mounted'}</div>
         </div>
       </div>
     ),
@@ -153,13 +162,12 @@ const poolColumns: ColumnDef<Pool>[] = [
     },
   },
   {
-    accessorKey: 'status',
+    accessorKey: 'mount',
     header: 'Status',
     cell: ({ row }) => (
-      <HealthBadge status={
-        row.original.status === 'online' ? 'healthy' :
-        row.original.status === 'degraded' ? 'degraded' : 'critical'
-      } />
+      <StatusPill status={row.original.mount ? 'healthy' : 'inactive'} size="sm">
+        {row.original.mount ? 'Mounted' : 'Not mounted'}
+      </StatusPill>
     ),
   },
   {
@@ -191,19 +199,15 @@ export function Storage() {
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   
-  // Check API status
-  const { data: apiStatus } = useApiStatus()
-  
   // Fetch data from API
-  const { data: pools, isLoading: poolsLoading, refetch: refetchPools } = usePools()
-  const { data: devices, isLoading: devicesLoading, refetch: refetchDevices } = useDevices()
+  const { data: pools, isLoading: poolsLoading, error: poolsError, refetch: refetchPools } = usePools()
+  const { data: devices, isLoading: devicesLoading, error: devicesError, refetch: refetchDevices } = useDevices()
   const { data: scrubStatus, refetch: refetchScrub } = useScrubStatus()
   const { data: balanceStatus, refetch: refetchBalance } = useBalanceStatus()
-  const { data: smartData } = useSmartDevice(selectedDevice || '')
-  
+  const { data: smartData, error: smartError } = useSmartDevice(selectedDevice)
+
   // Mutations
-  const startScrub = useStartScrub()
-  const startBalance = useStartBalance()
+  const { startScrub, startBalance } = useMaintenanceMutations()
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
@@ -216,33 +220,19 @@ export function Storage() {
     setTimeout(() => setIsRefreshing(false), 500)
   }
 
-  const handleStartScrub = async (_poolId: string) => {
-    await startScrub.mutateAsync()
-    refetchScrub()
-  }
+  // Each pool's button starts that pool (an empty request used to start
+  // every pool).
+  const handleStartScrub = (poolId: string) =>
+    startScrub.mutate(poolId, {
+      onSuccess: () => toast.success('Scrub started'),
+      onError: (e) => toast.error(getErrorMessage(e)),
+    })
 
-  const handleStartBalance = async (_poolId: string) => {
-    await startBalance.mutateAsync()
-    refetchBalance()
-  }
-
-  // Show backend error if API is unreachable
-  if (apiStatus && !apiStatus.isReachable) {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          title="Storage"
-          description="Manage storage pools and devices"
-        />
-        <Alert className="border-destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Backend unreachable or proxy misconfigured. Please check that the backend service is running.
-          </AlertDescription>
-        </Alert>
-      </div>
-    )
-  }
+  const handleStartBalance = (poolId: string) =>
+    startBalance.mutate(poolId, {
+      onSuccess: () => toast.success('Balance started'),
+      onError: (e) => toast.error(getErrorMessage(e)),
+    })
 
   return (
     <div className="space-y-6">
@@ -308,12 +298,12 @@ export function Storage() {
               <Card className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Pool Health</p>
+                    <p className="text-sm text-muted-foreground">Pools mounted</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-2xl font-bold">
-                        {pools.filter(p => p.status === 'online').length}/{pools.length}
+                        {pools.filter(p => p.mount).length}/{pools.length}
                       </span>
-                      <span className="text-sm text-muted-foreground">healthy</span>
+                      <span className="text-sm text-muted-foreground">mounted</span>
                     </div>
                   </div>
                   <Activity className="h-8 w-8 text-muted-foreground" />
@@ -327,6 +317,8 @@ export function Storage() {
             title="Storage Pools"
             description={`${pools?.length || 0} configured`}
             isLoading={poolsLoading}
+            error={poolsError ? getErrorMessage(poolsError) : null}
+            onRetry={() => refetchPools()}
           >
             {pools && pools.length > 0 ? (
               <DataTable 
@@ -396,11 +388,13 @@ export function Storage() {
                             </div>
                           </div>
                         )}
-                        {scrub.nextRun && (
+                        {scrub.status === 'finished' && scrub.finishedAt && (
                           <p className="text-xs text-muted-foreground">
-                            Next run: {new Date(scrub.nextRun).toLocaleString()}
+                            Last finished {new Date(scrub.finishedAt).toLocaleString()}
+                            {scrub.errors ? `, ${scrub.errors} errors` : ', no errors'}
                           </p>
                         )}
+                        {scrub.error && <p className="text-xs text-destructive">{scrub.error}</p>}
                       </div>
                     ))}
                   </div>
@@ -435,8 +429,7 @@ export function Storage() {
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium">{balance.poolId}</span>
                           <StatusPill 
-                            status={balance.status === 'running' ? 'running' : 
-                                   balance.status === 'finished' ? 'completed' : 'idle'} 
+                            status={balance.status === 'running' ? 'running' : 'idle'} 
                             size="sm" 
                           />
                         </div>
@@ -473,6 +466,8 @@ export function Storage() {
             title="Storage Devices"
             description={`${devices?.length || 0} detected`}
             isLoading={devicesLoading}
+            error={devicesError ? getErrorMessage(devicesError) : null}
+            onRetry={() => refetchDevices()}
           >
             {devices && devices.length > 0 ? (
               <DataTable 
@@ -480,7 +475,7 @@ export function Storage() {
                 data={devices}
                 searchKey="path"
                 searchPlaceholder="Search devices..."
-                onRowClick={(device) => setSelectedDevice(device.path)}
+                onRowClick={(device) => setSelectedDevice(device.name)}
               />
             ) : (
               <EmptyState
@@ -497,6 +492,7 @@ export function Storage() {
               title="SMART Details"
               description={selectedDevice}
             >
+              {smartError && <p className="text-sm text-destructive">{getErrorMessage(smartError)}</p>}
               {smartData ? (
                 <div className="space-y-4">
                   {/* SMART Status */}
@@ -504,71 +500,35 @@ export function Storage() {
                     <div className="flex items-center gap-3">
                       <div className={cn(
                         "h-3 w-3 rounded-full",
-                        smartData.status === 'healthy' && "bg-green-500",
-                        smartData.status === 'warning' && "bg-yellow-500",
-                        smartData.status === 'critical' && "bg-red-500"
+                        smartData.health === 'good' && "bg-green-500",
+                        smartData.health === 'warning' && "bg-yellow-500",
+                        smartData.health === 'critical' && "bg-red-500",
+                        smartData.health === 'unknown' && "bg-muted-foreground"
                       )} />
                       <div>
                         <p className="font-medium">Overall Health</p>
-                        <p className="text-sm text-muted-foreground capitalize">
-                          {smartData.status}
+                        <p className="text-sm text-muted-foreground">
+                          {smartData.health === 'unknown' ? 'No SMART data' : smartData.health}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      {smartData.temperature && (
+                      {smartData.temperature_celsius !== undefined && (
                         <div className="flex items-center gap-2">
                           <Thermometer className="h-4 w-4 text-muted-foreground" />
-                          <span>{smartData.temperature}°C</span>
+                          <span>{smartData.temperature_celsius}°C</span>
                         </div>
                       )}
-                      {smartData.powerOnHours && (
+                      {smartData.power_on_hours !== undefined && (
                         <div className="flex items-center gap-2 mt-1">
                           <Clock className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm text-muted-foreground">
-                            {smartData.powerOnHours} hours
+                            {smartData.power_on_hours} hours
                           </span>
                         </div>
                       )}
                     </div>
                   </div>
-
-                  {/* SMART Attributes */}
-                  {smartData.attributes && smartData.attributes.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium">Attributes</h4>
-                      <div className="space-y-1">
-                        {smartData.attributes.map((attr: any) => (
-                          <div 
-                            key={attr.id}
-                            className="flex items-center justify-between p-2 rounded hover:bg-muted/50"
-                          >
-                            <div className="flex items-center gap-3">
-                              {attr.status === 'ok' ? (
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                              ) : attr.status === 'warning' ? (
-                                <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                              ) : (
-                                <AlertCircle className="h-4 w-4 text-red-500" />
-                              )}
-                              <div>
-                                <p className="text-sm font-medium">{attr.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  ID: {attr.id}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm">{attr.value}/{attr.threshold}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {attr.rawValue}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">

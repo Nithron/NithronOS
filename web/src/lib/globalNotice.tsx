@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { ErrProxyMisconfigured, fetchJSON } from '@/api'
+import http, { ProxyMisconfiguredError } from '@/lib/nos-client'
 
 export type GlobalNotice = {
   kind: 'error' | 'info' | 'success'
@@ -19,15 +19,15 @@ export function GlobalNoticeProvider({ children }: { children: React.ReactNode }
   const [notice, setNotice] = useState<GlobalNotice | null>(null)
   const stopRef = useRef(false)
 
-  // Health checker: poll /api/setup/state every 10s and on window focus
+  // Health checker: ask /api/v1/setup/state every 10 s and on window focus
   useEffect(() => {
     let timeout: any
     async function check() {
       try {
-        await fetchJSON<any>('/api/v1/setup/state')
+        await http.setup.getState()
         if (!stopRef.current) setNotice((n) => (n && n.title.includes('Backend unreachable') ? null : n))
       } catch (e: any) {
-        if (e instanceof ErrProxyMisconfigured) {
+        if (e instanceof ProxyMisconfiguredError) {
           if (!stopRef.current) setNotice({
             kind: 'error',
             title: 'Backend unreachable or proxy misconfigured',

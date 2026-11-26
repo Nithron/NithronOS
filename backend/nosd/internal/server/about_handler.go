@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"nos/backend/nosd/internal/config"
+	"nos/backend/nosd/internal/version"
 
 	"github.com/go-chi/chi/v5"
 
@@ -315,11 +316,13 @@ func (h *AboutHandler) getMotherboardInfo() string {
 }
 
 func (h *AboutHandler) getSoftwareInfo() SoftwareInfo {
+	// Real versions: nosd's build, the installed agent and web packages.
+	// (These were the literals "0.9.5-pre-alpha" and "1.0.0".)
 	info := SoftwareInfo{
-		NOSVersion:   "0.9.5-pre-alpha",
-		APIVersion:   "1.0.0",
-		WebUIVersion: "1.0.0",
-		AgentVersion: "1.0.0",
+		NOSVersion:   version.Version,
+		APIVersion:   "v1",
+		WebUIVersion: installedPackageVersion("nos-web"),
+		AgentVersion: installedPackageVersion("nos-agent"),
 		GoVersion:    runtime.Version(),
 		Components:   make(map[string]string),
 	}
@@ -422,4 +425,13 @@ func (h *AboutHandler) getBuildInfo() BuildInfo {
 	}
 
 	return info
+}
+
+// installedPackageVersion is a Debian package's installed version, or "".
+func installedPackageVersion(pkg string) string {
+	out, err := exec.Command("dpkg-query", "-W", "-f=${Version}", pkg).Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
