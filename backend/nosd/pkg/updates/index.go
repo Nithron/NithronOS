@@ -1,7 +1,6 @@
 package updates
 
 import (
-	"context"
 	"errors"
 	"io/fs"
 	"os"
@@ -67,6 +66,6 @@ func Save(path string, idx Index) error {
 	}
 	// Serialize across processes via .lock and persist with durability (0644 public metadata)
 	return fsatomic.WithLock(path, func() error {
-		return fsatomic.SaveJSON(context.Background(), path, idx, fs.FileMode(0o644))
+		return fsatomic.SaveJSON(path, idx, fs.FileMode(0o644))
 	})
 }

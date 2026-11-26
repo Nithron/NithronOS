@@ -141,7 +141,7 @@ func TestSetupFullFlowAnd410(t *testing.T) {
 		for _, c := range cookies {
 			req.AddCookie(c)
 		}
-		if uid, ok := decodeSessionUID(req, cfg); !ok || uid == "" {
+		if uid, _, ok := decodeSessionParts(req, cfg); !ok || uid == "" {
 			t.Fatalf("nos_session did not decode; cookies=%v", cookies)
 		}
 	}
@@ -177,11 +177,32 @@ func TestSetupFullFlowAnd410(t *testing.T) {
 		if res.Code != 200 {
 			t.Fatalf("revoke current: %d", res.Code)
 		}
-		// me should now be unauthorized
+		// The revoked session's cookies must stop working at once.
+		meReq := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+		for _, c := range cookies {
+			meReq.AddCookie(c)
+		}
 		res2 := httptest.NewRecorder()
-		r.ServeHTTP(res2, httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil))
+		r.ServeHTTP(res2, meReq)
 		if res2.Code != http.StatusUnauthorized {
-			t.Fatalf("me after revoke current: %d", res2.Code)
+			t.Fatalf("me with revoked session: %d", res2.Code)
+		}
+	}
+
+	// sign in again for the rest of the flow
+	{
+		t.Log("login-2")
+		lb := mustJSON(map[string]any{"username": "alice", "password": "StrongPassw0rd!"})
+		res := httptest.NewRecorder()
+		r.ServeHTTP(res, httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(lb)))
+		if res.Code != 200 {
+			t.Fatalf("login-2: %d %s", res.Code, res.Body.String())
+		}
+		cookies = res.Result().Cookies()
+		for _, c := range cookies {
+			if c.Name == "nos_csrf" {
+				csrf = c.Value
+			}
 		}
 	}
 

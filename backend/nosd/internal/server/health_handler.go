@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"nithronos/backend/nosd/internal/version"
+	"nithronos/backend/nosd/pkg/httpx"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -69,79 +71,60 @@ func (h *HealthHandler) Routes() chi.Router {
 	return r
 }
 
+// smartStatus maps the agent's health values to this API's statuses.
+func smartStatus(health string) string {
+	switch health {
+	case "good", "healthy", "passed", "PASSED", "OK":
+		return "healthy"
+	case "warning", "critical":
+		return health
+	}
+	return "unknown"
+}
+
 // GetSmartSummary returns a summary of SMART health across all devices
 // GET /api/v1/health/smart/summary
+// (This used to return a fixed "4 disks, 3 healthy, 1 warning" whatever the
+// hardware said.)
 func (h *HealthHandler) GetSmartSummary(w http.ResponseWriter, r *http.Request) {
-	// In a real implementation, this would query the stored SMART data
-	// For now, return a sample response
-
+	devices := collectSMARTDevices(r.Context())
 	lastScan := time.Now().Format(time.RFC3339)
-	summary := SmartSummary{
-		TotalDevices:    4,
-		HealthyDevices:  3,
-		WarningDevices:  1,
-		CriticalDevices: 0,
-		LastScan:        &lastScan,
+	summary := SmartSummary{TotalDevices: len(devices), LastScan: &lastScan}
+	for _, d := range devices {
+		switch smartStatus(d.Health) {
+		case "healthy":
+			summary.HealthyDevices++
+		case "warning":
+			summary.WarningDevices++
+		case "critical":
+			summary.CriticalDevices++
+		}
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(summary); err != nil {
-		log.Error().Err(err).Msg("Failed to encode SMART summary")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-	}
+	writeJSON(w, summary)
 }
 
 // GetSmartDevice returns SMART data for a specific device
 // GET /api/v1/health/smart/{device}
+// (This used to return a made-up healthy disk for any device name.)
 func (h *HealthHandler) GetSmartDevice(w http.ResponseWriter, r *http.Request) {
-	device := chi.URLParam(r, "device")
-
-	// In a real implementation, this would query smartctl via nos-agent
-	// For now, return sample data
-
-	temp := 35
-	powerOn := 8760
-	data := SmartData{
-		Device:       device,
-		Status:       "healthy",
-		Temperature:  &temp,
-		PowerOnHours: &powerOn,
-		Attributes: []SmartAttribute{
-			{
-				ID:        5,
-				Name:      "Reallocated_Sector_Ct",
-				Value:     100,
-				Worst:     100,
-				Threshold: 50,
-				RawValue:  "0",
-				Status:    "ok",
-			},
-			{
-				ID:        9,
-				Name:      "Power_On_Hours",
-				Value:     99,
-				Worst:     99,
-				Threshold: 0,
-				RawValue:  "8760",
-				Status:    "ok",
-			},
-			{
-				ID:        194,
-				Name:      "Temperature_Celsius",
-				Value:     65,
-				Worst:     45,
-				Threshold: 0,
-				RawValue:  "35 (Min/Max 20/45)",
-				Status:    "ok",
-			},
-		},
+	name := strings.TrimPrefix(chi.URLParam(r, "device"), "/dev/")
+	for _, d := range collectSMARTDevices(r.Context()) {
+		if strings.TrimPrefix(d.Device, "/dev/") != name {
+			continue
+		}
+		out := SmartData{Device: d.Device, Status: smartStatus(d.Health)}
+		if d.Temperature > 0 {
+			t := d.Temperature
+			out.Temperature = &t
+		}
+		if d.PowerOnHours > 0 {
+			p := d.PowerOnHours
+			out.PowerOnHours = &p
+		}
+		writeJSON(w, out)
+		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		log.Error().Err(err).Msg("Failed to encode SMART data")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-	}
+	httpx.WriteTypedError(w, http.StatusNotFound, "smart.device_not_found", "No such disk", 0)
 }
 
 // StartSmartScan initiates a SMART scan on all devices

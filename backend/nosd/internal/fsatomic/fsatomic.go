@@ -12,10 +12,10 @@ import (
 )
 
 // SaveJSON atomically writes v as pretty JSON to path with durability guarantees.
-// It writes to path+".tmp", fsyncs, fsyncs the parent directory, renames into place,
+// It writes to a new temp file next to path, fsyncs, fsyncs the parent directory, renames into place,
 // then fsyncs the parent directory again. On any error, it removes the temp file.
 // If perm is 0, 0600 is used.
-func SaveJSON(ctx context.Context, path string, v any, perm fs.FileMode) error {
+func SaveJSON(path string, v any, perm fs.FileMode) error {
 	if perm == 0 {
 		perm = 0o600
 	}
@@ -30,12 +30,18 @@ func SaveJSON(ctx context.Context, path string, v any, perm fs.FileMode) error {
 	}
 	b = append(b, '\n')
 
-	tmp := path + ".tmp"
-	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, perm)
+	// A temp file of its own (path.tmp-XXXX): concurrent writers can't
+	// clobber each other's, and readers never touch it.
+	f, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*")
 	if err != nil {
 		return err
 	}
+	tmp := f.Name()
 	defer func() { _ = f.Close() }()
+	if err := f.Chmod(perm); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
 	if _, err := f.Write(b); err != nil {
 		_ = os.Remove(tmp)
 		return err
@@ -80,10 +86,11 @@ func SaveJSON(ctx context.Context, path string, v any, perm fs.FileMode) error {
 }
 
 // LoadJSON loads JSON from path into v. Returns exists=false if file is missing.
-// If a stale path+".tmp" exists, it will be removed.
+//
+// It never touches temp files: it used to delete path+".tmp", which could be
+// the file a concurrent SaveJSON was about to rename into place, so that save
+// failed and was lost.
 func LoadJSON(path string, v any) (bool, error) {
-	// Clean up crash artifact
-	_ = os.Remove(path + ".tmp")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -103,10 +110,10 @@ func LoadJSON(path string, v any) (bool, error) {
 // WriteJSONAtomic writes JSON atomically with default permissions (0600).
 // It ensures the parent directory exists with 0770 permissions.
 func WriteJSONAtomic(ctx context.Context, path string, v any) error {
-	return SaveJSON(ctx, path, v, 0)
+	return SaveJSON(path, v, 0)
 }
 
-// ReadJSON loads JSON and removes any orphan .tmp file first.
+// ReadJSON is LoadJSON.
 func ReadJSON(path string, v any) (bool, error) { return LoadJSON(path, v) }
 
 // WithLock acquires an exclusive advisory lock (path+".lock") for the duration of fn.

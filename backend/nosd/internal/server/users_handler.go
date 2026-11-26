@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"github.com/rs/zerolog/log"
 	"net/http"
 	"time"
 
@@ -53,15 +54,23 @@ type ChangePasswordRequest struct {
 
 // UsersHandler handles user management endpoints
 type UsersHandler struct {
-	store  *userstore.Store
-	config config.Config
+	store    *userstore.Store
+	sessions userSessions
+	config   config.Config
+}
+
+// userSessions is what UsersHandler needs from the session store.
+type userSessions interface {
+	RevokeAll(uid string) error
+	RevokeOthers(uid, keepSID string) error
 }
 
 // NewUsersHandler creates a new users handler
-func NewUsersHandler(store *userstore.Store, cfg config.Config) *UsersHandler {
+func NewUsersHandler(store *userstore.Store, sessions userSessions, cfg config.Config) *UsersHandler {
 	return &UsersHandler{
-		store:  store,
-		config: cfg,
+		store:    store,
+		sessions: sessions,
+		config:   cfg,
 	}
 }
 
@@ -286,6 +295,10 @@ func (h *UsersHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	// A deleted user's browsers are signed out at once.
+	if err := h.sessions.RevokeAll(userID); err != nil {
+		log.Error().Err(err).Str("uid", userID).Msg("revoke sessions of deleted user")
+	}
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -304,8 +317,14 @@ func (h *UsersHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get current user from context (set by auth middleware)
-	currentUserID := r.Context().Value("user_id").(string)
+	// The caller. (This read a context key nothing set, and the unchecked
+	// type assertion panicked, so changing a password always failed.)
+	caller, ok := signedInUser(r)
+	if !ok {
+		httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Sign in required", 0)
+		return
+	}
+	currentUserID := caller.UID
 
 	// Users can only change their own password (unless admin)
 	if currentUserID != userID {
@@ -362,6 +381,15 @@ func (h *UsersHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	if err := h.store.UpsertUser(user); err != nil {
 		httpx.WriteTypedError(w, http.StatusInternalServerError, "user.update_failed", "Failed to update password", 0)
 		return
+	}
+	// The old password's sessions end; the browser that changed its own
+	// password stays signed in.
+	keep := ""
+	if currentUserID == userID {
+		keep = caller.SID
+	}
+	if err := h.sessions.RevokeOthers(userID, keep); err != nil {
+		log.Error().Err(err).Str("uid", userID).Msg("revoke sessions after password change")
 	}
 
 	writeJSON(w, map[string]bool{"success": true})

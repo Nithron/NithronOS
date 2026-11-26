@@ -497,6 +497,16 @@ jobs:
         run: go run ./cmd/route-dump > ../../route_dump.json
       - name: Verify FE-BE contract
         run: node scripts/verify-fe-be-contract.mjs
+      - name: OpenAPI document is current
+        working-directory: backend/nosd
+        run: |
+          go run ./cmd/route-dump -format openapi -version "$(cat ../../VERSION)" > "$RUNNER_TEMP/openapi.json"
+          diff -u ../../docs/api/openapi.json "$RUNNER_TEMP/openapi.json" || {
+            echo "::error file=docs/api/openapi.json::out of date; regenerate it (see docs/dev/api.md)"
+            exit 1
+          }
+      - name: UI calls only served API paths
+        run: node scripts/check-fe-api-paths.mjs
   
   ui-e2e:
     name: UI E2E Tests (Playwright)

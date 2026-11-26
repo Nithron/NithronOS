@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -69,7 +68,9 @@ var agentStepRunner = func(cmd string, args []string) (code int, stdout string) 
 			Stdout, Stderr string
 		}
 	}
-	_ = client.PostJSON(context.TODO(), "/v1/run", map[string]any{"steps": []map[string]any{{"cmd": cmd, "args": args}}}, &resp)
+	ctx, cancel := poolCallCtx(poolLongStepTimeout)
+	_ = client.PostJSON(ctx, "/v1/run", map[string]any{"steps": []map[string]any{{"cmd": cmd, "args": args}}}, &resp)
+	cancel()
 	if len(resp.Results) == 0 {
 		return -1, ""
 	}
@@ -99,7 +100,9 @@ func executePlan(txID string, req applyCreateRequest, cfg config.Config) {
 			// rollback fstab edits if any
 			client := agentclient.New("/run/nos-agent.sock")
 			for _, ln := range req.Fstab {
-				_ = client.PostJSON(context.TODO(), "/v1/fstab/remove", map[string]any{"contains": ln}, nil)
+				ctx, cancel := poolCallCtx(poolQuickCallTimeout)
+				_ = client.PostJSON(ctx, "/v1/fstab/remove", map[string]any{"contains": ln}, nil)
+				cancel()
 			}
 			// best-effort close any opened luks mappings implied by plan so far
 			for _, step := range tx.Steps {
@@ -107,7 +110,9 @@ func executePlan(txID string, req applyCreateRequest, cfg config.Config) {
 					p := strings.Fields(step.Cmd)
 					if len(p) >= 6 && p[0] == "cryptsetup" && p[1] == "open" {
 						name := p[len(p)-1]
-						_ = client.PostJSON(context.TODO(), "/v1/run", map[string]any{"steps": []map[string]any{{"cmd": "cryptsetup", "args": []string{"close", name}}}}, nil)
+						ctx, cancel := poolCallCtx(poolQuickCallTimeout)
+						_ = client.PostJSON(ctx, "/v1/run", map[string]any{"steps": []map[string]any{{"cmd": "cryptsetup", "args": []string{"close", name}}}}, nil)
+						cancel()
 					}
 				}
 			}
@@ -122,7 +127,9 @@ func executePlan(txID string, req applyCreateRequest, cfg config.Config) {
 	// Ensure fstab lines
 	client := agentclient.New("/run/nos-agent.sock")
 	for _, ln := range req.Fstab {
-		_ = client.PostJSON(context.TODO(), "/v1/fstab/ensure", map[string]any{"line": ln}, nil)
+		ctx, cancel := poolCallCtx(poolQuickCallTimeout)
+		_ = client.PostJSON(ctx, "/v1/fstab/ensure", map[string]any{"line": ln}, nil)
+		cancel()
 	}
 	// mark success
 	now := time.Now().UTC()
@@ -153,6 +160,6 @@ func executePlan(txID string, req applyCreateRequest, cfg config.Config) {
 		var list []PoolRecord
 		_, _ = fsatomic.LoadJSON(filepath.Join(cfg.EtcDir, "nos", "pools.json"), &list)
 		list = append(list, rec)
-		return fsatomic.SaveJSON(context.TODO(), filepath.Join(cfg.EtcDir, "nos", "pools.json"), list, 0o600)
+		return fsatomic.SaveJSON(filepath.Join(cfg.EtcDir, "nos", "pools.json"), list, 0o600)
 	})
 }

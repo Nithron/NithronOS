@@ -210,27 +210,6 @@ func handleJobGet(cfg config.Config) http.HandlerFunc {
 			}
 		}
 
-		// If not found, return a mock job for demo
-		if jobID == "example" {
-			now := time.Now()
-			job := Job{
-				ID:        jobID,
-				Type:      "balance",
-				Status:    "running",
-				Progress:  67.8,
-				StartTime: now.Add(-45 * time.Minute),
-				Message:   "Balancing pool 'main'",
-				Details: map[string]any{
-					"pool_id":    "pool-123",
-					"left":       "12.3 GiB",
-					"total":      "38.1 GiB",
-					"mount_path": "/mnt/pool",
-				},
-			}
-			writeJSON(w, job)
-			return
-		}
-
 		httpx.WriteTypedError(w, http.StatusNotFound, "job.not_found", "Job not found", 0)
 	}
 }

@@ -1,7 +1,6 @@
 package ratelimit
 
 import (
-	"context"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -65,7 +64,7 @@ func (s *Store) Put(key string, b Bucket) error {
 	s.mu.Unlock()
 	_ = os.MkdirAll(filepath.Dir(s.path), 0o755)
 	return fsatomic.WithLock(s.path, func() error {
-		return fsatomic.SaveJSON(context.TODO(), s.path, st, fs.FileMode(0o600))
+		return fsatomic.SaveJSON(s.path, st, fs.FileMode(0o600))
 	})
 }
 
@@ -108,7 +107,7 @@ func (s *Store) persistLocked() error {
 	st := s.st
 	_ = os.MkdirAll(filepath.Dir(s.path), 0o755)
 	if err := fsatomic.WithLock(s.path, func() error {
-		return fsatomic.SaveJSON(context.TODO(), s.path, st, fs.FileMode(0o600))
+		return fsatomic.SaveJSON(s.path, st, fs.FileMode(0o600))
 	}); err != nil {
 		return err
 	}

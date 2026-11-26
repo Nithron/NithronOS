@@ -90,7 +90,7 @@ func (wm *WireGuardManager) Enable(cidr string, port int, endpoint string, dns [
 	}
 
 	// Generate server keys
-	privateKey, publicKey, err := generateWireGuardKeys()
+	privateKey, publicKey, err := GenerateWireGuardKeys()
 	if err != nil {
 		return fmt.Errorf("failed to generate keys: %w", err)
 	}
@@ -182,7 +182,7 @@ func (wm *WireGuardManager) AddPeer(name string, allowedIPs []string, pubkey str
 	var peerPrivateKey, peerPublicKey string
 	if pubkey == "" {
 		var err error
-		peerPrivateKey, peerPublicKey, err = generateWireGuardKeys()
+		peerPrivateKey, peerPublicKey, err = GenerateWireGuardKeys()
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate peer keys: %w", err)
 		}
@@ -471,27 +471,6 @@ func (wm *WireGuardManager) isServiceRunning() bool {
 }
 
 // Helper functions
-
-func generateWireGuardKeys() (privateKey, publicKey string, err error) {
-	// Generate private key
-	cmd := exec.Command("wg", "genkey")
-	privateKeyBytes, err := cmd.Output()
-	if err != nil {
-		return "", "", fmt.Errorf("failed to generate private key: %w", err)
-	}
-	privateKey = strings.TrimSpace(string(privateKeyBytes))
-
-	// Generate public key from private key
-	cmd = exec.Command("wg", "pubkey")
-	cmd.Stdin = bytes.NewReader(privateKeyBytes)
-	publicKeyBytes, err := cmd.Output()
-	if err != nil {
-		return "", "", fmt.Errorf("failed to generate public key: %w", err)
-	}
-	publicKey = strings.TrimSpace(string(publicKeyBytes))
-
-	return privateKey, publicKey, nil
-}
 
 func generatePresharedKey() (string, error) {
 	cmd := exec.Command("wg", "genpsk")

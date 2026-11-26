@@ -1,7 +1,6 @@
 package sync
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -121,7 +120,7 @@ func (s *Store) SaveDevice(device *DeviceToken) error {
 	s.mu.Unlock()
 
 	return fsatomic.WithLock(s.devicesPath, func() error {
-		return fsatomic.SaveJSON(context.TODO(), s.devicesPath, devicesFile{
+		return fsatomic.SaveJSON(s.devicesPath, devicesFile{
 			Version: 1,
 			Devices: devicesCopy,
 		}, 0o600)
@@ -187,7 +186,7 @@ func (s *Store) DeleteDevice(deviceID string) error {
 	s.mu.Unlock()
 
 	return fsatomic.WithLock(s.devicesPath, func() error {
-		return fsatomic.SaveJSON(context.TODO(), s.devicesPath, devicesFile{
+		return fsatomic.SaveJSON(s.devicesPath, devicesFile{
 			Version: 1,
 			Devices: devicesCopy,
 		}, 0o600)
@@ -212,7 +211,7 @@ func (s *Store) PermanentlyDeleteDevice(deviceID string) error {
 	}
 
 	return fsatomic.WithLock(s.devicesPath, func() error {
-		return fsatomic.SaveJSON(context.TODO(), s.devicesPath, devicesFile{
+		return fsatomic.SaveJSON(s.devicesPath, devicesFile{
 			Version: 1,
 			Devices: devicesCopy,
 		}, 0o600)
@@ -230,7 +229,7 @@ func (s *Store) SaveConfig(config *SyncConfig) error {
 	s.mu.Unlock()
 
 	return fsatomic.WithLock(s.configPath, func() error {
-		return fsatomic.SaveJSON(context.TODO(), s.configPath, configsFile{
+		return fsatomic.SaveJSON(s.configPath, configsFile{
 			Version: 1,
 			Configs: configsCopy,
 		}, 0o600)
@@ -268,7 +267,7 @@ func (s *Store) SaveState(state *SyncState) error {
 
 	statePath := filepath.Join(s.statePath, stateFileName(state.DeviceID, state.ShareID))
 	return fsatomic.WithLock(statePath, func() error {
-		return fsatomic.SaveJSON(context.TODO(), statePath, state, 0o600)
+		return fsatomic.SaveJSON(statePath, state, 0o600)
 	})
 }
 
@@ -383,7 +382,7 @@ func (s *Store) CleanupExpiredDevices() (int, error) {
 	}
 
 	err := fsatomic.WithLock(s.devicesPath, func() error {
-		return fsatomic.SaveJSON(context.TODO(), s.devicesPath, devicesFile{
+		return fsatomic.SaveJSON(s.devicesPath, devicesFile{
 			Version: 1,
 			Devices: devicesCopy,
 		}, 0o600)

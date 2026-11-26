@@ -75,6 +75,24 @@ export async function apiPostAuth<T>(path: string, token: string, body?: any): P
 	return request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined, headers: { Authorization: `Bearer ${token}` } })
 }
 
+// One refresh at a time: concurrent 401s wait for the same refresh. (Each
+// refresh replaces the refresh token, so parallel refreshes would present a
+// spent token. This also called /api/auth/refresh, which doesn't exist, so
+// users were sent to the login page when the 15-minute access cookie expired.)
+let refreshing: Promise<boolean> | null = null
+
+export function refreshSession(): Promise<boolean> {
+	if (!refreshing) {
+		refreshing = fetch('/api/v1/auth/refresh', { method: 'POST', credentials: 'include' })
+			.then((r) => r.ok)
+			.catch(() => false)
+			.finally(() => {
+				refreshing = null
+			})
+	}
+	return refreshing
+}
+
 async function request<T>(path: string, init: RequestInit, retried = false): Promise<T> {
 	const isSetup = path.startsWith('/api/v1/setup/')
 	const csrf = getCSRFCookie()
@@ -94,15 +112,8 @@ async function request<T>(path: string, init: RequestInit, retried = false): Pro
 		throw new Error('HTTP 410')
 	}
 	if (res.status === 401 && !retried) {
-		// Try refresh once
-		const r = await fetch('/api/auth/refresh', {
-			method: 'POST',
-			credentials: 'include',
-			headers: {
-				...(csrf ? { 'X-CSRF-Token': csrf } : {}),
-			},
-		})
-		if (r.ok) {
+		// Try one refresh, then retry the request.
+		if (await refreshSession()) {
 			return request<T>(path, init, true)
 		}
 		// refresh failed — log out

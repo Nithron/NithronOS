@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { refreshSession } from '@/api/http'
 
 function getCSRFCookie(): string | null {
   const m = document.cookie.match(/(?:^|; )nos_csrf=([^;]*)/)
@@ -18,12 +19,8 @@ async function request<T>(path: string, init: RequestInit = {}, retried = false)
     },
   })
   if (res.status === 401 && !retried) {
-    const r = await fetch('/api/auth/refresh', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
-    })
-    if (r.ok) return request<T>(path, init, true)
+    // Shared with api/http.ts so only one refresh runs at a time.
+    if (await refreshSession()) return request<T>(path, init, true)
   }
   if (!res.ok) {
     // Try to parse structured error

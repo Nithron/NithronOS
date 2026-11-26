@@ -10,8 +10,6 @@
     "lint": "eslint .",
     "format": "prettier -w .",
     "typecheck": "tsc -b --noEmit",
-    "typegen": "openapi-typescript ../backend/nosd/openapi.yaml -o src/api/schema.ts",
-    "gen:api:types": "openapi-typescript ../docs/api/openapi.yaml -o src/types/api.d.ts",
     "test": "vitest",
     "test:run": "vitest run",
     "verify:contract": "ts-node --transpile-only ../scripts/verify-contract.ts",

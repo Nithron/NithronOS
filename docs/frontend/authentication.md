@@ -129,7 +129,7 @@ If user has TOTP enabled:
 
 When an API call returns 401:
 
-1. Attempt refresh via `POST /api/auth/refresh`
+1. Attempt refresh via `POST /api/v1/auth/refresh`
 2. If successful, retry original request
 3. If refresh fails, redirect to login
 
@@ -253,7 +253,7 @@ npm run test:coverage      # With coverage
 
 - `POST /api/auth/login` - User login
 - `POST /api/auth/logout` - User logout
-- `POST /api/auth/refresh` - Refresh access token
+- `POST /api/v1/auth/refresh` - Refresh access token
 - `GET /api/auth/session` - Get current session
 - `POST /api/auth/totp/enroll` - Start TOTP enrollment
 - `POST /api/auth/totp/verify` - Verify TOTP code

@@ -1,0 +1,434 @@
+[
+  {
+    "path": "/api/v1/apps",
+    "files": [
+      "web/src/api/client.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/2fa/enable",
+    "files": [
+      "web/src/pages/Settings2FA.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/2fa/recovery/generate",
+    "files": [
+      "web/src/pages/Settings2FA.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/destinations",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/destinations/{}",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/destinations/{}/key",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/destinations/{}/test",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/jobs",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/jobs/{}",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/jobs/{}/cancel",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/replicate",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/restore/apply",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/restore/plan",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/restore/points",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/schedules",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/schedules/{}",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/snapshots",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/snapshots/create",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/snapshots/stats",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/backup/snapshots/{}",
+    "files": [
+      "web/src/api/backup.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/firewall/apply",
+    "files": [
+      "web/src/api/client.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/firewall/plan",
+    "files": [
+      "web/src/api/client.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/firewall/rollback",
+    "files": [
+      "web/src/api/client.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/firewall/status",
+    "files": [
+      "web/src/api/client.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/groups",
+    "files": [
+      "web/src/api/client.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/metrics/stream",
+    "files": [
+      "web/src/hooks/use-system-vitals.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/monitor/alerts/channels",
+    "files": [
+      "web/src/api/monitor.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/monitor/alerts/channels/{}",
+    "files": [
+      "web/src/api/monitor.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/monitor/alerts/channels/{}/test",
+    "files": [
+      "web/src/api/monitor.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/monitor/alerts/events",
+    "files": [
+      "web/src/api/monitor.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/monitor/alerts/rules",
+    "files": [
+      "web/src/api/monitor.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/monitor/alerts/rules/{}",
+    "files": [
+      "web/src/api/monitor.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/monitor/btrfs",
+    "files": [
+      "web/src/api/monitor.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/monitor/devices",
+    "files": [
+      "web/src/api/monitor.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/monitor/overview",
+    "files": [
+      "web/src/api/monitor.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/monitor/services",
+    "files": [
+      "web/src/api/monitor.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/monitor/timeseries",
+    "files": [
+      "web/src/api/monitor.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/network/dns",
+    "files": [
+      "web/src/pages/SettingsNetwork.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/network/firewall/rules",
+    "files": [
+      "web/src/pages/SettingsNetwork.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/network/firewall/rules/{}",
+    "files": [
+      "web/src/pages/SettingsNetwork.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/network/firewall/status",
+    "files": [
+      "web/src/pages/SettingsNetwork.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/network/firewall/toggle",
+    "files": [
+      "web/src/pages/SettingsNetwork.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/network/https",
+    "files": [
+      "web/src/pages/SettingsNetwork.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/network/https/generate",
+    "files": [
+      "web/src/pages/SettingsNetwork.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/network/https/toggle",
+    "files": [
+      "web/src/pages/SettingsNetwork.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/network/https/upload",
+    "files": [
+      "web/src/pages/SettingsNetwork.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/network/status",
+    "files": [
+      "web/src/pages/SettingsNetwork.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/network/wireguard",
+    "files": [
+      "web/src/pages/SettingsNetwork.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/network/wireguard/peers",
+    "files": [
+      "web/src/pages/SettingsNetwork.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/network/wireguard/peers/{}",
+    "files": [
+      "web/src/pages/SettingsNetwork.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/network/wireguard/toggle",
+    "files": [
+      "web/src/pages/SettingsNetwork.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/policy",
+    "files": [
+      "web/src/api/client.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/pools/{}/subvolumes",
+    "files": [
+      "web/src/lib/api.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/remote/destinations",
+    "files": [
+      "web/src/lib/api.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/remote/destinations/{}",
+    "files": [
+      "web/src/lib/api.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/remote/jobs",
+    "files": [
+      "web/src/lib/api.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/remote/jobs/{}/start",
+    "files": [
+      "web/src/lib/api.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/remote/jobs/{}/stop",
+    "files": [
+      "web/src/lib/api.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/remote/stats",
+    "files": [
+      "web/src/lib/api.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/settings/advanced",
+    "files": [
+      "web/src/pages/SettingsConnected.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/sync",
+    "files": [
+      "web/src/api/sync.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/sync/encryption",
+    "files": [
+      "web/src/api/encryption.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/sync/offline",
+    "files": [
+      "web/src/api/offline.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/sync/smartsync",
+    "files": [
+      "web/src/api/smartsync.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/system/config",
+    "files": [
+      "web/src/pages/SettingsConnected.tsx"
+    ]
+  },
+  {
+    "path": "/api/v1/updates/channel",
+    "files": [
+      "web/src/api/updates.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/updates/progress",
+    "files": [
+      "web/src/api/updates.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/updates/progress/stream",
+    "files": [
+      "web/src/lib/nos-client.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/updates/snapshots",
+    "files": [
+      "web/src/api/updates.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/updates/snapshots/{}",
+    "files": [
+      "web/src/api/updates.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/updates/version",
+    "files": [
+      "web/src/api/updates.ts"
+    ]
+  },
+  {
+    "path": "/api/v1/users/{}/reset-password",
+    "files": [
+      "web/src/pages/SettingsUsers.tsx"
+    ]
+  }
+]

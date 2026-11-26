@@ -1,10 +1,21 @@
+// Package session keeps the server-side record of every signed-in browser.
+//
+// A session is created at sign-in and lives as long as its refresh token. The
+// short-lived nos_session cookie carries the session id, and every request is
+// checked against this store, so signing out, revoking a session or deleting
+// a user takes effect immediately rather than when the cookie expires.
+//
+// Each session has one current refresh id. A refresh must present it and
+// gets a new one; presenting an older id means the refresh token was copied,
+// and all of the user's sessions end.
 package session
 
 import (
-	"context"
-	"crypto/sha256"
-	"encoding/hex"
+	"crypto/rand"
+	"encoding/base32"
+	"errors"
 	"net"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -12,259 +23,235 @@ import (
 	"nithronos/backend/nosd/internal/fsatomic"
 )
 
+const (
+	fileVersion = 2
+	// RefreshGrace is how long the previous refresh id is still accepted
+	// after a rotation, so two tabs refreshing at the same moment don't look
+	// like a stolen token.
+	RefreshGrace = 30 * time.Second
+	// lastSeenPersistEvery limits how often activity alone rewrites the file.
+	lastSeenPersistEvery = 5 * time.Minute
+	maxUserAgent         = 200
+)
+
+var (
+	// ErrSessionInvalid: the session doesn't exist, has expired, was revoked
+	// or belongs to someone else.
+	ErrSessionInvalid = errors.New("session invalid")
+	// ErrRefreshReuse: an old refresh id was presented; all of the user's
+	// sessions have been revoked.
+	ErrRefreshReuse = errors.New("refresh token reused")
+)
+
+// Record is one signed-in browser or device.
 type Record struct {
-	SID        string `json:"sid"`
-	UID        string `json:"uid"`
-	UAHash     string `json:"ua_hash"`
-	IPHash     string `json:"ip_hash"`
-	Exp        string `json:"exp"`
-	CreatedAt  string `json:"created_at"`
-	LastSeenAt string `json:"last_seen_at"`
+	SID       string    `json:"sid"`
+	UID       string    `json:"uid"`
+	IPPrefix  string    `json:"ip_prefix"`  // /24 (IPv4) or /64 (IPv6) at sign-in
+	UserAgent string    `json:"user_agent"` // shown in the session list
+	CreatedAt time.Time `json:"created_at"`
+	LastSeen  time.Time `json:"last_seen"`
+	ExpiresAt time.Time `json:"expires_at"`
+	// Persistent: "remember me" was chosen, so the refresh cookie outlives
+	// the browser session.
+	Persistent    bool      `json:"persistent"`
+	RefreshID     string    `json:"refresh_id"`
+	PrevRefreshID string    `json:"prev_refresh_id,omitempty"`
+	RotatedAt     time.Time `json:"rotated_at,omitzero"`
 }
 
 type diskFile struct {
-	Version     int                 `json:"version"`
-	Sessions    []Record            `json:"sessions"`
-	UsedRefresh map[string][]string `json:"used_refresh"`
-	// RevokedBefore is, per user, the time (Unix ms) of the last "revoke all";
-	// refresh tokens issued before it are no longer accepted.
-	RevokedBefore map[string]int64 `json:"revoked_before,omitempty"`
+	Version  int      `json:"version"`
+	Sessions []Record `json:"sessions"`
 }
 
+// Manager is safe for concurrent use.
 type Manager struct {
-	path          string
-	mu            sync.RWMutex
-	sidToRec      map[string]Record
-	userToSids    map[string]map[string]struct{}
-	usedRefresh   map[string]map[string]struct{} // uid -> rtid set
-	revokedBefore map[string]int64               // uid -> unix ms of last RevokeAll
+	path        string
+	mu          sync.Mutex
+	sessions    map[string]Record
+	lastPersist time.Time
 }
 
+// New loads the sessions stored at path. Files from earlier versions (which
+// had no refresh ids per session) are ignored, so users sign in once more.
 func New(path string) *Manager {
-	m := &Manager{path: path, sidToRec: map[string]Record{}, userToSids: map[string]map[string]struct{}{}, usedRefresh: map[string]map[string]struct{}{}, revokedBefore: map[string]int64{}}
-	_ = m.load()
+	m := &Manager{path: path, sessions: map[string]Record{}}
+	var df diskFile
+	if ok, err := fsatomic.LoadJSON(path, &df); err == nil && ok && df.Version == fileVersion {
+		for _, r := range df.Sessions {
+			m.sessions[r.SID] = r
+		}
+	}
 	return m
 }
 
-func (m *Manager) load() error {
+// Create starts a session for uid that lasts ttl.
+func (m *Manager) Create(uid, userAgent, remoteAddr string, ttl time.Duration, persistent bool) (Record, error) {
+	now := time.Now().UTC()
+	if len(userAgent) > maxUserAgent {
+		userAgent = userAgent[:maxUserAgent]
+	}
+	rec := Record{
+		SID: newID(), UID: uid, IPPrefix: maskIP(remoteAddr), UserAgent: userAgent,
+		CreatedAt: now, LastSeen: now, ExpiresAt: now.Add(ttl),
+		Persistent: persistent, RefreshID: newID(),
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	var df diskFile
-	ok, err := fsatomic.LoadJSON(m.path, &df)
-	if err != nil || !ok {
-		return err
-	}
-	m.sidToRec = map[string]Record{}
-	m.userToSids = map[string]map[string]struct{}{}
-	for _, r := range df.Sessions {
-		m.sidToRec[r.SID] = r
-		if m.userToSids[r.UID] == nil {
-			m.userToSids[r.UID] = map[string]struct{}{}
-		}
-		m.userToSids[r.UID][r.SID] = struct{}{}
-	}
-	m.usedRefresh = map[string]map[string]struct{}{}
-	for uid, list := range df.UsedRefresh {
-		set := map[string]struct{}{}
-		for _, id := range list {
-			set[id] = struct{}{}
-		}
-		m.usedRefresh[uid] = set
-	}
-	m.revokedBefore = map[string]int64{}
-	for uid, t := range df.RevokedBefore {
-		m.revokedBefore[uid] = t
-	}
-	return nil
+	m.sessions[rec.SID] = rec
+	return rec, m.persistLocked()
 }
 
-func (m *Manager) persistLocked() error {
-	sessions := make([]Record, 0, len(m.sidToRec))
-	for _, r := range m.sidToRec {
-		sessions = append(sessions, r)
-	}
-	used := make(map[string][]string, len(m.usedRefresh))
-	for uid, set := range m.usedRefresh {
-		var ids []string
-		for id := range set {
-			ids = append(ids, id)
-		}
-		used[uid] = ids
-	}
-	return fsatomic.SaveJSON(context.TODO(), m.path, diskFile{Version: 1, Sessions: sessions, UsedRefresh: used, RevokedBefore: m.revokedBefore}, 0o600)
-}
-
-func (m *Manager) Create(uid, ua, ip string, ttl time.Duration) (Record, error) {
-	sid := generateULID()
-	now := time.Now().UTC()
-	rec := Record{SID: sid, UID: uid, UAHash: sha256Hex(ua), IPHash: sha256Hex(maskIP(ip)), Exp: now.Add(ttl).Format(time.RFC3339), CreatedAt: now.Format(time.RFC3339), LastSeenAt: now.Format(time.RFC3339)}
+// Active reports whether sid is a live session of uid, and records activity.
+func (m *Manager) Active(sid, uid string) bool {
 	m.mu.Lock()
-	m.sidToRec[sid] = rec
-	if m.userToSids[uid] == nil {
-		m.userToSids[uid] = map[string]struct{}{}
-	}
-	m.userToSids[uid][sid] = struct{}{}
-	err := m.persistLocked()
-	m.mu.Unlock()
-	return rec, err
-}
-
-func (m *Manager) Verify(sid, ua, ip string) (string, bool) {
-	m.mu.Lock()
-	rec, ok := m.sidToRec[sid]
+	defer m.mu.Unlock()
+	rec, ok := m.liveLocked(sid, uid)
 	if !ok {
-		m.mu.Unlock()
-		return "", false
+		return false
 	}
-	if t, err := time.Parse(time.RFC3339, rec.Exp); err != nil || time.Now().UTC().After(t) {
-		m.mu.Unlock()
-		return "", false
+	rec.LastSeen = time.Now().UTC()
+	m.sessions[sid] = rec
+	if time.Since(m.lastPersist) > lastSeenPersistEvery {
+		_ = m.persistLocked() // activity only; losing it is harmless
 	}
-	if rec.UAHash != sha256Hex(ua) {
-		m.mu.Unlock()
-		return "", false
-	}
-	if rec.IPHash != sha256Hex(maskIP(ip)) {
-		m.mu.Unlock()
-		return "", false
-	}
-	// update last seen and persist (best-effort)
-	rec.LastSeenAt = time.Now().UTC().Format(time.RFC3339)
-	m.sidToRec[sid] = rec
-	_ = m.persistLocked()
-	m.mu.Unlock()
-	return rec.UID, true
+	return true
 }
 
+// Get returns a live session.
+func (m *Manager) Get(sid string) (Record, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	rec, ok := m.sessions[sid]
+	if !ok || !time.Now().Before(rec.ExpiresAt) {
+		return Record{}, false
+	}
+	return rec, true
+}
+
+// Refresh spends refreshID on session sid of uid: it returns the session with
+// a new refresh id and its lifetime extended by ttl.
+func (m *Manager) Refresh(sid, uid, refreshID string, ttl time.Duration) (Record, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	rec, ok := m.liveLocked(sid, uid)
+	if !ok || refreshID == "" {
+		return Record{}, ErrSessionInvalid
+	}
+	now := time.Now().UTC()
+	switch {
+	case refreshID == rec.RefreshID:
+		rec.PrevRefreshID, rec.RefreshID, rec.RotatedAt = rec.RefreshID, newID(), now
+	case refreshID == rec.PrevRefreshID && now.Sub(rec.RotatedAt) <= RefreshGrace:
+		// A concurrent refresh already rotated it: hand out the current id.
+	default:
+		m.revokeAllLocked(uid)
+		_ = m.persistLocked()
+		return Record{}, ErrRefreshReuse
+	}
+	rec.LastSeen, rec.ExpiresAt = now, now.Add(ttl)
+	m.sessions[sid] = rec
+	return rec, m.persistLocked()
+}
+
+// RevokeSID ends one session.
 func (m *Manager) RevokeSID(sid string) error {
 	m.mu.Lock()
-	if rec, ok := m.sidToRec[sid]; ok {
-		delete(m.sidToRec, sid)
-		if set := m.userToSids[rec.UID]; set != nil {
-			delete(set, sid)
-		}
-	}
-	err := m.persistLocked()
-	m.mu.Unlock()
-	return err
+	defer m.mu.Unlock()
+	delete(m.sessions, sid)
+	return m.persistLocked()
 }
 
+// RevokeAll ends every session of uid.
 func (m *Manager) RevokeAll(uid string) error {
 	m.mu.Lock()
-	// Refresh tokens issued until now stop working too.
-	m.revokedBefore[uid] = time.Now().UnixMilli()
-	if set := m.userToSids[uid]; set != nil {
-		for sid := range set {
-			delete(m.sidToRec, sid)
-		}
-		delete(m.userToSids, uid)
-	}
-	err := m.persistLocked()
-	m.mu.Unlock()
-	return err
+	defer m.mu.Unlock()
+	m.revokeAllLocked(uid)
+	return m.persistLocked()
 }
 
-func (m *Manager) RotateRefresh(uid, old string) (newID string, reuse bool, err error) {
+// RevokeOthers ends every session of uid except keepSID (after a password
+// change, the browser that changed it stays signed in).
+func (m *Manager) RevokeOthers(uid, keepSID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.usedRefresh[uid] == nil {
-		m.usedRefresh[uid] = map[string]struct{}{}
-	}
-	if _, seen := m.usedRefresh[uid][old]; seen {
-		return "", true, nil
-	}
-	m.usedRefresh[uid][old] = struct{}{}
-	newID = generateULID()
-	if err = m.persistLocked(); err != nil {
-		return "", false, err
-	}
-	return newID, false, nil
-}
-
-func (m *Manager) ListByUser(uid string) []Record {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	out := []Record{}
-	if set := m.userToSids[uid]; set != nil {
-		for sid := range set {
-			out = append(out, m.sidToRec[sid])
+	for sid, r := range m.sessions {
+		if r.UID == uid && sid != keepSID {
+			delete(m.sessions, sid)
 		}
 	}
+	return m.persistLocked()
+}
+
+// ListByUser returns uid's live sessions, most recently used first.
+func (m *Manager) ListByUser(uid string) []Record {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := []Record{}
+	now := time.Now()
+	for _, r := range m.sessions {
+		if r.UID == uid && now.Before(r.ExpiresAt) {
+			out = append(out, r)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].LastSeen.After(out[j].LastSeen) })
 	return out
 }
 
-func sha256Hex(s string) string {
-	h := sha256.Sum256([]byte(s))
-	return hex.EncodeToString(h[:])
+func (m *Manager) liveLocked(sid, uid string) (Record, bool) {
+	rec, ok := m.sessions[sid]
+	if !ok || uid == "" || rec.UID != uid || !time.Now().Before(rec.ExpiresAt) {
+		return Record{}, false
+	}
+	return rec, true
 }
 
-func maskIP(ip string) string {
-	host := ip
-	if i := strings.IndexByte(ip, ':'); i >= 0 {
-		host = ip[:i]
-	}
-	if net.ParseIP(host) == nil {
-		return host
-	}
-	if strings.Contains(host, ":") {
-		// IPv6: /64
-		parts := strings.Split(host, ":")
-		if len(parts) >= 4 {
-			return strings.Join(parts[:4], ":")
-		}
-		return host
-	}
-	// IPv4: /24
-	parts := strings.Split(host, ".")
-	if len(parts) == 4 {
-		return parts[0] + "." + parts[1] + "." + parts[2] + ".0"
-	}
-	return host
-}
-
-func generateULID() string {
-	// 48-bit timestamp (ms since epoch) + 80 bits randomness -> 26 chars Base32 Crockford
-	// Simplified generator sufficient for our use-case
-	const alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
-	now := time.Now().UTC().UnixMilli()
-	var data [16]byte
-	// timestamp big-endian in first 6 bytes
-	for i := 5; i >= 0; i-- {
-		data[i] = byte(now & 0xff)
-		now >>= 8
-	}
-	// randomness
-	t := time.Now().UnixNano()
-	for i := 6; i < 16; i++ {
-		data[i] = byte(t >> (8 * (i - 6)))
-	}
-	// encode 128 bits to 26 chars (base32 crockford without I,L,O,U)
-	out := make([]byte, 26)
-	var v uint16
-	bits := 0
-	idx := 0
-	for i := 0; i < 16; i++ {
-		v = (v << 8) | uint16(data[i])
-		bits += 8
-		for bits >= 5 {
-			bits -= 5
-			out[idx] = alphabet[(v>>bits)&0x1f]
-			idx++
-			if idx == 26 {
-				return string(out)
-			}
+func (m *Manager) revokeAllLocked(uid string) {
+	for sid, r := range m.sessions {
+		if r.UID == uid {
+			delete(m.sessions, sid)
 		}
 	}
-	if idx < 26 {
-		out[idx] = alphabet[(v<<(5-bits))&0x1f]
-	}
-	return string(out)
 }
 
-// RefreshAllowed reports whether a refresh token for uid issued at issuedAtMs
-// (Unix ms) is still valid, i.e. was issued after the user's last RevokeAll.
-func (m *Manager) RefreshAllowed(uid string, issuedAtMs int64) bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return issuedAtMs > m.revokedBefore[uid]
+// persistLocked writes the live sessions; expired ones are dropped here.
+func (m *Manager) persistLocked() error {
+	now := time.Now()
+	list := make([]Record, 0, len(m.sessions))
+	for sid, r := range m.sessions {
+		if !now.Before(r.ExpiresAt) {
+			delete(m.sessions, sid)
+			continue
+		}
+		list = append(list, r)
+	}
+	m.lastPersist = now
+	return fsatomic.SaveJSON(m.path, diskFile{Version: fileVersion, Sessions: list}, 0o600)
+}
+
+// newID returns 128 random bits as 26 base32 characters.
+func newID() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		panic("session: crypto/rand failed: " + err.Error())
+	}
+	return strings.TrimRight(base32.StdEncoding.EncodeToString(b[:]), "=")
+}
+
+// maskIP returns the /24 (IPv4) or /64 (IPv6) network of a remote address.
+func maskIP(remoteAddr string) string {
+	host := remoteAddr
+	if h, _, err := net.SplitHostPort(remoteAddr); err == nil {
+		host = h
+	}
+	ip := net.ParseIP(host)
+	switch {
+	case ip == nil:
+		return ""
+	case ip.To4() != nil:
+		return ip.Mask(net.CIDRMask(24, 32)).String()
+	default:
+		return ip.Mask(net.CIDRMask(64, 128)).String()
+	}
 }

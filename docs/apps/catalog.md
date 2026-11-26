@@ -407,6 +407,6 @@ entries:
 ## See Also
 
 - [App Runtime Architecture](runtime.md)
-- [API Documentation](../api/openapi.yaml)
+- [API Documentation](../api/openapi.json)
 - [Security Model](../security-model.md)
 - [Storage Pools](../storage/pools.md)

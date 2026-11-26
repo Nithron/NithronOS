@@ -1,8 +1,11 @@
 package net
 
 import (
+	"fmt"
 	"net"
 	"time"
+
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 // AccessMode represents the system's network access configuration
@@ -246,9 +249,12 @@ func IsLANIP(ip net.IP) bool {
 	return false
 }
 
-// GenerateWireGuardKeys generates a new WireGuard keypair
+// GenerateWireGuardKeys returns a new WireGuard key pair (base64). It needs no
+// external tool. (It used to return two empty strings.)
 func GenerateWireGuardKeys() (privateKey, publicKey string, err error) {
-	// This would call wg genkey | wg pubkey
-	// Implementation will be in the actual service
-	return "", "", nil
+	k, err := wgtypes.GeneratePrivateKey()
+	if err != nil {
+		return "", "", fmt.Errorf("generate wireguard key: %w", err)
+	}
+	return k.String(), k.PublicKey().String(), nil
 }

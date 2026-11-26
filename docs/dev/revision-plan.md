@@ -110,7 +110,7 @@ Add regression tests for each (auth flow tests exist in `router_flow_test.go` to
 
 The backend grew by adding parallel implementations instead of finishing one. Consolidate before adding features, so features land once.
 
-1. **Dead packages**: the duplicates `internal/{backup,firewall,https,wireguard,observability}` were deleted in phase 0. Still unused: `pkg/appsdk` (app manifests, README A9), `pkg/validate` (share names and path checks; reuse it for input validation), `pkg/webhooks` (reuse it for notification delivery). Wire or delete each. Decide on `pkg/updates` (1.7k LOC, unused) and `pkg/snapcfg` (unused, although the README advertises "snapshots on update, enabled by default"): wire them in Phase 4 or delete them.
+1. **Dead packages**: the duplicates `internal/{backup,firewall,https,wireguard,observability}` were deleted in phase 0. Phase 3: `pkg/appsdk` (an unused manifest type for README A9) deleted; `pkg/validate` now validates share fields. Left for later phases on purpose: `pkg/webhooks` (notification delivery, Phase 4) and `pkg/updates` + `pkg/snapcfg` (update flow with pre-update snapshot and rollback, Phase 4); delete whatever Phase 4 doesn't use.
 2. **One user store**: today `auth.NewStore` (`pkg/auth`), `userstore` (`internal/auth/store`) and `pkg/auth.UserManager` all read and write `/etc/nos/users.json`. Keep `internal/auth/store` and port the TOTP and recovery logic into it.
 3. **One session system**: `internal/sessions`, `internal/auth/session` and `pkg/auth/session_manager.go`, plus a legacy `SessionCodec` cookie. Pick opaque server-side sessions, and make `requireAuth` verify them (today the binding middleware explicitly "does not enforce").
 4. **One shares implementation**: `internal/shares`, `pkg/shares`, `SharesHandlerV1` (mock fallback) and `SharesHandlerV2`.
@@ -119,7 +119,7 @@ The backend grew by adding parallel implementations instead of finishing one. Co
 7. **Split `router.go` (2.5k lines)** into `routes_auth.go`, `routes_setup.go`, `routes_storage.go`, and so on, each with a `Register(r chi.Router, deps)` function. A dependency container is built once in `main.go`. Remove duplicate registrations (`/storage/devices` twice, `/health/*` both public at the root and mounted under auth, the `/system/*/…` wildcard duplicates in the route dump).
 8. **No silent mock fallbacks**: return `503 agent.unavailable` instead of fake disks (`router.go:1093`), fake SMART (`smart_handler.go:110`), fake jobs (`jobs_handler.go:213`) or sample health (`health_handler.go:75,99`).
 9. Remove dead `ensureFirstBootOTP` in `main.go`; propagate `context` instead of `context.TODO()` (~25 sites).
-10. **API contract as the source of truth**: generate `docs/api/openapi.yaml` from the routes (or the reverse), make `/api/v1/openapi.json` serve it, and generate the FE types from it.
+10. **API contract as the source of truth**: done in phase 3 for paths. `docs/api/openapi.json` is generated from the router (`cmd/route-dump -format openapi`) and served at `/api/v1/openapi.json`; CI fails when it is stale. `scripts/check-fe-api-paths.mjs` checks every API path the UI calls; the 72 paths the UI calls today that nosd doesn't serve (backup, monitoring, firewall, groups/policy, remote, sync settings, update progress and others) are listed in `docs/api/fe-known-missing.json`. Phases 4 and 5 shrink that list to zero (implement the endpoint or fix the UI call). Still to do: request/response schemas in the generated document, then FE types generated from it (replacing `web/src/api/schema.ts`), and per-method checks.
 
 ---
 
@@ -133,11 +133,13 @@ Grouped by feature. Each item lists the evidence.
 
 **Storage**: `pools.json` has two incompatible schemas: `pools_options.go` writes `{records:[...]}` while `pools_import.go` and `pools_apply_create.go` write a bare list, so each overwrites the other's data. Pick one store. Balance start/cancel (`balance_handler.go:75,104`), scrub cancel (`router.go:1143`), SMART self-test trigger (`smart_handler.go:283,344`), `/pools/{id}/subvolumes`, and the mock pools/devices in `storage_handler.go:270,302`.
 
+**Shares (found in phase 3)**: the shares API now loads and saves one store (`internal/shares`), but SMB shares still never reach Samba: nosd writes `/etc/samba/shares.d/<id>.conf`, while `nos-shares`' postinst adds `include = /etc/samba/smb.conf.d/*.conf` to `smb.conf` (and Samba's `include` doesn't expand globs). Generate one included file (e.g. `/etc/samba/smb.conf.d/nos-shares.conf`) from the store, and check that nosd's unit may write it and reload smbd. `PUT /shares/{id}` always resets enabled/readOnly/guestAccess to the request body; make it a full replacement or use pointer fields. The UI's shares client (`web/src/api/client.ts`) calls `PATCH /v1/shares/{name}` and `/v1/shares/{name}/test`; the API is `PUT /shares/{id}` and `POST /shares/{id}/test`. Prove a share end to end (create in the UI, mount over SMB and NFS) in the QEMU test.
+
 **Dashboard**: shares and apps widgets return mock data (`internal/api/dashboard_handler.go:192,253,271`).
 
 **Network / remote access**: `net_handler.go:474-633` are TODOs/placeholders (store WG/HTTPS config, enable WG, configure HTTPS, apply firewall, interface/port enumeration). Real WG keypairs. Implement or remove the UI-only endpoints (`/network/dns`, `/network/https/{generate,upload,toggle}`, `/network/wireguard/*`, `/firewall/*`).
 
-**Updates**: UI calls `/updates/{channel,progress,progress/stream,snapshots,version}`, which don't exist. Decide on `pkg/updates` + `pkg/snapcfg` (pre-update snapshot + rollback) and wire them; `updater.go:593` "just mark it as failed".
+**Updates**: two implementations: the router's inline `/api/v1/updates/{check,apply,rollback}` (agent plan/apply with a snapshot first, admin-only) wins over `UpdatesHandler` (`/check` POST, `/apply` unreachable). Keep one. UI calls `/updates/{channel,progress,progress/stream,snapshots,version}`, which don't exist. Decide on `pkg/updates` + `pkg/snapcfg` (pre-update snapshot + rollback) and wire them; `updater.go:593` "just mark it as failed".
 
 **Apps**: log streaming (`internal/apps/manager.go:292`, `apps_handler.go:306`), `/apps/schema/{id}` (the UI uses hard-coded `mockSchemas`), and git catalog sources (`pkg/apps/catalog.go:173`).
 

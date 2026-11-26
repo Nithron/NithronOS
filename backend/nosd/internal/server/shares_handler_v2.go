@@ -1,182 +1,22 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"nithronos/backend/nosd/internal/shares"
+	"nithronos/backend/nosd/pkg/validate"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
-	"time"
 
-	"nithronos/backend/nosd/internal/fsatomic"
 	"nithronos/backend/nosd/pkg/httpx"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
-
-// ShareConfig represents a network share configuration
-type ShareConfig struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Path        string            `json:"path"`
-	Protocol    string            `json:"protocol"` // smb, nfs
-	Enabled     bool              `json:"enabled"`
-	ReadOnly    bool              `json:"readOnly"`
-	GuestAccess bool              `json:"guestAccess,omitempty"`
-	Users       []string          `json:"users,omitempty"`
-	Groups      []string          `json:"groups,omitempty"`
-	Hosts       []string          `json:"hosts,omitempty"` // For NFS
-	Options     map[string]string `json:"options,omitempty"`
-	Description string            `json:"description,omitempty"`
-	CreatedAt   time.Time         `json:"createdAt"`
-	UpdatedAt   time.Time         `json:"updatedAt"`
-}
-
-// SharesStore manages share configurations
-type SharesStore struct {
-	path   string
-	shares map[string]*ShareConfig
-	mu     sync.RWMutex
-}
-
-// NewSharesStore creates a new shares store
-func NewSharesStore(path string) (*SharesStore, error) {
-	s := &SharesStore{
-		path:   path,
-		shares: make(map[string]*ShareConfig),
-	}
-
-	// Load existing shares
-	if err := s.load(); err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
-
-	return s, nil
-}
-
-func (s *SharesStore) load() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	var shares []*ShareConfig
-	ok, err := fsatomic.LoadJSON(s.path, &shares)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return nil
-	}
-
-	s.shares = make(map[string]*ShareConfig)
-	for _, share := range shares {
-		s.shares[share.ID] = share
-	}
-
-	return nil
-}
-
-func (s *SharesStore) save() error {
-	shares := make([]*ShareConfig, 0, len(s.shares))
-	for _, share := range s.shares {
-		shares = append(shares, share)
-	}
-
-	return fsatomic.SaveJSON(context.Background(), s.path, shares, 0600)
-}
-
-func (s *SharesStore) List() []*ShareConfig {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	shares := make([]*ShareConfig, 0, len(s.shares))
-	for _, share := range s.shares {
-		shares = append(shares, share)
-	}
-	return shares
-}
-
-func (s *SharesStore) Get(id string) (*ShareConfig, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	share, ok := s.shares[id]
-	return share, ok
-}
-
-func (s *SharesStore) Create(share *ShareConfig) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if share.ID == "" {
-		share.ID = uuid.New().String()
-	}
-
-	share.CreatedAt = time.Now()
-	share.UpdatedAt = time.Now()
-
-	s.shares[share.ID] = share
-	return s.save()
-}
-
-func (s *SharesStore) Update(id string, updates *ShareConfig) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	share, ok := s.shares[id]
-	if !ok {
-		return fmt.Errorf("share not found")
-	}
-
-	// Update fields
-	if updates.Name != "" {
-		share.Name = updates.Name
-	}
-	if updates.Path != "" {
-		share.Path = updates.Path
-	}
-	if updates.Protocol != "" {
-		share.Protocol = updates.Protocol
-	}
-	share.Enabled = updates.Enabled
-	share.ReadOnly = updates.ReadOnly
-	share.GuestAccess = updates.GuestAccess
-	if updates.Users != nil {
-		share.Users = updates.Users
-	}
-	if updates.Groups != nil {
-		share.Groups = updates.Groups
-	}
-	if updates.Hosts != nil {
-		share.Hosts = updates.Hosts
-	}
-	if updates.Options != nil {
-		share.Options = updates.Options
-	}
-	if updates.Description != "" {
-		share.Description = updates.Description
-	}
-	share.UpdatedAt = time.Now()
-
-	return s.save()
-}
-
-func (s *SharesStore) Delete(id string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if _, ok := s.shares[id]; !ok {
-		return fmt.Errorf("share not found")
-	}
-
-	delete(s.shares, id)
-	return s.save()
-}
 
 // SambaManager manages Samba/SMB shares
 type SambaManager struct {
@@ -189,7 +29,7 @@ func NewSambaManager() *SambaManager {
 	}
 }
 
-func (m *SambaManager) ApplyShare(share *ShareConfig) error {
+func (m *SambaManager) ApplyShare(share *shares.Share) error {
 	if share.Protocol != "smb" {
 		return fmt.Errorf("invalid protocol for Samba: %s", share.Protocol)
 	}
@@ -262,7 +102,7 @@ func (m *SambaManager) reload() error {
 	return cmd.Run()
 }
 
-func (m *SambaManager) TestShare(share *ShareConfig) error {
+func (m *SambaManager) TestShare(share *shares.Share) error {
 	// Check if path exists
 	info, err := os.Stat(share.Path)
 	if err != nil {
@@ -293,7 +133,7 @@ func NewNFSManager() *NFSManager {
 	}
 }
 
-func (m *NFSManager) ApplyShare(share *ShareConfig) error {
+func (m *NFSManager) ApplyShare(share *shares.Share) error {
 	if share.Protocol != "nfs" {
 		return fmt.Errorf("invalid protocol for NFS: %s", share.Protocol)
 	}
@@ -316,7 +156,7 @@ func (m *NFSManager) ApplyShare(share *ShareConfig) error {
 	}
 
 	// Build export line
-	export := fmt.Sprintf("%s ", share.Path)
+	export := fmt.Sprintf("%q ", share.Path) // quoted: paths may contain spaces
 
 	if len(share.Hosts) == 0 {
 		// Default to local network
@@ -359,7 +199,7 @@ func (m *NFSManager) reload() error {
 	return cmd.Run()
 }
 
-func (m *NFSManager) TestShare(share *ShareConfig) error {
+func (m *NFSManager) TestShare(share *shares.Share) error {
 	// Check if path exists
 	info, err := os.Stat(share.Path)
 	if err != nil {
@@ -381,25 +221,21 @@ func (m *NFSManager) TestShare(share *ShareConfig) error {
 
 // SharesHandlerV2 handles share-related endpoints with real implementation
 type SharesHandlerV2 struct {
-	store *SharesStore
+	store *shares.Store
 	samba *SambaManager
 	nfs   *NFSManager
 	agent AgentClient
 }
 
-// NewSharesHandlerV2 creates a new shares handler
-func NewSharesHandlerV2(storePath string, agent AgentClient) (*SharesHandlerV2, error) {
-	store, err := NewSharesStore(storePath)
-	if err != nil {
-		return nil, err
-	}
-
+// NewSharesHandlerV2 serves the shares API from store (shared with sync and
+// WebDAV).
+func NewSharesHandlerV2(store *shares.Store, agent AgentClient) *SharesHandlerV2 {
 	return &SharesHandlerV2{
 		store: store,
 		samba: NewSambaManager(),
 		nfs:   NewNFSManager(),
 		agent: agent,
-	}, nil
+	}
 }
 
 // Routes registers the shares routes
@@ -420,8 +256,7 @@ func (h *SharesHandlerV2) Routes() chi.Router {
 
 // ListShares returns all shares
 func (h *SharesHandlerV2) ListShares(w http.ResponseWriter, r *http.Request) {
-	shares := h.store.List()
-	writeJSON(w, shares)
+	writeJSON(w, h.store.List())
 }
 
 // GetShare returns a specific share
@@ -439,7 +274,7 @@ func (h *SharesHandlerV2) GetShare(w http.ResponseWriter, r *http.Request) {
 
 // CreateShare creates a new share
 func (h *SharesHandlerV2) CreateShare(w http.ResponseWriter, r *http.Request) {
-	var share ShareConfig
+	var share shares.Share
 	if err := json.NewDecoder(r.Body).Decode(&share); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "Invalid request body")
 		return
@@ -461,62 +296,74 @@ func (h *SharesHandlerV2) CreateShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := validateShareFields(&share); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	// Check if path exists
 	if _, err := os.Stat(share.Path); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "Share path does not exist")
 		return
 	}
 
-	// Create share in store
-	if err := h.store.Create(&share); err != nil {
+	// The store assigns the ID (it names the share's file under
+	// /etc/samba/shares.d), never the request.
+	created, err := h.store.Create(share)
+	if err != nil {
 		log.Error().Err(err).Msg("Failed to create share")
 		httpx.WriteError(w, http.StatusInternalServerError, "Failed to create share")
 		return
 	}
 
 	// Apply to system
-	if share.Enabled {
-		if err := h.applyShare(&share); err != nil {
-			log.Error().Err(err).Str("id", share.ID).Msg("Failed to apply share")
+	if created.Enabled {
+		if err := h.applyShare(&created); err != nil {
+			log.Error().Err(err).Str("id", created.ID).Msg("Failed to apply share")
 			// Don't fail the request, share is saved
 		}
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, share)
+	writeJSON(w, created)
 }
 
 // UpdateShare updates an existing share
 func (h *SharesHandlerV2) UpdateShare(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	var updates ShareConfig
+	var updates shares.Share
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	// Get existing share
+	if updates.Protocol != "" && updates.Protocol != "smb" && updates.Protocol != "nfs" {
+		httpx.WriteError(w, http.StatusBadRequest, "Protocol must be 'smb' or 'nfs'")
+		return
+	}
+	if err := validateShareFields(&updates); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// existing is a copy taken before the update, so the old protocol's
+	// config is the one removed below.
 	existing, ok := h.store.Get(id)
 	if !ok {
 		httpx.WriteError(w, http.StatusNotFound, "Share not found")
 		return
 	}
-
-	// Update in store
-	if err := h.store.Update(id, &updates); err != nil {
+	updated, err := h.store.Update(id, updates)
+	if err != nil {
 		log.Error().Err(err).Str("id", id).Msg("Failed to update share")
 		httpx.WriteError(w, http.StatusInternalServerError, "Failed to update share")
 		return
 	}
 
-	// Re-apply to system if enabled
-	updated, _ := h.store.Get(id)
+	_ = h.removeShare(&existing)
 	if updated.Enabled {
-		// Remove old config
-		_ = h.removeShare(existing)
-		// Apply new config
-		if err := h.applyShare(updated); err != nil {
+		if err := h.applyShare(&updated); err != nil {
 			log.Error().Err(err).Str("id", id).Msg("Failed to apply updated share")
 		}
 	}
@@ -535,7 +382,7 @@ func (h *SharesHandlerV2) DeleteShare(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Remove from system
-	if err := h.removeShare(share); err != nil {
+	if err := h.removeShare(&share); err != nil {
 		log.Error().Err(err).Str("id", id).Msg("Failed to remove share from system")
 	}
 
@@ -560,7 +407,7 @@ func (h *SharesHandlerV2) TestShare(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var manager interface {
-		TestShare(*ShareConfig) error
+		TestShare(*shares.Share) error
 	}
 
 	switch share.Protocol {
@@ -582,7 +429,7 @@ func (h *SharesHandlerV2) TestShare(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	if err := manager.TestShare(share); err != nil {
+	if err := manager.TestShare(&share); err != nil {
 		result["status"] = "failed"
 		result["error"] = err.Error()
 
@@ -604,20 +451,18 @@ func (h *SharesHandlerV2) TestShare(w http.ResponseWriter, r *http.Request) {
 func (h *SharesHandlerV2) EnableShare(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	share, ok := h.store.Get(id)
-	if !ok {
+	share, err := h.store.SetEnabled(id, true)
+	if errors.Is(err, shares.ErrNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, "Share not found")
 		return
 	}
-
-	share.Enabled = true
-	if err := h.store.Update(id, share); err != nil {
+	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "Failed to enable share")
 		return
 	}
 
 	// Apply to system
-	if err := h.applyShare(share); err != nil {
+	if err := h.applyShare(&share); err != nil {
 		log.Error().Err(err).Str("id", id).Msg("Failed to apply share")
 		httpx.WriteError(w, http.StatusInternalServerError, "Failed to apply share configuration")
 		return
@@ -630,27 +475,25 @@ func (h *SharesHandlerV2) EnableShare(w http.ResponseWriter, r *http.Request) {
 func (h *SharesHandlerV2) DisableShare(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	share, ok := h.store.Get(id)
-	if !ok {
+	share, err := h.store.SetEnabled(id, false)
+	if errors.Is(err, shares.ErrNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, "Share not found")
 		return
 	}
-
-	share.Enabled = false
-	if err := h.store.Update(id, share); err != nil {
+	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "Failed to disable share")
 		return
 	}
 
 	// Remove from system
-	if err := h.removeShare(share); err != nil {
+	if err := h.removeShare(&share); err != nil {
 		log.Error().Err(err).Str("id", id).Msg("Failed to remove share from system")
 	}
 
 	writeJSON(w, share)
 }
 
-func (h *SharesHandlerV2) applyShare(share *ShareConfig) error {
+func (h *SharesHandlerV2) applyShare(share *shares.Share) error {
 	switch share.Protocol {
 	case "smb":
 		return h.samba.ApplyShare(share)
@@ -661,7 +504,7 @@ func (h *SharesHandlerV2) applyShare(share *ShareConfig) error {
 	}
 }
 
-func (h *SharesHandlerV2) removeShare(share *ShareConfig) error {
+func (h *SharesHandlerV2) removeShare(share *shares.Share) error {
 	switch share.Protocol {
 	case "smb":
 		return h.samba.RemoveShare(share.ID)
@@ -670,4 +513,38 @@ func (h *SharesHandlerV2) removeShare(share *ShareConfig) error {
 	default:
 		return fmt.Errorf("unknown protocol: %s", share.Protocol)
 	}
+}
+
+// validateShareFields checks every field that is written into smb.conf or
+// /etc/exports. Before this, a newline in the name, path or description could
+// add any Samba directive, and the path could be anywhere (/, /etc). Empty
+// name and path pass here because an update keeps the old values; CreateShare
+// requires them.
+func validateShareFields(s *shares.Share) error {
+	if s.Name != "" {
+		if err := validate.ShareName(s.Name); err != nil {
+			return fmt.Errorf("share name: use 1-32 letters, digits, '-' or '_'")
+		}
+	}
+	if s.Path != "" {
+		if err := validate.PathUnder(validate.ShareRoots, s.Path); err != nil {
+			return fmt.Errorf("share path must be inside %s", strings.Join(validate.ShareRoots, " or "))
+		}
+	}
+	if err := validate.Description(s.Description); err != nil {
+		return err
+	}
+	for _, list := range [][]string{s.Users, s.Groups} {
+		for _, p := range list {
+			if err := validate.Principal(p); err != nil {
+				return fmt.Errorf("%w: %q", err, p)
+			}
+		}
+	}
+	for _, c := range s.Hosts {
+		if err := validate.NFSClient(c); err != nil {
+			return fmt.Errorf("%w: %q", err, c)
+		}
+	}
+	return nil
 }

@@ -126,7 +126,7 @@ After the first admin is created, `/api/setup/*` returns **410 Gone** and normal
 
 **Security defaults**
 - Passwords: **Argon2id** (PHC).  
-- Sessions: httpOnly cookies (`nos_session` ~15m, optional `nos_refresh` ~7d) + CSRF double-submit (`X-CSRF-Token`).  
+- Sessions: server-side sessions checked on every request, with httpOnly cookies (`nos_session` 15m, `nos_refresh` 7d) + CSRF double-submit (`X-CSRF-Token`).  
 - 2FA: TOTP (XChaCha20-Poly1305-encrypted secrets), recovery codes hashed.  
 - Guardrails: rate limits per IP/username, generic auth errors, temporary lockout.
 

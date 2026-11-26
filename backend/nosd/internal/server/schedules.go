@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 
@@ -96,20 +97,26 @@ func handleSchedulesPost(cfg config.Config) http.HandlerFunc {
 			httpx.WriteError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		// Write systemd drop-ins via agent
-		client := agentclient.New("/run/nos-agent.sock")
-		// nos-smart-scan.timer override
-		_ = client.PostJSON(context.TODO(), "/v1/fs/write", map[string]any{
-			"path":    "/etc/systemd/system/nos-smart-scan.timer.d/override.conf",
-			"content": "[Timer]\nOnCalendar=" + s.SmartScan + "\n",
-			"mode":    "0644", "owner": "root", "group": "root", "atomic": true,
-		}, nil)
-		// nos-btrfs-scrub@.timer override
-		_ = client.PostJSON(context.TODO(), "/v1/fs/write", map[string]any{
-			"path":    "/etc/systemd/system/nos-btrfs-scrub@.timer.d/override.conf",
-			"content": "[Timer]\nOnCalendar=" + s.BtrfsScrub + "\n",
-			"mode":    "0644", "owner": "root", "group": "root", "atomic": true,
-		}, nil)
+		// Write the timer drop-ins via the agent. A failure used to be ignored,
+		// so the UI said "saved" while the timers kept their old schedule.
+		client := agentclient.New(cfg.AgentSocket())
+		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+		defer cancel()
+		dropIns := []struct{ path, calendar string }{
+			{"/etc/systemd/system/nos-smart-scan.timer.d/override.conf", s.SmartScan},
+			{"/etc/systemd/system/nos-btrfs-scrub@.timer.d/override.conf", s.BtrfsScrub},
+		}
+		for _, d := range dropIns {
+			err := client.PostJSON(ctx, "/v1/fs/write", map[string]any{
+				"path":    d.path,
+				"content": "[Timer]\nOnCalendar=" + d.calendar + "\n",
+				"mode":    "0644", "owner": "root", "group": "root", "atomic": true,
+			}, nil)
+			if err != nil {
+				httpx.WriteTypedError(w, http.StatusBadGateway, "schedules.apply_failed", "Schedules were saved but could not be applied: "+err.Error(), 0)
+				return
+			}
+		}
 		writeJSON(w, map[string]any{"ok": true})
 	}
 }

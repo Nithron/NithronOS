@@ -157,7 +157,7 @@ func handlePoolsImport(cfg config.Config) http.HandlerFunc {
 			var list []PoolRecord
 			_, _ = fsatomic.LoadJSON(filepath.Join(cfg.EtcDir, "nos", "pools.json"), &list)
 			list = append(list, rec)
-			return fsatomic.SaveJSON(r.Context(), filepath.Join(cfg.EtcDir, "nos", "pools.json"), list, 0o600)
+			return fsatomic.SaveJSON(filepath.Join(cfg.EtcDir, "nos", "pools.json"), list, 0o600)
 		})
 		writeJSON(w, map[string]any{"ok": true})
 	}

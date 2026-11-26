@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -48,7 +47,7 @@ func updatePoolOptions(cfg config.Config, mutate func(st *poolOptionsStore)) err
 			return err
 		}
 		mutate(&st)
-		return fsatomic.SaveJSON(context.TODO(), poolsStorePath(cfg), st, 0o600)
+		return fsatomic.SaveJSON(poolsStorePath(cfg), st, 0o600)
 	})
 }
 
