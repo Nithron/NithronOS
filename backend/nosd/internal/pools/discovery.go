@@ -3,6 +3,7 @@ package pools
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -65,7 +66,14 @@ func poolsFromFindmnt(out []byte, usage func(string) (uint64, uint64, uint64), d
 				label = "system"
 			}
 		}
-		p := Pool{ID: f.Target, Label: label, UUID: f.UUID, Mount: f.Target, Devices: []string{}}
+		// The id goes into URLs (/pools/{id}/...): the UUID, or the label when
+		// udev doesn't know it; never the mount path, whose slashes broke
+		// every per-pool route.
+		id := f.UUID
+		if id == "" {
+			id = label
+		}
+		p := Pool{ID: id, Label: label, UUID: f.UUID, Mount: f.Target, Devices: []string{}}
 		if f.Source != "" {
 			p.Devices = []string{f.Source}
 		}
@@ -73,8 +81,14 @@ func poolsFromFindmnt(out []byte, usage func(string) (uint64, uint64, uint64), d
 		byFS[key] = p
 	}
 	pools := make([]Pool, 0, len(order))
+	used := map[string]int{}
 	for _, k := range order {
-		pools = append(pools, byFS[k])
+		p := byFS[k]
+		if n := used[p.ID]; n > 0 { // two filesystems with the same label
+			p.ID = fmt.Sprintf("%s-%d", p.ID, n+1)
+		}
+		used[byFS[k].ID]++
+		pools = append(pools, p)
 	}
 	return pools
 }

@@ -8,8 +8,16 @@ log() { echo "[live-ui] $*"; }
 mkdir -p /run/nos && chown nos:nos /run/nos
 
 if [ ! -e /mnt/pool1 ] && img=/var/lib/pool1.img && truncate -s 1G "$img" &&
-	dev="$(losetup -f --show "$img" 2>/dev/null)" && mkfs.btrfs -q -L pool1 "$dev" >/dev/null 2>&1; then
-	mkdir -p /mnt/pool1 && mount "$dev" /mnt/pool1 && log "Btrfs pool1 on $dev at /mnt/pool1"
+	dev="$(losetup -f --show "$img" 2>/dev/null)"; then
+	# The loop device is the host's: run.sh detaches it before removing the
+	# container (docker rm leaves it attached otherwise). Recorded at once,
+	# so a failed mkfs doesn't leave it behind.
+	echo "$dev" > /run/live-ui-loop
+	if mkfs.btrfs -q -L pool1 "$dev" >/dev/null 2>&1 && mkdir -p /mnt/pool1 && mount "$dev" /mnt/pool1; then
+		log "Btrfs pool1 on $dev at /mnt/pool1"
+	else
+		log "could not make the pool on $dev: storage pages will show no pools"
+	fi
 else
 	log "no loop device: storage pages will show no pools"
 fi

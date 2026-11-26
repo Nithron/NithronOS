@@ -61,7 +61,10 @@ test('every page renders against a real nosd', async ({ page }) => {
 
 	// Detail pages of things that exist: the first pool.
 	const pages = pagesToVisit()
-	const pools = await page.request.get('/api/v1/pools').then((r) => (r.ok() ? r.json() : [])).catch(() => [])
+	// Asked from the page: the session cookie is Secure, which Playwright's
+	// own request client won't send over http, while the browser does on
+	// 127.0.0.1.
+	const pools = await page.evaluate(() => fetch('/api/v1/pools').then((r) => (r.ok ? r.json() : [])).catch(() => []))
 	const pool = Array.isArray(pools) ? pools[0] : undefined
 	if (pool?.id || pool?.uuid) pages.push(`/storage/${encodeURIComponent(pool.id || pool.uuid)}`)
 

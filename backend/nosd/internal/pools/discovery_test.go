@@ -21,14 +21,14 @@ func TestPoolsFromFindmnt(t *testing.T) {
 	if len(got) != 3 {
 		t.Fatalf("pools: %+v", got)
 	}
-	want := []struct{ mount, label, uuid, device string }{
-		{"/", "system", "aaaa", "/dev/sda2"},
-		{"/srv/pool/media", "media", "bbbb", "/dev/sdb"},
-		{"/mnt/pool1", "pool1", "", "/dev/loop3"},
+	want := []struct{ id, mount, label, uuid, device string }{
+		{"aaaa", "/", "system", "aaaa", "/dev/sda2"},
+		{"bbbb", "/srv/pool/media", "media", "bbbb", "/dev/sdb"},
+		{"pool1", "/mnt/pool1", "pool1", "", "/dev/loop3"},
 	}
 	for i, w := range want {
 		p := got[i]
-		if p.Mount != w.mount || p.ID != w.mount || p.Label != w.label || p.UUID != w.uuid || len(p.Devices) != 1 || p.Devices[0] != w.device {
+		if p.ID != w.id || p.Mount != w.mount || p.Label != w.label || p.UUID != w.uuid || len(p.Devices) != 1 || p.Devices[0] != w.device {
 			t.Errorf("pool %d: %+v, want %+v", i, p, w)
 		}
 		if p.Size != 100 || p.Used != 40 || p.Free != 60 {
@@ -37,5 +37,14 @@ func TestPoolsFromFindmnt(t *testing.T) {
 	}
 	if len(poolsFromFindmnt([]byte(`not json`), usage, func(string) bool { return true })) != 0 {
 		t.Error("bad output must give no pools")
+	}
+}
+
+// Pool ids go into URLs: never a path, and unique.
+func TestPoolIDsAreURLSafeAndUnique(t *testing.T) {
+	out := []byte(`{"filesystems":[{"target":"/a/data","source":"/dev/sdb"},{"target":"/b/data","source":"/dev/sdc"}]}`)
+	got := poolsFromFindmnt(out, func(string) (uint64, uint64, uint64) { return 0, 0, 0 }, func(string) bool { return true })
+	if len(got) != 2 || got[0].ID != "data" || got[1].ID != "data-2" {
+		t.Fatalf("ids: %+v", got)
 	}
 }

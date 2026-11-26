@@ -21,13 +21,26 @@ ADMIN_PASS='Live-Admin-Pass-1!'
 PREVIEW_PID=""
 
 log() { echo "[live-ui] $*"; }
+# Removes the container, first unmounting and detaching its loop device: a
+# privileged container's loop devices belong to the host and outlive it.
+remove_container() {
+	docker exec "$NAME" sh -c 'umount /mnt/pool1 2>/dev/null; [ -s /run/live-ui-loop ] && losetup -d "$(cat /run/live-ui-loop)"' >/dev/null 2>&1 || true
+	docker rm -f "$NAME" >/dev/null 2>&1 || true
+}
 cleanup() {
 	# preview runs in its own process group (npx leaves vite behind otherwise)
 	[ -n "$PREVIEW_PID" ] && kill -- "-$PREVIEW_PID" 2>/dev/null || true
-	if [ "${KEEP:-0}" != 1 ]; then docker rm -f "$NAME" >/dev/null 2>&1 || true; fi
+	if [ "${KEEP:-0}" != 1 ]; then remove_container; fi
 	rm -rf "$WORK"
 }
 trap cleanup EXIT
+
+if [ "${1:-}" = "--stop" ]; then
+	remove_container
+	pkill -f '[v]ite preview --host 127.0.0.1' || true
+	log "stopped"
+	exit 0
+fi
 
 log "building nosd, nos-agent and the web UI"
 (cd "$ROOT/backend/nosd" && CGO_ENABLED=0 go build -o "$WORK/nosd" .)
@@ -37,7 +50,7 @@ cp -r "$ROOT/usr/share/nos/apps" "$WORK/apps"
 (cd "$ROOT/web" && npm run build --silent >/dev/null)
 
 log "starting $NAME"
-docker rm -f "$NAME" >/dev/null 2>&1 || true
+remove_container
 docker build -q -t nos-live "$WORK" >/dev/null
 docker run -d --privileged --name "$NAME" -p "127.0.0.1:$API_PORT:9000" nos-live >/dev/null
 
@@ -66,6 +79,7 @@ status=0
 
 if [ "${KEEP:-0}" = 1 ]; then
 	log "left running: UI http://127.0.0.1:$UI_PORT (user $ADMIN_USER), logs: docker exec $NAME cat /var/log/nosd.log"
+	log "rerun without KEEP (or run: $0 --stop) to remove it and detach its loop device"
 	trap - EXIT
 	wait "$PREVIEW_PID"
 fi
