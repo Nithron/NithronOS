@@ -119,7 +119,7 @@ func (d *routeDeps) registerAuth(r chi.Router) {
 			httpx.WriteError(w, http.StatusInternalServerError, "session error")
 			return
 		}
-		issueCSRFCookie(w)
+		issueCSRFCookie(w, r, cfg.RefreshTTL(), false)
 		writeJSON(w, map[string]any{"ok": true})
 	})
 
@@ -148,6 +148,7 @@ func (d *routeDeps) registerAuth(r chi.Router) {
 			httpx.WriteError(w, http.StatusInternalServerError, "session error")
 			return
 		}
+		issueCSRFCookie(w, r, cfg.RefreshTTL(), true)
 		writeJSON(w, map[string]any{"ok": true})
 	})
 

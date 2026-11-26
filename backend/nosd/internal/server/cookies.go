@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/base64"
 	"net/http"
 	"os"
 	"strconv"
@@ -64,9 +65,20 @@ func clearAuthCookies(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{Name: cookieCSRF, Value: "", Path: "/", Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
 }
 
-func issueCSRFCookie(w http.ResponseWriter) {
-	b := securecookie.GenerateRandomKey(32)
-	http.SetCookie(w, &http.Cookie{Name: cookieCSRF, Value: encodeBase64(b), Path: "/", Secure: true, SameSite: http.SameSiteLaxMode, Expires: time.Now().Add(24 * time.Hour)})
+// issueCSRFCookie sets the CSRF token the UI echoes in X-CSRF-Token. It
+// lives as long as the session can be refreshed; a refresh keeps the current
+// value (requests in flight still carry it) and extends it; sign-in always
+// starts a new one, so a planted cookie can't fix it. (It used to expire
+// after 24 hours while sessions refresh for 7 days, so every change failed
+// with "Missing CSRF token" after a day.)
+func issueCSRFCookie(w http.ResponseWriter, r *http.Request, ttl time.Duration, keep bool) {
+	value := ""
+	if ck, err := r.Cookie(cookieCSRF); keep && err == nil && len(ck.Value) >= 32 {
+		value = ck.Value
+	} else {
+		value = encodeBase64(securecookie.GenerateRandomKey(32))
+	}
+	http.SetCookie(w, &http.Cookie{Name: cookieCSRF, Value: value, Path: "/", Secure: true, SameSite: http.SameSiteLaxMode, Expires: time.Now().Add(ttl)})
 }
 
 // decodeRefresh validates nos_refresh and returns its user, session and
@@ -138,10 +150,10 @@ func decodeOpaque(cfg config.Config, name string, val string, out *map[string]an
 	return sc.Decode(name, val, out)
 }
 
+// encodeBase64 encodes a CSRF token. (It used securecookie.EncodeMulti
+// without codecs, which always fails, so every CSRF token was "".)
 func encodeBase64(b []byte) string {
-	// lightweight encoder without pulling extra deps
-	v, _ := securecookie.EncodeMulti("b64", b, securecookie.CodecsFromPairs()...)
-	return v
+	return base64.RawURLEncoding.EncodeToString(b)
 }
 
 func asInt64(v any) (int64, bool) {

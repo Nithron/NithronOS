@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/subtle"
 	"net/http"
 
 	"nos/backend/nosd/pkg/httpx"
@@ -30,11 +31,12 @@ func requireCSRF(next http.Handler) http.Handler {
 			return
 		}
 		ck, err := r.Cookie(cookieCSRF)
-		if err != nil {
+		if err != nil || ck.Value == "" {
 			httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.csrf.missing", "Missing CSRF token", 0)
 			return
 		}
-		if r.Header.Get("X-CSRF-Token") != ck.Value {
+		// An empty token never matches (every token used to be empty).
+		if subtle.ConstantTimeCompare([]byte(r.Header.Get("X-CSRF-Token")), []byte(ck.Value)) != 1 {
 			httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.csrf.invalid", "Invalid CSRF token", 0)
 			return
 		}
