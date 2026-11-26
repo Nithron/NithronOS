@@ -40,21 +40,7 @@ func setupDecodeToken(cfg config.Config, tok string) (map[string]any, error) {
 	return out, nil
 }
 
-// simple validators used during setup
-func validUsername(s string) bool {
-	if len(s) < 3 || len(s) > 32 {
-		return false
-	}
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_' {
-			continue
-		}
-		return false
-	}
-	return true
-}
-
+// validPassword is setup's rule for the first administrator's password.
 func validPassword(p string) bool {
 	if len(p) < 12 {
 		return false

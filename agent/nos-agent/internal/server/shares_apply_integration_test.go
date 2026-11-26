@@ -60,6 +60,9 @@ func TestSharesIntegration(t *testing.T) {
 	if _, err := os.Stat("/tmp/pwned"); err == nil {
 		t.Fatal("the SMB password was run as a shell command")
 	}
+	if gecos := strings.Split(sh(t, "getent", "passwd", "alice"), ":")[4]; gecos != nosAccountComment {
+		t.Fatalf("account not marked as nOS's: %q", gecos)
+	}
 	if rr := post("/v1/smb/user-create", map[string]string{"username": "root", "password": "rootpass1"}); rr.Code != http.StatusBadRequest {
 		t.Fatalf("SMB password for root: %d", rr.Code)
 	}
@@ -157,5 +160,29 @@ func TestSharesIntegration(t *testing.T) {
 	}
 	if _, err := os.Stat("/srv/shares/media/f.txt"); err != nil {
 		t.Fatalf("removing a share must keep its files: %v", err)
+	}
+
+	// Deleting a nOS user: their SMB password and (nOS-made) account go; an
+	// account nOS didn't make keeps existing, without its SMB password.
+	sh(t, "useradd", "-M", "-c", "Console admin", "carol")
+	if rr := post("/v1/smb/user-create", map[string]string{"username": "carol", "password": "carol-pass-1"}); rr.Code != http.StatusOK {
+		t.Fatalf("SMB password for an existing account: %d %s", rr.Code, rr.Body.String())
+	}
+	for _, u := range []string{"bob", "carol"} {
+		if rr := post("/v1/smb/user-delete", map[string]string{"username": u}); rr.Code != http.StatusOK {
+			t.Fatalf("delete %s: %d %s", u, rr.Code, rr.Body.String())
+		}
+	}
+	if err := exec.Command("getent", "passwd", "bob").Run(); err == nil {
+		t.Error("the nOS-made account bob still exists")
+	}
+	if err := exec.Command("getent", "passwd", "carol").Run(); err != nil {
+		t.Error("an account nOS didn't make was deleted")
+	}
+	if out, _ := exec.Command("pdbedit", "-L").CombinedOutput(); strings.Contains(string(out), "bob:") || strings.Contains(string(out), "carol:") {
+		t.Errorf("SMB passwords left after delete:\n%s", out)
+	}
+	if out, err := smbclient("bob", bobPass, "everyone", "ls"); err == nil && !strings.Contains(out, "NT_STATUS") {
+		t.Errorf("a deleted user still reaches a share:\n%s", out)
 	}
 }

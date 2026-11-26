@@ -50,7 +50,7 @@ func TestChangePasswordEndsOtherSessions(t *testing.T) {
 	here, csrf := e.signIn(t)
 	elsewhere, _ := e.signIn(t)
 
-	res := e.call(http.MethodPost, "/api/v1/users/u-alice/password", `{"current_password":"Correct-Horse-9","new_password":"Even-Better-Horse-10"}`, here, csrf)
+	res := e.call(http.MethodPost, "/api/v1/auth/password", `{"current_password":"Correct-Horse-9","new_password":"Even-Better-Horse-10"}`, here, csrf)
 	if res.Code != http.StatusOK {
 		t.Fatalf("change password: %d %s", res.Code, res.Body.String())
 	}

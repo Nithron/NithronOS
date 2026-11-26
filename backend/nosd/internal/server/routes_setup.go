@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -128,11 +129,11 @@ func (d *routeDeps) registerSetup(r chi.Router) {
 			}
 			_ = json.NewDecoder(r.Body).Decode(&body)
 			uname := strings.TrimSpace(body.Username)
-			if !validUsername(uname) {
+			if !validAccountName(uname) {
 				httpx.WriteTypedError(w, http.StatusBadRequest, "input.invalid", "Invalid username", 0)
 				return
 			}
-			if !validPassword(body.Password) {
+			if !validPassword(body.Password) || passwordProblem(body.Password) != "" {
 				httpx.WriteTypedError(w, http.StatusBadRequest, "input.weak_password", "Choose a stronger password", 0)
 				return
 			}
@@ -163,6 +164,16 @@ func (d *routeDeps) registerSetup(r chi.Router) {
 				}
 				httpx.WriteErrorWithDetails(w, http.StatusInternalServerError, code, "Service cannot write /etc/nos/users.json", map[string]any{"path": cfg.UsersPath})
 				return
+			}
+			// The administrator's file-sharing (SMB) account, with the same
+			// password. Setup doesn't depend on it: a later password reset
+			// creates it too.
+			if d.agentClient != nil {
+				ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+				if err := (agentAccounts{agent: d.agentClient}).SetPassword(ctx, uname, body.Password); err != nil {
+					Logger(cfg).Warn().Str("event", "setup.smb_account").Err(err).Msg("the administrator's SMB account was not created")
+				}
+				cancel()
 			}
 			// The administrator exists: the setup code and its console banner go away.
 			if err := fb.Consume(); err != nil {

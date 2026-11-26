@@ -1,10 +1,12 @@
 package config
 
-// AgentSocket returns the agent socket path. Kept as method for future plumb.
+import "os"
+
+// AgentSocket is nos-agent's unix socket. NOS_AGENT_SOCKET overrides it
+// (development and tests run a stand-in agent elsewhere).
 func (c Config) AgentSocket() string {
-	// Touch fields to avoid staticcheck complaints about empty branches while keeping behavior.
-	_ = c.EtcDir
-	_ = c.Bind
-	// default path; can be overridden via env later if needed
+	if p := os.Getenv("NOS_AGENT_SOCKET"); p != "" {
+		return p
+	}
 	return "/run/nos-agent.sock"
 }

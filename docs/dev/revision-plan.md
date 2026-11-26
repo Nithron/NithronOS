@@ -229,6 +229,7 @@ Order (all required for v1): finish sync-core and the server side (Phase 4) toge
 - Integration tests for nosd and the agent on a loopback-device Btrfs pool (`tests/e2e/storage-test.sh` exists; make it run in CI).
 - Playwright UI smoke test of every routed page.
 - Upgrade test (`tests/upgrade`) for snapshot-before-update and rollback once Phase 4 wires it.
+- From phase 5: `NOS_TEST_SKIP_AUTH=1` turns off sign-in, admin and CSRF checks in the shipped binary (`routes_protected.go`, `deps.go`, `sync_handler.go`). Tests should inject a test router instead, so no environment variable can disable authentication on a real system.
 
 ---
 
