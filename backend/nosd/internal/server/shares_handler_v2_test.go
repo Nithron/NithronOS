@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"nithronos/backend/nosd/internal/shares"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,11 +13,11 @@ import (
 
 func newTestSharesHandler(t *testing.T) http.Handler {
 	t.Helper()
-	h, err := NewSharesHandlerV2(filepath.Join(t.TempDir(), "shares.json"), nil)
+	st, err := shares.NewStore(filepath.Join(t.TempDir(), "shares.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	return h.Routes()
+	return NewSharesHandlerV2(st, nil).Routes()
 }
 
 func postShare(t *testing.T, h http.Handler, method, path string, body any) *httptest.ResponseRecorder {
@@ -67,7 +68,7 @@ func TestCreateShareAssignsID(t *testing.T) {
 	if res.Code != http.StatusCreated {
 		t.Fatalf("create: %d %s", res.Code, res.Body.String())
 	}
-	var got ShareConfig
+	var got shares.Share
 	_ = json.Unmarshal(res.Body.Bytes(), &got)
 	if got.ID == "" || strings.ContainsAny(got.ID, "./") {
 		t.Fatalf("client ID kept: %q", got.ID)

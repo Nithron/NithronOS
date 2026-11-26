@@ -40,7 +40,6 @@ import (
 	"nithronos/backend/nosd/pkg/httpx"
 	poolroots "nithronos/backend/nosd/pkg/pools"
 
-	// "nithronos/backend/nosd/pkg/shares" // TODO: Restore when integrating old shares
 	"nithronos/backend/nosd/pkg/snapdb"
 
 	"nithronos/backend/nosd/internal/fsatomic"
@@ -186,10 +185,13 @@ func NewRouter(cfg config.Config) http.Handler {
 
 	// Initialize shares handler
 	agentClient := agentclient.New(cfg.AgentSocket())
-	sharesStorePath := filepath.Join(filepath.Dir(cfg.UsersPath), "shares.json")
-	sharesHandler, err := NewSharesHandlerV2(sharesStorePath, agentClient)
+	// One shares store for the shares API, NithronSync and WebDAV.
+	var sharesHandler *SharesHandlerV2
+	sharesStore, err := shares.NewStore(filepath.Join(filepath.Dir(cfg.UsersPath), "shares.json"))
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to initialize shares handler")
+		log.Error().Err(err).Msg("Failed to load the shares store")
+	} else {
+		sharesHandler = NewSharesHandlerV2(sharesStore, agentClient)
 	}
 
 	// Initialize backup handler (using existing implementation)
@@ -1092,7 +1094,6 @@ func NewRouter(cfg config.Config) http.Handler {
 		/* Duplicate delete handler - removed
 		pr.With(adminRequired).Delete("/api/shares/{id}", func(w http.ResponseWriter, r *http.Request) {
 			id := chi.URLParam(r, "id")
-			// st := shares.NewStore(cfg.SharesPath)
 			st := struct{
 				GetByID func(string) (interface{}, bool)
 				Delete func(string) error
@@ -1211,9 +1212,11 @@ func NewRouter(cfg config.Config) http.Handler {
 		}
 
 		// Sync endpoints (for NithronSync clients)
-		syncSharesStorePath := filepath.Join(filepath.Dir(cfg.UsersPath), "shares.json")
-		syncSharesStore := shares.NewStore(syncSharesStorePath)
-		syncHandler, syncErr := NewSyncHandler(cfg, syncSharesStore, *Logger(cfg))
+		var syncHandler *SyncHandler
+		syncErr := errors.New("the shares store could not be loaded")
+		if sharesStore != nil {
+			syncHandler, syncErr = NewSyncHandler(cfg, sharesStore, *Logger(cfg))
+		}
 		if syncErr != nil {
 			Logger(cfg).Error().Err(syncErr).Msg("Failed to create sync handler")
 		} else {
@@ -1221,7 +1224,7 @@ func NewRouter(cfg config.Config) http.Handler {
 			pr.Mount("/api/v1/sync", syncHandler.Routes())
 
 			// Mount WebDAV endpoint for file access
-			webdavHandler := NewWebDAVHandler(syncSharesStore, syncHandler.DeviceManager(), *Logger(cfg))
+			webdavHandler := NewWebDAVHandler(sharesStore, syncHandler.DeviceManager(), *Logger(cfg))
 			r.Mount("/dav", webdavHandler)
 
 			Logger(cfg).Info().Msg("NithronSync API initialized")

@@ -133,6 +133,8 @@ Grouped by feature. Each item lists the evidence.
 
 **Storage**: `pools.json` has two incompatible schemas: `pools_options.go` writes `{records:[...]}` while `pools_import.go` and `pools_apply_create.go` write a bare list, so each overwrites the other's data. Pick one store. Balance start/cancel (`balance_handler.go:75,104`), scrub cancel (`router.go:1143`), SMART self-test trigger (`smart_handler.go:283,344`), `/pools/{id}/subvolumes`, and the mock pools/devices in `storage_handler.go:270,302`.
 
+**Shares (found in phase 3)**: the shares API now loads and saves one store (`internal/shares`), but SMB shares still never reach Samba: nosd writes `/etc/samba/shares.d/<id>.conf`, while `nos-shares`' postinst adds `include = /etc/samba/smb.conf.d/*.conf` to `smb.conf` (and Samba's `include` doesn't expand globs). Generate one included file (e.g. `/etc/samba/smb.conf.d/nos-shares.conf`) from the store, and check that nosd's unit may write it and reload smbd. `PUT /shares/{id}` always resets enabled/readOnly/guestAccess to the request body; make it a full replacement or use pointer fields. Prove a share end to end (create in the UI, mount over SMB and NFS) in the QEMU test.
+
 **Dashboard**: shares and apps widgets return mock data (`internal/api/dashboard_handler.go:192,253,271`).
 
 **Network / remote access**: `net_handler.go:474-633` are TODOs/placeholders (store WG/HTTPS config, enable WG, configure HTTPS, apply firewall, interface/port enumeration). Real WG keypairs. Implement or remove the UI-only endpoints (`/network/dns`, `/network/https/{generate,upload,toggle}`, `/network/wireguard/*`, `/firewall/*`).

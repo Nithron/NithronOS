@@ -418,7 +418,7 @@ func (h *SyncHandler) GetChanges(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get share
-	share, ok := h.shareStore.GetByID(shareID)
+	share, ok := h.shareStore.Get(shareID)
 	if !ok {
 		httpx.WriteTypedError(w, http.StatusNotFound, "share.not_found", "Share not found", 0)
 		return
@@ -451,7 +451,7 @@ func (h *SyncHandler) GetFileMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	share, ok := h.shareStore.GetByID(shareID)
+	share, ok := h.shareStore.Get(shareID)
 	if !ok {
 		httpx.WriteTypedError(w, http.StatusNotFound, "share.not_found", "Share not found", 0)
 		return
@@ -482,7 +482,7 @@ func (h *SyncHandler) GetFilesMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	share, ok := h.shareStore.GetByID(shareID)
+	share, ok := h.shareStore.Get(shareID)
 	if !ok {
 		httpx.WriteTypedError(w, http.StatusNotFound, "share.not_found", "Share not found", 0)
 		return
@@ -514,7 +514,7 @@ func (h *SyncHandler) GetBlockHashes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	share, ok := h.shareStore.GetByID(shareID)
+	share, ok := h.shareStore.Get(shareID)
 	if !ok {
 		httpx.WriteTypedError(w, http.StatusNotFound, "share.not_found", "Share not found", 0)
 		return
