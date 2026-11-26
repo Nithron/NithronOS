@@ -21,3 +21,13 @@ func TestStatusWriterPassesThroughStreaming(t *testing.T) {
 		t.Fatal("Flush didn't reach the real writer")
 	}
 }
+
+func TestAverageCPUPercent(t *testing.T) {
+	// 30 s of CPU over 10 minutes: 5% of one core.
+	if got := averageCPUPercent(30e9, 600); got != 5 {
+		t.Fatalf("got %v", got)
+	}
+	if got := averageCPUPercent(1e9, 3); got != 33.3 {
+		t.Fatalf("rounding: %v", got)
+	}
+}

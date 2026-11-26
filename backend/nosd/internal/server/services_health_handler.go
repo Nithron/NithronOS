@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"math"
 	"net/http"
 	"os/exec"
 	"runtime"
@@ -271,13 +272,10 @@ func getServiceHealth(serviceName string) ServiceHealth {
 				}
 			}
 
-			// Parse CPU usage (this is cumulative, not percentage)
+			// CPU time used since start (systemd counts nanoseconds).
+			var cpuNSec int64
 			if cpuUsage, ok := props["CPUUsageNSec"]; ok && cpuUsage != "[not set]" {
-				// This would need more complex calculation for percentage
-				// For now, just indicate if CPU is being used
-				if usage, err := strconv.ParseInt(cpuUsage, 10, 64); err == nil && usage > 0 {
-					service.CPU = 0.1 // Placeholder
-				}
+				cpuNSec, _ = strconv.ParseInt(cpuUsage, 10, 64)
 			}
 
 			// Parse uptime
@@ -287,6 +285,12 @@ func getServiceHealth(serviceName string) ServiceHealth {
 					service.StartTime = t
 					service.Uptime = int64(time.Since(t).Seconds())
 				}
+			}
+			// The CPU share is the average since the service started (one
+			// core = 100%). It was a fixed 0.1 for any service that had used
+			// the CPU at all.
+			if service.Uptime > 0 && cpuNSec > 0 {
+				service.CPU = averageCPUPercent(cpuNSec, service.Uptime)
 			}
 
 			// Get last error if failed
@@ -366,3 +370,10 @@ func parseSystemdTimestamp(timestamp string) (time.Time, error) {
 
 // These functions are already defined in monitoring_handler.go
 // We'll use those instead
+
+// averageCPUPercent is CPU time over wall time since start, as a percentage
+// of one core, to one decimal.
+func averageCPUPercent(cpuNSec, uptimeSec int64) float64 {
+	pct := float64(cpuNSec) / 1e9 / float64(uptimeSec) * 100
+	return math.Round(pct*10) / 10
+}
