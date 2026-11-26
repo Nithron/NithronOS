@@ -98,6 +98,8 @@ func buildMux() http.Handler {
 	mux.HandleFunc("/v1/snapshot/list", handleSnapshotList)
 	mux.HandleFunc("/v1/snapshot/rollback", handleSnapshotRollback)
 	mux.HandleFunc("/v1/snapshot/delete", handleSnapshotDelete)
+	mux.HandleFunc("/v1/backup/send", handleBackupSend)
+	mux.HandleFunc("/v1/backup/status", handleBackupStatus)
 	mux.HandleFunc("/v1/updates/plan", handleUpdatesPlan)
 	mux.HandleFunc("/v1/updates/apply", handleUpdatesApply)
 	mux.HandleFunc("/v1/updates/status", handleUpdatesStatus)

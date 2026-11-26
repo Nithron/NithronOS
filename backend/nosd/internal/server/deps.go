@@ -22,6 +22,7 @@ import (
 	"nos/backend/nosd/internal/updates"
 	"nos/backend/nosd/pkg/agentclient"
 	"nos/backend/nosd/pkg/alerts"
+	"nos/backend/nosd/pkg/backup"
 	"nos/backend/nosd/pkg/monitor"
 )
 
@@ -40,6 +41,7 @@ type routeDeps struct {
 	sharesApplier       *sharesApplier
 	updates             *updates.Service
 	monitor             *MonitorHandler
+	backupStart         func(ctx context.Context)
 	monitorStart        func(ctx context.Context)
 	backupHandler       *BackupHandler
 	notificationManager *notifications.Manager
@@ -98,10 +100,10 @@ func newRouteDeps(cfg config.Config) *routeDeps {
 		groupsHandler = &GroupsHandler{store: groupsStore, shares: sharesStore, users: acc, applier: applier}
 	}
 
-	// Initialize backup handler (using existing implementation)
-	// The existing backup handler requires scheduler, replicator, and restorer
-	// For now, we'll skip initializing it as it needs more complex setup
-	var backupHandler *BackupHandler
+	// Backups: scheduled snapshots, replication and restore, all through
+	// nos-agent. (The handler used to be left nil, so none of the backup
+	// API existed.)
+	backupHandler, backupStart := newBackup(cfg, etcDir, agentClient)
 
 	// Initialize notifications manager
 	notificationsPath := filepath.Join(filepath.Dir(cfg.UsersPath), "notifications")
@@ -142,7 +144,7 @@ func newRouteDeps(cfg config.Config) *routeDeps {
 		sharesStore: sharesStore, sharesHandler: sharesHandler, backupHandler: backupHandler,
 		groupsHandler: groupsHandler, policyHandler: policyHandler, accounts: acc,
 		groupsStore: groupsStore, sharesApplier: applier, updates: updatesSvc,
-		monitor: monitorHandler, monitorStart: monitorStart,
+		monitor: monitorHandler, monitorStart: monitorStart, backupStart: backupStart,
 		notificationManager: notificationManager, appsManager: appsManager,
 		rlStore: rlStore, mgr: mgr, fb: fb,
 	}
@@ -194,4 +196,31 @@ func newMonitor(cfg config.Config, etcDir string) (*MonitorHandler, func(context
 		}
 	}
 	return NewMonitorHandler(logger, collector, storage, engine), start
+}
+
+// newBackup builds the backup scheduler, replicator and restorer; start runs
+// the schedules (the daemon only).
+func newBackup(cfg config.Config, etcDir string, agent AgentClient) (*BackupHandler, func(context.Context)) {
+	logger := *Logger(cfg)
+	stateDir := filepath.Join(filepath.Dir(cfg.SessionsPath), "backup")
+	host := backupAgent{agent: agent}
+	scheduler := backup.NewScheduler(logger, filepath.Join(stateDir, "schedules.json"), host)
+	jobs := scheduler.GetJobManager() // one job list for snapshots, replication and restore
+	replicator := backup.NewReplicator(logger, filepath.Join(stateDir, "destinations.json"), filepath.Join(etcDir, "backup", "keys"), jobs)
+	replicator.Connect(host, scheduler.ListSnapshots)
+	restorer := backup.NewRestorer(logger, host, jobs, scheduler, replicator)
+	start := func(ctx context.Context) {
+		for _, dir := range []string{stateDir, filepath.Join(etcDir, "backup", "keys")} {
+			if err := os.MkdirAll(dir, 0o700); err != nil {
+				log.Error().Err(err).Str("dir", dir).Msg("backup state folder")
+			}
+		}
+		if err := scheduler.Start(ctx); err != nil {
+			log.Error().Err(err).Msg("backup scheduler")
+		}
+		if err := replicator.Start(); err != nil {
+			log.Error().Err(err).Msg("backup replicator")
+		}
+	}
+	return NewBackupHandler(logger, scheduler, replicator, restorer), start
 }

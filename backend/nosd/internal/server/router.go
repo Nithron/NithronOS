@@ -66,6 +66,9 @@ func NewServer(cfg config.Config) (http.Handler, func()) {
 		if d.monitorStart != nil {
 			d.monitorStart(context.Background())
 		}
+		if d.backupStart != nil {
+			d.backupStart(context.Background())
+		}
 		if d.updates != nil {
 			// An upgrade restarts nosd; follow it again.
 			d.updates.Resume()

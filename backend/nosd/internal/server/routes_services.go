@@ -54,8 +54,6 @@ func (d *routeDeps) registerServices(pr chi.Router) {
 	// Jobs endpoints are already defined above
 
 	// Backup endpoints
-	if backupHandler != nil {
-		pr.Mount("/api/v1/backup", backupHandler.Routes())
-	}
+	pr.With(d.adminRequired).Mount("/api/v1/backup", backupHandler.Routes())
 
 }

@@ -126,8 +126,11 @@ func parseShow(out string) map[string]string {
 	return props
 }
 
-func readUpdateUnit() UpdateUnitStatus {
-	out, _ := exec.Command("systemctl", "show", updateUnit,
+func readUpdateUnit() UpdateUnitStatus { return readUnit(updateUnit) }
+
+// readUnit reads a transient unit's state (see unitStatus).
+func readUnit(unit string) UpdateUnitStatus {
+	out, _ := exec.Command("systemctl", "show", unit,
 		"--property=LoadState,ActiveState,SubState,Result,ExecMainStatus,InvocationID,ExecMainStartTimestamp,ExecMainExitTimestamp").Output()
 	return unitStatus(parseShow(string(out)))
 }

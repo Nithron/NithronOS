@@ -42,6 +42,7 @@ type Schedule struct {
 // Snapshot represents a Btrfs snapshot
 type Snapshot struct {
 	ID         string    `json:"id"`
+	AgentID    string    `json:"agent_id,omitempty"` // the agent's name (its .snapshots entry)
 	Subvolume  string    `json:"subvolume"`
 	Path       string    `json:"path"`
 	CreatedAt  time.Time `json:"created_at"`
