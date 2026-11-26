@@ -14,7 +14,6 @@ import (
 	userstore "nos/backend/nosd/internal/auth/store"
 	"nos/backend/nosd/internal/config"
 	"nos/backend/nosd/internal/groups"
-	"nos/backend/nosd/internal/notifications"
 	"nos/backend/nosd/internal/policy"
 	"nos/backend/nosd/internal/ratelimit"
 	"nos/backend/nosd/internal/setup/firstboot"
@@ -29,27 +28,26 @@ import (
 // routeDeps holds what the route files share. It is built once per router.
 // A nil service means it failed to start; its routes answer 503.
 type routeDeps struct {
-	cfg                 config.Config
-	users               *userstore.Store
-	agentClient         *agentclient.Client
-	smart               *smartCache
-	sharesStore         *shares.Store
-	sharesHandler       *SharesHandler
-	groupsHandler       *GroupsHandler
-	policyHandler       *PolicyHandler
-	accounts            accounts
-	groupsStore         *groups.Store
-	sharesApplier       *sharesApplier
-	updates             *updates.Service
-	monitor             *MonitorHandler
-	backupStart         func(ctx context.Context)
-	monitorStart        func(ctx context.Context)
-	backupHandler       *BackupHandler
-	notificationManager *notifications.Manager
-	appsManager         *apps.Manager
-	rlStore             *ratelimit.Store
-	mgr                 *session.Manager
-	fb                  *firstboot.Manager
+	cfg           config.Config
+	users         *userstore.Store
+	agentClient   *agentclient.Client
+	smart         *smartCache
+	sharesStore   *shares.Store
+	sharesHandler *SharesHandler
+	groupsHandler *GroupsHandler
+	policyHandler *PolicyHandler
+	accounts      accounts
+	groupsStore   *groups.Store
+	sharesApplier *sharesApplier
+	updates       *updates.Service
+	monitor       *MonitorHandler
+	backupStart   func(ctx context.Context)
+	monitorStart  func(ctx context.Context)
+	backupHandler *BackupHandler
+	appsManager   *apps.Manager
+	rlStore       *ratelimit.Store
+	mgr           *session.Manager
+	fb            *firstboot.Manager
 }
 
 func newRouteDeps(cfg config.Config) *routeDeps {
@@ -106,13 +104,6 @@ func newRouteDeps(cfg config.Config) *routeDeps {
 	// API existed.)
 	backupHandler, backupStart := newBackup(cfg, etcDir, agentClient)
 
-	// Initialize notifications manager
-	notificationsPath := filepath.Join(filepath.Dir(cfg.UsersPath), "notifications")
-	notificationManager, err := notifications.NewManager(notificationsPath)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to initialize notifications manager")
-	}
-
 	// Initialize apps manager
 	appManagerConfig := &apps.Config{
 		AppsRoot:      "/srv/apps",
@@ -146,8 +137,8 @@ func newRouteDeps(cfg config.Config) *routeDeps {
 		groupsHandler: groupsHandler, policyHandler: policyHandler, accounts: acc,
 		groupsStore: groupsStore, sharesApplier: applier, updates: updatesSvc,
 		monitor: monitorHandler, monitorStart: monitorStart, backupStart: backupStart,
-		notificationManager: notificationManager, appsManager: appsManager,
-		rlStore: rlStore, mgr: mgr, fb: fb,
+		appsManager: appsManager,
+		rlStore:     rlStore, mgr: mgr, fb: fb,
 	}
 }
 
