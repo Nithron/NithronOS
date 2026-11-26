@@ -1,6 +1,11 @@
 # Changelog
 
-All notable changes to NithronOS will be documented in this file.
+All notable changes to nOS (formerly NithronOS) will be documented in this file.
+
+## [Unreleased]
+
+### Changed
+- **NithronOS is now nOS** (NithronOS stays the long form). The repository moved to github.com/Nithron/nOS, and identifiers changed with it: the meta package is `nos` (a transitional `nithronos` package pulls it in), files moved from `/usr/share/nithronos`, `/usr/lib/nithronos`, `/var/lib/nithronos` and `/etc/nithronos` to the `nos` paths, TLS certificates to `/etc/ssl/nos`, units are named `nos-*`, the default hostname is `nos` (`nos.local`), os-release says `ID=nos`, Prometheus metrics are prefixed `nos_` and the sync clients use `nos://` links. Upgrading moves an existing system to the new names automatically (`/usr/lib/nos/migrate-from-nithronos.sh`, run by the nosd package); its hostname is kept.
 
 ## [v0.9.5-pre-alpha] - 2024-12-21
 
