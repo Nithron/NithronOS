@@ -59,7 +59,13 @@ test('every page renders against a real nosd', async ({ page }) => {
 		}
 	})
 
-	for (const p of pagesToVisit()) {
+	// Detail pages of things that exist: the first pool.
+	const pages = pagesToVisit()
+	const pools = await page.request.get('/api/v1/pools').then((r) => (r.ok() ? r.json() : [])).catch(() => [])
+	const pool = Array.isArray(pools) ? pools[0] : undefined
+	if (pool?.id || pool?.uuid) pages.push(`/storage/${encodeURIComponent(pool.id || pool.uuid)}`)
+
+	for (const p of pages) {
 		current = { path: p, pageErrors: [], consoleErrors: [], failedCalls: [], heading: '' }
 		await page.goto(p)
 		await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {})

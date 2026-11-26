@@ -53,6 +53,9 @@ const literal = /(['"`])(\/(?:api\/)?v1\/[^'"`\s]*)\1/g
 // `const BASE_PATH = '/v1/sync'`: a base other paths are joined to, served
 // when any route is below it.
 const baseConst = /\b(?:const|let|var)\s+\w*(?:BASE|PREFIX|ROOT)\w*\s*=\s*$/i
+// A client call (nos-client prefixes /api) with a path outside /v1: nosd
+// serves nothing there. (PoolDetails listed pools from /api/pools.)
+const unversionedCall = /\b(?:http|httpCore|api|nos)\.(?:get|post|put|patch|del|delete)\s*(?:<[^>()]*>)?\(\s*(['"`])(\/(?!v1\/)[^'"`\s]*)\1/g
 const missing = new Map() // path -> files
 for (const file of sourceFiles(srcDir)) {
   const text = fs.readFileSync(file, 'utf-8')
@@ -61,6 +64,11 @@ for (const file of sourceFiles(srcDir)) {
     const before = text.slice(Math.max(0, m.index - 80), m.index)
     if (baseConst.test(before) && !p.endsWith('/')) p += '/'
     if (served(p)) continue
+    const rel = path.relative(root, file)
+    missing.set(p, [...new Set([...(missing.get(p) || []), rel])].sort())
+  }
+  for (const m of text.matchAll(unversionedCall)) {
+    const p = '/api' + m[2].replace(/\$\{[^}]*\}/g, '{}').replace(/\?.*$/, '')
     const rel = path.relative(root, file)
     missing.set(p, [...new Set([...(missing.get(p) || []), rel])].sort())
   }

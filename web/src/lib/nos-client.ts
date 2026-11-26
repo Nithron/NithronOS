@@ -129,7 +129,15 @@ client.interceptors.request.use((config) => {
 
 // Response interceptor: on 401, try single refresh then replay once
 client.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    // An HTML page where JSON was asked for: the reverse proxy serves the
+    // web UI at /api/* instead of passing it to nosd.
+    const type = String(res.headers?.['content-type'] ?? '')
+    if (type.includes('text/html')) {
+      return Promise.reject(new ProxyMisconfiguredError('The server answered /api with an HTML page instead of JSON'))
+    }
+    return res
+  },
   async (error) => {
     const err = toApiError(error);
     const original = error?.config;
@@ -287,9 +295,6 @@ export const http = {
     applyDevice: (id: string, body: any) => httpCore.post(`/v1/pools/${id}/apply-device`, body),
     roots: () => httpCore.get('/v1/pools/roots'),
     snapshots: (id: string) => httpCore.get(`/v1/pools/${id}/snapshots`),
-    // Legacy unversioned endpoints (if still in use)
-    listUnversioned: () => httpCore.get('/pools'),
-    snapshotsUnversioned: (id: string) => httpCore.get(`/pools/${id}/snapshots`),
     // Transaction endpoints
     txStatus: (id: string) => httpCore.get(`/v1/pools/tx/${id}/status`),
     txLog: (id: string, cursor = 0, max = 1000) => 
@@ -299,14 +304,7 @@ export const http = {
   
   // Disk endpoints
   disks: {
-    list: () => httpCore.get('/disks'),
-    listV1: () => httpCore.get('/v1/disks'),
-  },
-  
-  // Snapshot endpoints
-  snapshots: {
-    recent: () => httpCore.get('/snapshots/recent'),
-    prune: (data: any) => httpCore.post('/snapshots/prune', data),
+    list: () => httpCore.get('/v1/disks'),
   },
   
   // Updates endpoints
