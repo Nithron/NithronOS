@@ -10,12 +10,11 @@ Responses use a standard shape:
 { "error": { "code": "string", "message": "string", "retryAfterSec": 0 } }
 ```
 
-## OpenAPI and client types
-- Spec: `docs/api/openapi.yaml`
-- Generate TS types for the web client:
+## OpenAPI and the API contract
+- `docs/api/openapi.json` lists every route nosd serves. It is generated from the router, never edited by hand:
 ```bash
-bash scripts/gen-api-types.sh
-# or from /web
-npm run gen:api:types
+cd backend/nosd && go run ./cmd/route-dump -format openapi -version "$(cat ../../VERSION)" > ../../docs/api/openapi.json
 ```
-- Output: `web/src/types/api.d.ts`
+- A running nosd serves the same document at `GET /api/v1/openapi.json`.
+- CI fails when `docs/api/openapi.json` is out of date, and when the web UI calls an API path that doesn't exist (`scripts/check-fe-api-paths.mjs`; known gaps are listed in `docs/api/fe-known-missing.json` until the UI is fixed).
+- Request and response schemas are not described yet; `web/src/api/schema.ts` was generated from an older, hand-written spec and is no longer regenerated.

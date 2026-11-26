@@ -119,7 +119,7 @@ The backend grew by adding parallel implementations instead of finishing one. Co
 7. **Split `router.go` (2.5k lines)** into `routes_auth.go`, `routes_setup.go`, `routes_storage.go`, and so on, each with a `Register(r chi.Router, deps)` function. A dependency container is built once in `main.go`. Remove duplicate registrations (`/storage/devices` twice, `/health/*` both public at the root and mounted under auth, the `/system/*/…` wildcard duplicates in the route dump).
 8. **No silent mock fallbacks**: return `503 agent.unavailable` instead of fake disks (`router.go:1093`), fake SMART (`smart_handler.go:110`), fake jobs (`jobs_handler.go:213`) or sample health (`health_handler.go:75,99`).
 9. Remove dead `ensureFirstBootOTP` in `main.go`; propagate `context` instead of `context.TODO()` (~25 sites).
-10. **API contract as the source of truth**: generate `docs/api/openapi.yaml` from the routes (or the reverse), make `/api/v1/openapi.json` serve it, and generate the FE types from it.
+10. **API contract as the source of truth**: done in phase 3 for paths. `docs/api/openapi.json` is generated from the router (`cmd/route-dump -format openapi`) and served at `/api/v1/openapi.json`; CI fails when it is stale. `scripts/check-fe-api-paths.mjs` checks every API path the UI calls; the 72 paths the UI calls today that nosd doesn't serve (backup, monitoring, firewall, groups/policy, remote, sync settings, update progress and others) are listed in `docs/api/fe-known-missing.json`. Phases 4 and 5 shrink that list to zero (implement the endpoint or fix the UI call). Still to do: request/response schemas in the generated document, then FE types generated from it (replacing `web/src/api/schema.ts`), and per-method checks.
 
 ---
 

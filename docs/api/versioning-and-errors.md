@@ -17,17 +17,6 @@ Back-end errors follow a single shape:
 - 429 responses also set `Retry-After` header (seconds).
 
 ### OpenAPI spec
-- Seed OpenAPI document lives at `docs/api/openapi.yaml`.
-- Keep it updated when endpoints are added/changed (auth/setup endpoints are documented initially).
-
-### Type generation (frontend)
-- Script (root): `scripts/gen-api-types.sh`
-- Web script: from `web/` run:
-
-```bash
-npm run gen:api:types
-```
-
-This generates `web/src/types/api.d.ts` using `openapi-typescript`.
+- `docs/api/openapi.json` is generated from the nosd router (`go run ./cmd/route-dump -format openapi -version "$(cat ../../VERSION)"` in `backend/nosd`); CI checks it is current. See `docs/dev/api.md`.
 
 

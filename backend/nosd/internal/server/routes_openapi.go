@@ -2,22 +2,21 @@ package server
 
 import (
 	"net/http"
-	"nithronos/backend/nosd/internal/version"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 	// "nithronos/backend/nosd/pkg/firewall"
 )
 
-// registerOpenAPI serves the OpenAPI document.
+// registerOpenAPI serves the OpenAPI document, generated from the router on
+// the first request (it used to be a stub with no paths).
 func (d *routeDeps) registerOpenAPI(r chi.Router) {
-	// Serve minimal OpenAPI JSON for v1 at /api/v1/openapi.json
-	r.Get("/api/v1/openapi.json", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		writeJSON(w, map[string]any{
-			"openapi": "3.0.3",
-			"info":    map[string]any{"title": "NithronOS API", "version": version.Version},
-			"servers": []any{map[string]any{"url": "/api/v1"}},
-		})
+	var (
+		once sync.Once
+		doc  map[string]any
+	)
+	r.Get("/api/v1/openapi.json", func(w http.ResponseWriter, _ *http.Request) {
+		once.Do(func() { doc = OpenAPIDocument(ListRoutes(r)) })
+		writeJSON(w, doc)
 	})
-
 }

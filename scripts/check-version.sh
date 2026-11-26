@@ -15,7 +15,7 @@ check() { # <file> <found>
 }
 
 check web/package.json "$(node -p "require('./web/package.json').version")" "$want"
-check backend/nosd/openapi.yaml "$(sed -n 's/^  version: *//p' backend/nosd/openapi.yaml | head -1)" "$want"
+check docs/api/openapi.json "$(node -p "require('./docs/api/openapi.json').info.version")" "$want"
 check docs-site/mkdocs.yml "$(sed -n 's/^  version: *v//p' docs-site/mkdocs.yml | head -1)" "$want"
 for f in packaging/deb/*/debian/changelog; do
   check "$f" "$(head -1 "$f" | sed -n 's/^[^ ]* (\([^)]*\)).*/\1/p')" "$deb"
