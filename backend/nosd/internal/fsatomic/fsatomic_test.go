@@ -71,7 +71,49 @@ func TestLoadIgnoresTmp(t *testing.T) {
 	if got["a"] != "b" {
 		t.Fatalf("want b, got %v", got)
 	}
-	if _, err := os.Stat(path + ".tmp"); !os.IsNotExist(err) {
-		t.Fatalf("tmp should be removed, err=%v", err)
+	// A reader must not delete it: it may be a concurrent writer's file.
+	if _, err := os.Stat(path + ".tmp"); err != nil {
+		t.Fatalf("a reader removed the temp file: %v", err)
+	}
+}
+
+// Regression: LoadJSON deleted path+".tmp", the file a concurrent SaveJSON
+// was about to rename into place, so that save failed and was lost (pool
+// transactions stuck in "running" while the UI polled them).
+func TestSavesSurviveConcurrentReads(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	stop := make(chan struct{})
+	readers := make(chan struct{})
+	for i := 0; i < 4; i++ {
+		go func() {
+			defer func() { readers <- struct{}{} }()
+			var v map[string]int
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					_, _ = LoadJSON(path, &v)
+				}
+			}
+		}()
+	}
+	const n = 300
+	for i := 1; i <= n; i++ {
+		if err := SaveJSON(path, map[string]int{"n": i}, 0o600); err != nil {
+			close(stop)
+			t.Fatalf("save %d failed while readers ran: %v", i, err)
+		}
+	}
+	close(stop)
+	for i := 0; i < 4; i++ {
+		<-readers
+	}
+	var got map[string]int
+	if _, err := LoadJSON(path, &got); err != nil || got["n"] != n {
+		t.Fatalf("last save lost: %v %v", got, err)
+	}
+	if left, _ := filepath.Glob(path + ".tmp*"); len(left) != 0 {
+		t.Fatalf("temp files left behind: %v", left)
 	}
 }
