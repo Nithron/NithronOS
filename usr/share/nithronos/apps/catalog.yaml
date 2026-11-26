@@ -218,7 +218,7 @@ entries:
 
   - id: nai
     name: nAI
-    version: "0.4.0"
+    version: "0.7.0"
     description: Ask questions about the files on your NAS and get answers with citations, running locally
     categories:
       - productivity

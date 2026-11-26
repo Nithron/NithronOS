@@ -13,10 +13,14 @@
     "NAI_VERSION": {
       "type": "string",
       "title": "nAI Version",
-      "default": "0.4.0",
+      "default": "0.7.0",
       "enum": [
+        "0.7.0",
+        "0.7",
+        "0.6.0",
+        "0.6",
+        "0.5.0",
         "0.4.0",
-        "0.4",
         "latest"
       ]
     },
@@ -69,12 +73,12 @@
     "RERANKER": {
       "type": "string",
       "title": "Reranking",
-      "description": "Sharper result ordering at some CPU cost. 'auto' enables it on capable hardware.",
-      "default": "auto",
+      "description": "Re-scores the top 10 results with a multilingual reranker. Off by default on NithronOS (NAS CPUs: about 2 s per question). 'auto' turns it on only on fast machines (8+ cores, 8+ GB RAM); 'on' forces it.",
+      "default": "off",
       "enum": [
+        "off",
         "auto",
-        "true",
-        "false"
+        "on"
       ]
     },
     "OCR_ENABLED": {
@@ -126,7 +130,7 @@
     "MEMORY_LIMIT": {
       "type": "string",
       "title": "Memory Limit",
-      "description": "Container memory limit. nAI peaks around 1.4 GB with reranking on; give it more for very large shares.",
+      "description": "Container memory limit. nAI 0.7.0 peaks around 1.8 GB (reranking off, the default here) and 3.3 GB with reranking on: keep at least 3g, use 5g if you turn reranking on. Below 2.5g nAI runs keyword-only (no semantic search).",
       "default": "3g",
       "pattern": "^[0-9]+[mMgG]$"
     },
