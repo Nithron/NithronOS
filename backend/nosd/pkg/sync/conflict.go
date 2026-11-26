@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"time"
 
@@ -111,16 +112,17 @@ func (s *ConflictStore) GetConflict(id string) (*SyncConflict, error) {
 }
 
 // ListConflicts returns all conflicts, optionally filtered
-func (s *ConflictStore) ListConflicts(shareID, deviceID string, unresolvedOnly bool) []*SyncConflict {
+// ListConflicts lists the conflicts of the given devices (never nil).
+func (s *ConflictStore) ListConflicts(shareID string, deviceIDs []string, unresolvedOnly bool) []*SyncConflict {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var result []*SyncConflict
+	result := []*SyncConflict{}
 	for _, c := range s.conflicts {
 		if shareID != "" && c.ShareID != shareID {
 			continue
 		}
-		if deviceID != "" && c.DeviceID != deviceID {
+		if !slices.Contains(deviceIDs, c.DeviceID) {
 			continue
 		}
 		if unresolvedOnly && c.Resolved {

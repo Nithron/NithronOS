@@ -246,7 +246,7 @@ func (ct *ChangeTracker) scanDirectory(basePath, relativePath string, files map[
 
 // computeChanges computes the differences between old and new file states
 func (ct *ChangeTracker) computeChanges(oldHashes map[string]string, currentFiles map[string]FileMetadata) []FileChange {
-	var changes []FileChange
+	changes := []FileChange{} // [] in JSON, not null
 
 	// Check for new and modified files
 	for path, meta := range currentFiles {
@@ -403,7 +403,7 @@ func (ct *ChangeTracker) GetFilesMetadata(sharePath string, filePaths []string) 
 
 // WalkShare walks a share directory and returns all files
 func (ct *ChangeTracker) WalkShare(sharePath string) ([]FileMetadata, error) {
-	var files []FileMetadata
+	files := []FileMetadata{} // [] in JSON, not null
 
 	err := filepath.WalkDir(sharePath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

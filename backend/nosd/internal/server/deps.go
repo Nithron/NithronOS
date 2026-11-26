@@ -32,6 +32,7 @@ type routeDeps struct {
 	cfg                 config.Config
 	users               *userstore.Store
 	agentClient         *agentclient.Client
+	smart               *smartCache
 	sharesStore         *shares.Store
 	sharesHandler       *SharesHandler
 	groupsHandler       *GroupsHandler
@@ -140,7 +141,7 @@ func newRouteDeps(cfg config.Config) *routeDeps {
 	fb := FirstBootManager(cfg)
 
 	return &routeDeps{
-		cfg: cfg, users: users, agentClient: agentClient,
+		cfg: cfg, users: users, agentClient: agentClient, smart: &smartCache{collect: collectSMARTDevices},
 		sharesStore: sharesStore, sharesHandler: sharesHandler, backupHandler: backupHandler,
 		groupsHandler: groupsHandler, policyHandler: policyHandler, accounts: acc,
 		groupsStore: groupsStore, sharesApplier: applier, updates: updatesSvc,

@@ -39,7 +39,10 @@ export interface DisksSummary {
   healthy: number
   warning: number
   critical: number
-  lastScanISO: string
+  /** SMART had no answer for these disks. */
+  unknown?: number
+  /** When SMART was last read; absent before the first check. */
+  lastScanISO?: string
 }
 
 export interface ShareInfo {

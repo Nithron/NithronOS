@@ -179,7 +179,7 @@ func (s *Store) ListDevicesByUser(userID string) []*DeviceToken {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var devices []*DeviceToken
+	devices := []*DeviceToken{} // [] in JSON, not null
 	for _, device := range s.devices {
 		if device.UserID == userID && device.RevokedAt == nil {
 			copy := *device
@@ -193,7 +193,7 @@ func (s *Store) ListDevicesByUser(userID string) []*DeviceToken {
 func (s *Store) ListAllDevices() []*DeviceToken {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	var devices []*DeviceToken
+	devices := []*DeviceToken{} // [] in JSON, not null
 	for _, device := range s.devices {
 		if device.RevokedAt == nil {
 			d := *device

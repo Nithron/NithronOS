@@ -38,6 +38,13 @@ func (d *routeDeps) registerSetup(r chi.Router) {
 				// Evaluate setup completion from disk on every request (robust against file changes)
 				us, _ := userstore.New(cfg.UsersPath)
 				if us != nil && us.HasAdmin() {
+					// "Is this first boot?" has an answer, not an error: the
+					// UI asks on every page (a 410 here was logged as an
+					// error in the browser each time). Setup actions are gone.
+					if r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/state") {
+						writeJSON(w, map[string]any{"firstBoot": false, "otpRequired": false, "complete": true})
+						return
+					}
 					httpx.WriteTypedError(w, http.StatusGone, "setup.complete", "Setup already completed", 0)
 					return
 				}

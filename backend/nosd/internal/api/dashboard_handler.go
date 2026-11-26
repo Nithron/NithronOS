@@ -54,11 +54,14 @@ type StorageSummary struct {
 
 // DisksSummary for dashboard widget
 type DisksSummary struct {
-	Total       int    `json:"total"`
-	Healthy     int    `json:"healthy"`
-	Warning     int    `json:"warning"`
-	Critical    int    `json:"critical"`
-	LastScanISO string `json:"lastScanISO"`
+	Total    int `json:"total"`
+	Healthy  int `json:"healthy"`
+	Warning  int `json:"warning"`
+	Critical int `json:"critical"`
+	// Unknown: SMART had no answer for the disk.
+	Unknown int `json:"unknown"`
+	// LastScanISO is when SMART was last read; empty before the first check.
+	LastScanISO string `json:"lastScanISO,omitempty"`
 }
 
 // ShareInfo for network shares
@@ -103,6 +106,15 @@ type EventInfo struct {
 type DashboardSources struct {
 	Shares func() []ShareInfo
 	Apps   func() []AppInfo
+	// Disks is the disks' SMART health (the server caches it).
+	Disks func() DisksSummary
+}
+
+func (s DashboardSources) disks() DisksSummary {
+	if s.Disks == nil {
+		return DisksSummary{}
+	}
+	return s.Disks()
 }
 
 func (s DashboardSources) shares() []ShareInfo {
@@ -140,7 +152,7 @@ func handleDashboard(w http.ResponseWriter, r *http.Request, src DashboardSource
 	response := DashboardResponse{
 		System:      getSystemSummary(ctx),
 		Storage:     getStorageSummary(ctx),
-		Disks:       getDisksSummary(ctx),
+		Disks:       src.disks(),
 		Shares:      src.shares(),
 		Apps:        src.apps(),
 		Maintenance: getMaintenanceStatus(ctx),
@@ -242,41 +254,6 @@ func getStorageSummary(ctx context.Context) StorageSummary {
 	return summary
 }
 
-func getDisksSummary(ctx context.Context) DisksSummary {
-	summary := DisksSummary{
-		LastScanISO: time.Now().Format(time.RFC3339),
-	}
-
-	partitions, err := disk.Partitions(false)
-	if err != nil {
-		return summary
-	}
-
-	for _, partition := range partitions {
-		// Skip special filesystems
-		if partition.Fstype == "tmpfs" || partition.Fstype == "devtmpfs" {
-			continue
-		}
-
-		summary.Total++
-
-		// Check usage to determine health
-		if usage, err := disk.Usage(partition.Mountpoint); err == nil {
-			if usage.UsedPercent > 90 {
-				summary.Critical++
-			} else if usage.UsedPercent > 80 {
-				summary.Warning++
-			} else {
-				summary.Healthy++
-			}
-		} else {
-			summary.Healthy++ // Assume healthy if can't check
-		}
-	}
-
-	return summary
-}
-
 func getMaintenanceStatus(ctx context.Context) MaintenanceStatus {
 	// Live scrub and balance progress is at /api/v1/{scrub,balance}/status;
 	// no next run is shown (it used to be a made-up date a week ahead).
@@ -336,19 +313,8 @@ func getRecentEvents(ctx context.Context) []EventInfo {
 		events = allEvents[start:]
 	}
 
-	// If no events found, add some default ones
-	if len(events) == 0 {
-		now := time.Now()
-		events = []EventInfo{
-			{
-				ID:        "evt_001",
-				Timestamp: now.Format(time.RFC3339),
-				Type:      "system",
-				Message:   "System started",
-				Severity:  "info",
-			},
-		}
-	}
+	// No events is an empty list (it used to be a made-up "System
+	// started" at the current time).
 
 	// Reverse to show newest first
 	for i := len(events)/2 - 1; i >= 0; i-- {
@@ -388,20 +354,17 @@ func HandleStorageSummary(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HandleDisksSummary returns disks summary
-func HandleDisksSummary(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 100*time.Millisecond)
-	defer cancel()
-
-	summary := getDisksSummary(ctx)
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(summary); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+// DisksSummaryHandler serves the disks' SMART health. (It used to call
+// partitions over 80% full "warning" and everything else "healthy", with a
+// "last scan" of now.)
+func DisksSummaryHandler(src DashboardSources) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(src.disks())
 	}
 }
 

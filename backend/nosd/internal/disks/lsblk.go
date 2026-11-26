@@ -43,8 +43,13 @@ func ParseSizeToBytes(v any) int64 {
 	return 0
 }
 
+// lsblkColumns are the columns Collect reads.
+const lsblkColumns = "NAME,KNAME,PATH,SIZE,ROTA,TYPE,TRAN,VENDOR,MODEL,SERIAL,MOUNTPOINT,FSTYPE"
+
 func Collect(ctx context.Context) ([]Disk, error) {
-	args := []string{"-J", "-O", "-o", "NAME,KNAME,PATH,SIZE,ROTA,TYPE,TRAN,VENDOR,MODEL,SERIAL,MOUNTPOINT,FSTYPE"}
+	// -b: sizes in bytes. (-O, every column, can't be combined with -o: on
+	// Debian 12 lsblk refused it, so the disk list was always unavailable.)
+	args := []string{"-J", "-b", "-o", lsblkColumns}
 	res, err := shell.Run(ctx, 5*time.Second, "lsblk", args...)
 	if err != nil {
 		return nil, err
