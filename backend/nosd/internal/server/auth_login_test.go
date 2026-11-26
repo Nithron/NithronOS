@@ -189,12 +189,22 @@ func TestRefreshTokenRotationAndReuse(t *testing.T) {
 	if res.Code != http.StatusOK || second == nil || second.Value == first.Value {
 		t.Fatalf("first refresh: %d, new cookie %v", res.Code, second)
 	}
-	// Replaying the spent token is refused and revokes the user's sessions,
-	// so the newer token stops working too.
+	// The token that was just replaced still works for a few seconds
+	// (two tabs refreshing at once) ...
+	if res = e.refresh(first); res.Code != http.StatusOK {
+		t.Fatalf("concurrent refresh with the previous token: %d", res.Code)
+	}
+	res = e.refresh(second)
+	third := refreshCookie(res)
+	if res.Code != http.StatusOK || third == nil {
+		t.Fatalf("second refresh: %d", res.Code)
+	}
+	// ... but a token two rotations old is a copy: refused, and every
+	// session of the user ends, so the newest token stops working too.
 	if res = e.refresh(first); res.Code != http.StatusUnauthorized {
 		t.Fatalf("replayed refresh token: %d", res.Code)
 	}
-	if res = e.refresh(second); res.Code != http.StatusUnauthorized {
+	if res = e.refresh(third); res.Code != http.StatusUnauthorized {
 		t.Fatalf("after reuse, the newer token must be revoked too: %d", res.Code)
 	}
 }

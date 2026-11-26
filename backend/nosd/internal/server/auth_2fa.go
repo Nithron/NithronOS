@@ -37,14 +37,10 @@ var (
 	errBadTOTPCode   = errors.New("invalid code")
 )
 
-// currentUser loads the signed-in user (session cookie, or the legacy session
-// codec via withUser).
+// currentUser loads the signed-in user.
 func (t twoFactor) currentUser(r *http.Request) (userstore.User, bool) {
-	uid, ok := decodeSessionUID(r, t.cfg)
-	if !ok {
-		uid, ok = r.Context().Value(ctxUserID).(string)
-	}
-	if !ok || uid == "" || t.users == nil {
+	uid, ok := signedInUID(r)
+	if !ok || t.users == nil {
 		return userstore.User{}, false
 	}
 	u, err := t.users.FindByID(uid)

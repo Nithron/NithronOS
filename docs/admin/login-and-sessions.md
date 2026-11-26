@@ -8,27 +8,28 @@ This guide summarizes authentication, sessions, and recovery for NithronOS.
 - Account lockout after repeated failures; generic error responses
 
 ## Cookies
-- `nos_session`: short-lived session (default 15m); httpOnly; SameSite=Lax; Secure
-- `nos_refresh`: optional refresh (default 7d); httpOnly; SameSite=Lax; Secure
+- `nos_session`: access cookie, 15 minutes; names the server-side session. httpOnly; SameSite=Lax; Secure
+- `nos_refresh`: refresh cookie for the same session, 7 days. With "Remember me" it survives closing the browser; without it, it is a browser-session cookie. httpOnly; SameSite=Lax; Secure
 - `nos_csrf`: CSRF token used with `X-CSRF-Token` header for state-changing requests
 
 ## Server-side sessions
-- Each login also creates a server-side record bound to:
-  - `sid` (ULID)
-  - UA fingerprint hash and IP (/24 for IPv4, /64 for IPv6)
-  - Creation/expiry timestamps and last-seen time
-- Bind enforcement is lightweight; misuse rotates/invalidates tokens on refresh
+- Signing in creates a session record (`/var/lib/nos/sessions.json` by default): session id, user, sign-in IP network (/24 for IPv4, /64 for IPv6), browser user agent, created / last-seen / expiry times.
+- Every request is checked against it: a signed, unexpired `nos_session` cookie is accepted only while its session exists. Signing out, revoking a session, changing a password or deleting a user therefore takes effect immediately.
+- Sessions last 7 days from the last refresh; expired ones are removed.
+- Signing out ends the current session only. Changing your password ends your other sessions; deleting a user ends all of theirs.
 
 ## Session management APIs
 - `GET /api/v1/auth/sessions`: lists own sessions
-  - Response: `[{ sid, createdAt, lastSeenAt, ipPrefix, uaFingerprint, current }]`
+  - Response: `[{ sid, createdAt, lastSeenAt, expiresAt, ipPrefix, userAgent, current }]`
 - `POST /api/v1/auth/sessions/revoke`
   - Body: `{ "scope": "current" | "all" | "sid", "sid"?: "<sid>" }`
   - Current scope clears auth cookies; actions are audit-logged
 
 ## Refresh hardening
-- Refresh rotates both the `sid` and the refresh token
-- Reuse detection (presenting an already-rotated refresh) revokes all sessions for that user
+- `POST /api/v1/auth/refresh` extends the session and replaces the refresh token; the session id stays the same.
+- The token that was just replaced is accepted for 30 more seconds, so two tabs refreshing at once don't sign each other out.
+- An older refresh token means the cookie was copied: every session of that user ends.
+- Sessions from before this scheme (NithronOS 0.9.x) are not carried over; users sign in once more after upgrading.
 
 ## Rate limits
 - OTP: default 5/min per IP; configurable window and limit

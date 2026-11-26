@@ -21,6 +21,6 @@ func FuzzDecodeSessionParts(f *testing.F) {
 		}
 		cfg := config.Defaults()
 		_, _, _ = decodeSessionParts(r, cfg)
-		_, _ = decodeRefreshUID(r, cfg)
+		_, _, _, _ = decodeRefresh(r, cfg)
 	})
 }

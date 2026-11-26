@@ -22,6 +22,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"errors"
 	"nithronos/backend/nosd/internal/api"
 	"nithronos/backend/nosd/internal/apps"
 	pwhash "nithronos/backend/nosd/internal/auth/hash"
@@ -34,7 +35,6 @@ import (
 	"nithronos/backend/nosd/internal/ratelimit"
 	"nithronos/backend/nosd/internal/shares"
 	"nithronos/backend/nosd/pkg/agentclient"
-	"nithronos/backend/nosd/pkg/auth"
 
 	// "nithronos/backend/nosd/pkg/firewall"
 	"nithronos/backend/nosd/pkg/httpx"
@@ -78,10 +78,12 @@ func (a agentMetricsClient) FetchMetrics(ctx context.Context) ([]byte, error) {
 	return io.ReadAll(res.Body)
 }
 
+// zerolog's time format is a package global: set it once, not on every
+// Logger call while other goroutines are logging (a data race).
+func init() { zerolog.TimeFieldFormat = time.RFC3339 }
+
 func Logger(cfg config.Config) *zerolog.Logger {
-	zerolog.TimeFieldFormat = time.RFC3339
-	level := currentLevel
-	logger := zerolog.New(os.Stderr).Level(level).With().Timestamp().Logger()
+	logger := zerolog.New(os.Stderr).Level(logLevel()).With().Timestamp().Logger()
 	return &logger
 }
 
@@ -180,7 +182,6 @@ func NewRouter(cfg config.Config) http.Handler {
 
 	// Init stores
 	users, _ := userstore.New(cfg.UsersPath)
-	codec := auth.NewSessionCodec(cfg.SessionHashKey, cfg.SessionBlockKey)
 	InitJobsStore(cfg)
 
 	// Initialize shares handler
@@ -226,42 +227,9 @@ func NewRouter(cfg config.Config) http.Handler {
 	// runs its rotation loop, these handlers use it on demand.
 	fb := FirstBootManager(cfg)
 
-	// Session verification middleware for server-side binding (non-enforcing)
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			uid, sid, ok := decodeSessionParts(r, cfg)
-			if !ok || uid == "" || sid == "" {
-				next.ServeHTTP(w, r)
-				return
-			}
-			ua := r.Header.Get("User-Agent")
-			ip := clientIP(r, cfg)
-			if id, ok2 := mgr.Verify(sid, ua, ip); !ok2 || id != uid {
-				// do not enforce; continue without rejecting
-				next.ServeHTTP(w, r)
-				return
-			}
-			next.ServeHTTP(w, r)
-		})
-	})
-
-	// SessionContext middleware (parse cookies only; no auth enforcement)
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// X-UID/X-SID carry the signed-in identity to handlers. Never take
-			// them from the client: drop whatever came in, then set them only
-			// from a valid session cookie.
-			r.Header.Del("X-UID")
-			r.Header.Del("X-SID")
-			uid, sid, ok := decodeSessionParts(r, cfg)
-			if ok {
-				// attach to context via headers (lightweight)
-				r.Header.Set("X-UID", uid)
-				r.Header.Set("X-SID", sid)
-			}
-			next.ServeHTTP(w, r)
-		})
-	})
+	// Identify the signed-in user once per request, against the server-side
+	// session store (see sessionauth.go).
+	r.Use(withSession(mgr, cfg))
 
 	r.Get("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"ok": true, "version": version.Version})
@@ -692,62 +660,55 @@ func NewRouter(cfg config.Config) http.Handler {
 		u.FailedAttempts = 0
 		u.LockedUntil = ""
 		_ = users.UpsertUser(u)
-		if err := issueSessionCookies(w, cfg, u.ID, body.RememberMe); err != nil {
+		// Start the server-side session and set its cookies.
+		rec, err := mgr.Create(u.ID, r.Header.Get("User-Agent"), r.RemoteAddr, sessionTTL, body.RememberMe)
+		if err == nil {
+			err = issueAuthCookies(w, cfg, rec)
+		}
+		if err != nil {
 			httpx.WriteError(w, http.StatusInternalServerError, "session error")
 			return
 		}
-		// bind server-side session
-		ua := r.Header.Get("User-Agent")
-		ip = clientIP(r, cfg)
-		rec, _ := mgr.Create(u.ID, ua, ip, 15*time.Minute)
-		_ = issueSessionCookiesSID(w, cfg, u.ID, rec.SID, body.RememberMe)
 		issueCSRFCookie(w)
 		writeJSON(w, map[string]any{"ok": true})
 	})
 
 	// Record refresh events in sessions store (best-effort)
 	r.Post("/api/v1/auth/refresh", func(w http.ResponseWriter, r *http.Request) {
-		uid, rid, iat, ok := decodeRefresh(r, cfg)
-		if !ok || !mgr.RefreshAllowed(uid, iat) {
-			// expired, malformed, or issued before the user's sessions were
-			// revoked (logout, reuse detection)
+		// The refresh token names its session and that session's current
+		// refresh id. A revoked or expired session can't be refreshed; an
+		// old refresh id means the token was copied, and every session of
+		// the user ends.
+		uid, sid, rid, ok := decodeRefresh(r, cfg)
+		if !ok {
 			clearAuthCookies(w)
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		// Each refresh token is spent once. A token that was already spent
-		// means it was copied: revoke all of the user's sessions.
-		newRID := generateUUID()
-		if rid != "" {
-			next, reuse, err := mgr.RotateRefresh(uid, rid)
-			if err != nil {
-				httpx.WriteError(w, http.StatusInternalServerError, "session error")
-				return
-			}
-			if reuse {
+		rec, err := mgr.Refresh(sid, uid, rid, sessionTTL)
+		if err != nil {
+			if errors.Is(err, session.ErrRefreshReuse) {
 				Logger(cfg).Warn().Str("event", "auth.refresh.reuse").Str("uid", uid).Msg("refresh token reused; revoking all sessions")
-				_ = mgr.RevokeAll(uid)
-				clearAuthCookies(w)
-				w.WriteHeader(http.StatusUnauthorized)
-				return
 			}
-			newRID = next
-		}
-		if err := issueSessionCookies(w, cfg, uid, false); err != nil {
-			httpx.WriteError(w, http.StatusInternalServerError, "session error")
+			clearAuthCookies(w)
+			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		if err := issueRefreshCookie(w, cfg, uid, newRID); err != nil {
+		if err := issueAuthCookies(w, cfg, rec); err != nil {
 			httpx.WriteError(w, http.StatusInternalServerError, "session error")
 			return
 		}
 		writeJSON(w, map[string]any{"ok": true})
 	})
 
-	// Logout: clear cookies and remove persisted sessions for this user (best-effort)
+	// Logout ends this session only (it used to sign the user out on every
+	// device). The session id comes from the access cookie or, once that has
+	// expired, from the refresh cookie.
 	r.Post("/api/v1/auth/logout", func(w http.ResponseWriter, r *http.Request) {
-		if uid, ok := decodeSessionUID(r, cfg); ok {
-			_ = mgr.RevokeAll(uid)
+		if _, sid, ok := decodeSessionParts(r, cfg); ok {
+			_ = mgr.RevokeSID(sid)
+		} else if _, sid, _, ok := decodeRefresh(r, cfg); ok {
+			_ = mgr.RevokeSID(sid)
 		}
 		clearAuthCookies(w)
 		w.WriteHeader(http.StatusNoContent)
@@ -755,7 +716,7 @@ func NewRouter(cfg config.Config) http.Handler {
 
 	// Session info (single) for compatibility with nos-client
 	r.Get("/api/v1/auth/session", func(w http.ResponseWriter, r *http.Request) {
-		uid, ok := decodeSessionUID(r, cfg)
+		uid, ok := signedInUID(r)
 		if !ok {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
@@ -778,10 +739,10 @@ func NewRouter(cfg config.Config) http.Handler {
 
 	// Protected API group (auth required)
 	r.Group(func(pr chi.Router) {
-		pr.Use(func(next http.Handler) http.Handler { return requireAuth(next, codec, cfg) })
+		pr.Use(requireAuth)
 		// Session endpoints (self scope)
 		pr.Get("/api/v1/auth/sessions", func(w http.ResponseWriter, r *http.Request) {
-			uid, ok := decodeSessionUID(r, cfg)
+			uid, ok := signedInUID(r)
 			if !ok {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
@@ -792,18 +753,19 @@ func NewRouter(cfg config.Config) http.Handler {
 			out := make([]map[string]any, 0, len(list))
 			for _, s := range list {
 				out = append(out, map[string]any{
-					"sid":           s.SID,
-					"createdAt":     s.CreatedAt,
-					"lastSeenAt":    s.LastSeenAt,
-					"ipPrefix":      s.IPHash,
-					"uaFingerprint": s.UAHash,
-					"current":       s.SID == curSID,
+					"sid":        s.SID,
+					"createdAt":  s.CreatedAt,
+					"lastSeenAt": s.LastSeen,
+					"expiresAt":  s.ExpiresAt,
+					"ipPrefix":   s.IPPrefix,
+					"userAgent":  s.UserAgent,
+					"current":    s.SID == curSID,
 				})
 			}
 			writeJSON(w, out)
 		})
 		pr.Post("/api/v1/auth/sessions/revoke", func(w http.ResponseWriter, r *http.Request) {
-			uid, ok := decodeSessionUID(r, cfg)
+			uid, ok := signedInUID(r)
 			if !ok {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
@@ -857,15 +819,11 @@ func NewRouter(cfg config.Config) http.Handler {
 	})
 
 	r.Get("/api/v1/auth/me", func(w http.ResponseWriter, r *http.Request) {
-		if uid, ok := decodeSessionUID(r, cfg); ok {
+		if uid, ok := signedInUID(r); ok {
 			if u, err := users.FindByID(uid); err == nil {
 				writeJSON(w, map[string]any{"user": map[string]any{"id": u.ID, "username": u.Username, "roles": u.Roles}})
 				return
 			}
-		}
-		if s, ok := codec.DecodeFromRequest(r); ok {
-			writeJSON(w, map[string]any{"user": map[string]any{"id": s.UserID, "role": s.Role}})
-			return
 		}
 		w.WriteHeader(http.StatusUnauthorized)
 	})
@@ -876,10 +834,9 @@ func NewRouter(cfg config.Config) http.Handler {
 
 	// Protected routes
 	r.Group(func(pr chi.Router) {
-		pr.Use(func(next http.Handler) http.Handler { return withUser(next, codec) })
 		// Require auth via new opaque cookies or legacy session cookie (skip in tests when NOS_TEST_SKIP_AUTH=1)
 		if os.Getenv("NOS_TEST_SKIP_AUTH") != "1" {
-			pr.Use(func(next http.Handler) http.Handler { return requireAuth(next, codec, cfg) })
+			pr.Use(requireAuth)
 		}
 		if os.Getenv("NOS_TEST_SKIP_AUTH") != "1" {
 			pr.Use(requireCSRF)
@@ -892,13 +849,7 @@ func NewRouter(cfg config.Config) http.Handler {
 				return next
 			}
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				uid, ok := decodeSessionUID(r, cfg)
-				if !ok {
-					if s, ok2 := codec.DecodeFromRequest(r); ok2 {
-						uid = s.UserID
-						ok = true
-					}
-				}
+				uid, ok := signedInUID(r)
 				if !ok || uid == "" {
 					w.WriteHeader(http.StatusUnauthorized)
 					return
@@ -1330,7 +1281,7 @@ func NewRouter(cfg config.Config) http.Handler {
 		pr.Mount("/api/v1/updates", updatesHandler.Routes())
 
 		// Users management endpoints
-		usersHandler := NewUsersHandler(users, cfg)
+		usersHandler := NewUsersHandler(users, mgr, cfg)
 		pr.With(adminRequired).Mount("/api/v1/users", usersHandler.Routes())
 
 		// Appearance settings endpoints
@@ -1643,13 +1594,7 @@ func NewRouter(cfg config.Config) http.Handler {
 				setupCompleteFile := filepath.Join(cfg.EtcDir, "nos", "setup-complete")
 
 				// Check for normal session first (using same logic as adminRequired)
-				uid, ok := decodeSessionUID(r, cfg)
-				if !ok {
-					if s, ok2 := codec.DecodeFromRequest(r); ok2 {
-						uid = s.UserID
-						ok = true
-					}
-				}
+				uid, ok := signedInUID(r)
 
 				if ok && uid != "" {
 					// Valid session found, proceed
@@ -1709,7 +1654,7 @@ func NewRouter(cfg config.Config) http.Handler {
 	// Network endpoints to match FE contract: /api/v1/network/interfaces
 	r.Route("/api/v1/network", func(nr chi.Router) {
 		// Require auth for network configuration
-		nr.Use(func(next http.Handler) http.Handler { return requireAuth(next, codec, cfg) })
+		nr.Use(requireAuth)
 		nr.Get("/interfaces", systemConfigHandler.ListInterfaces)
 		nr.Get("/interfaces/{iface}", systemConfigHandler.GetInterface)
 		nr.Post("/interfaces/{iface}", systemConfigHandler.ConfigureInterface)
@@ -1717,7 +1662,7 @@ func NewRouter(cfg config.Config) http.Handler {
 
 	// Telemetry endpoints to match FE contract: /api/v1/telemetry/consent
 	r.Route("/api/v1/telemetry", func(tr chi.Router) {
-		tr.Use(func(next http.Handler) http.Handler { return requireAuth(next, codec, cfg) })
+		tr.Use(requireAuth)
 		tr.Get("/consent", systemConfigHandler.GetTelemetryConsent)
 		tr.Post("/consent", systemConfigHandler.SetTelemetryConsent)
 	})

@@ -81,4 +81,15 @@ func DynamicCORS(next http.Handler) http.Handler {
 }
 
 // SetLogLevel updates the process log level dynamically.
-func SetLogLevel(l zerolog.Level) { currentLevel = l }
+// SetLogLevel changes the level of loggers created from now on (SIGHUP reload).
+func SetLogLevel(l zerolog.Level) {
+	rtMu.Lock()
+	defer rtMu.Unlock()
+	currentLevel = l
+}
+
+func logLevel() zerolog.Level {
+	rtMu.RLock()
+	defer rtMu.RUnlock()
+	return currentLevel
+}
