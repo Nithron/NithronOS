@@ -1013,6 +1013,285 @@
         ]
       }
     },
+    "/api/v1/monitor/alerts/channels": {
+      "get": {
+        "operationId": "getMonitorAlertsChannels",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      },
+      "post": {
+        "operationId": "postMonitorAlertsChannels",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/alerts/channels/{id}": {
+      "delete": {
+        "operationId": "deleteMonitorAlertsChannelsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      },
+      "get": {
+        "operationId": "getMonitorAlertsChannelsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      },
+      "patch": {
+        "operationId": "patchMonitorAlertsChannelsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/alerts/channels/{id}/test": {
+      "post": {
+        "operationId": "postMonitorAlertsChannelsIdTest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/alerts/events": {
+      "get": {
+        "operationId": "getMonitorAlertsEvents",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/alerts/rules": {
+      "get": {
+        "operationId": "getMonitorAlertsRules",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      },
+      "post": {
+        "operationId": "postMonitorAlertsRules",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/alerts/rules/{id}": {
+      "delete": {
+        "operationId": "deleteMonitorAlertsRulesId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      },
+      "get": {
+        "operationId": "getMonitorAlertsRulesId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      },
+      "patch": {
+        "operationId": "patchMonitorAlertsRulesId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/btrfs": {
+      "get": {
+        "operationId": "getMonitorBtrfs",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/devices": {
+      "get": {
+        "operationId": "getMonitorDevices",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/overview": {
+      "get": {
+        "operationId": "getMonitorOverview",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/services": {
+      "get": {
+        "operationId": "getMonitorServices",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/api/v1/monitor/timeseries": {
+      "post": {
+        "operationId": "postMonitorTimeseries",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
     "/api/v1/monitoring/alerts": {
       "get": {
         "operationId": "getMonitoringAlerts",

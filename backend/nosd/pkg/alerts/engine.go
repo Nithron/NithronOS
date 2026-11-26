@@ -6,12 +6,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
+	"text/template"
 	"time"
+
+	"nos/backend/nosd/pkg/monitor"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
-	"nos/backend/nosd/pkg/monitor"
 )
 
 // Engine manages alert rules and notifications
@@ -362,7 +365,10 @@ func (e *Engine) clearAlert(rule *AlertRule, value float64) {
 // formatMessage formats an alert message
 func (e *Engine) formatMessage(rule *AlertRule, value float64, state string) string {
 	if rule.Template != "" {
-		// TODO: Template processing
+		// Fields: .Name .Metric .Value .Threshold .State .Host
+		if msg, err := renderAlertTemplate(rule, value, state); err == nil {
+			return msg
+		}
 		return rule.Template
 	}
 
@@ -692,4 +698,20 @@ func (e *Engine) createDefaultRules() {
 	}
 
 	_ = e.saveConfig()
+}
+
+// renderAlertTemplate fills a rule's message template (text/template, so a
+// template can only print the fields it is given).
+func renderAlertTemplate(rule *AlertRule, value float64, state string) (string, error) {
+	t, err := template.New("alert").Option("missingkey=error").Parse(rule.Template)
+	if err != nil {
+		return "", err
+	}
+	host, _ := os.Hostname()
+	var b strings.Builder
+	err = t.Execute(&b, map[string]any{
+		"Name": rule.Name, "Metric": rule.Metric, "Value": fmt.Sprintf("%.2f", value),
+		"Threshold": fmt.Sprintf("%.2f", rule.Threshold), "State": state, "Host": host,
+	})
+	return b.String(), err
 }

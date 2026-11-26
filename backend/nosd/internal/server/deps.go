@@ -1,9 +1,11 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/rs/zerolog/log"
 
@@ -19,6 +21,8 @@ import (
 	"nos/backend/nosd/internal/shares"
 	"nos/backend/nosd/internal/updates"
 	"nos/backend/nosd/pkg/agentclient"
+	"nos/backend/nosd/pkg/alerts"
+	"nos/backend/nosd/pkg/monitor"
 )
 
 // routeDeps holds what the route files share. It is built once per router.
@@ -35,6 +39,8 @@ type routeDeps struct {
 	groupsStore         *groups.Store
 	sharesApplier       *sharesApplier
 	updates             *updates.Service
+	monitor             *MonitorHandler
+	monitorStart        func(ctx context.Context)
 	backupHandler       *BackupHandler
 	notificationManager *notifications.Manager
 	appsManager         *apps.Manager
@@ -69,6 +75,7 @@ func newRouteDeps(cfg config.Config) *routeDeps {
 		policyStore = nil
 	}
 	acc := accounts{users: users, groups: groupsStore}
+	monitorHandler, monitorStart := newMonitor(cfg, etcDir)
 	updatesSvc, err := updates.New(agentClient,
 		filepath.Join(filepath.Dir(cfg.SessionsPath), "updates"),
 		filepath.Join(etcDir, "update", "channel"))
@@ -135,6 +142,7 @@ func newRouteDeps(cfg config.Config) *routeDeps {
 		sharesStore: sharesStore, sharesHandler: sharesHandler, backupHandler: backupHandler,
 		groupsHandler: groupsHandler, policyHandler: policyHandler, accounts: acc,
 		groupsStore: groupsStore, sharesApplier: applier, updates: updatesSvc,
+		monitor: monitorHandler, monitorStart: monitorStart,
 		notificationManager: notificationManager, appsManager: appsManager,
 		rlStore: rlStore, mgr: mgr, fb: fb,
 	}
@@ -163,4 +171,27 @@ func (d *routeDeps) adminRequired(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// newMonitor builds the metrics collector, its storage and the alert
+// engine. start runs them (only the daemon does; tests and route-dump just
+// build the router). A storage that can't be opened leaves /monitor at 503.
+func newMonitor(cfg config.Config, etcDir string) (*MonitorHandler, func(context.Context)) {
+	logger := *Logger(cfg)
+	storage, err := monitor.NewTimeSeriesStorage(logger, filepath.Join(filepath.Dir(cfg.SessionsPath), "monitor"))
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to open the metrics storage")
+		return nil, func(context.Context) {}
+	}
+	collector := monitor.NewCollector(logger, storage, 30*time.Second)
+	engine := alerts.NewEngine(logger, filepath.Join(etcDir, "alerts"), collector, storage)
+	start := func(ctx context.Context) {
+		if err := collector.Start(ctx); err != nil {
+			log.Error().Err(err).Msg("metrics collector")
+		}
+		if err := engine.Start(ctx); err != nil {
+			log.Error().Err(err).Msg("alerts engine")
+		}
+	}
+	return NewMonitorHandler(logger, collector, storage, engine), start
 }

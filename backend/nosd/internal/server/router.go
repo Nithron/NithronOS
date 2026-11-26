@@ -63,6 +63,9 @@ func NewRouter(cfg config.Config) http.Handler {
 func NewServer(cfg config.Config) (http.Handler, func()) {
 	d := newRouteDeps(cfg)
 	start := func() {
+		if d.monitorStart != nil {
+			d.monitorStart(context.Background())
+		}
 		if d.updates != nil {
 			// An upgrade restarts nosd; follow it again.
 			d.updates.Resume()

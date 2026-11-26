@@ -75,6 +75,13 @@ func (d *routeDeps) registerStorage(pr chi.Router) {
 	pr.Get("/api/v1/monitoring/services", handleMonitoringServices(cfg))
 	pr.Get("/api/v1/monitoring/system", handleMonitoringSystem(cfg))
 
+	// Metrics, time series and alert rules (pkg/monitor, pkg/alerts).
+	if d.monitor != nil {
+		pr.Mount("/api/v1/monitor", d.monitor.Routes(adminRequired))
+	} else {
+		pr.Mount("/api/v1/monitor", unavailable("monitor.unavailable", "Monitoring is unavailable: the metrics storage could not be opened (see the nosd log)"))
+	}
+
 	// Scrub and balance (all pools, or the one in mount/poolId).
 	poolMaintenance{agent: d.agentClient}.routes(pr, adminRequired)
 	pr.Get("/api/v1/pools/{id}/subvolumes", NewStorageHandler(d.agentClient).GetPoolSubvolumes)

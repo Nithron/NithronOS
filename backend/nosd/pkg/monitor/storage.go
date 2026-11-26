@@ -4,12 +4,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/rs/zerolog"
+	_ "modernc.org/sqlite" // pure Go: the nosd package is built with CGO_ENABLED=0
 )
 
 // TimeSeriesStorage handles metric storage with downsampling
@@ -27,9 +28,12 @@ type TimeSeriesStorage struct {
 
 // NewTimeSeriesStorage creates a new time series storage
 func NewTimeSeriesStorage(logger zerolog.Logger, dataPath string) (*TimeSeriesStorage, error) {
+	if err := os.MkdirAll(dataPath, 0o750); err != nil {
+		return nil, fmt.Errorf("create %s: %w", dataPath, err)
+	}
 	dbPath := filepath.Join(dataPath, "metrics.db")
 
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -77,8 +81,7 @@ func (s *TimeSeriesStorage) createTables() error {
 			metric TEXT NOT NULL,
 			timestamp INTEGER NOT NULL,
 			value REAL NOT NULL,
-			labels TEXT,
-			INDEX idx_metric_time (metric, timestamp)
+			labels TEXT
 		)`,
 
 		// 1-minute rollup table
@@ -91,8 +94,7 @@ func (s *TimeSeriesStorage) createTables() error {
 			value_max REAL NOT NULL,
 			value_count INTEGER NOT NULL,
 			labels TEXT,
-			UNIQUE(metric, timestamp, labels),
-			INDEX idx_metric_time_1m (metric, timestamp)
+			UNIQUE(metric, timestamp, labels)
 		)`,
 
 		// 1-hour rollup table
@@ -105,8 +107,7 @@ func (s *TimeSeriesStorage) createTables() error {
 			value_max REAL NOT NULL,
 			value_count INTEGER NOT NULL,
 			labels TEXT,
-			UNIQUE(metric, timestamp, labels),
-			INDEX idx_metric_time_1h (metric, timestamp)
+			UNIQUE(metric, timestamp, labels)
 		)`,
 
 		// Metadata table
@@ -124,7 +125,8 @@ func (s *TimeSeriesStorage) createTables() error {
 		}
 	}
 
-	// Create indexes
+	// Indexes (SQLite has no INDEX clause inside CREATE TABLE; the tables
+	// used to declare them that way, so creating them always failed).
 	indexes := []string{
 		"CREATE INDEX IF NOT EXISTS idx_raw_metric_time ON metrics_raw(metric, timestamp)",
 		"CREATE INDEX IF NOT EXISTS idx_raw_timestamp ON metrics_raw(timestamp)",
