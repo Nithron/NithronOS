@@ -24,10 +24,29 @@ type Store struct {
 	states  map[string]*SyncState // key: deviceID:shareID
 }
 
-// devicesFile is the on-disk structure for devices
+// devicesFile is the on-disk structure for devices.
 type devicesFile struct {
-	Version int                     `json:"version"`
-	Devices map[string]*DeviceToken `json:"devices"`
+	Version int                      `json:"version"`
+	Devices map[string]*storedDevice `json:"devices"`
+}
+
+// storedDevice is a device as saved: DeviceToken leaves its token hashes out
+// of JSON so they never reach an API response, so they are saved here. (They
+// used to be dropped on save, so every device's token stopped working when
+// nosd restarted.)
+type storedDevice struct {
+	DeviceToken
+	TokenHash   string `json:"token_hash"`
+	RefreshHash string `json:"refresh_hash"`
+	TokenLookup string `json:"token_lookup,omitempty"`
+}
+
+func toStored(devices map[string]*DeviceToken) map[string]*storedDevice {
+	out := make(map[string]*storedDevice, len(devices))
+	for k, d := range devices {
+		out[k] = &storedDevice{DeviceToken: *d, TokenHash: d.TokenHash, RefreshHash: d.RefreshHash, TokenLookup: d.TokenLookup}
+	}
+	return out
 }
 
 // configsFile is the on-disk structure for sync configs
@@ -81,10 +100,12 @@ func (s *Store) loadDevices() error {
 		s.devices = make(map[string]*DeviceToken)
 		return nil
 	}
-	if df.Devices == nil {
-		df.Devices = make(map[string]*DeviceToken)
+	s.devices = make(map[string]*DeviceToken, len(df.Devices))
+	for k, sd := range df.Devices {
+		d := sd.DeviceToken
+		d.TokenHash, d.RefreshHash, d.TokenLookup = sd.TokenHash, sd.RefreshHash, sd.TokenLookup
+		s.devices[k] = &d
 	}
-	s.devices = df.Devices
 	return nil
 }
 
@@ -122,7 +143,7 @@ func (s *Store) SaveDevice(device *DeviceToken) error {
 	return fsatomic.WithLock(s.devicesPath, func() error {
 		return fsatomic.SaveJSON(s.devicesPath, devicesFile{
 			Version: 1,
-			Devices: devicesCopy,
+			Devices: toStored(devicesCopy),
 		}, 0o600)
 	})
 }
@@ -168,6 +189,20 @@ func (s *Store) ListDevicesByUser(userID string) []*DeviceToken {
 	return devices
 }
 
+// ListAllDevices returns copies of every device that isn't revoked.
+func (s *Store) ListAllDevices() []*DeviceToken {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var devices []*DeviceToken
+	for _, device := range s.devices {
+		if device.RevokedAt == nil {
+			d := *device
+			devices = append(devices, &d)
+		}
+	}
+	return devices
+}
+
 // DeleteDevice removes a device (soft delete by setting RevokedAt)
 func (s *Store) DeleteDevice(deviceID string) error {
 	s.mu.Lock()
@@ -188,7 +223,7 @@ func (s *Store) DeleteDevice(deviceID string) error {
 	return fsatomic.WithLock(s.devicesPath, func() error {
 		return fsatomic.SaveJSON(s.devicesPath, devicesFile{
 			Version: 1,
-			Devices: devicesCopy,
+			Devices: toStored(devicesCopy),
 		}, 0o600)
 	})
 }
@@ -213,7 +248,7 @@ func (s *Store) PermanentlyDeleteDevice(deviceID string) error {
 	return fsatomic.WithLock(s.devicesPath, func() error {
 		return fsatomic.SaveJSON(s.devicesPath, devicesFile{
 			Version: 1,
-			Devices: devicesCopy,
+			Devices: toStored(devicesCopy),
 		}, 0o600)
 	})
 }
@@ -384,7 +419,7 @@ func (s *Store) CleanupExpiredDevices() (int, error) {
 	err := fsatomic.WithLock(s.devicesPath, func() error {
 		return fsatomic.SaveJSON(s.devicesPath, devicesFile{
 			Version: 1,
-			Devices: devicesCopy,
+			Devices: toStored(devicesCopy),
 		}, 0o600)
 	})
 

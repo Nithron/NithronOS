@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -111,13 +112,19 @@ func NewSyncHandler(cfg config.Config, shareStore *shares.Store, access shareAcc
 func (h *SyncHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 
-	// Device management (requires user auth initially)
-	r.Post("/devices/register", h.RegisterDevice)
+	// A signed-in user (browser session) adds a device; the device then
+	// uses its own token. Refresh takes the device's refresh token.
+	register := http.Handler(http.HandlerFunc(h.RegisterDevice))
+	if os.Getenv("NOS_TEST_SKIP_AUTH") != "1" {
+		register = requireAuth(requireCSRF(register))
+	}
+	r.Method(http.MethodPost, "/devices/register", register)
 	r.Post("/devices/refresh", h.RefreshDeviceToken)
 
-	// Protected endpoints (require device token)
+	// Everything else: a device token (sync clients) or the browser session
+	// (the web UI's sync pages).
 	r.Group(func(pr chi.Router) {
-		pr.Use(h.DeviceTokenAuthMiddleware)
+		pr.Use(h.syncAuth)
 
 		// Device management
 		pr.Get("/devices", h.ListDevices)
@@ -169,6 +176,35 @@ func (h *SyncHandler) Routes() chi.Router {
 	return r
 }
 
+// syncAuth accepts a device token (Authorization: Bearer nos_dt_...) or, for
+// the web UI, the signed-in browser session (with the CSRF check for
+// changes). It sets X-Device-User-ID (and X-Device-ID for devices); values a
+// client sent are always dropped first. (The sync API used to sit behind the
+// cookie session and CSRF check, so sync clients always got 401, and the
+// web UI, which has no device token, got 401 from the device check.)
+func (h *SyncHandler) syncAuth(next http.Handler) http.Handler {
+	device := h.DeviceTokenAuthMiddleware(next)
+	session := requireCSRF(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		uid, _ := signedInUID(r)
+		r.Header.Set("X-Device-User-ID", uid)
+		next.ServeHTTP(w, r)
+	}))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for _, hdr := range []string{"X-Device-ID", "X-Device-User-ID", "X-Device-Type"} {
+			r.Header.Del(hdr)
+		}
+		_, signedIn := signedInUID(r)
+		switch {
+		case strings.HasPrefix(r.Header.Get("Authorization"), "Bearer "):
+			device.ServeHTTP(w, r)
+		case signedIn:
+			session.ServeHTTP(w, r)
+		default:
+			httpx.WriteTypedError(w, http.StatusUnauthorized, "auth.required", "Sign in or use a device token", 0)
+		}
+	})
+}
+
 // DeviceTokenAuthMiddleware validates device tokens
 func (h *SyncHandler) DeviceTokenAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -190,14 +226,9 @@ func (h *SyncHandler) DeviceTokenAuthMiddleware(next http.Handler) http.Handler 
 			return
 		}
 
-		// Get client info
-		ip := r.RemoteAddr
-		if i := strings.LastIndex(ip, ":"); i >= 0 {
-			ip = ip[:i]
-		}
-		if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-			ip = strings.Split(fwd, ",")[0]
-		}
+		// The client's address (X-Forwarded-For only from a trusted proxy;
+		// it used to be taken from any client).
+		ip := clientIP(r, h.cfg)
 		userAgent := r.Header.Get("User-Agent")
 
 		// Validate token

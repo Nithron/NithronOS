@@ -20,8 +20,9 @@ func (d *routeDeps) registerSync(pr, root chi.Router) {
 	if syncErr != nil {
 		Logger(cfg).Error().Err(syncErr).Msg("Failed to create sync handler")
 	} else {
-		// Mount sync API routes
-		pr.Mount("/api/v1/sync", syncHandler.Routes())
+		// The sync API authenticates itself (device token or session), so
+		// it is mounted outside the session-only group.
+		root.Mount("/api/v1/sync", syncHandler.Routes())
 
 		// Mount WebDAV endpoint for file access
 		webdavHandler := NewWebDAVHandler(sharesStore, syncHandler.DeviceManager(), d.accounts, *Logger(cfg))
