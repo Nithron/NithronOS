@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/securecookie"
 )
@@ -74,4 +75,14 @@ func IssueCSRF(w http.ResponseWriter) string {
 		Secure:   true,
 	})
 	return token
+}
+
+// Session is the payload of the legacy signed session cookie.
+type Session struct {
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	Username  string    `json:"username"`
+	Role      string    `json:"role"`
+	IssuedAt  time.Time `json:"issued_at"`
+	ExpiresAt time.Time `json:"expires_at"`
 }
