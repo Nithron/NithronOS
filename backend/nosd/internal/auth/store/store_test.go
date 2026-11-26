@@ -59,9 +59,9 @@ func TestCrashRecoveryFromTmp(t *testing.T) {
 	if err := os.WriteFile(tmp, []byte("{"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	// Next load should ignore tmp and keep good file
-	if err := s.load(); err != nil {
-		t.Fatalf("load after tmp: %v", err)
+	// The next read should ignore tmp and load the good file
+	if _, err := s.FindByID("x"); err != nil {
+		t.Fatalf("read after tmp: %v", err)
 	}
 	// users.json should still exist
 	for i := 0; i < 50; i++ {
