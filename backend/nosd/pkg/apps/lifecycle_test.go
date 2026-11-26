@@ -19,6 +19,9 @@ func (f *fakeHost) AppOp(_ context.Context, op AppOp) (string, error) {
 			return "", err
 		}
 	}
+	if op.Op == "group" {
+		return "998\n", nil
+	}
 	if op.Op == "snapshot" {
 		return "/srv/apps/.snapshots/" + op.AppID + "/20261126-120000-" + op.Name, nil
 	}
@@ -51,21 +54,26 @@ func TestInstallUsesTheAgent(t *testing.T) {
 	host := &fakeHost{}
 	lm := NewLifecycleManager(catalog, state, NewTemplateRenderer(builtin), testAppsRoot, host, nil)
 
-	err = lm.InstallApp(context.Background(), InstallRequest{ID: "whoami", Params: map[string]interface{}{"PUID": "1001"}}, "admin")
+	// A user-sent NOS_APP_GID is replaced by the agent's answer.
+	err = lm.InstallApp(context.Background(), InstallRequest{ID: "whoami", Params: map[string]interface{}{"PUID": "1001", AppGIDParam: "0"}}, "admin")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := host.names(); got != "prepare,snapshot,start,proxy" {
+	if got := host.names(); got != "prepare,group,snapshot,start,proxy" {
 		t.Fatalf("agent ops: %s", got)
 	}
 	if prep := host.ops[0]; prep.UID != 1001 || prep.GID != 1000 {
 		t.Fatalf("data owner: %+v", prep)
 	}
-	if proxy := host.ops[3]; proxy.Port != 8080 {
+	if proxy := host.ops[4]; proxy.Port != 8080 {
 		t.Fatalf("proxy port (host port, not the container name): %+v", proxy)
 	}
 	if _, err := os.Stat(filepath.Join(testAppsRoot, "whoami", "config", "docker-compose.yml")); err != nil {
 		t.Fatalf("compose file: %v", err)
+	}
+	env, err := os.ReadFile(filepath.Join(testAppsRoot, "whoami", "config", ".env"))
+	if err != nil || !strings.Contains(string(env), AppGIDParam+"=998\n") {
+		t.Fatalf("env file must carry the share group id: %v\n%s", err, env)
 	}
 	app, err := state.GetApp("whoami")
 	if err != nil || len(app.Snapshots) != 1 || app.Snapshots[0].ID != "20261126-120000-post-install" {

@@ -70,7 +70,7 @@ func TestSharesIntegration(t *testing.T) {
 		Shares: []applyShare{
 			{Name: "media", Path: "/srv/shares/media", Description: "Films",
 				SMB:    &applySMB{Enabled: true, Recycle: &applyRecyc{Enabled: true}},
-				Owners: []string{"user:alice"}, Readers: []string{"group:family"}},
+				Owners: []string{"user:alice"}, Readers: []string{"group:family"}, Apps: []string{"nai"}},
 			{Name: "public", Path: "/srv/shares/public", SMB: &applySMB{Enabled: true, Guest: true}},
 			{Name: "everyone", Path: "/srv/shares/everyone", SMB: &applySMB{Enabled: true}, Owners: []string{"group:users"}},
 			{Name: "closed", Path: "/srv/shares/closed", SMB: &applySMB{Enabled: true}},
@@ -125,6 +125,26 @@ func TestSharesIntegration(t *testing.T) {
 	// The file alice wrote got the share's default ACL: bob may read it.
 	if fa := sh(t, "getfacl", "-p", "/srv/shares/media/f.txt"); !strings.Contains(fa, "group:nos-family:r-x") {
 		t.Errorf("new file did not inherit the share ACL:\n%s", fa)
+	}
+
+	// An app opened to media reads it through nos-app-nai, as its container
+	// does (an unknown uid with that group added), and can't write; the same
+	// uid without the group can't read, nor can it read other shares.
+	gid := strings.Split(strings.TrimSpace(sh(t, "getent", "group", "nos-app-nai")), ":")[2]
+	asApp := func(groups string, args ...string) error {
+		return exec.Command("setpriv", append([]string{"--reuid=4242", "--regid=4242", "--groups=" + groups, "--"}, args...)...).Run()
+	}
+	if err := asApp(gid, "cat", "/srv/shares/media/f.txt"); err != nil {
+		t.Errorf("the app can't read a share opened to it: %v", err)
+	}
+	if err := asApp(gid, "touch", "/srv/shares/media/by-app.txt"); err == nil {
+		t.Error("the app could write to a share it may only read")
+	}
+	if err := asApp("4242", "cat", "/srv/shares/media/f.txt"); err == nil {
+		t.Error("the same uid without the app group could read")
+	}
+	if err := asApp(gid, "ls", "/srv/shares/everyone"); err == nil {
+		t.Error("the app could read a share not opened to it")
 	}
 
 	// Removing a share removes it from Samba; its files stay.

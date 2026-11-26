@@ -223,3 +223,34 @@ func TestGroupsAndShareAccess(t *testing.T) {
 		}
 	}
 }
+
+// Opening a share to an app is separate from people's access and reaches the
+// agent; a later update that doesn't mention apps keeps them.
+func TestShareOpenedToApp(t *testing.T) {
+	env := newSharesEnv(t)
+	res := call(t, env.shares, http.MethodPost, "/", `{"name":"media","owners":["user:alice"],"apps":["nai","nai"]}`)
+	if res.Code != http.StatusCreated {
+		t.Fatalf("create: %d %s", res.Code, res.Body.String())
+	}
+	if sent := env.agent.last().Shares[0]; strings.Join(sent.Apps, ",") != "nai" || strings.Join(sent.Readers, ",") != "" {
+		t.Fatalf("agent got: %+v", sent)
+	}
+	if res := call(t, env.shares, http.MethodPatch, "/media", `{"description":"Films"}`); res.Code != http.StatusOK {
+		t.Fatalf("patch: %d %s", res.Code, res.Body.String())
+	}
+	if got, _ := env.store.Lookup("media"); strings.Join(got.Apps, ",") != "nai" {
+		t.Fatalf("apps lost on update: %+v", got)
+	}
+	if res := call(t, env.shares, http.MethodPatch, "/media", `{"apps":[]}`); res.Code != http.StatusOK {
+		t.Fatalf("close to apps: %d", res.Code)
+	}
+	if sent := env.agent.last().Shares[0]; sent.Apps == nil || len(sent.Apps) != 0 {
+		t.Fatalf("closed to apps: %+v", sent)
+	}
+	if res := call(t, env.shares, http.MethodPatch, "/media", `{"apps":["NAI"]}`); res.Code != http.StatusBadRequest {
+		t.Fatalf("bad app id: %d %s", res.Code, res.Body.String())
+	}
+	if res := call(t, env.groups, http.MethodPost, "/", `{"name":"app-nai"}`); res.Code == http.StatusCreated {
+		t.Fatal("a people group may not take an app group's name")
+	}
+}

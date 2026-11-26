@@ -32,7 +32,7 @@ var (
 
 // AppOpRequest is one operation.
 type AppOpRequest struct {
-	Op       string `json:"op"` // prepare, start, stop, restart, disable, pull, snapshot, rollback, remove, proxy, unproxy
+	Op       string `json:"op"` // prepare, group, start, stop, restart, disable, pull, snapshot, rollback, remove, proxy, unproxy
 	AppID    string `json:"app_id"`
 	UID      int    `json:"uid,omitempty"`       // prepare: owner of the data folder
 	GID      int    `json:"gid,omitempty"`       // prepare
@@ -165,6 +165,13 @@ func runAppOp(h appHost, req AppOpRequest) (string, int, error) {
 			return "", http.StatusInternalServerError, fmt.Errorf("chown data: %s", strings.TrimSpace(string(out)))
 		}
 		return "", 0, nil
+	case "group":
+		// The app's share-reader group; the output is its GID.
+		gid, err := ensureAppGroup(h.Run, req.AppID)
+		if err != nil {
+			return "", http.StatusInternalServerError, err
+		}
+		return gid, 0, nil
 	case "start", "stop", "restart":
 		if req.Op == "start" {
 			if _, code, err := systemctl("enable", unit); err != nil {

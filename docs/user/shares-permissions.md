@@ -217,6 +217,15 @@ Protects against accidental deletion:
 3. Restore files by moving them back
 4. Permanently delete old files to free space
 
+### Apps That Read a Share
+
+Some apps, such as a search or AI indexer, need to read the files in your shares. They can only read the shares you open to them:
+
+1. Open the share and go to the **Permissions** tab.
+2. Under **Apps that can read this share**, switch the app on.
+
+The app can then read every file in the share but can't change, add or delete anything. Every app is off for every share until you switch it on, and switching it off takes the access away again.
+
 ### Network Restrictions
 
 Control access by network:

@@ -42,6 +42,7 @@ type shareInput struct {
 	NFS         *shares.NFS `json:"nfs"`
 	Owners      *[]string   `json:"owners"`
 	Readers     *[]string   `json:"readers"`
+	Apps        *[]string   `json:"apps"`
 }
 
 // fieldError is one problem with a share, as the UI's test call shows it.
@@ -119,6 +120,9 @@ func (in shareInput) merge(sh *shares.Share) {
 	if in.Readers != nil {
 		sh.Readers = dedupe(*in.Readers)
 	}
+	if in.Apps != nil {
+		sh.Apps = dedupe(*in.Apps)
+	}
 }
 
 func dedupe(list []string) []string {
@@ -162,6 +166,11 @@ func (h *SharesHandler) check(sh shares.Share) []fieldError {
 					add(field, "shares.unknown_group", "Unknown group %q", name)
 				}
 			}
+		}
+	}
+	for _, id := range sh.Apps {
+		if err := validate.AppID(id); err != nil {
+			add("apps", "shares.invalid_app", "App id %q: use lowercase letters, digits and '-'", id)
 		}
 	}
 	if sh.SMB != nil && sh.SMB.Enabled {

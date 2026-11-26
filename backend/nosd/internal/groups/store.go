@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -39,8 +40,11 @@ const AllUsers = "users"
 // 28 characters, so nos-<name> fits Unix's 32.
 var reName = regexp.MustCompile(`^[a-z_][a-z0-9_-]{0,27}$`)
 
-// ValidName reports whether name can name a group.
-func ValidName(name string) bool { return reName.MatchString(name) && name != AllUsers }
+// ValidName reports whether name can name a group. "app-" names are taken:
+// nos-app-<id> is the group an app reads shares through.
+func ValidName(name string) bool {
+	return reName.MatchString(name) && name != AllUsers && !strings.HasPrefix(name, "app-")
+}
 
 // Group is a named set of users.
 type Group struct {

@@ -13,7 +13,9 @@ export type Health = GetResponse<'/api/health'>
 export type Disks = GetResponse<'/api/disks'>
 export type Pools = GetResponse<'/api/pools'>
 export type PoolCandidates = GetResponse<'/api/pools/candidates'>
-export type Share = components['schemas']['Share']
+// apps: installed apps (by id) that may read the share, through their own
+// group (not in the old schema this file was generated from).
+export type Share = components['schemas']['Share'] & { id?: string; apps?: string[] }
 export type Shares = GetResponse<'/api/shares'>
 export type Apps = GetResponse<'/api/apps'>
 export type RemoteStatus = GetResponse<'/api/remote/status'>
@@ -41,6 +43,7 @@ export interface CreateShareRequest {
 	nfs?: NFSConfig
 	owners?: string[]
 	readers?: string[]
+	apps?: string[]
 	description?: string
 }
 
@@ -49,6 +52,7 @@ export interface UpdateShareRequest {
 	nfs?: NFSConfig
 	owners?: string[]
 	readers?: string[]
+	apps?: string[]
 	description?: string
 }
 

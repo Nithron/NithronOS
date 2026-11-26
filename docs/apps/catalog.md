@@ -155,6 +155,26 @@ Apps store data in organized directories:
 │       └── media/      # User content
 ```
 
+### Reading shares
+
+An app that reads users' files, such as an indexer, gets read-only access only to the shares an administrator opens to it. In a share's **Permissions** tab, **Apps that can read this share** has a switch for every installed app; all are off by default.
+
+Each app reads shares through its own system group, `nos-app-<app-id>`. The group has no members, no login, and is kept apart from the people groups. A share opened to the app gives that group read access (`r-x`, inherited by new files); nothing else does. nOS writes the group's GID into the app's `.env` as `NOS_APP_GID`, so a template mounts the shares read-only and adds the group to its containers:
+
+```yaml
+services:
+  app:
+    user: "${PUID:-1000}:${PGID:-1000}"
+    group_add:
+      - "${NOS_APP_GID}"
+    volumes:
+      - /srv/shares:/shares:ro
+```
+
+`NOS_APP_GID` is set by nOS on every install and update; a value sent as an install parameter is ignored. App ids used this way are at most 24 characters, so the group name fits Unix's limit, and people groups can't be named `app-...`.
+
+In the API, a share lists these apps in `apps` (for example `"apps": ["nai"]`), separate from `owners` and `readers`.
+
 ### Networking
 
 Apps can expose services through:
