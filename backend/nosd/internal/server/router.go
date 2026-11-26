@@ -1333,10 +1333,6 @@ func NewRouter(cfg config.Config) http.Handler {
 		usersHandler := NewUsersHandler(users, cfg)
 		pr.With(adminRequired).Mount("/api/v1/users", usersHandler.Routes())
 
-		// Network configuration endpoints
-		networkConfigHandler := NewNetworkConfigHandler(cfg)
-		pr.With(adminRequired).Mount("/api/v1/network/config", networkConfigHandler.Routes())
-
 		// Appearance settings endpoints
 		appearanceHandler := NewAppearanceHandler(cfg)
 		pr.Mount("/api/v1/settings/appearance", appearanceHandler.Routes())
