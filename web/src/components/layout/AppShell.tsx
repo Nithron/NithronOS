@@ -8,6 +8,8 @@ import { useQuery } from '@tanstack/react-query'
 import { monitorApi } from '@/api/monitor'
 import type { AlertEvent } from '@/api/monitor.types'
 import { cn } from '@/lib/utils'
+import { updatesApi } from '@/api/updates'
+import { StatusMark } from '@/components/ui/pixel'
 
 interface SidebarItemProps {
   item: typeof navItems[0]
@@ -40,10 +42,13 @@ function SidebarItem({ item, level = 0 }: SidebarItemProps) {
             setExpanded(!expanded)
           }
         }}
+        // The current item: ink, weight 560 and a 2 px ink mark at its left;
+        // the others in --ink-2. No fill.
         className={cn(
-          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent/10',
-          isActive && 'bg-primary/10 text-primary',
-          !isActive && 'text-muted-foreground hover:text-foreground',
+          'relative flex min-h-10 items-center gap-3 px-3 py-2 text-sm transition-colors',
+          isActive
+            ? 'font-[560] text-ink before:absolute before:inset-y-1 before:left-0 before:w-[2px] before:bg-ink'
+            : 'text-ink-2 hover:bg-ink/[.09] hover:text-ink',
           level > 0 && 'ml-6'
         )}
       >
@@ -84,6 +89,11 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
     refetchInterval: 30_000,
   })
   const alerts: AlertEvent[] = (alertEvents?.events ?? []).filter((e) => e.state === 'firing')
+  const { data: version } = useQuery({
+    queryKey: ['updates', 'version'],
+    queryFn: updatesApi.getVersion,
+    staleTime: 10 * 60_000,
+  })
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -113,20 +123,17 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 transform bg-card transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 w-64 transform border-r border-hairline bg-page transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         <div className="flex h-full flex-col">
           {/* Sidebar Header */}
-          <div className="flex h-14 items-center border-b border-border px-4">
-            <Link to="/" className="flex items-center gap-2">
-              <img 
-                src="/brand/nos-logo-mark.svg" 
-                alt="nOS Logo" 
-                className="h-8 w-8"
-              />
-              <span className="text-lg font-semibold">nOS</span>
+          <div className="flex h-14 items-center border-b border-hairline px-4">
+            {/* The product's name in type (the pixel display face once it is
+                issued); the drawn mark waits for the identity step. */}
+            <Link to="/" className="pixel-display text-lg text-ink">
+              nOS
             </Link>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -138,25 +145,25 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
           </div>
 
           {/* Sidebar Navigation */}
-          <nav className="flex-1 space-y-1 overflow-y-auto p-4">
+          <nav className="flex-1 space-y-1 overflow-y-auto p-4" aria-label="Main">
             {navItems.map((item) => (
               <SidebarItem key={item.id} item={item} />
             ))}
           </nav>
 
-          {/* Sidebar Footer */}
-          <div className="border-t border-border p-4">
-            <div className="text-xs text-muted-foreground">
-              v1.0.0 • © 2024 nOS
+          {/* The version this system really runs (the Updates page's source). */}
+          {version?.nosd_version && (
+            <div className="border-t border-hairline p-4 font-mono text-xs text-ink-2">
+              nOS {version.nosd_version}
             </div>
-          </div>
+          )}
         </div>
       </aside>
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4">
+        <header className="flex h-14 items-center justify-between border-b border-hairline bg-page px-4">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden"
@@ -171,12 +178,12 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
             {/* Alerts */}
             <button
               onClick={() => setAlertsOpen(true)}
-              className="relative rounded-lg p-2 hover:bg-accent/10"
-              aria-label="View alerts"
+              className="relative p-2 text-ink-2 hover:bg-ink/[.09] hover:text-ink"
+              aria-label={alerts.length > 0 ? `Alerts, ${alerts.length} firing` : 'Alerts'}
             >
-              <AlertsIcon className="h-5 w-5 text-muted-foreground" />
+              <AlertsIcon className="h-4 w-4" />
               {alerts.length > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center bg-status-failed px-1 font-mono text-[10px] leading-none text-page">
                   {alerts.length}
                 </span>
               )}
@@ -186,19 +193,20 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
             <div className="relative" data-user-menu>
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-2 rounded-lg p-2 hover:bg-accent/10"
+                className="flex items-center gap-2 p-2 text-sm text-ink-2 hover:bg-ink/[.09] hover:text-ink"
                 aria-label="User menu"
               >
-                <UserIcon className="h-5 w-5 text-muted-foreground" />
-                <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
+                <UserIcon className="h-4 w-4" />
+                {session?.user && <span>{session.user.username}</span>}
+                <ChevronDownIcon className="h-4 w-4" />
               </button>
 
               {userMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 rounded-lg border border-border bg-card shadow-lg">
+                <div className="absolute right-0 top-full z-50 mt-2 w-48 border border-edge bg-page">
                   {session?.user && (
-                    <div className="border-b border-border px-3 py-2">
+                    <div className="border-b border-hairline px-3 py-2">
                       <div className="text-sm font-medium">{session.user.username}</div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-ink-2">
                         {session.user.roles?.includes('admin') ? 'Administrator' : 'User'}
                       </div>
                     </div>
@@ -206,10 +214,10 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
                   <div className="p-1">
                     <button
                       onClick={handleLogout}
-                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent/10"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-ink/[.09]"
                     >
                       <SignOutIcon className="h-4 w-4" />
-                      Sign Out
+                      Sign out
                     </button>
                   </div>
                 </div>
@@ -227,10 +235,10 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
 
       {/* Alerts Panel */}
       {alertsOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/30">
-          <div className="h-full w-full max-w-md overflow-auto bg-card p-6 shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-start justify-end bg-page/70">
+          <div role="dialog" aria-label="Alerts" className="h-full w-full max-w-md overflow-auto border-l border-edge bg-page p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">System Alerts</h2>
+              <h2 className="text-lg font-[560]">Alerts</h2>
               <button
                 onClick={() => setAlertsOpen(false)}
                 aria-label="Close alerts"
@@ -239,43 +247,24 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
               </button>
             </div>
             {alerts.length === 0 ? (
-              <div className="text-center text-sm text-muted-foreground">
-                No active alerts
-              </div>
+              <p className="text-sm text-ink-2">No alert is firing.</p>
             ) : (
-              <div className="space-y-3">
+              <ul className="divide-y divide-hairline border-y border-hairline">
                 {alerts.map((alert) => (
-                  <div
-                    key={alert.id}
-                    className={cn(
-                      'rounded-lg border p-3',
-                      alert.severity === 'critical'
-                        ? 'border-destructive bg-destructive/10'
-                        : 'border-yellow-600 bg-yellow-600/10'
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{alert.rule_name}</span>
-                      <span
-                        className={cn(
-                          'rounded px-2 py-0.5 text-xs font-medium',
-                          alert.severity === 'critical'
-                            ? 'bg-destructive text-destructive-foreground'
-                            : 'bg-yellow-600 text-yellow-50'
-                        )}
-                      >
+                  <li key={alert.id} className="py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-[560]">{alert.rule_name}</span>
+                      <StatusMark state={alert.severity === 'critical' ? 'failed' : 'warning'} className="text-xs">
                         {alert.severity}
-                      </span>
+                      </StatusMark>
                     </div>
-                    <div className="mt-2 text-sm">
-                      {alert.message}
-                    </div>
-                    <div className="mt-2 text-xs text-muted-foreground">
+                    <p className="mt-2 text-sm">{alert.message}</p>
+                    <p className="mt-2 font-mono text-xs text-ink-2">
                       {new Date(alert.fired_at).toLocaleString()}
-                    </div>
-                  </div>
+                    </p>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
           </div>
         </div>
