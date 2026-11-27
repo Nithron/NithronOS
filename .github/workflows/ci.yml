@@ -116,8 +116,8 @@ jobs:
           govulncheck ./...
 
   desktop:
-    # The NithronSync desktop app (Wails) on Linux and Windows. macOS isn't
-    # built yet.
+    # The NithronSync desktop app (Wails) on Linux, Windows and macOS
+    # (unsigned: notarizing needs an Apple Developer account).
     name: Desktop client (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -131,6 +131,12 @@ jobs:
             tags: desktop,production
             out: NithronSync.exe
             ldflags: -H windowsgui
+          - os: macos-latest
+            tags: desktop,production
+            out: NithronSync
+            ldflags: ""
+            # what `wails build` passes on macOS
+            cgo_ldflags: -framework UniformTypeIdentifiers -mmacosx-version-min=10.13
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -160,6 +166,7 @@ jobs:
       - name: Build, lint
         env:
           CGO_ENABLED: "1"
+          CGO_LDFLAGS: ${{ matrix.cgo_ldflags }}
         run: |
           go mod tidy -diff
           golangci-lint run --build-tags "${{ matrix.tags }}" ./...
