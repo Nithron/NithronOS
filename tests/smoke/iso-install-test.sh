@@ -147,10 +147,13 @@ fi
 log "nos-agent applied the share configuration"
 
 # 6. Caddy passes WebDAV to nosd (it used to answer /dav with the web
-#    interface's HTML).
+#    interface's HTML), and nosd's WebDAV handler takes PROPFIND: with no
+#    share in the path it answers 400. (A 405 meant nosd's router refused
+#    WebDAV's methods, which this check once accepted.)
 dav=$(curl -sk -m 10 -o /dev/null -w '%{http_code} %{content_type}' -X PROPFIND "https://127.0.0.1:$PORT/dav/" || true)
 case "$dav" in
-	*text/html*|"") fail "WebDAV isn't reaching nosd: $dav" ;;
+	400*) ;;
+	*) fail "WebDAV isn't reaching nosd's WebDAV handler: $dav" ;;
 esac
 log "WebDAV reaches nosd ($dav)"
 

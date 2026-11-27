@@ -49,41 +49,25 @@ func (h *WebDAVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	shareID := pathParts[0]
 
-	// Authenticate using device token
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		w.Header().Set("WWW-Authenticate", `Bearer realm="nOS Sync"`)
-		http.Error(w, "Authorization required", http.StatusUnauthorized)
+	// A device token, as a Bearer token (sync clients) or as the password of
+	// Basic auth (file managers: Explorer, Finder, Files; any user name).
+	// (Basic was refused, so none of the file managers could connect.)
+	token := deviceTokenFrom(r)
+	if token == "" {
+		w.Header().Add("WWW-Authenticate", `Basic realm="nOS", charset="UTF-8"`)
+		w.Header().Add("WWW-Authenticate", `Bearer realm="nOS"`)
+		http.Error(w, "A device token is required (as the password)", http.StatusUnauthorized)
 		return
 	}
-
-	var device *nosync.DeviceToken
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		token := strings.TrimPrefix(authHeader, "Bearer ")
-		if strings.HasPrefix(token, "nos_dt_") {
-			ip := r.RemoteAddr
-			if i := strings.LastIndex(ip, ":"); i >= 0 {
-				ip = ip[:i]
-			}
-			var err error
-			device, err = h.deviceMgr.ValidateDeviceToken(token, ip, r.Header.Get("User-Agent"))
-			if err != nil {
-				h.logger.Warn().Err(err).Str("share_id", shareID).Msg("WebDAV auth failed")
-				http.Error(w, "Invalid token", http.StatusUnauthorized)
-				return
-			}
-		}
+	ip := r.RemoteAddr
+	if i := strings.LastIndex(ip, ":"); i >= 0 {
+		ip = ip[:i]
 	}
-
-	// Also support Basic auth for legacy clients
-	if device == nil && strings.HasPrefix(authHeader, "Basic ") {
-		// For now, only device tokens are supported
-		http.Error(w, "Device token required", http.StatusUnauthorized)
-		return
-	}
-
-	if device == nil {
-		http.Error(w, "Authentication failed", http.StatusUnauthorized)
+	device, err := h.deviceMgr.ValidateDeviceToken(token, ip, r.Header.Get("User-Agent"))
+	if err != nil {
+		h.logger.Warn().Err(err).Str("share_id", shareID).Msg("WebDAV auth failed")
+		w.Header().Add("WWW-Authenticate", `Basic realm="nOS", charset="UTF-8"`)
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
 		return
 	}
 
@@ -252,4 +236,19 @@ func (f *WrappedFile) ETag(ctx context.Context) (string, error) {
 // Readdir reads the directory
 func (f *WrappedFile) Readdir(count int) ([]fs.FileInfo, error) {
 	return f.File.Readdir(count)
+}
+
+// deviceTokenFrom returns a nos_dt_ token from Authorization (Bearer, or
+// Basic's password), or "".
+func deviceTokenFrom(r *http.Request) string {
+	token := ""
+	if v := r.Header.Get("Authorization"); strings.HasPrefix(v, "Bearer ") {
+		token = strings.TrimSpace(strings.TrimPrefix(v, "Bearer "))
+	} else if _, pass, ok := r.BasicAuth(); ok {
+		token = pass
+	}
+	if !strings.HasPrefix(token, "nos_dt_") {
+		return ""
+	}
+	return token
 }
