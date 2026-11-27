@@ -13,17 +13,19 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
-import {useNavigation, useTheme} from '@react-navigation/native';
+import {useTheme} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {formatDistanceToNow} from 'date-fns';
 
 import {useSyncStore} from '../../stores/syncStore';
-import {SyncConflict} from '../../api/types';
+import {ConflictResolution, SyncConflict} from '../../api/types';
+import {errorMessage} from '../../stores/authStore';
+import {formatBytes} from '../../utils/format';
 
 export function ConflictsScreen(): React.JSX.Element {
   const {colors} = useTheme();
-  const navigation = useNavigation();
-  const {conflicts, refreshConflicts, resolveConflict, totalConflicts} = useSyncStore();
+  const {conflicts, conflictsError, refreshConflicts, resolveConflict} =
+    useSyncStore();
   const [refreshing, setRefreshing] = useState(false);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
 
@@ -40,26 +42,31 @@ export function ConflictsScreen(): React.JSX.Element {
   }, [refreshConflicts]);
 
   const handleResolve = useCallback(
-    async (conflict: SyncConflict, resolution: 'keep_local' | 'keep_remote' | 'keep_both') => {
+    async (conflict: SyncConflict, resolution: ConflictResolution) => {
       setResolvingId(conflict.id);
       try {
         await resolveConflict(conflict.id, resolution);
-        Alert.alert('Conflict Resolved', 'The file conflict has been resolved.');
+        Alert.alert(
+          'Conflict Resolved',
+          'The file conflict has been resolved.',
+        );
       } catch (error) {
-        Alert.alert('Error', 'Failed to resolve conflict. Please try again.');
+        Alert.alert("Couldn't resolve the conflict", errorMessage(error));
       } finally {
         setResolvingId(null);
       }
     },
-    [resolveConflict]
+    [resolveConflict],
   );
 
   const showResolveOptions = (conflict: SyncConflict) => {
     const fileName = conflict.path.split('/').pop() || conflict.path;
-    
+
     Alert.alert(
       `Resolve: ${fileName}`,
-      `Local: ${formatBytes(conflict.local_version.size)}\nRemote: ${formatBytes(conflict.remote_version.size)}`,
+      `Local: ${formatBytes(
+        conflict.local_version.size,
+      )}\nRemote: ${formatBytes(conflict.remote_version.size)}`,
       [
         {
           text: 'Keep Local',
@@ -77,7 +84,7 @@ export function ConflictsScreen(): React.JSX.Element {
           text: 'Cancel',
           style: 'cancel',
         },
-      ]
+      ],
     );
   };
 
@@ -90,14 +97,18 @@ export function ConflictsScreen(): React.JSX.Element {
         style={[styles.conflictItem, {borderBottomColor: colors.border}]}
         onPress={() => showResolveOptions(item)}
         disabled={isResolving}>
-        <View style={[styles.conflictIcon, {backgroundColor: '#FEF3C7'}]}>
+        <View style={[styles.conflictIcon, styles.conflictIconWarning]}>
           <Icon name="alert-circle" size={24} color="#F59E0B" />
         </View>
         <View style={styles.conflictContent}>
-          <Text style={[styles.conflictName, {color: colors.text}]} numberOfLines={1}>
+          <Text
+            style={[styles.conflictName, {color: colors.text}]}
+            numberOfLines={1}>
             {fileName}
           </Text>
-          <Text style={[styles.conflictPath, {color: `${colors.text}60`}]} numberOfLines={1}>
+          <Text
+            style={[styles.conflictPath, {color: `${colors.text}60`}]}
+            numberOfLines={1}>
             {item.path}
           </Text>
           <View style={styles.conflictVersions}>
@@ -128,11 +139,18 @@ export function ConflictsScreen(): React.JSX.Element {
   const renderHeader = () => (
     <View style={[styles.header, {borderBottomColor: colors.border}]}>
       <View>
-        <Text style={[styles.headerTitle, {color: colors.text}]}>Conflicts</Text>
+        <Text style={[styles.headerTitle, {color: colors.text}]}>
+          Conflicts
+        </Text>
         <Text style={[styles.headerSubtitle, {color: `${colors.text}60`}]}>
-          {unresolvedConflicts.length === 0
-            ? 'No conflicts to resolve'
-            : `${unresolvedConflicts.length} conflict${unresolvedConflicts.length === 1 ? '' : 's'} need${unresolvedConflicts.length === 1 ? 's' : ''} attention`}
+          {conflictsError ??
+            (unresolvedConflicts.length === 0
+              ? 'No conflicts to resolve'
+              : `${unresolvedConflicts.length} conflict${
+                  unresolvedConflicts.length === 1 ? '' : 's'
+                } need${
+                  unresolvedConflicts.length === 1 ? 's' : ''
+                } attention`)}
         </Text>
       </View>
     </View>
@@ -140,7 +158,8 @@ export function ConflictsScreen(): React.JSX.Element {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <View style={[styles.emptyIcon, {backgroundColor: `${colors.primary}15`}]}>
+      <View
+        style={[styles.emptyIcon, {backgroundColor: `${colors.primary}15`}]}>
         <Icon name="check-circle" size={48} color={colors.primary} />
       </View>
       <Text style={[styles.emptyTitle, {color: colors.text}]}>All Clear!</Text>
@@ -155,7 +174,7 @@ export function ConflictsScreen(): React.JSX.Element {
       <FlatList
         data={unresolvedConflicts}
         renderItem={renderConflict}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmpty}
         refreshControl={
@@ -165,21 +184,18 @@ export function ConflictsScreen(): React.JSX.Element {
             tintColor={colors.primary}
           />
         }
-        contentContainerStyle={unresolvedConflicts.length === 0 ? styles.emptyList : undefined}
+        contentContainerStyle={
+          unresolvedConflicts.length === 0 ? styles.emptyList : undefined
+        }
       />
     </View>
   );
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-}
-
 const styles = StyleSheet.create({
+  conflictIconWarning: {
+    backgroundColor: '#FEF3C7',
+  },
   container: {
     flex: 1,
   },
@@ -269,4 +285,3 @@ const styles = StyleSheet.create({
 });
 
 export default ConflictsScreen;
-

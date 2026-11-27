@@ -19,13 +19,17 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useSyncStore} from '../../stores/syncStore';
 import {SyncShare} from '../../api/types';
 import {FilesStackParamList} from '../../navigation/RootNavigator';
+import {formatBytes} from '../../utils/format';
 
-type SharesNavigationProp = NativeStackNavigationProp<FilesStackParamList, 'Shares'>;
+type SharesNavigationProp = NativeStackNavigationProp<
+  FilesStackParamList,
+  'Shares'
+>;
 
 export function SharesScreen(): React.JSX.Element {
   const {colors} = useTheme();
   const navigation = useNavigation<SharesNavigationProp>();
-  const {shares, refreshShares, syncStates} = useSyncStore();
+  const {shares, sharesError, refreshShares} = useSyncStore();
   const [refreshing, setRefreshing] = React.useState(false);
 
   useEffect(() => {
@@ -41,57 +45,53 @@ export function SharesScreen(): React.JSX.Element {
   const handleSharePress = (share: SyncShare) => {
     navigation.navigate('Folder', {
       shareId: share.share_id,
-      path: '/',
-      name: share.name,
+      path: '',
+      name: share.share_name,
     });
   };
 
-  const renderShare = ({item}: {item: SyncShare}) => {
-    const syncState = syncStates[item.share_id];
-    const pendingCount = (syncState?.pending_uploads || 0) + (syncState?.pending_downloads || 0);
-
-    return (
-      <TouchableOpacity
-        style={[styles.shareItem, {backgroundColor: colors.card, borderColor: colors.border}]}
-        onPress={() => handleSharePress(item)}>
-        <View style={[styles.shareIcon, {backgroundColor: `${colors.primary}15`}]}>
-          <Icon name="folder" size={28} color={colors.primary} />
+  const renderShare = ({item}: {item: SyncShare}) => (
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={`${item.share_name}, ${item.file_count} items`}
+      style={[
+        styles.shareItem,
+        {backgroundColor: colors.card, borderColor: colors.border},
+      ]}
+      onPress={() => handleSharePress(item)}>
+      <View
+        style={[styles.shareIcon, {backgroundColor: `${colors.primary}15`}]}>
+        <Icon name="folder" size={28} color={colors.primary} />
+      </View>
+      <View style={styles.shareContent}>
+        <Text style={[styles.shareName, {color: colors.text}]}>
+          {item.share_name}
+        </Text>
+        <View style={styles.shareMeta}>
+          <Text style={[styles.shareMetaText, {color: `${colors.text}60`}]}>
+            {item.file_count} items • {formatBytes(item.total_size)}
+          </Text>
         </View>
-        <View style={styles.shareContent}>
-          <Text style={[styles.shareName, {color: colors.text}]}>{item.name}</Text>
-          <View style={styles.shareMeta}>
-            {item.file_count !== undefined && (
-              <Text style={[styles.shareMetaText, {color: `${colors.text}60`}]}>
-                {item.file_count} items
-              </Text>
-            )}
-            {item.total_size !== undefined && (
-              <Text style={[styles.shareMetaText, {color: `${colors.text}60`}]}>
-                • {formatBytes(item.total_size)}
-              </Text>
-            )}
-          </View>
-        </View>
-        <View style={styles.shareStatus}>
-          {pendingCount > 0 ? (
-            <View style={[styles.pendingBadge, {backgroundColor: colors.primary}]}>
-              <Text style={styles.pendingText}>{pendingCount}</Text>
-            </View>
-          ) : (
-            <Icon name="check-circle" size={20} color="#10B981" />
-          )}
-          <Icon name="chevron-right" size={24} color={`${colors.text}40`} />
-        </View>
-      </TouchableOpacity>
-    );
-  };
+      </View>
+      <View style={styles.shareStatus}>
+        <Icon name="chevron-right" size={24} color={`${colors.text}40`} />
+      </View>
+    </TouchableOpacity>
+  );
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Icon name="folder-off-outline" size={64} color={`${colors.text}30`} />
-      <Text style={[styles.emptyTitle, {color: colors.text}]}>No Shares</Text>
+      <Icon
+        name={sharesError ? 'cloud-alert' : 'folder-off-outline'}
+        size={64}
+        color={`${colors.text}30`}
+      />
+      <Text style={[styles.emptyTitle, {color: colors.text}]}>
+        {sharesError ? "Couldn't load the shares" : 'No Shares'}
+      </Text>
       <Text style={[styles.emptyText, {color: `${colors.text}60`}]}>
-        Enable sync on shares from your nOS dashboard
+        {sharesError ??
+          'No share you can read has sync turned on. Share owners can turn it on in nOS.'}
       </Text>
     </View>
   );
@@ -101,7 +101,7 @@ export function SharesScreen(): React.JSX.Element {
       <FlatList
         data={shares}
         renderItem={renderShare}
-        keyExtractor={(item) => item.share_id}
+        keyExtractor={item => item.share_id}
         contentContainerStyle={styles.list}
         ListEmptyComponent={renderEmpty}
         refreshControl={
@@ -111,18 +111,14 @@ export function SharesScreen(): React.JSX.Element {
             tintColor={colors.primary}
           />
         }
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={Separator}
       />
     </View>
   );
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+function Separator(): React.JSX.Element {
+  return <View style={styles.separator} />;
 }
 
 const styles = StyleSheet.create({
@@ -204,4 +200,3 @@ const styles = StyleSheet.create({
 });
 
 export default SharesScreen;
-

@@ -3,7 +3,7 @@
  * Browse files within a share
  */
 
-import React, {useEffect, useCallback, useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {
   View,
   Text,
@@ -13,16 +13,26 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
-import {useNavigation, useRoute, useTheme, RouteProp} from '@react-navigation/native';
+import {
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+  useTheme,
+} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {formatDistanceToNow} from 'date-fns';
 
 import {apiClient} from '../../api/client';
-import {FileMetadata} from '../../api/types';
+import {FolderEntry} from '../../api/types';
 import {FilesStackParamList} from '../../navigation/RootNavigator';
+import {formatBytes} from '../../utils/format';
 
-type FolderNavigationProp = NativeStackNavigationProp<FilesStackParamList, 'Folder'>;
+type FolderNavigationProp = NativeStackNavigationProp<
+  FilesStackParamList,
+  'Folder'
+>;
 type FolderRouteProp = RouteProp<FilesStackParamList, 'Folder'>;
 
 export function FolderScreen(): React.JSX.Element {
@@ -31,7 +41,7 @@ export function FolderScreen(): React.JSX.Element {
   const route = useRoute<FolderRouteProp>();
   const {shareId, path} = route.params;
 
-  const [files, setFiles] = useState<FileMetadata[]>([]);
+  const [files, setFiles] = useState<FolderEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,13 +49,8 @@ export function FolderScreen(): React.JSX.Element {
   const loadFiles = useCallback(async () => {
     try {
       setError(null);
-      const items = await apiClient.listDirectory(shareId, path);
-      // Sort: folders first, then by name
-      items.sort((a, b) => {
-        if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1;
-        return a.name.localeCompare(b.name);
-      });
-      setFiles(items);
+      // Folders first, then by name.
+      setFiles(await apiClient.listFolder(shareId, path));
     } catch (err) {
       setError((err as Error).message || 'Failed to load files');
     } finally {
@@ -53,9 +58,12 @@ export function FolderScreen(): React.JSX.Element {
     }
   }, [shareId, path]);
 
-  useEffect(() => {
-    loadFiles();
-  }, [loadFiles]);
+  // Again on coming back, e.g. after deleting a file.
+  useFocusEffect(
+    useCallback(() => {
+      loadFiles();
+    }, [loadFiles]),
+  );
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -63,8 +71,8 @@ export function FolderScreen(): React.JSX.Element {
     setRefreshing(false);
   }, [loadFiles]);
 
-  const handleFilePress = (file: FileMetadata) => {
-    if (file.is_dir) {
+  const handleFilePress = (file: FolderEntry) => {
+    if (file.isDir) {
       navigation.push('Folder', {
         shareId,
         path: file.path,
@@ -78,9 +86,11 @@ export function FolderScreen(): React.JSX.Element {
     }
   };
 
-  const getFileIcon = (file: FileMetadata): string => {
-    if (file.is_dir) return 'folder';
-    
+  const getFileIcon = (file: FolderEntry): string => {
+    if (file.isDir) {
+      return 'folder';
+    }
+
     const ext = file.name.split('.').pop()?.toLowerCase();
     switch (ext) {
       case 'jpg':
@@ -128,9 +138,11 @@ export function FolderScreen(): React.JSX.Element {
     }
   };
 
-  const getFileIconColor = (file: FileMetadata): string => {
-    if (file.is_dir) return '#F59E0B';
-    
+  const getFileIconColor = (file: FolderEntry): string => {
+    if (file.isDir) {
+      return '#F59E0B';
+    }
+
     const ext = file.name.split('.').pop()?.toLowerCase();
     switch (ext) {
       case 'jpg':
@@ -155,29 +167,31 @@ export function FolderScreen(): React.JSX.Element {
     }
   };
 
-  const renderFile = ({item}: {item: FileMetadata}) => {
+  const renderFile = ({item}: {item: FolderEntry}) => {
     const iconName = getFileIcon(item);
     const iconColor = getFileIconColor(item);
 
     return (
       <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={`${item.name}, ${describeEntry(item)}`}
         style={[styles.fileItem, {borderBottomColor: colors.border}]}
         onPress={() => handleFilePress(item)}>
         <View style={[styles.fileIcon, {backgroundColor: `${iconColor}15`}]}>
           <Icon name={iconName} size={24} color={iconColor} />
         </View>
         <View style={styles.fileContent}>
-          <Text style={[styles.fileName, {color: colors.text}]} numberOfLines={1}>
+          <Text
+            style={[styles.fileName, {color: colors.text}]}
+            numberOfLines={1}>
             {item.name}
           </Text>
           <Text style={[styles.fileMeta, {color: `${colors.text}60`}]}>
-            {item.is_dir
-              ? 'Folder'
-              : `${formatBytes(item.size)} • ${formatDistanceToNow(new Date(item.modified), {addSuffix: true})}`}
+            {describeEntry(item)}
           </Text>
         </View>
         <Icon
-          name={item.is_dir ? 'chevron-right' : 'dots-vertical'}
+          name={item.isDir ? 'chevron-right' : 'information-outline'}
           size={20}
           color={`${colors.text}40`}
         />
@@ -211,7 +225,9 @@ export function FolderScreen(): React.JSX.Element {
     return (
       <View style={styles.centerContainer}>
         <Icon name="folder-open" size={64} color={`${colors.text}30`} />
-        <Text style={[styles.emptyTitle, {color: colors.text}]}>Empty Folder</Text>
+        <Text style={[styles.emptyTitle, {color: colors.text}]}>
+          Empty Folder
+        </Text>
         <Text style={[styles.emptyText, {color: `${colors.text}60`}]}>
           This folder doesn't contain any files
         </Text>
@@ -222,10 +238,12 @@ export function FolderScreen(): React.JSX.Element {
   return (
     <View style={[styles.container, {backgroundColor: colors.background}]}>
       {/* Breadcrumb */}
-      {path !== '/' && (
+      {path !== '' && (
         <View style={[styles.breadcrumb, {borderBottomColor: colors.border}]}>
           <Icon name="folder-outline" size={16} color={`${colors.text}60`} />
-          <Text style={[styles.breadcrumbText, {color: `${colors.text}60`}]} numberOfLines={1}>
+          <Text
+            style={[styles.breadcrumbText, {color: `${colors.text}60`}]}
+            numberOfLines={1}>
             {path}
           </Text>
         </View>
@@ -234,7 +252,7 @@ export function FolderScreen(): React.JSX.Element {
       <FlatList
         data={files}
         renderItem={renderFile}
-        keyExtractor={(item) => item.path}
+        keyExtractor={item => item.path}
         ListEmptyComponent={renderEmpty}
         refreshControl={
           <RefreshControl
@@ -243,18 +261,24 @@ export function FolderScreen(): React.JSX.Element {
             tintColor={colors.primary}
           />
         }
-        contentContainerStyle={files.length === 0 ? styles.emptyList : undefined}
+        contentContainerStyle={
+          files.length === 0 ? styles.emptyList : undefined
+        }
       />
     </View>
   );
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+function describeEntry(entry: FolderEntry): string {
+  if (entry.isDir) {
+    return 'Folder';
+  }
+  const size = formatBytes(entry.size);
+  return entry.modified
+    ? `${size} • ${formatDistanceToNow(new Date(entry.modified), {
+        addSuffix: true,
+      })}`
+    : size;
 }
 
 const styles = StyleSheet.create({
@@ -337,4 +361,3 @@ const styles = StyleSheet.create({
 });
 
 export default FolderScreen;
-

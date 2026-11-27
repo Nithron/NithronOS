@@ -4,25 +4,24 @@
  */
 
 import React, {useEffect, useCallback} from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-  ActivityIndicator,
-} from 'react-native';
+import {View, Text, StyleSheet, FlatList, RefreshControl} from 'react-native';
 import {useTheme} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {formatDistanceToNow} from 'date-fns';
 
 import {useSyncStore} from '../../stores/syncStore';
 import {SyncActivity} from '../../api/types';
+import {formatBytes} from '../../utils/format';
 
 export function ActivityScreen(): React.JSX.Element {
   const {colors} = useTheme();
-  const {activities, refreshActivity, loadMoreActivity, status} = useSyncStore();
+  const {
+    activities,
+    activityTotal,
+    activityError,
+    refreshActivity,
+    loadMoreActivity,
+  } = useSyncStore();
   const [refreshing, setRefreshing] = React.useState(false);
 
   useEffect(() => {
@@ -53,9 +52,15 @@ export function ActivityScreen(): React.JSX.Element {
   };
 
   const getActivityColor = (activity: SyncActivity): string => {
-    if (activity.status === 'failed') return '#EF4444';
-    if (activity.action === 'conflict') return '#F59E0B';
-    if (activity.action === 'delete') return '#EF4444';
+    if (activity.status === 'failed') {
+      return '#EF4444';
+    }
+    if (activity.action === 'conflict') {
+      return '#F59E0B';
+    }
+    if (activity.action === 'delete') {
+      return '#EF4444';
+    }
     return colors.primary;
   };
 
@@ -66,9 +71,12 @@ export function ActivityScreen(): React.JSX.Element {
       case 'in_progress':
         return `${activity.progress || 0}%`;
       case 'completed':
-        return formatDistanceToNow(new Date(activity.completed_at || activity.started_at), {
-          addSuffix: true,
-        });
+        return formatDistanceToNow(
+          new Date(activity.completed_at || activity.started_at),
+          {
+            addSuffix: true,
+          },
+        );
       case 'failed':
         return 'Failed';
       default:
@@ -82,14 +90,23 @@ export function ActivityScreen(): React.JSX.Element {
 
     return (
       <View style={[styles.activityItem, {borderBottomColor: colors.border}]}>
-        <View style={[styles.activityIcon, {backgroundColor: `${iconColor}15`}]}>
-          <Icon name={getActivityIcon(item.action)} size={20} color={iconColor} />
+        <View
+          style={[styles.activityIcon, {backgroundColor: `${iconColor}15`}]}>
+          <Icon
+            name={getActivityIcon(item.action)}
+            size={20}
+            color={iconColor}
+          />
         </View>
         <View style={styles.activityContent}>
-          <Text style={[styles.activityName, {color: colors.text}]} numberOfLines={1}>
+          <Text
+            style={[styles.activityName, {color: colors.text}]}
+            numberOfLines={1}>
             {fileName}
           </Text>
-          <Text style={[styles.activityPath, {color: `${colors.text}60`}]} numberOfLines={1}>
+          <Text
+            style={[styles.activityPath, {color: `${colors.text}60`}]}
+            numberOfLines={1}>
             {item.path}
           </Text>
         </View>
@@ -97,7 +114,7 @@ export function ActivityScreen(): React.JSX.Element {
           <Text style={[styles.activityStatus, {color: `${colors.text}80`}]}>
             {getStatusText(item)}
           </Text>
-          {item.size && (
+          {!!item.size && (
             <Text style={[styles.activitySize, {color: `${colors.text}50`}]}>
               {formatBytes(item.size)}
             </Text>
@@ -110,12 +127,13 @@ export function ActivityScreen(): React.JSX.Element {
   const renderHeader = () => (
     <View style={[styles.header, {borderBottomColor: colors.border}]}>
       <View style={styles.headerInfo}>
-        <Text style={[styles.headerTitle, {color: colors.text}]}>Sync Activity</Text>
+        <Text style={[styles.headerTitle, {color: colors.text}]}>
+          Sync Activity
+        </Text>
         <Text style={[styles.headerSubtitle, {color: `${colors.text}60`}]}>
-          {status === 'syncing' ? 'Syncing...' : 'Up to date'}
+          {activityError ?? `${activityTotal} recorded for this device`}
         </Text>
       </View>
-      {status === 'syncing' && <ActivityIndicator color={colors.primary} />}
     </View>
   );
 
@@ -124,7 +142,8 @@ export function ActivityScreen(): React.JSX.Element {
       <Icon name="history" size={64} color={`${colors.text}30`} />
       <Text style={[styles.emptyTitle, {color: colors.text}]}>No Activity</Text>
       <Text style={[styles.emptyText, {color: `${colors.text}60`}]}>
-        Your sync activity will appear here
+        What nOS records for this device (uploads, downloads, resolved
+        conflicts) shows up here
       </Text>
     </View>
   );
@@ -134,7 +153,7 @@ export function ActivityScreen(): React.JSX.Element {
       <FlatList
         data={activities}
         renderItem={renderActivity}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmpty}
         refreshControl={
@@ -146,18 +165,12 @@ export function ActivityScreen(): React.JSX.Element {
         }
         onEndReached={loadMoreActivity}
         onEndReachedThreshold={0.5}
-        contentContainerStyle={activities.length === 0 ? styles.emptyList : undefined}
+        contentContainerStyle={
+          activities.length === 0 ? styles.emptyList : undefined
+        }
       />
     </View>
   );
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
 const styles = StyleSheet.create({
@@ -237,4 +250,3 @@ const styles = StyleSheet.create({
 });
 
 export default ActivityScreen;
-

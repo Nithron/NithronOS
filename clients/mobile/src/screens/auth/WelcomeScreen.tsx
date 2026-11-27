@@ -4,22 +4,16 @@
  */
 
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  Dimensions,
-} from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
 import {useNavigation, useTheme} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {AuthStackParamList} from '../../navigation/RootNavigator';
 
-const {width} = Dimensions.get('window');
-
-type WelcomeNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
+type WelcomeNavigationProp = NativeStackNavigationProp<
+  AuthStackParamList,
+  'Welcome'
+>;
 
 export function WelcomeScreen(): React.JSX.Element {
   const navigation = useNavigation<WelcomeNavigationProp>();
@@ -34,28 +28,28 @@ export function WelcomeScreen(): React.JSX.Element {
         </View>
         <Text style={[styles.title, {color: colors.text}]}>NithronSync</Text>
         <Text style={[styles.subtitle, {color: colors.text}]}>
-          Sync your files across all devices
+          Your nOS shares, on your phone
         </Text>
       </View>
 
       {/* Features list */}
       <View style={styles.features}>
         <FeatureItem
-          icon="sync"
-          title="Seamless Sync"
-          description="Keep your files up-to-date everywhere"
+          icon="folder-outline"
+          title="Your Shares"
+          description="Browse the shares on your nOS machine"
           colors={colors}
         />
         <FeatureItem
           icon="lock"
           title="Secure & Private"
-          description="Your data stays on your server"
+          description="Your files stay on your server"
           colors={colors}
         />
         <FeatureItem
-          icon="cellphone-link"
-          title="Cross-Platform"
-          description="Works on all your devices"
+          icon="qrcode-scan"
+          title="Pair in Seconds"
+          description="Scan the code nOS shows for a new device"
           colors={colors}
         />
       </View>
@@ -72,16 +66,16 @@ export function WelcomeScreen(): React.JSX.Element {
         <TouchableOpacity
           style={[styles.secondaryButton, {borderColor: colors.border}]}
           onPress={() => navigation.navigate('ManualSetup')}>
-          <Icon name="cog" size={20} color={colors.primary} />
+          <Icon name="link-variant" size={20} color={colors.primary} />
           <Text style={[styles.secondaryButtonText, {color: colors.primary}]}>
-            Manual Setup
+            Paste Pairing Link
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Footer */}
       <Text style={[styles.footer, {color: colors.text}]}>
-        Visit your nOS dashboard to get a QR code
+        Add this phone in nOS under Settings → Sync → Devices
       </Text>
     </View>
   );
@@ -97,7 +91,8 @@ interface FeatureItemProps {
 function FeatureItem({icon, title, description, colors}: FeatureItemProps) {
   return (
     <View style={styles.featureItem}>
-      <View style={[styles.featureIcon, {backgroundColor: `${colors.primary}20`}]}>
+      <View
+        style={[styles.featureIcon, {backgroundColor: `${colors.primary}20`}]}>
         <Icon name={icon} size={24} color={colors.primary} />
       </View>
       <View style={styles.featureText}>
@@ -209,4 +204,3 @@ const styles = StyleSheet.create({
 });
 
 export default WelcomeScreen;
-

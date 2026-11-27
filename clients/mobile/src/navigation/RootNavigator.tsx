@@ -10,6 +10,7 @@ import {useTheme} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import {useAuthStore} from '../stores/authStore';
+import {unresolvedCount, useSyncStore} from '../stores/syncStore';
 
 // Auth Screens
 import {WelcomeScreen} from '../screens/auth/WelcomeScreen';
@@ -17,7 +18,6 @@ import {QRScannerScreen} from '../screens/auth/QRScannerScreen';
 import {ManualSetupScreen} from '../screens/auth/ManualSetupScreen';
 
 // Main Screens
-import {FilesScreen} from '../screens/main/FilesScreen';
 import {ActivityScreen} from '../screens/main/ActivityScreen';
 import {ConflictsScreen} from '../screens/main/ConflictsScreen';
 import {SettingsScreen} from '../screens/main/SettingsScreen';
@@ -26,9 +26,7 @@ import {SettingsScreen} from '../screens/main/SettingsScreen';
 import {FileDetailScreen} from '../screens/files/FileDetailScreen';
 import {FolderScreen} from '../screens/files/FolderScreen';
 import {SharesScreen} from '../screens/files/SharesScreen';
-import {ConflictDetailScreen} from '../screens/conflicts/ConflictDetailScreen';
 import {DeviceSettingsScreen} from '../screens/settings/DeviceSettingsScreen';
-import {SyncSettingsScreen} from '../screens/settings/SyncSettingsScreen';
 import {AboutScreen} from '../screens/settings/AboutScreen';
 
 // Navigation types
@@ -54,7 +52,6 @@ export type FilesStackParamList = {
 export type SettingsStackParamList = {
   SettingsMain: undefined;
   DeviceSettings: undefined;
-  SyncSettings: undefined;
   About: undefined;
 };
 
@@ -94,7 +91,7 @@ function AuthNavigator() {
       <AuthStack.Screen
         name="ManualSetup"
         component={ManualSetupScreen}
-        options={{title: 'Manual Setup'}}
+        options={{title: 'Pairing Link'}}
       />
     </AuthStack.Navigator>
   );
@@ -152,11 +149,6 @@ function SettingsNavigator() {
         options={{title: 'Device'}}
       />
       <SettingsStack.Screen
-        name="SyncSettings"
-        component={SyncSettingsScreen}
-        options={{title: 'Sync Settings'}}
-      />
-      <SettingsStack.Screen
         name="About"
         component={AboutScreen}
         options={{title: 'About'}}
@@ -165,9 +157,26 @@ function SettingsNavigator() {
   );
 }
 
+interface TabIconProps {
+  color: string;
+  size: number;
+}
+
+function tabIcon(name: string): (props: TabIconProps) => React.JSX.Element {
+  return function TabIcon({color, size}: TabIconProps) {
+    return <Icon name={name} size={size} color={color} />;
+  };
+}
+
+const FilesIcon = tabIcon('folder-outline');
+const ActivityIcon = tabIcon('history');
+const ConflictsIcon = tabIcon('alert-circle-outline');
+const SettingsIcon = tabIcon('cog-outline');
+
 // Main Tab Navigator
 function MainNavigator() {
   const {colors} = useTheme();
+  const conflicts = useSyncStore(s => unresolvedCount(s.conflicts));
 
   return (
     <MainTabs.Navigator
@@ -185,9 +194,7 @@ function MainNavigator() {
         component={FilesNavigator}
         options={{
           tabBarLabel: 'Files',
-          tabBarIcon: ({color, size}) => (
-            <Icon name="folder-outline" size={size} color={color} />
-          ),
+          tabBarIcon: FilesIcon,
         }}
       />
       <MainTabs.Screen
@@ -195,9 +202,7 @@ function MainNavigator() {
         component={ActivityScreen}
         options={{
           tabBarLabel: 'Activity',
-          tabBarIcon: ({color, size}) => (
-            <Icon name="history" size={size} color={color} />
-          ),
+          tabBarIcon: ActivityIcon,
         }}
       />
       <MainTabs.Screen
@@ -205,10 +210,8 @@ function MainNavigator() {
         component={ConflictsScreen}
         options={{
           tabBarLabel: 'Conflicts',
-          tabBarIcon: ({color, size}) => (
-            <Icon name="alert-circle-outline" size={size} color={color} />
-          ),
-          tabBarBadge: undefined, // Will be set dynamically
+          tabBarIcon: ConflictsIcon,
+          tabBarBadge: conflicts > 0 ? conflicts : undefined,
         }}
       />
       <MainTabs.Screen
@@ -216,9 +219,7 @@ function MainNavigator() {
         component={SettingsNavigator}
         options={{
           tabBarLabel: 'Settings',
-          tabBarIcon: ({color, size}) => (
-            <Icon name="cog-outline" size={size} color={color} />
-          ),
+          tabBarIcon: SettingsIcon,
         }}
       />
     </MainTabs.Navigator>
@@ -227,16 +228,16 @@ function MainNavigator() {
 
 // Root Navigator
 export function RootNavigator() {
-  const {isInitialized, isAuthenticated} = useAuthStore();
+  const status = useAuthStore(s => s.status);
 
-  if (!isInitialized) {
-    // Could show a splash screen here
+  if (status === 'starting') {
+    // A moment: the pairing is read from the secure store.
     return null;
   }
 
   return (
     <RootStack.Navigator screenOptions={{headerShown: false}}>
-      {isAuthenticated ? (
+      {status === 'paired' ? (
         <RootStack.Screen name="Main" component={MainNavigator} />
       ) : (
         <RootStack.Screen name="Auth" component={AuthNavigator} />
@@ -246,4 +247,3 @@ export function RootNavigator() {
 }
 
 export default RootNavigator;
-

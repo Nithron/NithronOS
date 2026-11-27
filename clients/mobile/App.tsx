@@ -1,13 +1,16 @@
 /**
  * NithronSync Mobile Application
- * Cross-platform file sync client for iOS and Android
+ * Browses the shares of a paired nOS machine
  */
 
 import React, {useEffect} from 'react';
 import {StatusBar, useColorScheme} from 'react-native';
-import {NavigationContainer, DefaultTheme, DarkTheme} from '@react-navigation/native';
+import {
+  NavigationContainer,
+  DefaultTheme,
+  DarkTheme,
+} from '@react-navigation/native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {GestureHandlerRootView} from 'react-native-gesture-handler';
 
 import {RootNavigator} from './src/navigation/RootNavigator';
 import {useAuthStore} from './src/stores/authStore';
@@ -42,38 +45,34 @@ const NithronDarkTheme = {
 
 export default function App(): React.JSX.Element {
   const colorScheme = useColorScheme();
-  const {initialize: initAuth, isAuthenticated} = useAuthStore();
-  const {initialize: initSync} = useSyncStore();
+  const initialize = useAuthStore(s => s.initialize);
+  const isPaired = useAuthStore(s => s.status === 'paired');
+  const {refreshShares, refreshConflicts, reset} = useSyncStore();
 
   useEffect(() => {
-    // Initialize stores on app start
-    initAuth();
-  }, [initAuth]);
+    initialize();
+  }, [initialize]);
 
   useEffect(() => {
-    // Initialize sync engine when authenticated
-    if (isAuthenticated) {
-      initSync();
+    if (isPaired) {
+      refreshShares();
+      refreshConflicts();
+    } else {
+      reset();
     }
-  }, [isAuthenticated, initSync]);
+  }, [isPaired, refreshShares, refreshConflicts, reset]);
+
+  const theme = colorScheme === 'dark' ? NithronDarkTheme : NithronLightTheme;
 
   return (
-    <GestureHandlerRootView style={{flex: 1}}>
-      <SafeAreaProvider>
-        <NavigationContainer
-          theme={colorScheme === 'dark' ? NithronDarkTheme : NithronLightTheme}>
-          <StatusBar
-            barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}
-            backgroundColor={
-              colorScheme === 'dark'
-                ? NithronDarkTheme.colors.background
-                : NithronLightTheme.colors.background
-            }
-          />
-          <RootNavigator />
-        </NavigationContainer>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <NavigationContainer theme={theme}>
+        <StatusBar
+          barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}
+          backgroundColor={theme.colors.background}
+        />
+        <RootNavigator />
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
-

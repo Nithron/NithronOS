@@ -3,7 +3,7 @@
  * Manage device information and settings
  */
 
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -18,33 +18,48 @@ import {useTheme} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {format} from 'date-fns';
 
-import {useAuthStore} from '../../stores/authStore';
-import {apiClient} from '../../api/client';
+import {errorMessage, useAuthStore} from '../../stores/authStore';
+import {Device} from '../../api/types';
+import {formatBytes} from '../../utils/format';
+
+const MAX_NAME_LENGTH = 64; // nosd's limit
 
 export function DeviceSettingsScreen(): React.JSX.Element {
   const {colors} = useTheme();
-  const {currentDevice, refreshDeviceInfo} = useAuthStore();
-  
-  const [deviceName, setDeviceName] = useState(currentDevice?.name || '');
-  const [isSaving, setIsSaving] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
+  const {
+    device: currentDevice,
+    error,
+    refreshDevice,
+    renameDevice,
+  } = useAuthStore();
 
-  const handleNameChange = (text: string) => {
-    setDeviceName(text);
-    setHasChanges(text !== currentDevice?.name);
-  };
+  const [deviceName, setDeviceName] = useState(
+    currentDevice?.device_name ?? '',
+  );
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!currentDevice) {
+      refreshDevice();
+    }
+  }, [currentDevice, refreshDevice]);
+
+  useEffect(() => {
+    setDeviceName(currentDevice?.device_name ?? '');
+  }, [currentDevice?.device_name]);
+
+  const trimmed = deviceName.trim();
+  const hasChanges = trimmed !== '' && trimmed !== currentDevice?.device_name;
 
   const handleSave = async () => {
-    if (!hasChanges || !currentDevice) return;
-    
+    if (!hasChanges) {
+      return;
+    }
     setIsSaving(true);
     try {
-      await apiClient.updateDevice(currentDevice.id, deviceName);
-      await refreshDeviceInfo();
-      setHasChanges(false);
-      Alert.alert('Success', 'Device name updated');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update device name');
+      await renameDevice(trimmed);
+    } catch (err) {
+      Alert.alert("Couldn't rename the device", errorMessage(err));
     } finally {
       setIsSaving(false);
     }
@@ -52,19 +67,26 @@ export function DeviceSettingsScreen(): React.JSX.Element {
 
   if (!currentDevice) {
     return (
-      <View style={[styles.centerContainer, {backgroundColor: colors.background}]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View
+        style={[styles.centerContainer, {backgroundColor: colors.background}]}>
+        {error ? (
+          <Text style={{color: colors.text}}>{error}</Text>
+        ) : (
+          <ActivityIndicator size="large" color={colors.primary} />
+        )}
       </View>
     );
   }
 
   return (
-    <ScrollView style={[styles.container, {backgroundColor: colors.background}]}>
+    <ScrollView
+      style={[styles.container, {backgroundColor: colors.background}]}>
       {/* Device Icon */}
       <View style={styles.header}>
-        <View style={[styles.deviceIcon, {backgroundColor: `${colors.primary}15`}]}>
+        <View
+          style={[styles.deviceIcon, {backgroundColor: `${colors.primary}15`}]}>
           <Icon
-            name={currentDevice.platform === 'ios' ? 'apple' : 'android'}
+            name={currentDevice.device_type === 'ios' ? 'apple' : 'android'}
             size={48}
             color={colors.primary}
           />
@@ -73,18 +95,27 @@ export function DeviceSettingsScreen(): React.JSX.Element {
 
       {/* Device Name */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>DEVICE NAME</Text>
-        <View style={[styles.inputCard, {backgroundColor: colors.card, borderColor: colors.border}]}>
+        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>
+          DEVICE NAME
+        </Text>
+        <View
+          style={[
+            styles.inputCard,
+            {backgroundColor: colors.card, borderColor: colors.border},
+          ]}>
           <TextInput
             style={[styles.input, {color: colors.text}]}
             value={deviceName}
-            onChangeText={handleNameChange}
+            onChangeText={setDeviceName}
+            maxLength={MAX_NAME_LENGTH}
+            accessibilityLabel="Device name"
             placeholder="Enter device name"
             placeholderTextColor={`${colors.text}50`}
           />
         </View>
         {hasChanges && (
           <TouchableOpacity
+            accessibilityRole="button"
             style={[styles.saveButton, {backgroundColor: colors.primary}]}
             onPress={handleSave}
             disabled={isSaving}>
@@ -99,23 +130,19 @@ export function DeviceSettingsScreen(): React.JSX.Element {
 
       {/* Device Info */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>DEVICE INFO</Text>
-        <View style={[styles.infoCard, {backgroundColor: colors.card, borderColor: colors.border}]}>
-          <InfoRow
-            label="Device ID"
-            value={currentDevice.id}
-            colors={colors}
-          />
-          <Divider color={colors.border} />
-          <InfoRow
-            label="Platform"
-            value={currentDevice.platform.charAt(0).toUpperCase() + currentDevice.platform.slice(1)}
-            colors={colors}
-          />
+        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>
+          DEVICE INFO
+        </Text>
+        <View
+          style={[
+            styles.infoCard,
+            {backgroundColor: colors.card, borderColor: colors.border},
+          ]}>
+          <InfoRow label="Device ID" value={currentDevice.id} colors={colors} />
           <Divider color={colors.border} />
           <InfoRow
             label="Type"
-            value={currentDevice.type.charAt(0).toUpperCase() + currentDevice.type.slice(1)}
+            value={capitalize(currentDevice.device_type)}
             colors={colors}
           />
           <Divider color={colors.border} />
@@ -127,9 +154,7 @@ export function DeviceSettingsScreen(): React.JSX.Element {
           <Divider color={colors.border} />
           <InfoRow
             label="Last Sync"
-            value={currentDevice.last_sync 
-              ? format(new Date(currentDevice.last_sync), 'MMM d, yyyy h:mm a')
-              : 'Never'}
+            value={formatTime(currentDevice.last_sync_at)}
             colors={colors}
           />
         </View>
@@ -137,24 +162,44 @@ export function DeviceSettingsScreen(): React.JSX.Element {
 
       {/* Sync Stats */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>SYNC STATISTICS</Text>
-        <View style={[styles.infoCard, {backgroundColor: colors.card, borderColor: colors.border}]}>
+        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>
+          SYNC STATISTICS
+        </Text>
+        <View
+          style={[
+            styles.infoCard,
+            {backgroundColor: colors.card, borderColor: colors.border},
+          ]}>
           <InfoRow
             label="Total Synced"
-            value={formatBytes(currentDevice.sync_bytes || 0)}
+            value={formatBytes(currentDevice.bytes_synced)}
             colors={colors}
           />
           <Divider color={colors.border} />
           <InfoRow
-            label="Status"
-            value={currentDevice.is_online ? 'Online' : 'Offline'}
-            valueColor={currentDevice.is_online ? '#10B981' : '#EF4444'}
+            label="Last Seen"
+            value={formatTime(currentDevice.last_seen_at)}
+            colors={colors}
+          />
+          <Divider color={colors.border} />
+          <InfoRow
+            label="Access"
+            value={currentDevice.is_revoked ? 'Revoked' : 'Active'}
+            valueColor={currentDevice.is_revoked ? '#EF4444' : '#10B981'}
             colors={colors}
           />
         </View>
       </View>
     </ScrollView>
   );
+}
+
+function capitalize(type: Device['device_type']): string {
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+function formatTime(time: string | undefined): string {
+  return time ? format(new Date(time), 'MMM d, yyyy h:mm a') : 'Never';
 }
 
 interface InfoRowProps {
@@ -167,7 +212,9 @@ interface InfoRowProps {
 function InfoRow({label, value, valueColor, colors}: InfoRowProps) {
   return (
     <View style={styles.infoRow}>
-      <Text style={[styles.infoLabel, {color: `${colors.text}70`}]}>{label}</Text>
+      <Text style={[styles.infoLabel, {color: `${colors.text}70`}]}>
+        {label}
+      </Text>
       <Text
         style={[styles.infoValue, {color: valueColor || colors.text}]}
         numberOfLines={1}>
@@ -179,14 +226,6 @@ function InfoRow({label, value, valueColor, colors}: InfoRowProps) {
 
 function Divider({color}: {color: string}) {
   return <View style={[styles.divider, {backgroundColor: color}]} />;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
 const styles = StyleSheet.create({
@@ -265,4 +304,3 @@ const styles = StyleSheet.create({
 });
 
 export default DeviceSettingsScreen;
-
