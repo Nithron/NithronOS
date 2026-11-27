@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronRightIcon, ChosenIcon, CopyIcon, FileIcon, RefreshIcon, ServerIcon, SyncIcon, TimeIcon, WarningIcon } from '@/components/icons'
+import { ChevronRightIcon, ChosenIcon, CopyIcon, FileIcon, RefreshIcon, ServerIcon, SyncIcon, WarningIcon } from '@/components/icons'
 
 import { Button } from '@/components/ui/button';
 import {
@@ -154,7 +154,6 @@ export default function SyncConflicts() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <WarningIcon className="h-5 w-5 text-status-warning-text" />
             Unresolved conflicts
           </CardTitle>
           <CardDescription>
@@ -244,7 +243,6 @@ export default function SyncConflicts() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TimeIcon className="h-5 w-5" />
               Resolution history
             </CardTitle>
             <CardDescription>

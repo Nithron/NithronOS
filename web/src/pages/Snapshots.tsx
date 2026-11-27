@@ -78,11 +78,11 @@ export default function Snapshots() {
         <div className="grid gap-px border border-hairline bg-hairline md:grid-cols-3 [&>*]:bg-page [&>*]:p-4">
           <div>
             <p className="font-mono text-[0.8125rem] text-ink-2">Snapshots</p>
-            <p className="mt-2 font-mono text-2xl tabular-nums">{stats.total_count}</p>
+            <p className="pixel-display pixel-24 mt-2">{stats.total_count}</p>
           </div>
           <div>
             <p className="font-mono text-[0.8125rem] text-ink-2">Total size</p>
-            <p className="mt-2 font-mono text-2xl tabular-nums">{formatBytes(stats.total_size_bytes)}</p>
+            <p className="pixel-display pixel-24 mt-2">{formatBytes(stats.total_size_bytes)}</p>
           </div>
           <div>
             <p className="font-mono text-[0.8125rem] text-ink-2">Oldest</p>

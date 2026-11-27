@@ -20,6 +20,9 @@ export const chartAxis = {
   tick: { fill: 'var(--dim)', fontSize: 13, fontFamily: 'var(--font-mono)' },
 } as const
 
+/** Room at the right for the last time label, so no text is clipped. */
+export const chartMargin = { top: 8, right: 40, bottom: 0, left: 8 } as const
+
 export const chartGrid = { stroke: 'var(--hairline)', vertical: false } as const
 
 export const chartTooltip = {

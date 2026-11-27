@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { DiskIcon, FailedIcon, NoticeIcon, RefreshIcon, StartIcon, TemperatureIcon, WorkingIcon } from '@/components/icons'
+import { FailedIcon, NoticeIcon, RefreshIcon, StartIcon, TemperatureIcon, WorkingIcon } from '@/components/icons'
 import { useMemo, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -345,7 +345,6 @@ export default function DiskHealth() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <DiskIcon className="h-4 w-4" />
                 {selectedDiskData.name} Details
               </CardTitle>
               <CardDescription>

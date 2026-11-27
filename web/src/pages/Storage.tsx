@@ -227,11 +227,11 @@ export function Storage() {
             <div className="grid gap-px border border-hairline bg-hairline md:grid-cols-3 [&>*]:bg-page [&>*]:p-6">
               <div>
                 <p className="font-mono text-[0.8125rem] text-ink-2">Total capacity</p>
-                <p className="mt-2 font-mono text-2xl tabular-nums">{formatBytes(totalSize)}</p>
+                <p className="pixel-display pixel-24 mt-2">{formatBytes(totalSize)}</p>
               </div>
               <div>
                 <p className="font-mono text-[0.8125rem] text-ink-2">Used space</p>
-                <p className="mt-2 font-mono text-2xl tabular-nums">{formatBytes(totalUsed)}</p>
+                <p className="pixel-display pixel-24 mt-2">{formatBytes(totalUsed)}</p>
                 <Meter
                   className="mt-3"
                   value={totalUsed}
@@ -243,7 +243,7 @@ export function Storage() {
               </div>
               <div>
                 <p className="font-mono text-[0.8125rem] text-ink-2">Pools mounted</p>
-                <p className="mt-2 font-mono text-2xl tabular-nums">
+                <p className="pixel-display pixel-24 mt-2">
                   {pools.filter((p) => p.mount).length} of {pools.length}
                 </p>
               </div>

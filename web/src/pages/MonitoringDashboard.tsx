@@ -21,7 +21,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import { chartAxis, chartGrid, chartTooltip, seriesLine, SeriesKey } from '@/components/ui/chart'
+import { chartAxis, chartGrid, chartMargin, chartTooltip, seriesLine, SeriesKey } from '@/components/ui/chart'
 
 // Animation variants
 const containerVariants: any = {
@@ -64,7 +64,7 @@ function LiveMetric({
   label, 
   value, 
   unit = '', 
-  icon: Icon,
+  icon: _icon,
   trend,
   color = 'text-primary'
 }: {
@@ -76,18 +76,17 @@ function LiveMetric({
   color?: string
 }) {
   return (
-    <div className="flex items-center justify-between border border-hairline p-3">
-      <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">{label}</span>
-      </div>
+    // A cell of the ruled row: its word, then its number. No icon: two of
+    // the four meanings have no drawing yet, so all four are words.
+    <div className="flex items-center justify-between p-3">
+      <span className="text-sm text-ink-2">{label}</span>
       <motion.div
         key={value}
         initial={false}
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-1"
       >
-        <span className={cn("font-[560]", color)}>{value}</span>
+        <span className={cn("font-mono tabular-nums", color)}>{value}</span>
         {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
         {trend === 'up' && <RisingIcon className="h-3 w-3 text-ink-2" />}
       </motion.div>
@@ -266,10 +265,10 @@ export default function MonitoringDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Live metrics</CardTitle>
-            <CardDescription>Real-time system performance (1Hz refresh)</CardDescription>
+            <CardDescription>Updated every second</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid gap-px border border-hairline bg-hairline grid-cols-2 md:grid-cols-4 [&>*]:bg-page">
               <LiveMetric
                 label="CPU"
                 value={`${Math.round(metrics?.cpu || 0)}%`}
@@ -317,7 +316,7 @@ export default function MonitoringDashboard() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={chartData}>
+                  <LineChart data={chartData} margin={chartMargin}>
                     <CartesianGrid {...chartGrid} />
                     <XAxis dataKey="time" interval="preserveStartEnd" {...chartAxis} />
                     <YAxis domain={[0, 100]} tickFormatter={(value) => `${toFixedSafe(value, 0, '0')}%`} {...chartAxis} />
@@ -344,7 +343,7 @@ export default function MonitoringDashboard() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={chartData}>
+                  <LineChart data={chartData} margin={chartMargin}>
                     <CartesianGrid {...chartGrid} />
                     <XAxis dataKey="time" interval="preserveStartEnd" {...chartAxis} />
                     <YAxis tickFormatter={(value) => formatBytes(value) + '/s'} {...chartAxis} />
@@ -382,7 +381,7 @@ export default function MonitoringDashboard() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={chartData}>
+                  <LineChart data={chartData} margin={chartMargin}>
                     <CartesianGrid {...chartGrid} />
                     <XAxis dataKey="time" interval="preserveStartEnd" {...chartAxis} />
                     <YAxis tickFormatter={(value) => formatBytes(value) + '/s'} {...chartAxis} />

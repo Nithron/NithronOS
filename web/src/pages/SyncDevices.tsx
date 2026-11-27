@@ -347,7 +347,7 @@ export default function SyncDevices() {
             <CardTitle className="text-sm font-medium">Total devices</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="font-mono text-2xl tabular-nums">{devices.length}</div>
+            <div className="pixel-display pixel-24">{devices.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -355,7 +355,7 @@ export default function SyncDevices() {
             <CardTitle className="text-sm font-medium">Active now</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="font-mono text-2xl tabular-nums">{activeDevices}</div>
+            <div className="pixel-display pixel-24">{activeDevices}</div>
           </CardContent>
         </Card>
         <Card>
@@ -363,7 +363,7 @@ export default function SyncDevices() {
             <CardTitle className="text-sm font-medium">Offline</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="font-mono text-2xl tabular-nums">{devices.length - activeDevices}</div>
+            <div className="pixel-display pixel-24">{devices.length - activeDevices}</div>
           </CardContent>
         </Card>
         <Card>
@@ -371,7 +371,7 @@ export default function SyncDevices() {
             <CardTitle className="text-sm font-medium">Total synced</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="font-mono text-2xl tabular-nums">{formatBytes(totalSynced)}</div>
+            <div className="pixel-display pixel-24">{formatBytes(totalSynced)}</div>
           </CardContent>
         </Card>
       </div>

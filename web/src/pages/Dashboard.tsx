@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
-import { WorkingIcon, ActivityIcon, AppIcon, CpuIcon, FailedIcon, FolderIcon, MaintenanceIcon, MemoryIcon, NoticeIcon, PoolIcon, QuickIcon, RefreshIcon, ShareIcon, StorageIcon, WarningIcon } from '@/components/icons'
+import { WorkingIcon, AppIcon, CpuIcon, FailedIcon, FolderIcon, MemoryIcon, NoticeIcon, QuickIcon, RefreshIcon, WarningIcon } from '@/components/icons'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -57,7 +57,6 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ActivityIcon className="h-5 w-5" />
             System health
           </CardTitle>
         </CardHeader>
@@ -77,7 +76,6 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ActivityIcon className="h-5 w-5" />
             System health
           </CardTitle>
         </CardHeader>
@@ -96,7 +94,6 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ActivityIcon className="h-5 w-5" />
             System health
           </CardTitle>
         </CardHeader>
@@ -117,7 +114,6 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
       <CardHeader>
         <div className="flex justify-between items-start">
           <CardTitle className="flex items-center gap-2">
-            <ActivityIcon className="h-5 w-5" />
             System health
             {isSSE && (
               <StatusMark state="running" className="ml-auto text-xs font-normal">
@@ -201,7 +197,6 @@ function StorageWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <PoolIcon className="h-5 w-5" />
             Storage
           </CardTitle>
         </CardHeader>
@@ -220,7 +215,6 @@ function StorageWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <PoolIcon className="h-5 w-5" />
           Storage
         </CardTitle>
         <CardDescription>
@@ -259,7 +253,6 @@ function DiskHealthWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <StorageIcon className="h-5 w-5" />
             Disk health
           </CardTitle>
         </CardHeader>
@@ -280,7 +273,6 @@ function DiskHealthWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <StorageIcon className="h-5 w-5" />
           Disk health
         </CardTitle>
         <CardDescription>
@@ -315,7 +307,6 @@ function RecentActivityWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ActivityIcon className="h-5 w-5" />
             Recent activity
           </CardTitle>
         </CardHeader>
@@ -348,7 +339,6 @@ function RecentActivityWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <ActivityIcon className="h-5 w-5" />
           Recent activity
         </CardTitle>
       </CardHeader>
@@ -378,7 +368,7 @@ function RecentActivityWidget({ data, isLoading }: any) {
               </AnimatePresence>
             </div>
           ) : (
-            <p className="py-4 text-sm text-ink-2">Nothing has happened yet.</p>
+            <p className="py-4 pixel-display text-ink-2">Nothing has happened yet.</p>
           )}
         </ScrollArea>
       </CardContent>
@@ -392,7 +382,6 @@ function NetworkSharesWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ShareIcon className="h-5 w-5" />
             Network shares
           </CardTitle>
         </CardHeader>
@@ -411,7 +400,6 @@ function NetworkSharesWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <ShareIcon className="h-5 w-5" />
           Network shares
         </CardTitle>
         <CardDescription>
@@ -443,7 +431,7 @@ function NetworkSharesWidget({ data, isLoading }: any) {
           </div>
         ) : (
           <div className="space-y-3 py-4">
-            <p className="text-sm text-ink-2">No share yet.</p>
+            <p className="pixel-display text-ink-2">No share yet.</p>
             <Link to="/shares/new" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
               Create a share
             </Link>
@@ -460,7 +448,6 @@ function InstalledAppsWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <AppIcon className="h-5 w-5" />
             Installed apps
           </CardTitle>
         </CardHeader>
@@ -479,7 +466,6 @@ function InstalledAppsWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AppIcon className="h-5 w-5" />
           Installed apps
         </CardTitle>
         <CardDescription>
@@ -511,7 +497,7 @@ function InstalledAppsWidget({ data, isLoading }: any) {
           </div>
         ) : (
           <div className="space-y-3 py-4">
-            <p className="text-sm text-ink-2">No app installed.</p>
+            <p className="pixel-display text-ink-2">No app installed.</p>
             <Link to="/apps" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
               Browse the catalog
             </Link>
@@ -528,7 +514,6 @@ function MaintenanceWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <MaintenanceIcon className="h-5 w-5" />
             Maintenance operations
           </CardTitle>
         </CardHeader>
@@ -559,7 +544,6 @@ function MaintenanceWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <MaintenanceIcon className="h-5 w-5" />
           Maintenance operations
         </CardTitle>
       </CardHeader>

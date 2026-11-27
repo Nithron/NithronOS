@@ -15,6 +15,8 @@ interface EmptyStateProps {
     onClick: () => void
   }
   className?: string
+  /** 16 px inside a group, 24 px when it is the whole screen. */
+  size?: 'group' | 'screen'
 }
 
 const variantConfig: Record<
@@ -46,6 +48,7 @@ export function EmptyState({
   description,
   action,
   className,
+  size = 'group',
 }: EmptyStateProps) {
   const config = variantConfig[variant]
   // No picture until the shared pixel pictures arrive: the sentence and its
@@ -59,7 +62,7 @@ export function EmptyState({
         className
       )}
     >
-      <h3 className="pixel-display pixel-24 mb-2">{title || config.defaultTitle}</h3>
+      <h3 className={cn('pixel-display mb-2', size === 'screen' && 'pixel-24')}>{title || config.defaultTitle}</h3>
       {description && (
         <p className="mb-6 max-w-sm text-sm text-ink-2">
           {description}

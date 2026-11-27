@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronRightIcon, ChosenIcon, DownloadIcon, EncryptionIcon, NoticeIcon, OpenExternalIcon, SettingsIcon, SyncIcon, SyncedFolderIcon, UploadIcon, WarningIcon } from '@/components/icons'
+import { ChevronRightIcon, ChosenIcon, DownloadIcon, EncryptionIcon, NoticeIcon, OpenExternalIcon, SettingsIcon, SyncedFolderIcon, UploadIcon, WarningIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -93,7 +93,6 @@ export default function SettingsSync() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="screen-title flex items-center gap-2">
-            <SyncIcon className="h-6 w-6 text-ink" />
             NithronSync settings
           </h1>
           <p className="text-muted-foreground">
