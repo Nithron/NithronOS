@@ -11,10 +11,9 @@ import * as path from 'node:path'
 //
 // The walk runs twice, in the system's dark and light theme (the tokens
 // follow prefers-color-scheme), saves a capture of every page in each, and
-// measures the contrast of every text (axe, WCAG AA). A page in
-// contrastChecked must have none below AA; the others are reported in
-// test-results/contrast-report.json until their area is reworked
-// (docs/dev/ui-identity-proposal.md).
+// measures the contrast of every text (axe, WCAG AA): no page may have a
+// text below AA in either theme. The counts are also written to
+// test-results/contrast-report.json.
 
 // The walk saves its own screenshots; no video (and no ffmpeg) needed.
 test.use({ video: 'off', trace: 'off' })
@@ -53,10 +52,6 @@ const notWalked: Record<string, string> = {
 	'/*': 'the not-found page; /no-such-page is opened instead',
 	'/apps/:id': "an installed app's page; the live container has no Docker to install one",
 }
-
-// Pages whose area has been reworked to the tokens: no text below AA, in
-// either theme. The list grows area by area.
-const contrastChecked: string[] = []
 
 const themes = ['dark', 'light'] as const
 
@@ -186,6 +181,6 @@ test('every page renders against a real nosd', async ({ page }) => {
 	}
 	console.log(`\n${reports.length - broken.length}/${reports.length} page views clean`)
 	expect(broken.map((r) => `${r.path} (${r.theme})`)).toEqual([])
-	const belowAA = reports.filter((r) => contrastChecked.includes(r.path) && r.contrast.count > 0)
+	const belowAA = reports.filter((r) => r.contrast.count > 0)
 	expect(belowAA.map((r) => `${r.path} (${r.theme}): ${r.contrast.examples.join('; ')}`), 'text below AA').toEqual([])
 })
