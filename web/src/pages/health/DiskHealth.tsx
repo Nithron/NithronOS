@@ -66,7 +66,7 @@ function DiskCard({
         role="button"
         tabIndex={0}
         aria-pressed={isSelected}
-        className={cn('cursor-pointer hover:bg-ink/[.09] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink', isSelected && 'border-ink')}
+        className={cn('cursor-pointer hover:bg-ink/[.09] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink', isSelected && 'outline outline-2 -outline-offset-2 outline-ink')}
         onClick={onClick}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -327,7 +327,7 @@ export default function DiskHealth() {
       {/* Disk cards grid */}
       <motion.div 
         variants={containerVariants}
-        className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+        className="grid gap-px border border-hairline bg-hairline md:grid-cols-2 lg:grid-cols-3 [&>*]:bg-page [&>*>*]:h-full [&>*>*]:border-0"
       >
         {disks.map((disk) => (
           <DiskCard
