@@ -62,7 +62,7 @@ export function AboutScreen(): React.JSX.Element {
             icon="book-open-variant"
             title="Documentation"
             subtitle="View user guide"
-            onPress={() => handleLink('https://docs.nithron.com/sync')}
+            onPress={() => handleLink('https://nos.nithron.com/docs/sync/')}
             colors={colors}
           />
           <Divider color={colors.border} />

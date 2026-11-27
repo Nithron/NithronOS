@@ -307,6 +307,6 @@ The README overstates completion. Proposed re-baseline:
 7. **Workflow**: one branch and one pull request per phase (`revision/phase-N-<slug>`).
 8. **Name**: nOS, with NithronOS as the long form. Everything is renamed, including package names, paths and the GitHub repository (Nithron/nOS); its own PR after Phase 3, with a migration for existing installs.
 
-Open for later: the domain nOS uses. Placeholder `nithronos.com`/`.org` addresses remain in `docs/updates.md` (apt repository URL) and `docs-site/mkdocs.yml` (`site_url`) until the maintainer picks one.
+Decided (2026-11-27): nOS's domain is **nos.nithron.com**: the documentation at `https://nos.nithron.com/docs/`, the APT repository at `https://nos.nithron.com/apt` (`docs/updates.md`, `docs-site/mkdocs.yml`, the mobile app's docs link). Company pages and contact addresses stay on nithron.com.
 
 Open for later: Debian base. The ISO targets bookworm (Debian 12, now in LTS); moving to trixie (Debian 13) belongs in Phase 6.
