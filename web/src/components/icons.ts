@@ -9,7 +9,8 @@
  * title, an empty screen), nothing in between: a pixel icon cannot be scaled
  * by a fraction.
  */
-import type { LucideIcon } from 'lucide-react'
+import { createElement, forwardRef } from 'react'
+import type { LucideIcon, LucideProps } from 'lucide-react'
 import {
   Activity,
   AlertTriangle,
@@ -28,7 +29,6 @@ import {
   ChevronRight,
   ChevronUp,
   ChevronsUpDown,
-  Circle,
   Clock,
   Cloud,
   CloudOff,
@@ -63,7 +63,6 @@ import {
   Laptop,
   LayoutDashboard,
   List,
-  Loader2,
   Lock,
   LogOut,
   Mail,
@@ -112,6 +111,37 @@ import {
 
 export type IconComponent = LucideIcon
 
+/**
+ * A square drawn on whole pixels of a 16 px slot, for the marks that are
+ * already pixel shapes. `blink` makes it the lamp of something running
+ * (styles.css stops it under reduced motion). A caller's animate-spin is
+ * dropped: nothing spins.
+ */
+function pixelSquare(name: string, size: number, blink: boolean): IconComponent {
+  const offset = (16 - size) / 2
+  const icon = forwardRef<SVGSVGElement, LucideProps>(({ className, color: _c, size: _s, strokeWidth: _w, absoluteStrokeWidth: _a, ...rest }, ref) =>
+    createElement(
+      'svg',
+      {
+        ref,
+        viewBox: '0 0 16 16',
+        shapeRendering: 'crispEdges',
+        'aria-hidden': true,
+        ...rest,
+        className: [className?.replace(/\banimate-spin\b/g, ''), 'fill-current', blink ? 'pixel-blink' : ''].filter(Boolean).join(' '),
+      },
+      createElement('rect', { x: offset, y: offset, width: size, height: size }),
+    ),
+  )
+  icon.displayName = name
+  return icon as unknown as IconComponent
+}
+
+/** Working: a square that blinks, never a spinner. */
+export const WorkingIcon: IconComponent = pixelSquare('WorkingIcon', 8, true)
+/** A bullet or a chosen item: a small square, never a dot. */
+export const DotIcon: IconComponent = pixelSquare('DotIcon', 4, false)
+
 export const AccountIcon: IconComponent = UserCog
 export const ActivityIcon: IconComponent = Activity
 export const AddIcon: IconComponent = Plus
@@ -140,7 +170,6 @@ export const DeleteIcon: IconComponent = Trash2
 export const DesktopIcon: IconComponent = Monitor
 export const DevelopmentIcon: IconComponent = Code
 export const DiskIcon: IconComponent = HardDrive
-export const DotIcon: IconComponent = Circle
 export const DownloadIcon: IconComponent = Download
 export const EditIcon: IconComponent = Edit
 export const EmptyIcon: IconComponent = Inbox
@@ -223,7 +252,6 @@ export const UserIcon: IconComponent = User
 export const UsersIcon: IconComponent = Users
 export const UtilitiesIcon: IconComponent = Server
 export const WarningIcon: IconComponent = AlertTriangle
-export const WorkingIcon: IconComponent = Loader2
 
 /** The icons by name, for code that picks one at run time. */
 export const icons = {

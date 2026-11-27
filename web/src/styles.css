@@ -90,3 +90,48 @@
     font-family: var(--font-mono);
   }
 }
+
+/* The pixel layer (components/ui/pixel.tsx): whole pixels, no smoothing. */
+@layer components {
+  .pixel {
+    image-rendering: pixelated;
+    shape-rendering: crispEdges;
+  }
+
+  /* The product's name, a screen's one large number, the words of an empty
+     or loading screen. The shared pixel display face is not issued yet;
+     until then --font-pixel is unset and the mono face stands in. */
+  .pixel-display {
+    font-family: var(--font-pixel, var(--font-mono));
+  }
+
+  /* A lamp for something running: it blinks in steps. */
+  .pixel-blink {
+    animation: pixel-blink var(--loop-lamp) steps(1, end) infinite;
+  }
+
+  /* The block cursor after words that are still loading. */
+  .pixel-cursor::after {
+    content: '';
+    display: inline-block;
+    width: 0.6em;
+    height: 1.1em;
+    margin-left: 0.15em;
+    vertical-align: text-bottom;
+    background: currentColor;
+    animation: pixel-blink var(--loop-cursor) steps(1, end) infinite;
+  }
+
+  @keyframes pixel-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pixel-blink,
+    .pixel-cursor::after {
+      animation: none;
+    }
+  }
+}

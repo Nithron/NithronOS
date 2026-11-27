@@ -1,6 +1,7 @@
 import React from 'react'
 import { cn } from '@/lib/utils'
-import { FailedIcon, HelpIcon, WorkingIcon } from '@/components/icons'
+import { FailedIcon, HelpIcon } from '@/components/icons'
+import { Working } from './pixel'
 import { Button } from './button'
 
 interface CardProps {
@@ -63,8 +64,8 @@ export function Card({
 
       <div className={cn('p-6', contentClassName)}>
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <WorkingIcon className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="py-8">
+            <Working />
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">

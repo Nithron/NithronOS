@@ -1,6 +1,6 @@
 import React from 'react'
 import { cn } from '@/lib/utils'
-import { DotIcon, FailedIcon, NoticeIcon, OkIcon, WarningIcon } from '@/components/icons'
+import { Mark, type MarkState } from '@/components/ui/pixel'
 
 type StatusVariant = 'success' | 'warning' | 'error' | 'info' | 'muted'
 type StatusValue = 'active' | 'inactive' | 'running' | 'stopped' | 'idle'
@@ -13,27 +13,14 @@ interface StatusPillProps {
   className?: string
 }
 
-const statusConfig = {
-  success: {
-    className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-    icon: OkIcon,
-  },
-  warning: {
-    className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-    icon: WarningIcon,
-  },
-  error: {
-    className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-    icon: FailedIcon,
-  },
-  info: {
-    className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-    icon: NoticeIcon,
-  },
-  muted: {
-    className: 'bg-muted text-muted-foreground',
-    icon: DotIcon,
-  },
+// A pill is a 1 px line in the status colour, its tint as fill, ink text
+// and 3 px corners, with the state's mark before the word.
+const statusConfig: Record<StatusVariant, { className: string; mark: MarkState }> = {
+  success: { className: 'border-status-ok bg-status-ok-tint', mark: 'ok' },
+  warning: { className: 'border-status-warning bg-status-warning-tint', mark: 'warning' },
+  error: { className: 'border-status-failed bg-status-failed-tint', mark: 'failed' },
+  info: { className: 'border-rule', mark: 'notice' },
+  muted: { className: 'border-rule', mark: 'off' },
 }
 
 const statusToVariant = (status: string): StatusVariant => {
@@ -61,12 +48,11 @@ const statusToVariant = (status: string): StatusVariant => {
 export function StatusPill({ variant, status, size = 'md', children, className }: StatusPillProps) {
   const finalVariant = variant || (status ? statusToVariant(status) : 'muted')
   const config = statusConfig[finalVariant]
-  const Icon = config.icon
 
   const sizeClasses = {
     sm: 'px-2 py-0.5 text-xs',
     md: 'px-2.5 py-0.5 text-xs',
-    lg: 'px-3 py-1 text-sm'
+    lg: 'px-3 py-1 text-sm',
   }
 
   const displayText = children || (status ? status : '')
@@ -74,15 +60,13 @@ export function StatusPill({ variant, status, size = 'md', children, className }
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full font-medium',
+        'inline-flex items-center gap-1.5 rounded-sm border font-medium text-ink',
         sizeClasses[size],
         config.className,
-        className
+        className,
       )}
     >
-      <Icon className={cn(
-        size === 'sm' ? 'h-3 w-3' : size === 'lg' ? 'h-4 w-4' : 'h-3 w-3'
-      )} />
+      <Mark state={config.mark} />
       {displayText}
     </span>
   )
