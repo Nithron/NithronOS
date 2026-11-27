@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"golang.org/x/sync/errgroup"
 
 	"nos/clients/sync-core/api"
 	"nos/clients/sync-core/config"
@@ -699,28 +698,38 @@ func (e *Engine) deltaDownload(shareID, shareName, remotePath, localPath string)
 	return nil
 }
 
+// maxOpsPerSync bounds the local operations done in one sync; the rest
+// wait for the next.
+const maxOpsPerSync = 2000
+
 func (e *Engine) processLocalOperations(shareID, shareName string) {
-	ops, err := e.database.DequeueOperations(e.cfg.MaxConcurrent)
-	if err != nil {
-		e.logger.Error().Err(err).Msg("Failed to dequeue operations")
-		return
-	}
-
-	if len(ops) == 0 {
-		return
-	}
-
-	g, ctx := errgroup.WithContext(e.ctx)
-
-	for _, op := range ops {
-		op := op // Capture for closure
-		g.Go(func() error {
-			return e.processOperation(ctx, shareID, shareName, op)
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		e.logger.Error().Err(err).Msg("Error processing operations")
+	// Batches of MaxConcurrent until the queue is empty. (Only one batch ran
+	// per poll, so a thousand new files took hours, and the first failure
+	// in a batch cancelled the others.)
+	batch := max(e.cfg.MaxConcurrent, 1)
+	for done := 0; done < maxOpsPerSync; done += batch {
+		ops, err := e.database.DequeueOperations(shareID, batch)
+		if err != nil {
+			e.logger.Error().Err(err).Msg("Failed to dequeue operations")
+			return
+		}
+		if len(ops) == 0 {
+			return
+		}
+		var wg sync.WaitGroup
+		for _, op := range ops {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				if err := e.processOperation(e.ctx, shareID, shareName, op); err != nil {
+					e.logger.Error().Err(err).Str("path", op.Path).Str("op", op.Operation).Msg("Local change not synced")
+				}
+			}()
+		}
+		wg.Wait()
+		if e.ctx.Err() != nil {
+			return
+		}
 	}
 }
 
