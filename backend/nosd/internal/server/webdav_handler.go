@@ -89,7 +89,7 @@ func (h *WebDAVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Get share
 	share, ok := h.shareStore.Get(shareID)
-	if !ok {
+	if !ok || share.SyncDisabled {
 		http.Error(w, "Share not found", http.StatusNotFound)
 		return
 	}

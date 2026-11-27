@@ -53,8 +53,6 @@ const shareFormSchema = z.object({
 	}),
 	sync: z.object({
 		enabled: z.boolean(),
-		max_size_gb: z.number().optional(),
-		exclude_patterns: z.array(z.string()).optional(),
 	}),
 	owners: z.array(z.string()),
 	readers: z.array(z.string()),
@@ -104,9 +102,8 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 				read_only: share?.nfs?.read_only || false,
 			},
 			sync: {
-				enabled: (share as any)?.sync?.enabled || false,
-				max_size_gb: (share as any)?.sync?.max_size_gb || 0,
-				exclude_patterns: (share as any)?.sync?.exclude_patterns || ['*.tmp', '*.bak', '.git'],
+				// Shares are syncable unless turned off.
+				enabled: share?.sync?.enabled ?? true,
 			},
 			owners: share?.owners || [],
 			readers: share?.readers || [],
@@ -123,7 +120,6 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 	const watchReaders = watch('readers')
 	const watchApps = watch('apps')
 	const watchSyncEnabled = watch('sync.enabled')
-	const watchSyncExcludePatterns = watch('sync.exclude_patterns')
 
 	const pathPreview = watchName ? `/srv/shares/${watchName}` : '/srv/shares/<name>'
 
@@ -389,68 +385,12 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 						{watchSyncEnabled && (
 							<>
 								<Separator />
-								<div className="space-y-4">
-									<Alert>
-										<FolderSync className="h-4 w-4" />
-										<AlertDescription>
-											When enabled, this share will be available for sync on Windows, Linux, and mobile devices via the NithronSync client.
-										</AlertDescription>
-									</Alert>
-
-									<div className="space-y-2">
-										<Label htmlFor="max-size">Maximum Sync Size (GB)</Label>
-										<Input
-											id="max-size"
-											type="number"
-											{...register('sync.max_size_gb', { valueAsNumber: true })}
-											placeholder="0 = unlimited"
-											className="max-w-xs"
-										/>
-										<p className="text-sm text-muted-foreground">
-											Set to 0 for unlimited. This limits the total size that can be synced.
-										</p>
-									</div>
-
-									<div className="space-y-2">
-										<Label>Exclude Patterns</Label>
-										<p className="text-sm text-muted-foreground">
-											Files matching these patterns will not be synced
-										</p>
-										<div className="flex flex-wrap gap-2">
-											{watchSyncExcludePatterns?.map((pattern, index) => (
-												<Badge key={index} variant="secondary">
-													{pattern}
-													<button
-														type="button"
-														onClick={() => {
-															const patterns = watch('sync.exclude_patterns') || []
-															setValue('sync.exclude_patterns', patterns.filter((_, i) => i !== index))
-														}}
-														className="ml-1"
-													>
-														<X className="h-3 w-3" />
-													</button>
-												</Badge>
-											))}
-										</div>
-										<Input
-											placeholder="Add pattern (e.g., *.tmp, .git)"
-											onKeyDown={(e) => {
-												if (e.key === 'Enter') {
-													e.preventDefault()
-													const input = e.currentTarget
-													const value = input.value.trim()
-													if (value) {
-														const patterns = watch('sync.exclude_patterns') || []
-														setValue('sync.exclude_patterns', [...patterns, value])
-														input.value = ''
-													}
-												}
-											}}
-											className="max-w-xs"
-										/>
-									</div>
-								</div>
+								<Alert>
+									<FolderSync className="h-4 w-4" />
+									<AlertDescription>
+										Devices with the NithronSync client can sync this share, as people who may read it (people who may change it can also upload).
+									</AlertDescription>
+								</Alert>
 							</>
 						)}
 					</Card>

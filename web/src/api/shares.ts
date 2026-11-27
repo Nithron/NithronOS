@@ -31,6 +31,8 @@ export interface Share {
   readers?: string[]
   /** installed apps (by id) that may read it, through their own group */
   apps?: string[]
+  /** whether NithronSync clients (sync API, WebDAV) may sync it */
+  sync: { enabled: boolean }
   created_at: string
   updated_at: string
 }
@@ -43,6 +45,7 @@ export interface ShareInput {
   owners?: string[]
   readers?: string[]
   apps?: string[]
+  sync?: { enabled: boolean }
 }
 
 export type CreateShareRequest = ShareInput & { name: string }

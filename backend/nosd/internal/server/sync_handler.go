@@ -42,7 +42,7 @@ type shareAccessChecker interface {
 // A share the user can't read looks the same as a missing one.
 func (h *SyncHandler) readableShare(r *http.Request, shareID string) (shares.Share, bool) {
 	sh, ok := h.shareStore.Get(shareID)
-	if !ok {
+	if !ok || sh.SyncDisabled {
 		return shares.Share{}, false
 	}
 	if read, _ := h.access.ShareAccess(sh, r.Header.Get("X-Device-User-ID")); !read {
@@ -392,6 +392,9 @@ func (h *SyncHandler) ListSyncShares(w http.ResponseWriter, r *http.Request) {
 	syncShares := []nosync.SyncShare{} // [] in JSON, not null
 
 	for _, share := range allShares {
+		if share.SyncDisabled {
+			continue
+		}
 		if read, _ := h.access.ShareAccess(share, userID); !read {
 			continue
 		}
@@ -403,7 +406,7 @@ func (h *SyncHandler) ListSyncShares(w http.ResponseWriter, r *http.Request) {
 			ShareID:     share.ID,
 			ShareName:   share.Name,
 			SharePath:   share.Path,
-			SyncEnabled: true, // All shares are sync-enabled for now
+			SyncEnabled: true, // disabled shares aren't listed
 			TotalSize:   totalSize,
 			FileCount:   totalFiles,
 		})

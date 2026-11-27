@@ -46,7 +46,7 @@ type DeltaUploadRequest struct {
 // writableShare is a share the caller may change (an owner).
 func (h *SyncHandler) writableShare(r *http.Request, shareID string) (bool, string) {
 	sh, ok := h.shareStore.Get(shareID)
-	if !ok {
+	if !ok || sh.SyncDisabled {
 		return false, ""
 	}
 	if _, write := h.access.ShareAccess(sh, r.Header.Get("X-Device-User-ID")); !write {
