@@ -4,7 +4,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -387,13 +386,13 @@ func (e *Engine) processWatcherEvents(shareID, shareName string, w *watcher.Watc
 			// Queue the operation
 			switch event.Op {
 			case watcher.OpCreate, watcher.OpWrite:
-				e.database.EnqueueOperation(shareID, relPath, "upload", 1)
+				e.dbErr("EnqueueOperation", e.database.EnqueueOperation(shareID, relPath, "upload", 1))
 				e.pendingUploads.Add(1)
 			case watcher.OpRemove:
-				e.database.EnqueueOperation(shareID, relPath, "delete_remote", 0)
+				e.dbErr("EnqueueOperation", e.database.EnqueueOperation(shareID, relPath, "delete_remote", 0))
 			case watcher.OpRename:
 				// Renames are handled as delete + create by fsnotify
-				e.database.EnqueueOperation(shareID, relPath, "upload", 1)
+				e.dbErr("EnqueueOperation", e.database.EnqueueOperation(shareID, relPath, "upload", 1))
 			}
 
 		case err, ok := <-w.Errors():
@@ -474,7 +473,7 @@ func (e *Engine) syncShare(shareID, shareName string) {
 
 	// Update cursor
 	if changes.Cursor != "" {
-		e.database.SetCursor(shareID, changes.Cursor)
+		e.dbErr("SetCursor", e.database.SetCursor(shareID, changes.Cursor))
 	}
 
 	// Process pending local operations
@@ -544,7 +543,7 @@ func (e *Engine) processRemoteChange(shareID, shareName string, change api.FileC
 				// If rename fails, download the file
 				return e.downloadFile(shareID, shareName, change.Path, localPath)
 			}
-			e.database.DeleteFile(shareID, change.PreviousPath)
+			e.dbErr("DeleteFile", e.database.DeleteFile(shareID, change.PreviousPath))
 		}
 		return nil
 	}
@@ -560,7 +559,7 @@ func (e *Engine) downloadFile(shareID, shareName, remotePath, localPath string) 
 
 	// Regular download
 	if err := e.webdav.Download(e.ctx, shareID, remotePath, localPath); err != nil {
-		e.database.LogActivity(shareID, remotePath, "download", "error", err.Error(), 0)
+		e.dbErr("LogActivity", e.database.LogActivity(shareID, remotePath, "download", "error", err.Error(), 0))
 		return err
 	}
 
@@ -570,7 +569,7 @@ func (e *Engine) downloadFile(shareID, shareName, remotePath, localPath string) 
 		size = info.Size()
 	}
 	e.downloadedBytes.Add(size)
-	e.database.LogActivity(shareID, remotePath, "download", "success", "", size)
+	e.dbErr("LogActivity", e.database.LogActivity(shareID, remotePath, "download", "success", "", size))
 
 	return nil
 }
@@ -635,9 +634,13 @@ func (e *Engine) deltaDownload(shareID, shareName, remotePath, localPath string)
 		for _, lb := range localHashes.Blocks {
 			if lb.StrongHash == rb.StrongHash {
 				// Read from local file
+				// The whole block or nothing: a short or failed read used to
+				// leave zeros in the rebuilt file.
 				blockData = make([]byte, lb.Size)
-				localFile.Seek(lb.Offset, io.SeekStart)
-				localFile.Read(blockData)
+				if _, err := localFile.ReadAt(blockData, lb.Offset); err != nil {
+					blockData = nil
+					continue
+				}
 				found = true
 				break
 			}
@@ -711,12 +714,12 @@ func (e *Engine) processOperation(ctx context.Context, shareID, shareName string
 			e.logger.Error().Err(err).Str("path", op.Path).Msg("Failed to delete remote file")
 			// Requeue if not permanent failure
 			if op.RetryCount < e.cfg.RetryAttempts {
-				e.database.RequeueOperation(shareID, op.Path, op.Operation, err.Error(), op.RetryCount+1, time.Duration(e.cfg.RetryDelaySecs)*time.Second)
+				e.dbErr("RequeueOperation", e.database.RequeueOperation(shareID, op.Path, op.Operation, err.Error(), op.RetryCount+1, time.Duration(e.cfg.RetryDelaySecs)*time.Second))
 			}
 			return err
 		}
-		e.database.DeleteFile(shareID, op.Path)
-		e.database.LogActivity(shareID, op.Path, "delete_remote", "success", "", 0)
+		e.dbErr("DeleteFile", e.database.DeleteFile(shareID, op.Path))
+		e.dbErr("LogActivity", e.database.LogActivity(shareID, op.Path, "delete_remote", "success", "", 0))
 
 	case "mkdir":
 		if err := e.webdav.MkdirAll(ctx, shareID, op.Path); err != nil {
@@ -756,10 +759,10 @@ func (e *Engine) uploadFile(ctx context.Context, shareID, shareName, remotePath,
 
 	// Regular upload
 	if err := e.webdav.Upload(ctx, shareID, localPath, remotePath); err != nil {
-		e.database.LogActivity(shareID, remotePath, "upload", "error", err.Error(), 0)
+		e.dbErr("LogActivity", e.database.LogActivity(shareID, remotePath, "upload", "error", err.Error(), 0))
 
 		if retryCount < e.cfg.RetryAttempts {
-			e.database.RequeueOperation(shareID, remotePath, "upload", err.Error(), retryCount+1, time.Duration(e.cfg.RetryDelaySecs)*time.Second)
+			e.dbErr("RequeueOperation", e.database.RequeueOperation(shareID, remotePath, "upload", err.Error(), retryCount+1, time.Duration(e.cfg.RetryDelaySecs)*time.Second))
 		}
 		return err
 	}
@@ -779,8 +782,8 @@ func (e *Engine) uploadFile(ctx context.Context, shareID, shareName, remotePath,
 		SyncStatus: "synced",
 		LastSyncAt: time.Now(),
 	}
-	e.database.UpsertFile(entry)
-	e.database.LogActivity(shareID, remotePath, "upload", "success", "", info.Size())
+	e.dbErr("UpsertFile", e.database.UpsertFile(entry))
+	e.dbErr("LogActivity", e.database.LogActivity(shareID, remotePath, "upload", "success", "", info.Size()))
 
 	return nil
 }
@@ -823,41 +826,48 @@ func (e *Engine) handleConflict(shareID, path string, localModTime time.Time, lo
 	sharePath := filepath.Join(e.cfg.SyncFolder, shareName)
 	localPath := filepath.Join(sharePath, path)
 
+	logErr := func(what string, err error) {
+		if err != nil {
+			e.logger.Error().Err(err).Str("share", shareID).Str("path", path).Msg(what)
+		}
+	}
 	switch e.cfg.ConflictPolicy {
 	case "keep_local":
 		// Upload local version
-		e.database.EnqueueOperation(shareID, path, "upload", 2)
+		logErr("queue the local version for upload", e.database.EnqueueOperation(shareID, path, "upload", 2))
 
 	case "keep_remote":
 		// Download remote version
-		e.downloadFile(shareID, shareName, path, localPath)
+		logErr("download the remote version", e.downloadFile(shareID, shareName, path, localPath))
 
 	case "keep_both":
 		fallthrough
 	default:
-		// Rename local file and download remote
+		// Keep the local file as a conflict copy, then download the remote
+		// version. If the local file can't be moved aside, nothing is
+		// downloaded over it: the conflict stays recorded for the user.
+		// (A failed rename used to be ignored and the download overwrote
+		// the local edits.)
 		ext := filepath.Ext(path)
 		base := strings.TrimSuffix(path, ext)
 		conflictPath := fmt.Sprintf("%s (Conflict %s)%s", base, time.Now().Format("2006-01-02 15-04-05"), ext)
-
 		conflictLocalPath := filepath.Join(sharePath, conflictPath)
-		os.Rename(localPath, conflictLocalPath)
-
-		// Download remote version
-		e.downloadFile(shareID, shareName, path, localPath)
-
-		// Upload the conflict copy
-		e.database.EnqueueOperation(shareID, conflictPath, "upload", 0)
+		if err := os.Rename(localPath, conflictLocalPath); err != nil {
+			logErr("keep the local version as a conflict copy; the remote version was not downloaded", err)
+			break
+		}
+		logErr("download the remote version", e.downloadFile(shareID, shareName, path, localPath))
+		logErr("queue the conflict copy for upload", e.database.EnqueueOperation(shareID, conflictPath, "upload", 0))
 	}
 
 	// Record conflict
-	e.database.AddConflict(&db.Conflict{
+	logErr("record the conflict", e.database.AddConflict(&db.Conflict{
 		ShareID:      shareID,
 		Path:         path,
 		LocalHash:    localHash,
 		RemoteHash:   remote.ContentHash,
 		LocalModTime: localModTime,
-	})
+	}))
 
 	if e.onConflict != nil {
 		e.onConflict(Conflict{
@@ -892,4 +902,12 @@ func convertAPIBlockHashes(blocks []api.BlockHash) []hash.BlockHash {
 		}
 	}
 	return result
+}
+
+// dbErr logs a failed write to the local sync database. (These errors were
+// ignored: a change that couldn't be queued was silently never synced.)
+func (e *Engine) dbErr(what string, err error) {
+	if err != nil {
+		e.logger.Error().Err(err).Str("op", what).Msg("sync database write failed")
+	}
 }
