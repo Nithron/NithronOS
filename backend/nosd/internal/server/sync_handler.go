@@ -31,6 +31,7 @@ type SyncHandler struct {
 	access             shareAccessChecker
 	logger             zerolog.Logger
 	cfg                config.Config
+	cursors            *nosync.CursorStore
 	// webTLSAddr is where Caddy serves the web interface (the key pin
 	// comes from there); tests point it elsewhere.
 	webTLSAddr string
@@ -59,6 +60,10 @@ func NewSyncHandler(cfg config.Config, shareStore *shares.Store, access shareAcc
 	// Initialize sync store
 	syncBasePath := filepath.Join(filepath.Dir(cfg.UsersPath), "sync")
 	syncStore, err := nosync.NewStore(syncBasePath)
+	if err != nil {
+		return nil, err
+	}
+	cursors, err := nosync.NewCursorStore(filepath.Join(syncBasePath, "cursors"))
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +104,7 @@ func NewSyncHandler(cfg config.Config, shareStore *shares.Store, access shareAcc
 
 	return &SyncHandler{
 		webTLSAddr:         "127.0.0.1:443",
+		cursors:            cursors,
 		deviceMgr:          deviceMgr,
 		changeTracker:      changeTracker,
 		deltaSync:          deltaSync,
@@ -484,14 +490,27 @@ func (h *SyncHandler) GetChanges(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response, err := h.changeTracker.GetChanges(share.Path, cursor, limit)
+	// The snapshot is per device (or per user, for a signed-in session).
+	owner := r.Header.Get("X-Device-ID")
+	if owner == "" {
+		owner = "user:" + r.Header.Get("X-Device-User-ID")
+	}
+	since, known := h.cursors.Load(owner, shareID, cursor)
+	set, err := h.changeTracker.Changes(share.Path, since, limit)
 	if err != nil {
 		h.logger.Error().Err(err).Str("share_id", shareID).Msg("Failed to get changes")
 		httpx.WriteTypedError(w, http.StatusInternalServerError, "sync.changes_failed", err.Error(), 0)
 		return
 	}
-
-	writeJSON(w, response)
+	next := cursor
+	if !known || len(set.Changes) > 0 {
+		if next, err = h.cursors.Save(owner, shareID, set.Next); err != nil {
+			h.logger.Error().Err(err).Str("share_id", shareID).Msg("Failed to save the sync cursor")
+			httpx.WriteTypedError(w, http.StatusInternalServerError, "sync.changes_failed", "could not save the sync cursor", 0)
+			return
+		}
+	}
+	writeJSON(w, nosync.ChangesResponse{Changes: set.Changes, Cursor: next, HasMore: set.HasMore})
 }
 
 // GetFileMetadata handles GET /sync/files/{share_id}/metadata

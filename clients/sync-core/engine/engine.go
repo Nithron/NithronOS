@@ -434,6 +434,10 @@ func (e *Engine) syncLoop() {
 	}
 }
 
+// maxChangePages bounds the change pages fetched in one sync (the rest
+// come with the next).
+const maxChangePages = 100
+
 func (e *Engine) syncShare(shareID, shareName string) {
 	e.syncMu.Lock()
 	defer e.syncMu.Unlock()
@@ -451,29 +455,30 @@ func (e *Engine) syncShare(shareID, shareName string) {
 
 	e.logger.Debug().Str("share", shareName).Msg("Starting share sync")
 
-	// Get current cursor
+	// Remote changes, page by page while the server has more (it sends at
+	// most 1000 at a time; one page per poll left the rest for later polls).
 	cursor, _ := e.database.GetCursor(shareID)
-
-	// Fetch remote changes
-	changes, err := e.apiClient.GetChanges(e.ctx, shareID, cursor, 1000)
-	if err != nil {
-		e.logger.Error().Err(err).Str("share", shareName).Msg("Failed to fetch changes")
-		return
-	}
-
-	// Process remote changes
-	for _, change := range changes.Changes {
-		if err := e.processRemoteChange(shareID, shareName, change); err != nil {
-			e.logger.Error().Err(err).
-				Str("share", shareName).
-				Str("path", change.Path).
-				Msg("Failed to process remote change")
+	for page := 0; page < maxChangePages; page++ {
+		changes, err := e.apiClient.GetChanges(e.ctx, shareID, cursor, 1000)
+		if err != nil {
+			e.logger.Error().Err(err).Str("share", shareName).Msg("Failed to fetch changes")
+			return
 		}
-	}
-
-	// Update cursor
-	if changes.Cursor != "" {
-		e.dbErr("SetCursor", e.database.SetCursor(shareID, changes.Cursor))
+		for _, change := range changes.Changes {
+			if err := e.processRemoteChange(shareID, shareName, change); err != nil {
+				e.logger.Error().Err(err).
+					Str("share", shareName).
+					Str("path", change.Path).
+					Msg("Failed to process remote change")
+			}
+		}
+		if changes.Cursor != "" {
+			cursor = changes.Cursor
+			e.dbErr("SetCursor", e.database.SetCursor(shareID, cursor))
+		}
+		if !changes.HasMore {
+			break
+		}
 	}
 
 	// Process pending local operations

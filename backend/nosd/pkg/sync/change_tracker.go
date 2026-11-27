@@ -2,9 +2,7 @@ package sync
 
 import (
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -26,6 +24,18 @@ type ChangeTracker struct {
 	// Configuration
 	excludePatterns []string
 	maxFileSize     int64
+
+	// hashes caches file hashes by full path: a file is hashed again only
+	// when its size or modification time changes. (Every poll by every
+	// device read every file in the share.)
+	hashMu sync.Mutex
+	hashes map[string]cachedHash
+}
+
+type cachedHash struct {
+	size  int64
+	mtime int64 // UnixNano
+	hash  string
 }
 
 // ChangeTrackerConfig holds configuration for the change tracker
@@ -49,6 +59,7 @@ func DefaultChangeTrackerConfig() ChangeTrackerConfig {
 			"*.bak",
 			".sync",
 			".nos",
+			".nos-delta-*", // delta uploads being rebuilt (sync_delta.go)
 		},
 		MaxFileSize: MaxFileSize,
 	}
@@ -60,54 +71,30 @@ func NewChangeTracker(logger zerolog.Logger, config ChangeTrackerConfig) *Change
 		logger:          logger.With().Str("component", "change-tracker").Logger(),
 		excludePatterns: config.ExcludePatterns,
 		maxFileSize:     config.MaxFileSize,
+		hashes:          make(map[string]cachedHash),
 	}
 }
 
-// Cursor represents a sync cursor containing the last known state
-type Cursor struct {
-	Timestamp   time.Time         `json:"timestamp"`
-	FileHashes  map[string]string `json:"file_hashes"` // path -> hash
-	LastScanned time.Time         `json:"last_scanned"`
+// ChangeSet is the changes since a snapshot and the snapshot to continue
+// from (path -> hash; "" for directories).
+type ChangeSet struct {
+	Changes []FileChange
+	Next    map[string]string
+	HasMore bool
 }
 
-// EncodeCursor encodes a cursor to a string
-func EncodeCursor(c *Cursor) string {
-	if c == nil {
-		return ""
-	}
-	b, err := json.Marshal(c)
-	if err != nil {
-		return ""
-	}
-	return base64.URLEncoding.EncodeToString(b)
-}
-
-// DecodeCursor decodes a cursor from a string
-func DecodeCursor(s string) (*Cursor, error) {
-	if s == "" {
-		return nil, nil
-	}
-	b, err := base64.URLEncoding.DecodeString(s)
-	if err != nil {
-		return nil, fmt.Errorf("invalid cursor encoding: %w", err)
-	}
-	var c Cursor
-	if err := json.Unmarshal(b, &c); err != nil {
-		return nil, fmt.Errorf("invalid cursor format: %w", err)
-	}
-	return &c, nil
-}
-
-// GetChanges returns file changes since the given cursor
-func (ct *ChangeTracker) GetChanges(sharePath, cursorStr string, limit int) (*ChangesResponse, error) {
+// Changes compares the share with since (nil: nothing known, so every file
+// is new) and returns at most limit changes, oldest first. When there are
+// more, Next includes only the changes returned, so the rest come next
+// time. (The next cursor covered every file even when the list was cut,
+// so changes past the limit were never reported.)
+func (ct *ChangeTracker) Changes(sharePath string, since map[string]string, limit int) (*ChangeSet, error) {
 	ct.mu.RLock()
 	defer ct.mu.RUnlock()
 
 	if limit <= 0 || limit > MaxChangesPerRequest {
 		limit = MaxChangesPerRequest
 	}
-
-	// Validate share path exists
 	info, err := os.Stat(sharePath)
 	if err != nil {
 		return nil, fmt.Errorf("share path not accessible: %w", err)
@@ -116,57 +103,73 @@ func (ct *ChangeTracker) GetChanges(sharePath, cursorStr string, limit int) (*Ch
 		return nil, fmt.Errorf("share path is not a directory")
 	}
 
-	// Decode cursor
-	cursor, err := DecodeCursor(cursorStr)
-	if err != nil {
-		return nil, err
-	}
-
-	// If no cursor, return all files
-	if cursor == nil {
-		cursor = &Cursor{
-			Timestamp:  time.Time{},
-			FileHashes: make(map[string]string),
-		}
-	}
-
-	// Scan directory for changes
 	currentFiles := make(map[string]FileMetadata)
-	err = ct.scanDirectory(sharePath, "", currentFiles)
-	if err != nil {
+	if err := ct.scanDirectory(sharePath, "", currentFiles); err != nil {
 		return nil, fmt.Errorf("failed to scan directory: %w", err)
 	}
+	ct.pruneHashes(sharePath, currentFiles)
 
-	// Compute changes
-	changes := ct.computeChanges(cursor.FileHashes, currentFiles)
-
-	// Sort changes by modification time
+	changes := ct.computeChanges(since, currentFiles)
 	sort.Slice(changes, func(i, j int) bool {
 		return changes[i].MTime.Before(changes[j].MTime)
 	})
 
-	// Limit results
-	hasMore := len(changes) > limit
-	if hasMore {
-		changes = changes[:limit]
+	set := &ChangeSet{Changes: changes}
+	if len(changes) > limit {
+		set.Changes, set.HasMore = changes[:limit], true
+		set.Next = make(map[string]string, len(since)+limit)
+		for p, h := range since {
+			set.Next[p] = h
+		}
+		for _, c := range set.Changes {
+			if c.Type == ChangeTypeDelete {
+				delete(set.Next, c.Path)
+			} else {
+				set.Next[c.Path] = c.Hash
+			}
+		}
+		return set, nil
 	}
+	set.Next = make(map[string]string, len(currentFiles))
+	for p, meta := range currentFiles {
+		set.Next[p] = meta.Hash
+	}
+	return set, nil
+}
 
-	// Create new cursor with current state
-	newFileHashes := make(map[string]string, len(currentFiles))
-	for path, meta := range currentFiles {
-		newFileHashes[path] = meta.Hash
+// pruneHashes forgets cached hashes of files under sharePath that are gone.
+func (ct *ChangeTracker) pruneHashes(sharePath string, current map[string]FileMetadata) {
+	prefix := filepath.Clean(sharePath) + string(filepath.Separator)
+	ct.hashMu.Lock()
+	defer ct.hashMu.Unlock()
+	for full := range ct.hashes {
+		if rel, ok := strings.CutPrefix(full, prefix); ok {
+			if _, still := current[rel]; !still {
+				delete(ct.hashes, full)
+			}
+		}
 	}
-	newCursor := &Cursor{
-		Timestamp:   time.Now(),
-		FileHashes:  newFileHashes,
-		LastScanned: time.Now(),
-	}
+}
 
-	return &ChangesResponse{
-		Changes: changes,
-		Cursor:  EncodeCursor(newCursor),
-		HasMore: hasMore,
-	}, nil
+// fileHash is the file's SHA-256, from the cache while its size and
+// modification time are unchanged.
+func (ct *ChangeTracker) fileHash(fullPath string, info os.FileInfo) (string, error) {
+	key := cachedHash{size: info.Size(), mtime: info.ModTime().UnixNano()}
+	ct.hashMu.Lock()
+	c, ok := ct.hashes[fullPath]
+	ct.hashMu.Unlock()
+	if ok && c.size == key.size && c.mtime == key.mtime {
+		return c.hash, nil
+	}
+	h, err := ct.computeFileHash(fullPath)
+	if err != nil {
+		return "", err
+	}
+	key.hash = h
+	ct.hashMu.Lock()
+	ct.hashes[fullPath] = key
+	ct.hashMu.Unlock()
+	return h, nil
 }
 
 // scanDirectory recursively scans a directory for files
@@ -223,8 +226,7 @@ func (ct *ChangeTracker) scanDirectory(basePath, relativePath string, files map[
 				continue
 			}
 
-			// Compute file hash
-			hash, err := ct.computeFileHash(fullPath)
+			hash, err := ct.fileHash(fullPath, info)
 			if err != nil {
 				ct.logger.Warn().Err(err).Str("path", relPath).Msg("Failed to compute file hash")
 				continue
