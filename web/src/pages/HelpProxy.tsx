@@ -8,10 +8,10 @@ export default function HelpProxy() {
         Symptom: The frontend shows "Backend unreachable or proxy misconfigured" and requests to /api/* return HTML instead of JSON.
       </p>
       <h2 className="text-lg font-medium">Quick checks</h2>
-      <pre className="bg-card rounded p-3 text-xs overflow-auto"><code>{curl}</code></pre>
+      <pre className="border border-hairline p-3 text-xs overflow-auto"><code>{curl}</code></pre>
       <h2 className="text-lg font-medium">Caddy minimal config</h2>
       <p className="text-sm">Ensure API routes are matched before the SPA fallback:</p>
-      <pre className="bg-card rounded p-3 text-xs overflow-auto"><code>{caddy}</code></pre>
+      <pre className="border border-hairline p-3 text-xs overflow-auto"><code>{caddy}</code></pre>
       <p className="text-sm text-muted-foreground">See full docs in Admin → Config.</p>
     </div>
   )

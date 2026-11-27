@@ -300,9 +300,9 @@ export function NetworkSettings() {
                   >
                     <div className="flex items-center gap-2">
                       {rule.type === 'allow' ? (
-                        <OkIcon className="h-4 w-4 text-green-600" />
+                        <OkIcon className="h-4 w-4 text-status-ok-text" />
                       ) : (
-                        <FailedIcon className="h-4 w-4 text-red-600" />
+                        <FailedIcon className="h-4 w-4 text-status-failed-text" />
                       )}
                       <span className="text-sm">{rule.description}</span>
                     </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { StatusMark } from '@/components/ui/pixel'
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -110,7 +111,7 @@ export function RemoteAccessWizard() {
                 <Label htmlFor="lan_only" className="flex-1 cursor-pointer">
                   <div className="flex items-center gap-2">
                     <ConnectionIcon className="h-5 w-5" />
-                    <span className="font-semibold">LAN only (recommended)</span>
+                    <span className="font-[560]">LAN only (recommended)</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     Access nOS only from your local network. Most secure option.
@@ -127,7 +128,7 @@ export function RemoteAccessWizard() {
                 <Label htmlFor="wireguard" className="flex-1 cursor-pointer">
                   <div className="flex items-center gap-2">
                     <KeyIcon className="h-5 w-5" />
-                    <span className="font-semibold">WireGuard VPN</span>
+                    <span className="font-[560]">WireGuard VPN</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     Secure remote access through encrypted VPN tunnel.
@@ -144,7 +145,7 @@ export function RemoteAccessWizard() {
                 <Label htmlFor="public_https" className="flex-1 cursor-pointer">
                   <div className="flex items-center gap-2">
                     <InternetIcon className="h-5 w-5" />
-                    <span className="font-semibold">Public HTTPS</span>
+                    <span className="font-[560]">Public HTTPS</span>
                     <Badge variant="secondary">Advanced</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -353,20 +354,20 @@ export function RemoteAccessWizard() {
             <h4 className="font-medium">Firewall rules preview</h4>
             <div className="rounded-lg bg-muted p-4 font-mono text-sm">
               <div className="space-y-1">
-                <div className="text-green-600">+ Allow LAN to UI/API (192.168.0.0/16, 10.0.0.0/8)</div>
+                <div className="text-status-ok-text">+ Allow LAN to UI/API (192.168.0.0/16, 10.0.0.0/8)</div>
                 {formData.access_mode === 'lan_only' && (
-                  <div className="text-red-600">+ Block WAN to ports 80, 443</div>
+                  <div className="text-status-failed-text">+ Block WAN to ports 80, 443</div>
                 )}
                 {formData.access_mode === 'wireguard' && (
                   <>
-                    <div className="text-green-600">+ Allow UDP port {formData.wireguard.listen_port} (WireGuard)</div>
-                    <div className="text-red-600">+ Block WAN to UI/API</div>
+                    <div className="text-status-ok-text">+ Allow UDP port {formData.wireguard.listen_port} (WireGuard)</div>
+                    <div className="text-status-failed-text">+ Block WAN to UI/API</div>
                   </>
                 )}
                 {formData.access_mode === 'public_https' && (
                   <>
-                    <div className="text-green-600">+ Allow TCP ports 80, 443 (HTTPS)</div>
-                    <div className="text-yellow-600">+ Require 2FA for non-LAN</div>
+                    <div className="text-status-ok-text">+ Allow TCP ports 80, 443 (HTTPS)</div>
+                    <div className="text-status-warning-text">+ Require 2FA for non-LAN</div>
                   </>
                 )}
               </div>
@@ -470,29 +471,19 @@ export function RemoteAccessWizard() {
 
       {/* Progress indicator */}
       <div className="mb-8">
-        <Progress value={(currentStep / 4) * 100} className="mb-4" />
-        <div className="flex justify-between">
-          {WIZARD_STEPS.map((step) => {
-            const Icon = step.icon;
-            return (
-              <div
-                key={step.id}
-                className={`flex flex-col items-center ${
-                  step.id <= currentStep ? 'text-primary' : 'text-muted-foreground'
-                }`}
+        <Progress value={(currentStep / 4) * 100} label="Wizard progress" className="mb-4" />
+        <ol className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+          {WIZARD_STEPS.map((step) => (
+            <li key={step.id} aria-current={step.id === currentStep ? 'step' : undefined}>
+              <StatusMark
+                state={step.id < currentStep ? 'ok' : step.id === currentStep ? 'running' : 'off'}
+                className={step.id === currentStep ? 'font-[560] text-ink' : 'text-ink-2'}
               >
-                <div
-                  className={`rounded-full p-2 ${
-                    step.id <= currentStep ? 'bg-primary/10' : 'bg-muted'
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                </div>
-                <span className="text-xs mt-1">{step.title}</span>
-              </div>
-            );
-          })}
-        </div>
+                {step.title}
+              </StatusMark>
+            </li>
+          ))}
+        </ol>
       </div>
 
       {/* Step content */}

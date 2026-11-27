@@ -273,7 +273,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+          className="fixed inset-0 z-40 bg-page/70 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}

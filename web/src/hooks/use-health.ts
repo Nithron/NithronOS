@@ -86,11 +86,11 @@ export function getHealthStatus(cpu: number, memory: number, disk: number): 'hea
 export function getDiskHealthColor(state: string): string {
   switch (state) {
     case 'critical':
-      return 'text-red-500'
+      return 'text-status-failed-text'
     case 'warning':
-      return 'text-yellow-500'
+      return 'text-status-warning-text'
     case 'healthy':
     default:
-      return 'text-green-500'
+      return 'text-status-ok-text'
   }
 }

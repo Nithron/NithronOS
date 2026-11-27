@@ -176,19 +176,19 @@ export default function SyncSharing() {
   const getPermissionIcon = (permission: SharePermission) => {
     switch (permission) {
       case 'admin':
-        return <OwnerIcon className="h-4 w-4 text-yellow-500" />;
+        return <OwnerIcon className="h-4 w-4 text-status-warning-text" />;
       case 'write':
-        return <EditIcon className="h-4 w-4 text-blue-500" />;
+        return <EditIcon className="h-4 w-4 text-ink" />;
       case 'read':
-        return <ShowIcon className="h-4 w-4 text-gray-500" />;
+        return <ShowIcon className="h-4 w-4 text-ink-2" />;
     }
   };
 
   const getPermissionBadge = (permission: SharePermission) => {
     const colors = {
-      admin: 'bg-yellow-500/10 text-yellow-600',
-      write: 'bg-blue-500/10 text-blue-600',
-      read: 'bg-gray-500/10 text-gray-600',
+      admin: 'bg-status-warning-tint text-status-warning-text',
+      write: ' text-ink',
+      read: 'text-ink-2',
     };
     return (
       <Badge variant="secondary" className={colors[permission]}>
@@ -225,10 +225,10 @@ export default function SyncSharing() {
 
       {/* Pending Invites Banner */}
       {invites.length > 0 && (
-        <Card className="border-blue-500/50 bg-blue-500/5">
+        <Card className="border-ink">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <MailIcon className="h-5 w-5 text-blue-500" />
+              <MailIcon className="h-5 w-5 text-ink" />
               <div className="flex-1">
                 <p className="font-medium">
                   You have {invites.length} pending invitation{invites.length > 1 ? 's' : ''}
@@ -273,7 +273,7 @@ export default function SyncSharing() {
               ) : folders.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <FolderIcon className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="font-semibold text-lg mb-1">No shared folders</h3>
+                  <h3 className="font-[560] text-lg mb-1">No shared folders</h3>
                   <p className="text-muted-foreground mb-4">
                     Create a shared folder to collaborate with others
                   </p>
@@ -298,7 +298,7 @@ export default function SyncSharing() {
                       <TableRow key={folder.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <FolderIcon className="h-5 w-5 text-yellow-500" />
+                            <FolderIcon className="h-5 w-5 text-status-warning-text" />
                             <div>
                               <p className="font-medium">{folder.name}</p>
                               <p className="text-xs text-muted-foreground">{folder.path}</p>
@@ -332,7 +332,7 @@ export default function SyncSharing() {
                               size="sm"
                               onClick={() => deleteMutation.mutate(folder.id)}
                             >
-                              <DeleteIcon className="h-4 w-4 text-red-500" />
+                              <DeleteIcon className="h-4 w-4 text-status-failed-text" />
                             </Button>
                           </div>
                         </TableCell>
@@ -364,7 +364,7 @@ export default function SyncSharing() {
               ) : invites.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <MailIcon className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="font-semibold text-lg mb-1">No pending invitations</h3>
+                  <h3 className="font-[560] text-lg mb-1">No pending invitations</h3>
                   <p className="text-muted-foreground">
                     You'll see invitations here when someone shares a folder with you
                   </p>
@@ -377,8 +377,8 @@ export default function SyncSharing() {
                       className="flex items-center justify-between p-4 border rounded-lg"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="p-2 rounded-lg bg-blue-500/10">
-                          <FolderIcon className="h-6 w-6 text-blue-500" />
+                        <div className="p-2 rounded-lg">
+                          <FolderIcon className="h-6 w-6 text-ink" />
                         </div>
                         <div>
                           <p className="font-medium">{invite.folder_name}</p>
@@ -493,7 +493,7 @@ export default function SyncSharing() {
                 className="flex items-center justify-between p-3 border rounded-lg"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="flex h-8 w-8 items-center justify-center border border-rule">
                     <span className="text-sm font-medium">
                       {member.username.charAt(0).toUpperCase()}
                     </span>
@@ -518,7 +518,7 @@ export default function SyncSharing() {
                         })
                       }
                     >
-                      <DeleteIcon className="h-4 w-4 text-red-500" />
+                      <DeleteIcon className="h-4 w-4 text-status-failed-text" />
                     </Button>
                   )}
                 </div>

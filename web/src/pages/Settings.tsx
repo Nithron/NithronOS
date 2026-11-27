@@ -429,7 +429,7 @@ export function Settings() {
                   aria-current={active === s.id ? 'page' : undefined}
                   className={cn(
                     'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors',
-                    active === s.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/50',
+                    active === s.id ? 'bg-primary text-primary-foreground' : 'hover:bg-ink/[.09]',
                   )}
                 >
                   <s.icon className="h-4 w-4" aria-hidden />
@@ -446,7 +446,7 @@ export function Settings() {
                   <button
                     key={p.path}
                     onClick={() => navigate(p.path)}
-                    className="flex w-full items-center justify-between rounded-lg p-2 text-left text-sm hover:bg-muted/50"
+                    className="flex w-full items-center justify-between rounded-lg p-2 text-left text-sm hover:bg-ink/[.09]"
                   >
                     <span className="flex items-center gap-2">
                       <p.icon className="h-4 w-4 text-muted-foreground" aria-hidden />

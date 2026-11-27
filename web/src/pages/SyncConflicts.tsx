@@ -120,29 +120,29 @@ export default function SyncConflicts() {
         <CardContent className="pt-6">
           <div className="grid gap-4 md:grid-cols-3">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-yellow-500/10">
-                <WarningIcon className="h-5 w-5 text-yellow-500" />
+              <div className="p-2 rounded-lg bg-status-warning-tint">
+                <WarningIcon className="h-5 w-5 text-status-warning-text" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{unresolvedConflicts.length}</p>
+                <p className="text-2xl font-[560]">{unresolvedConflicts.length}</p>
                 <p className="text-sm text-muted-foreground">Unresolved</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <ChosenIcon className="h-5 w-5 text-green-500" />
+              <div className="p-2 rounded-lg bg-status-ok-tint">
+                <ChosenIcon className="h-5 w-5 text-status-ok-text" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{resolvedConflicts.length}</p>
+                <p className="text-2xl font-[560]">{resolvedConflicts.length}</p>
                 <p className="text-sm text-muted-foreground">Resolved</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <FileIcon className="h-5 w-5 text-blue-500" />
+              <div className="p-2 rounded-lg">
+                <FileIcon className="h-5 w-5 text-ink" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{conflicts?.length || 0}</p>
+                <p className="text-2xl font-[560]">{conflicts?.length || 0}</p>
                 <p className="text-sm text-muted-foreground">Total</p>
               </div>
             </div>
@@ -154,7 +154,7 @@ export default function SyncConflicts() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <WarningIcon className="h-5 w-5 text-yellow-500" />
+            <WarningIcon className="h-5 w-5 text-status-warning-text" />
             Unresolved conflicts
           </CardTitle>
           <CardDescription>
@@ -170,10 +170,10 @@ export default function SyncConflicts() {
             </div>
           ) : unresolvedConflicts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="p-3 rounded-full bg-green-500/10 mb-4">
-                <ChosenIcon className="h-8 w-8 text-green-500" />
+              <div className="mb-4">
+                <ChosenIcon className="h-8 w-8 text-status-ok-text" />
               </div>
-              <h3 className="font-semibold text-lg mb-1">All clear!</h3>
+              <h3 className="font-[560] text-lg mb-1">All clear!</h3>
               <p className="text-muted-foreground">
                 You have no file conflicts to resolve
               </p>
@@ -207,13 +207,13 @@ export default function SyncConflicts() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <ServerIcon className="h-4 w-4 text-blue-500" />
+                        <ServerIcon className="h-4 w-4 text-ink" />
                         <span>{formatBytes(conflict.local_version.size)}</span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <SyncIcon className="h-4 w-4 text-green-500" />
+                        <SyncIcon className="h-4 w-4 text-status-ok-text" />
                         <span>{formatBytes(conflict.remote_version.size)}</span>
                       </div>
                     </TableCell>
@@ -315,7 +315,7 @@ export default function SyncConflicts() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 border rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
-                    <ServerIcon className="h-4 w-4 text-blue-500" />
+                    <ServerIcon className="h-4 w-4 text-ink" />
                     <span className="font-medium">Local version</span>
                   </div>
                   <p className="text-sm">
@@ -327,7 +327,7 @@ export default function SyncConflicts() {
                 </div>
                 <div className="p-3 border rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
-                    <SyncIcon className="h-4 w-4 text-green-500" />
+                    <SyncIcon className="h-4 w-4 text-status-ok-text" />
                     <span className="font-medium">Remote version</span>
                   </div>
                   <p className="text-sm">

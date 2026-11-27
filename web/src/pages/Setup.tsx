@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Meter, StatusMark, Working } from '@/components/ui/pixel'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -133,8 +134,7 @@ export default function Setup() {
     return (
       <div className="min-h-screen w-full flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <div className="text-muted-foreground">Loading setup...</div>
+          <Working>Loading setup</Working>
         </div>
       </div>
     )
@@ -150,7 +150,7 @@ export default function Setup() {
         
         {error && error.includes('Setup already completed') ? (
           <div className="text-center">
-            <div className="mb-4 text-yellow-400">{error}</div>
+            <div className="mb-4 text-status-warning-text">{error}</div>
             <button 
               className="btn btn-primary"
               onClick={() => navigate('/login')}
@@ -171,7 +171,7 @@ export default function Setup() {
             {step === 'otp' && (
               <>
                 {otpNotice && (
-                  <div role="status" className="mb-4 rounded-md border border-yellow-600/40 bg-yellow-600/10 p-3 text-sm">
+                  <div role="status" className="mb-4 rounded-md border border-status-warning/40 bg-status-warning-tint p-3 text-sm">
                     {otpNotice}
                   </div>
                 )}
@@ -296,23 +296,18 @@ function SetupSteps({ currentStep }: { currentStep: SetupStep }) {
   const currentIndex = steps.findIndex(s => s.id === currentStep)
   
   return (
-    <div className="flex items-center justify-between mb-8 px-2">
+    <ol className="mb-8 flex flex-wrap gap-x-5 gap-y-2 border-b border-hairline pb-3 text-sm">
       {steps.map((step, index) => (
-        <div
-          key={step.id}
-          className={`text-xs ${
-            index <= currentIndex ? 'text-primary' : 'text-muted-foreground'
-          }`}
-        >
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-1 mx-auto ${
-            index <= currentIndex ? 'bg-primary text-primary-foreground' : 'bg-muted'
-          }`}>
-            {index + 1}
-          </div>
-          <span className="hidden sm:block">{step.label}</span>
-        </div>
+        <li key={step.id} aria-current={index === currentIndex ? 'step' : undefined}>
+          <StatusMark
+            state={index < currentIndex ? 'ok' : index === currentIndex ? 'running' : 'off'}
+            className={index === currentIndex ? 'font-[560] text-ink' : 'text-ink-2'}
+          >
+            {step.label}
+          </StatusMark>
+        </li>
       ))}
-    </div>
+    </ol>
   )
 }
 
@@ -324,7 +319,7 @@ function StepWelcome({ onContinue }: { onContinue: () => void }) {
   return (
     <div className="space-y-6">
       <div className="text-center space-y-3">
-        <h2 className="text-2xl font-semibold">Welcome to nOS!</h2>
+        <h2 className="text-2xl font-[560]">Welcome to nOS!</h2>
         <p className="text-muted-foreground">
           Let's get your system set up and ready to use.
         </p>
@@ -336,7 +331,7 @@ function StepWelcome({ onContinue }: { onContinue: () => void }) {
           The 6-digit code is shown on the server's own screen (monitor or serial console),
           above the login prompt, together with the address to open.
         </p>
-        <div className="bg-card rounded p-3">
+        <div className="border border-hairline p-3">
           <p className="text-xs text-muted-foreground mb-1">No screen attached? Over SSH:</p>
           <code className="block bg-background rounded p-2 text-xs font-mono">
             sudo journalctl -u nosd | grep 'setup code' | tail -n 1
@@ -687,20 +682,15 @@ function StepCreateAdmin({
 // ============================================================================
 
 function PasswordStrengthMeter({ strength }: { strength: number }) {
-  const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500', 'bg-green-600']
+  // Blocks that fill one by one, the strength in words: too weak is
+  // failed, fair a warning, good and strong in order.
   const labels = ['Very weak', 'Weak', 'Fair', 'Good', 'Strong']
-  
+  const tone = strength <= 1 ? 'failed' : strength === 2 ? 'warning' : 'ok'
+
   return (
-    <div className="mt-2">
-      <div className="h-1 w-full bg-muted rounded overflow-hidden">
-        <div
-          className={`h-full transition-all ${colors[strength]}`}
-          style={{ width: `${Math.max(10, strength * 20)}%` }}
-        />
-      </div>
-      <p className="text-xs text-muted-foreground mt-1">
-        Strength: {labels[strength]}
-      </p>
+    <div className="mt-2 flex items-center gap-3">
+      <Meter value={strength + 1} max={5} blocks={5} label="Password strength" showValue={false} tone={tone} />
+      <span className="text-sm">{labels[strength]}</span>
     </div>
   )
 }
@@ -819,12 +809,12 @@ function StepTOTPEnroll({
   if (recoveryCodes) {
     return (
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Recovery codes</h2>
+        <h2 className="text-lg font-[560]">Recovery codes</h2>
         <p className="text-sm text-muted-foreground">
           Save these recovery codes in a safe place. Each code can be used once to sign in if you lose access to your authenticator.
         </p>
         
-        <div className="bg-card rounded p-4 font-mono text-sm space-y-1">
+        <div className="border border-hairline p-4 font-mono text-sm space-y-1">
           {recoveryCodes.map((code, index) => (
             <div key={index}>{code}</div>
           ))}
@@ -861,7 +851,7 @@ function StepTOTPEnroll({
   // Show QR code and verification form
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Enable two-factor authentication</h2>
+      <h2 className="text-lg font-[560]">Enable two-factor authentication</h2>
       
       {loading && !qrCode && (
         <div className="text-center py-8">
@@ -936,7 +926,7 @@ function StepDone({ onContinue }: { onContinue: () => void }) {
   return (
     <div className="text-center space-y-4">
       <div className="text-4xl mb-4">✅</div>
-      <h2 className="text-lg font-semibold">Setup complete!</h2>
+      <h2 className="text-lg font-[560]">Setup complete!</h2>
       <p className="text-sm text-muted-foreground">
         Your nOS admin account has been created successfully.
         You can now sign in to access the dashboard.
@@ -1034,7 +1024,7 @@ function StepSystemConfig({ onSuccess }: { onSuccess: () => void }) {
   
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <h2 className="text-lg font-semibold">System configuration</h2>
+      <h2 className="text-lg font-[560]">System configuration</h2>
       
       <div>
         <label htmlFor="hostname" className="block text-sm font-medium mb-2">
@@ -1214,7 +1204,7 @@ function StepNetworkConfig({ onSuccess }: { onSuccess: () => void }) {
   
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <h2 className="text-lg font-semibold">Network configuration</h2>
+      <h2 className="text-lg font-[560]">Network configuration</h2>
       
       <div>
         <label htmlFor="interface" className="block text-sm font-medium mb-2">
@@ -1376,7 +1366,7 @@ function StepTelemetry({ onSuccess }: { onSuccess: () => void }) {
   
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <h2 className="text-lg font-semibold">Help Improve nOS</h2>
+      <h2 className="text-lg font-[560]">Help Improve nOS</h2>
       
       <p className="text-sm text-muted-foreground">
         Would you like to share anonymous usage data to help us improve nOS? 
@@ -1445,7 +1435,7 @@ function StepTelemetry({ onSuccess }: { onSuccess: () => void }) {
         )}
       </div>
       
-      <div className="bg-card rounded p-3 text-xs text-muted-foreground">
+      <div className="border border-hairline p-3 text-xs text-muted-foreground">
         <strong>Privacy promise:</strong> We never collect personal data, file names, 
         file contents, or any identifiable information. All data is aggregated and 
         anonymous. You can view exactly what data is sent in the logs.

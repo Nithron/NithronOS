@@ -236,8 +236,8 @@ export default function SyncEncryption() {
 
       {/* Recovery Key Dialog (shown after init) */}
       {showRecoveryKey && (
-        <Alert className="border-yellow-500/50 bg-yellow-500/5">
-          <WarningIcon className="h-5 w-5 text-yellow-500" />
+        <Alert className="border-status-warning/50 bg-status-warning-tint">
+          <WarningIcon className="h-5 w-5 text-status-warning-text" />
           <AlertTitle>Save your recovery key</AlertTitle>
           <AlertDescription className="space-y-3">
             <p>
@@ -272,9 +272,9 @@ export default function SyncEncryption() {
             <div className="flex items-center gap-2">
               {status?.enabled ? (
                 <>
-                  <EncryptionIcon className="h-8 w-8 text-green-500" />
+                  <EncryptionIcon className="h-8 w-8 text-status-ok-text" />
                   <div>
-                    <p className="text-2xl font-bold">Enabled</p>
+                    <p className="text-2xl font-[560]">Enabled</p>
                     <p className="text-xs text-muted-foreground">{status.algorithm}</p>
                   </div>
                 </>
@@ -282,7 +282,7 @@ export default function SyncEncryption() {
                 <>
                   <EncryptionIcon className="h-8 w-8 text-muted-foreground" />
                   <div>
-                    <p className="text-2xl font-bold">Disabled</p>
+                    <p className="text-2xl font-[560]">Disabled</p>
                     <p className="text-xs text-muted-foreground">Not configured</p>
                   </div>
                 </>
@@ -302,17 +302,17 @@ export default function SyncEncryption() {
             <div className="flex items-center gap-2">
               {status?.master_key_initialized ? (
                 <>
-                  <KeyIcon className="h-8 w-8 text-green-500" />
+                  <KeyIcon className="h-8 w-8 text-status-ok-text" />
                   <div>
-                    <p className="text-2xl font-bold">Ready</p>
+                    <p className="text-2xl font-[560]">Ready</p>
                     <p className="text-xs text-muted-foreground">Initialized</p>
                   </div>
                 </>
               ) : (
                 <>
-                  <KeyIcon className="h-8 w-8 text-yellow-500" />
+                  <KeyIcon className="h-8 w-8 text-status-warning-text" />
                   <div>
-                    <p className="text-2xl font-bold">Not set</p>
+                    <p className="text-2xl font-[560]">Not set</p>
                     <p className="text-xs text-muted-foreground">Setup required</p>
                   </div>
                 </>
@@ -330,9 +330,9 @@ export default function SyncEncryption() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <ShareIcon className="h-8 w-8 text-blue-500" />
+              <ShareIcon className="h-8 w-8 text-ink" />
               <div>
-                <p className="text-2xl font-bold">{status?.shares_encrypted || 0}</p>
+                <p className="text-2xl font-[560]">{status?.shares_encrypted || 0}</p>
                 <p className="text-xs text-muted-foreground">
                   {status?.total_encrypted_files || 0} files
                 </p>
@@ -350,9 +350,9 @@ export default function SyncEncryption() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <LockIcon className="h-8 w-8 text-purple-500" />
+              <LockIcon className="h-8 w-8 text-ink" />
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-[560]">
                   {formatBytes(status?.total_encrypted_size || 0)}
                 </p>
                 <p className="text-xs text-muted-foreground">Total encrypted</p>
@@ -619,7 +619,7 @@ export default function SyncEncryption() {
               />
             </div>
             {password && password.length < 8 && (
-              <p className="text-sm text-yellow-500">
+              <p className="text-sm text-status-warning-text">
                 Password should be at least 8 characters
               </p>
             )}

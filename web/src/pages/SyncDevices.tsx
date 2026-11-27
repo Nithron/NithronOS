@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
+import { Mark } from '@/components/ui/pixel';
 import QRCode from 'qrcode';
 import { pairingLink } from '@/lib/pairing';
 import { AddIcon, ChosenIcon, CopyIcon, DeleteIcon, DesktopIcon, DownloadIcon, EditIcon, FailedIcon, LaptopIcon, OfflineIcon, PhoneIcon, RefreshIcon, SyncIcon, TerminalIcon } from '@/components/icons'
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -58,8 +59,10 @@ function TokenQRCode({
       width: size,
       margin: 2,
       color: {
-        dark: '#1f2937',
-        light: '#ffffff',
+        // A QR code is black on white in both themes: scanners fail on
+        // inverted codes.
+        dark: '#000000', // ui-check: fixed colour
+        light: '#ffffff', // ui-check: fixed colour
       },
       errorCorrectionLevel: 'M',
     }, (err) => {
@@ -72,9 +75,9 @@ function TokenQRCode({
 
   if (error) {
     return (
-      <div className="flex items-center justify-center p-4 bg-red-50 border border-red-200 rounded-lg">
-        <FailedIcon className="h-5 w-5 text-red-500 mr-2" />
-        <span className="text-sm text-red-700">{error}</span>
+      <div className="flex items-center justify-center p-4 bg-status-failed-tint border border-status-failed rounded-lg">
+        <FailedIcon className="h-5 w-5 text-status-failed-text mr-2" />
+        <span className="text-sm text-status-failed-text">{error}</span>
       </div>
     );
   }
@@ -84,7 +87,7 @@ function TokenQRCode({
       <canvas 
         ref={canvasRef} 
         data-testid="qr-code"
-        className="rounded-lg border border-gray-200"
+        className="rounded-lg border border-hairline"
       />
       <p className="text-xs text-muted-foreground mt-2 text-center max-w-[200px]">
         Scan with NithronSync app to connect this device
@@ -125,33 +128,28 @@ function DeviceCard({
 
   return (
     <Card className="relative overflow-hidden">
-      {/* Status indicator */}
-      <div
-        className={`absolute top-0 left-0 w-1 h-full ${
-          isActive ? 'bg-green-500' : 'bg-gray-400'
-        }`}
-      />
       
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+            <div className="text-ink-2">
               <DeviceIcon type={device.device_type} className="h-6 w-6" />
             </div>
             <div>
-              <CardTitle className="text-lg font-semibold">{device.device_name}</CardTitle>
+              <CardTitle className="text-lg font-[560]">{device.device_name}</CardTitle>
               <CardDescription className="flex items-center gap-2">
                 <span>{formatDeviceType(device.device_type)}</span>
                 {device.os_version && (
                   <>
-                    <span className="text-gray-300">•</span>
+                    <span className="text-ink">•</span>
                     <span>{device.os_version}</span>
                   </>
                 )}
               </CardDescription>
             </div>
           </div>
-          <Badge variant={isActive ? 'default' : 'secondary'} className="shrink-0">
+          <Badge variant="outline" className="shrink-0">
+            <Mark state={isActive ? 'ok' : 'off'} />
             {isActive ? 'Active' : 'Offline'}
           </Badge>
         </div>
@@ -350,25 +348,25 @@ export default function SyncDevices() {
             <PhoneIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{devices.length}</div>
+            <div className="text-2xl font-[560]">{devices.length}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active now</CardTitle>
-            <SyncIcon className="h-4 w-4 text-green-500" />
+            <SyncIcon className="h-4 w-4 text-status-ok-text" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{activeDevices}</div>
+            <div className="text-2xl font-[560] text-status-ok-text">{activeDevices}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Offline</CardTitle>
-            <OfflineIcon className="h-4 w-4 text-gray-400" />
+            <OfflineIcon className="h-4 w-4 text-ink-2" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-500">{devices.length - activeDevices}</div>
+            <div className="text-2xl font-[560] text-ink-2">{devices.length - activeDevices}</div>
           </CardContent>
         </Card>
         <Card>
@@ -377,17 +375,17 @@ export default function SyncDevices() {
             <DownloadIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatBytes(totalSynced)}</div>
+            <div className="text-2xl font-[560]">{formatBytes(totalSynced)}</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Error State */}
       {error && (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-status-failed bg-status-failed-tint">
           <CardContent className="flex items-center gap-2 py-4">
-            <FailedIcon className="h-5 w-5 text-red-500" />
-            <span className="text-red-700">{error}</span>
+            <FailedIcon className="h-5 w-5 text-status-failed-text" />
+            <span className="text-status-failed-text">{error}</span>
           </CardContent>
         </Card>
       )}
@@ -397,7 +395,7 @@ export default function SyncDevices() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <PhoneIcon className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No devices connected</h3>
+            <h3 className="text-lg font-[560] mb-2">No devices connected</h3>
             <p className="text-muted-foreground text-center mb-4 max-w-md">
               Connect your Windows, Linux, or mobile device to sync files with your nOS server.
             </p>
@@ -470,7 +468,7 @@ export default function SyncDevices() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRevoke} className="bg-red-600 hover:bg-red-700">
+            <AlertDialogAction onClick={handleRevoke} className={buttonVariants({ variant: 'destructive' })}>
               Revoke access
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -511,8 +509,8 @@ export default function SyncDevices() {
                         onClick={() => setNewDeviceType(type)}
                         className={`flex flex-col items-center p-3 rounded-lg border-2 transition-colors ${
                           newDeviceType === type
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-ink '
+                            : 'border-hairline border-hairline'
                         }`}
                       >
                         <DeviceIcon type={type} className="h-6 w-6 mb-1" />
@@ -534,12 +532,12 @@ export default function SyncDevices() {
           ) : (
             <>
               <div className="space-y-4 py-4">
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center gap-2 text-green-700 mb-2">
+                <div className="p-4 bg-status-ok-tint border border-status-ok rounded-lg">
+                  <div className="flex items-center gap-2 text-status-ok-text mb-2">
                     <ChosenIcon className="h-5 w-5" />
                     <span className="font-medium">Device registered!</span>
                   </div>
-                  <p className="text-sm text-green-600">
+                  <p className="text-sm text-status-ok-text">
                     {(newDeviceType === 'ios' || newDeviceType === 'android')
                       ? 'Scan the QR code with the NithronSync app, or copy the pairing link.'
                       : 'Copy the pairing link and paste it in NithronSync (or run nithron-sync-daemon --pair <link>).'}
@@ -573,8 +571,8 @@ export default function SyncDevices() {
                   </p>
                 </div>
 
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-700">
+                <div className="p-3 bg-status-warning-tint border border-status-warning rounded-lg">
+                  <p className="text-sm text-status-warning-text">
                     The device token lasts 90 days; the client renews it with the refresh
                     token in the link.
                   </p>

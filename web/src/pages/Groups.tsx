@@ -99,7 +99,7 @@ function GroupDialog({
               {users.map((u) => (
                 <label
                   key={u.id}
-                  className="flex items-center gap-2 rounded p-1 text-sm hover:bg-muted/50"
+                  className="flex items-center gap-2 rounded p-1 text-sm hover:bg-ink/[.09]"
                 >
                   <input
                     type="checkbox"

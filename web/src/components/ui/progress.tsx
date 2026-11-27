@@ -7,7 +7,9 @@ interface ProgressProps extends Omit<React.HTMLAttributes<HTMLSpanElement>, 'chi
   max?: number
   /** What is measured, for a screen reader. */
   label?: string
-  /** Before the rework this coloured the bar; the blocks are ink. */
+  /** A measure near its limit is a state: warning or failed. */
+  tone?: 'ink' | 'ok' | 'warning' | 'failed'
+  /** Before the rework this coloured the bar; use tone. */
   indicatorClassName?: string
 }
 
@@ -16,9 +18,9 @@ interface ProgressProps extends Omit<React.HTMLAttributes<HTMLSpanElement>, 'chi
  * shows the number beside it as text.
  */
 const Progress = React.forwardRef<HTMLSpanElement, ProgressProps>(
-  ({ className, value = 0, max = 100, label = 'Progress', indicatorClassName: _indicator, ...props }, ref) => (
+  ({ className, value = 0, max = 100, label = 'Progress', tone = 'ink', indicatorClassName: _indicator, ...props }, ref) => (
     <span ref={ref} className={cn('flex', className)} {...props}>
-      <Meter value={value} max={max} label={label} kind="progress" showValue={false} />
+      <Meter value={value} max={max} label={label} kind="progress" showValue={false} tone={tone} />
     </span>
   ),
 )

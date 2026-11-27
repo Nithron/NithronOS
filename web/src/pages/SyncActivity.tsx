@@ -86,15 +86,15 @@ export default function SyncActivityPage() {
   const getActionIcon = (action: ActivityAction) => {
     switch (action) {
       case 'upload':
-        return <UploadIcon className="h-4 w-4 text-blue-500" />;
+        return <UploadIcon className="h-4 w-4 text-ink" />;
       case 'download':
-        return <DownloadIcon className="h-4 w-4 text-green-500" />;
+        return <DownloadIcon className="h-4 w-4 text-status-ok-text" />;
       case 'delete':
-        return <DeleteIcon className="h-4 w-4 text-red-500" />;
+        return <DeleteIcon className="h-4 w-4 text-status-failed-text" />;
       case 'rename':
-        return <FileChangedIcon className="h-4 w-4 text-yellow-500" />;
+        return <FileChangedIcon className="h-4 w-4 text-status-warning-text" />;
       case 'conflict':
-        return <WarningIcon className="h-4 w-4 text-orange-500" />;
+        return <WarningIcon className="h-4 w-4 text-status-warning-text" />;
       default:
         return <FileIcon className="h-4 w-4" />;
     }
@@ -104,28 +104,28 @@ export default function SyncActivityPage() {
     switch (status) {
       case 'completed':
         return (
-          <Badge variant="secondary" className="bg-green-500/10 text-green-600">
+          <Badge variant="secondary" className="bg-status-ok-tint text-status-ok-text">
             <OkIcon className="h-3 w-3 mr-1" />
             Completed
           </Badge>
         );
       case 'failed':
         return (
-          <Badge variant="secondary" className="bg-red-500/10 text-red-600">
+          <Badge variant="secondary" className="bg-status-failed-tint text-status-failed-text">
             <FailedIcon className="h-3 w-3 mr-1" />
             Failed
           </Badge>
         );
       case 'in_progress':
         return (
-          <Badge variant="secondary" className="bg-blue-500/10 text-blue-600">
+          <Badge variant="secondary" className="text-ink">
             <RefreshIcon className="h-3 w-3 mr-1 animate-spin" />
             In progress
           </Badge>
         );
       case 'pending':
         return (
-          <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600">
+          <Badge variant="secondary" className="bg-status-warning-tint text-status-warning-text">
             <TimeIcon className="h-3 w-3 mr-1" />
             Pending
           </Badge>
@@ -182,11 +182,11 @@ export default function SyncActivityPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <UploadIcon className="h-5 w-5 text-blue-500" />
+              <div className="p-2 rounded-lg">
+                <UploadIcon className="h-5 w-5 text-ink" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-[560]">
                   {loadingStats ? '-' : stats?.uploads || 0}
                 </p>
                 <p className="text-sm text-muted-foreground">Uploads</p>
@@ -197,11 +197,11 @@ export default function SyncActivityPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <DownloadIcon className="h-5 w-5 text-green-500" />
+              <div className="p-2 rounded-lg bg-status-ok-tint">
+                <DownloadIcon className="h-5 w-5 text-status-ok-text" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-[560]">
                   {loadingStats ? '-' : stats?.downloads || 0}
                 </p>
                 <p className="text-sm text-muted-foreground">Downloads</p>
@@ -212,11 +212,11 @@ export default function SyncActivityPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <OkIcon className="h-5 w-5 text-green-500" />
+              <div className="p-2 rounded-lg bg-status-ok-tint">
+                <OkIcon className="h-5 w-5 text-status-ok-text" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-[560]">
                   {loadingStats ? '-' : stats?.completed || 0}
                 </p>
                 <p className="text-sm text-muted-foreground">Completed</p>
@@ -231,7 +231,7 @@ export default function SyncActivityPage() {
                 <StatisticsIcon className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-[560]">
                   {loadingStats ? '-' : formatBytes(stats?.bytes_synced || 0)}
                 </p>
                 <p className="text-sm text-muted-foreground">Total synced</p>
@@ -261,10 +261,10 @@ export default function SyncActivityPage() {
             </div>
           ) : activities.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="p-3 rounded-full bg-muted mb-4">
+              <div className="mb-4">
                 <ActivityIcon className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="font-semibold text-lg mb-1">No activity</h3>
+              <h3 className="font-[560] text-lg mb-1">No activity</h3>
               <p className="text-muted-foreground">
                 Sync activity will appear here
               </p>
@@ -314,7 +314,7 @@ export default function SyncActivityPage() {
                               />
                             )}
                           {activity.error && (
-                            <p className="text-xs text-red-500 truncate max-w-[150px]">
+                            <p className="text-xs text-status-failed-text truncate max-w-[150px]">
                               {activity.error}
                             </p>
                           )}

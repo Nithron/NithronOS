@@ -15,7 +15,6 @@ import {
 } from '@/hooks/use-dashboard'
 import { useSystemVitals, formatUptime } from '@/hooks/use-system-vitals'
 import { bytesSafe, toFixedSafe } from '@/lib/format'
-import { cn } from '@/lib/utils'
 import { Link } from 'react-router-dom'
 import { Meter, StatusMark, type MarkState } from '@/components/ui/pixel'
 
@@ -143,11 +142,7 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
               key={system.cpuPct}
               initial={false}
               animate={{ opacity: 1 }}
-              className={cn(
-                "font-medium",
-                system.cpuPct > 80 ? 'text-red-500' : 
-                system.cpuPct > 60 ? 'text-yellow-500' : ''
-              )}
+              className="font-mono tabular-nums"
             >
               {Math.round(system.cpuPct || 0)}%
             </motion.span>
@@ -155,11 +150,8 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
           <Progress 
             value={system.cpuPct || 0} 
             className="h-2"
-            indicatorClassName={cn(
-              "transition-all duration-300",
-              system.cpuPct > 80 ? 'bg-red-500' : 
-              system.cpuPct > 60 ? 'bg-yellow-500' : ''
-            )}
+            label="CPU in use"
+            tone={system.cpuPct > 90 ? 'failed' : system.cpuPct > 80 ? 'warning' : 'ink'}
           />
         </div>
 
@@ -182,11 +174,8 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
           <Progress 
             value={system.mem?.total ? (system.mem.used / system.mem.total) * 100 : 0} 
             className="h-2"
-            indicatorClassName={cn(
-              "transition-all duration-300",
-              system.mem?.total && (system.mem.used / system.mem.total) > 0.8 ? 'bg-red-500' : 
-              system.mem?.total && (system.mem.used / system.mem.total) > 0.6 ? 'bg-yellow-500' : ''
-            )}
+            label="Memory in use"
+            tone={system.mem?.total && system.mem.used / system.mem.total > 0.9 ? 'failed' : system.mem?.total && system.mem.used / system.mem.total > 0.8 ? 'warning' : 'ink'}
           />
         </div>
 
@@ -364,11 +353,11 @@ function RecentActivityWidget({ data, isLoading }: any) {
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'error':
-        return <WarningIcon className="h-4 w-4 text-red-500" />
+        return <FailedIcon className="h-4 w-4 text-status-failed" />
       case 'warning':
-        return <WarningIcon className="h-4 w-4 text-yellow-500" />
+        return <WarningIcon className="h-4 w-4 text-status-warning" />
       default:
-        return <NoticeIcon className="h-4 w-4 text-blue-500" />
+        return <NoticeIcon className="h-4 w-4 text-ink" />
     }
   }
 

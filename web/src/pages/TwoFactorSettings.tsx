@@ -122,8 +122,8 @@ export function TwoFactorSettings() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${totpStatus.data?.enrolled ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}>
-                  <TwoFactorIcon className={`h-5 w-5 ${totpStatus.data?.enrolled ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`} />
+                <div>
+                  <TwoFactorIcon className={`h-5 w-5 ${totpStatus.data?.enrolled ? 'text-status-ok-text' : 'text-muted-foreground'}`} />
                 </div>
                 <div>
                   <div className="font-medium">Status</div>
@@ -189,12 +189,12 @@ export function TwoFactorSettings() {
               <div className="flex items-center gap-2">
                 {totpStatus.data?.verified ? (
                   <>
-                    <OkIcon className="h-5 w-5 text-green-600" />
+                    <OkIcon className="h-5 w-5 text-status-ok-text" />
                     <span>Your current session is 2FA verified</span>
                   </>
                 ) : (
                   <>
-                    <WarningIcon className="h-5 w-5 text-yellow-600" />
+                    <WarningIcon className="h-5 w-5 text-status-warning-text" />
                     <span>Your current session is not 2FA verified</span>
                   </>
                 )}
@@ -213,7 +213,7 @@ export function TwoFactorSettings() {
           <CardContent>
             <ol className="space-y-3">
               <li className="flex gap-3">
-                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center border border-rule font-mono text-sm">
                   1
                 </div>
                 <div>
@@ -224,7 +224,7 @@ export function TwoFactorSettings() {
                 </div>
               </li>
               <li className="flex gap-3">
-                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center border border-rule font-mono text-sm">
                   2
                 </div>
                 <div>
@@ -235,7 +235,7 @@ export function TwoFactorSettings() {
                 </div>
               </li>
               <li className="flex gap-3">
-                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center border border-rule font-mono text-sm">
                   3
                 </div>
                 <div>
@@ -297,7 +297,7 @@ export function TwoFactorSettings() {
           </DialogHeader>
           {enrollmentData && (
             <div className="space-y-4">
-              <div className="flex justify-center p-4 bg-white rounded-lg">
+              <div className="flex justify-center p-4 bg-page rounded-lg">
                 <img src={enrollmentData.qr_code} alt="TOTP QR Code" className="w-48 h-48" />
               </div>
               

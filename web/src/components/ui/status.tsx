@@ -117,9 +117,8 @@ export function Metric({
           <span
             className={cn(
               'text-sm font-medium',
-              deltaType === 'increase' && 'text-green-600 dark:text-green-400',
-              deltaType === 'decrease' && 'text-red-600 dark:text-red-400',
-              deltaType === 'neutral' && 'text-muted-foreground'
+              // A rise or a fall is no state: the words say which.
+              deltaType === 'neutral' ? 'text-ink-2' : 'text-ink'
             )}
           >
             {delta}
