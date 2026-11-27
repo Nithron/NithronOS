@@ -48,8 +48,25 @@ These decisions override what the proposal below says:
 - `npm run check:ui`;
 - the live walk in both themes, with captures and an AA contrast report.
 
-**Phase 2:** the shell, then the shared components. **Then** the screens,
-area by area, storage first.
+**Phase 2 (done on the branch, approved by the website session):** the shell
+and the shared components, sentence case, no motion, one toast.
+
+**Screens, storage first (on the branch):** the dashboard as one ruled grid;
+storage, create pool (a plan of readable steps, the pool's name typed to
+confirm), pool details and disk health on marks, meters and words.
+
+**Questions held for Thiago** (the safe default is taken until he answers):
+
+1. **Draft PR #15.** Phase 1 is a public draft pull request; phases 2 and
+   later are local only. Should the branch stay local until he has looked?
+   Default: nothing more is pushed.
+2. **Update docs.** Should `docs/updates.md` be rewritten to match the code,
+   or should automatic pruning and rollback be built? Default: the Updates
+   screen keeps its wording.
+3. **Required checks and Debian 13.** Should the CI checks be required on
+   main? Should the Debian 13 move start? Default: neither.
+
+**Then:** the other areas: shares, apps, backup, monitoring, settings.
 
 ## The interface today (checked against the code)
 

@@ -3,6 +3,11 @@ import { useParams, Link } from 'react-router-dom'
 import { PoolSnapshots } from './PoolSnapshots'
 import http, { api } from '@/lib/nos-client'
 import type { TxLogResponse } from '@/types/api'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import { Meter, Working } from '@/components/ui/pixel'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { FailedIcon, WarningIcon } from '@/components/icons'
 
 export function PoolDetails() {
   const { id } = useParams()
@@ -18,29 +23,41 @@ export function PoolDetails() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="screen-title">Pool details</h1>
-        <Link to="/storage" className="text-sm text-primary">Back to storage</Link>
+      <div>
+        <nav aria-label="Breadcrumb" className="mb-2 text-sm text-ink-2">
+          <Link to="/storage" className="underline decoration-ink-2 underline-offset-4 hover:text-ink hover:decoration-ink">Storage</Link>
+          <span className="mx-2">/</span>
+          <span className="font-mono text-ink">{pool?.label || id}</span>
+        </nav>
+        <h1 className="screen-title">Pool {pool?.label || id}</h1>
       </div>
-      <div className="flex gap-3 border-b border-muted/30">
-        <button className={`px-2 py-1 text-sm ${tab==='overview'?'text-primary border-b-2 border-primary':''}`} onClick={()=>setTab('overview')}>Overview</button>
-        <button className={`px-2 py-1 text-sm ${tab==='snapshots'?'text-primary border-b-2 border-primary':''}`} onClick={()=>setTab('snapshots')}>Snapshots</button>
-        <button className={`px-2 py-1 text-sm ${tab==='devices'?'text-primary border-b-2 border-primary':''}`} onClick={()=>setTab('devices')}>Devices</button>
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="snapshots">Snapshots</TabsTrigger>
+          <TabsTrigger value="devices">Devices</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {tab==='overview' && (
         pool ? (
-          <div className="rounded-lg bg-card p-4 space-y-2">
-            <div className="grid gap-2 md:grid-cols-3">
+          <div className="space-y-6">
+            <div className="grid gap-px border border-hairline bg-hairline md:grid-cols-3 [&>*]:bg-page [&>*]:p-4">
               <Field label="Label" value={pool.label || '-'} />
               <Field label="UUID" value={pool.uuid || '-'} mono />
-              <Field label="RAID" value={(pool.raid || '-').toUpperCase()} />
-              <Field label="Mount" value={pool.mount || pool.id} mono />
-              <Field label="Size" value={formatBytes(pool.size)} />
-              <Field label="Used / Free" value={`${formatBytes(pool.used)} / ${formatBytes(pool.free)}`} />
+              <Field label="Profile" value={(pool.raid || '-').toUpperCase()} mono />
+              <Field label="Mount point" value={pool.mount || pool.id} mono />
+              <Field label="Size" value={formatBytes(pool.size)} mono />
+              <Field label="Used / free" value={`${formatBytes(pool.used)} / ${formatBytes(pool.free)}`} mono />
             </div>
+            <Meter
+              value={pool.used || 0}
+              max={pool.size || 0}
+              label={`${pool.label || id} used`}
+              tone={pool.size && pool.used / pool.size >= 0.9 ? 'failed' : pool.size && pool.used / pool.size >= 0.8 ? 'warning' : 'ink'}
+            />
           </div>
-        ) : (<div className="text-sm text-muted-foreground">Loading...</div>)
+        ) : (<Working>Loading the pool</Working>)
       )}
 
       {tab==='overview' && pool && (
@@ -49,7 +66,7 @@ export function PoolDetails() {
 
       {tab==='snapshots' && (
         <section className="space-y-3">
-          <h2 className="text-lg font-medium">Snapshots</h2>
+          <h2 className="text-xl font-[560]">Snapshots</h2>
           <PoolSnapshots id={id} />
         </section>
       )}
@@ -64,8 +81,8 @@ export function PoolDetails() {
 function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={mono ? 'font-mono text-xs' : ''}>{value}</div>
+      <div className="font-mono text-[0.8125rem] text-ink-2">{label}</div>
+      <div className={mono ? 'mt-1 break-all font-mono text-sm' : 'mt-1 text-sm'}>{value}</div>
     </div>
   )
 }
@@ -156,29 +173,42 @@ function MountOptionsCard({ pool, id, onSaved }: { pool: any; id: string; onSave
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-medium">Mount options</h2>
-        <button className="rounded border border-muted/30 px-3 py-1 text-sm" onClick={onEdit}>Edit</button>
+        <h2 className="text-xl font-[560]">Mount options</h2>
+        <Button variant="outline" size="sm" onClick={onEdit}>Edit</Button>
       </div>
-      <div className="flex items-center gap-2">
-        <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground font-mono">{current || '...'}</span>
-      </div>
+      <p className="break-all font-mono text-sm">{current || <Working />}</p>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-lg rounded-lg bg-card p-4 shadow">
-            <h3 className="text-md font-medium mb-2">Edit mount options</h3>
-            <textarea className="w-full font-mono text-sm rounded border border-muted/30 bg-background p-2 h-28" value={value} onChange={(e)=>{ setValue(e.target.value); setError(null) }} />
-            <p className="mt-1 text-xs text-muted-foreground">Examples: SSD: compress=zstd:3,ssd,discard=async,noatime • HDD/Mixed: compress=zstd:3,noatime</p>
-            {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-            <div className="mt-3 flex items-center gap-2">
-              <button className="rounded border border-muted/30 px-3 py-1 text-sm" onClick={() => setValue(computeDefaultFromPoolDevices(pool))}>Restore defaults</button>
-              <div className="flex-1" />
-              <button className="rounded border border-muted/30 px-3 py-1 text-sm" onClick={() => setOpen(false)} disabled={saving}>Cancel</button>
-              <button className="rounded bg-primary px-3 py-1 text-sm text-background disabled:opacity-50" onClick={onSave} disabled={saving}>Save</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={open} onOpenChange={(o) => !saving && setOpen(o)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit mount options</DialogTitle>
+            <DialogDescription>
+              SSD: <span className="font-mono">compress=zstd:3,ssd,discard=async,noatime</span>. Disks and mixed:{' '}
+              <span className="font-mono">compress=zstd:3,noatime</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <label htmlFor="mount-options" className="sr-only">Mount options</label>
+          <textarea
+            id="mount-options"
+            className="field h-28 py-2 font-mono"
+            value={value}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'mount-options-error' : undefined}
+            onChange={(e) => { setValue(e.target.value); setError(null) }}
+          />
+          {error && (
+            <p id="mount-options-error" className="flex items-center gap-2 text-sm text-status-failed-text">
+              <FailedIcon className="h-4 w-4" />
+              {error}
+            </p>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setValue(computeDefaultFromPoolDevices(pool))}>Restore defaults</Button>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>Cancel</Button>
+            <Button onClick={onSave} disabled={saving}>{saving ? 'Saving' : 'Save'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   )
 }
@@ -243,66 +273,92 @@ function DevicesWizards({ id }: { id: string }) {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-medium">Devices</h2>
-      <div className="flex gap-2">
-        <button className={`rounded border border-muted/30 px-3 py-1 text-sm ${mode==='add'?'bg-secondary':''}`} onClick={()=>{ setMode('add'); setPlan(null); setLog([]); setTx('') }}>Add</button>
-        <button className={`rounded border border-muted/30 px-3 py-1 text-sm ${mode==='remove'?'bg-secondary':''}`} onClick={()=>{ setMode('remove'); setPlan(null); setLog([]); setTx('') }}>Remove</button>
-        <button className={`rounded border border-muted/30 px-3 py-1 text-sm ${mode==='replace'?'bg-secondary':''}`} onClick={()=>{ setMode('replace'); setPlan(null); setLog([]); setTx('') }}>Replace</button>
+      <h2 className="text-xl font-[560]">Devices</h2>
+      <div role="radiogroup" aria-label="Change" className="inline-flex divide-x divide-rule overflow-hidden rounded-lg border border-rule">
+        {(['add', 'remove', 'replace'] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="radio"
+            aria-checked={mode === m}
+            className={`min-h-11 px-4 text-sm capitalize ${mode === m ? 'bg-ink text-page' : 'hover:bg-ink/[.09]'}`}
+            onClick={() => { setMode(m); setPlan(null); setLog([]); setTx('') }}
+          >
+            {m}
+          </button>
+        ))}
       </div>
 
       {mode==='add' && (
-        <div className="rounded bg-card p-3 space-y-2">
-          <label className="text-xs" htmlFor="devices-add">Devices to add (space-separated)</label>
-          <input id="devices-add" className="w-full rounded border border-muted/30 bg-background px-2 py-1 font-mono text-xs" value={form.add} onChange={(e)=>setForm({ ...form, add: e.target.value })} />
+        <div className="space-y-2">
+          <label className="block text-sm font-[560]" htmlFor="devices-add">Devices to add (space-separated)</label>
+          <input id="devices-add" className="field font-mono" value={form.add} onChange={(e)=>setForm({ ...form, add: e.target.value })} />
         </div>
       )}
       {mode==='remove' && (
-        <div className="rounded bg-card p-3 space-y-2">
-          <label className="text-xs">Devices to remove (space-separated)</label>
-          <input className="w-full rounded border border-muted/30 bg-background px-2 py-1 font-mono text-xs" value={form.remove} onChange={(e)=>setForm({ ...form, remove: e.target.value })} />
+        <div className="space-y-2">
+          <label className="block text-sm font-[560]">Devices to remove (space-separated)</label>
+          <input className="field font-mono" value={form.remove} onChange={(e)=>setForm({ ...form, remove: e.target.value })} />
         </div>
       )}
       {mode==='replace' && (
-        <div className="rounded bg-card p-3 space-y-2">
+        <div className="space-y-2">
           <div>
-            <label className="text-xs">Old device</label>
-            <input className="w-full rounded border border-muted/30 bg-background px-2 py-1 font-mono text-xs" value={form.replaceOld} onChange={(e)=>setForm({ ...form, replaceOld: e.target.value })} />
+            <label className="block text-sm font-[560]">Old device</label>
+            <input className="field font-mono" value={form.replaceOld} onChange={(e)=>setForm({ ...form, replaceOld: e.target.value })} />
           </div>
           <div>
-            <label className="text-xs">New device</label>
-            <input className="w-full rounded border border-muted/30 bg-background px-2 py-1 font-mono text-xs" value={form.replaceNew} onChange={(e)=>setForm({ ...form, replaceNew: e.target.value })} />
+            <label className="block text-sm font-[560]">New device</label>
+            <input className="field font-mono" value={form.replaceNew} onChange={(e)=>setForm({ ...form, replaceNew: e.target.value })} />
           </div>
         </div>
       )}
 
       <div className="flex gap-2">
-        <button className="rounded border border-muted/30 px-3 py-1 text-sm" onClick={onPlan} disabled={!mode}>Plan</button>
-        <button className="rounded bg-primary px-3 py-1 text-sm text-background disabled:opacity-50" onClick={onApply} disabled={!plan || (form.confirm.trim().toUpperCase() !== (mode==='add'?'ADD':mode==='remove'?'REMOVE':'REPLACE'))}>Apply</button>
+        <Button variant="outline" onClick={onPlan} disabled={!mode}>Show the plan</Button>
+        <Button variant="destructive" onClick={onApply} disabled={!plan || (form.confirm.trim().toUpperCase() !== (mode==='add'?'ADD':mode==='remove'?'REMOVE':'REPLACE'))}>Apply the plan</Button>
       </div>
 
       {plan && (
-        <div className="rounded bg-card p-3">
-          <div className="text-sm font-medium mb-2">Plan</div>
-          <ul className="list-disc pl-5 text-xs">
-            {(plan.steps||[]).map((s:any)=> (<li key={s.id||s.ID}>{s.description||s.Description} <span className="font-mono">{s.command||s.Command}</span></li>))}
-          </ul>
-          {(plan.warnings||[]).length>0 && (
-            <div className="mt-2 text-xs text-yellow-600">Warnings: {(plan.warnings||[]).join('; ')}</div>
-          )}
-          <div className="mt-3 text-xs text-muted-foreground">Confirm code required: {mode==='add'?'ADD':mode==='remove'?'REMOVE':'REPLACE'}</div>
-          <div className="mt-2">
-            <label className="text-xs">Type the confirm code to enable Apply</label>
-            <input aria-label="Confirm code" placeholder={(mode==='add'?'ADD':mode==='remove'?'REMOVE':'REPLACE')} className="mt-1 w-full rounded border border-muted/30 bg-background px-2 py-1 font-mono text-xs" value={form.confirm} onChange={(e)=>setForm({ ...form, confirm: e.target.value })} />
+        <div className="space-y-4">
+          <ol className="divide-y divide-hairline border-y border-hairline">
+            {(plan.steps||[]).map((s:any, i:number)=> (
+              <li key={s.id||s.ID} className="grid grid-cols-[2rem_1fr] gap-x-3 py-3">
+                <span className="font-mono text-sm tabular-nums text-ink-2">{i + 1}</span>
+                <div className="space-y-1">
+                  <p className="text-sm">{s.description||s.Description}</p>
+                  <p className="break-all font-mono text-xs text-ink-2">{s.command||s.Command}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          {(plan.warnings||[]).map((w:string) => (
+            <p key={w} className="flex items-start gap-2 text-sm">
+              <WarningIcon className="mt-0.5 h-4 w-4 shrink-0 text-status-warning" />
+              {w}
+            </p>
+          ))}
+          <div className="space-y-2">
+            <label htmlFor="device-confirm" className="block text-sm font-[560]">
+              Type <span className="font-mono">{mode==='add'?'ADD':mode==='remove'?'REMOVE':'REPLACE'}</span> to apply the plan
+            </label>
+            <input id="device-confirm" className="field font-mono" autoComplete="off" value={form.confirm} onChange={(e)=>setForm({ ...form, confirm: e.target.value })} />
           </div>
         </div>
       )}
 
-      {error && <div className="text-xs text-red-600">{error}</div>}
+      {error && (
+        <p role="alert" className="flex items-start gap-2 text-sm">
+          <FailedIcon className="mt-0.5 h-4 w-4 shrink-0 text-status-failed" />
+          {error}
+        </p>
+      )}
 
       {tx && (
-        <div className="rounded bg-card p-3">
-          <div className="text-sm font-medium mb-2">Transaction log</div>
-          <pre className="whitespace-pre-wrap text-xs font-mono max-h-48 overflow-auto">{log.join('\n')}</pre>
+        <div>
+          <p className="mb-2 font-mono text-[0.8125rem] text-ink-2">Log</p>
+          {/* A log that streams: not announced line by line. */}
+          <pre aria-live="off" className="max-h-48 overflow-auto whitespace-pre-wrap border border-hairline p-3 font-mono text-xs">{log.join('\n')}</pre>
         </div>
       )}
     </section>
