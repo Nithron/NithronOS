@@ -144,8 +144,7 @@ func newRouteDeps(cfg config.Config) *routeDeps {
 
 // adminRequired lets the request through only for a signed-in administrator.
 func (d *routeDeps) adminRequired(next http.Handler) http.Handler {
-	// Skip admin check in tests
-	if os.Getenv("NOS_TEST_SKIP_AUTH") == "1" {
+	if skipAuthChecks.Load() {
 		return next
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

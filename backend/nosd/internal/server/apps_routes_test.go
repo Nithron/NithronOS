@@ -13,7 +13,6 @@ import (
 // Regression: a legacy POST /api/v1/apps/install, registered after the app
 // manager's, replaced it, so catalog installs ran a hard-coded template list.
 func TestAppsInstallReachesAppManager(t *testing.T) {
-	t.Setenv("NOS_TEST_SKIP_AUTH", "1")
 	t.Setenv("NOS_APPS_STATE", t.TempDir()+"/apps.json")
 	r := NewRouter(config.FromEnv())
 	res := httptest.NewRecorder()

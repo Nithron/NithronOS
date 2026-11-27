@@ -40,7 +40,6 @@ func TestListRoutesNormalizesAndSorts(t *testing.T) {
 // /api/v1/openapi.json used to be a stub without paths; it now describes the
 // routes the server really has.
 func TestServedOpenAPIListsRealRoutes(t *testing.T) {
-	t.Setenv("NOS_TEST_SKIP_AUTH", "1")
 	r := NewRouter(config.FromEnv())
 	res := httptest.NewRecorder()
 	r.ServeHTTP(res, httptest.NewRequest(http.MethodGet, "/api/v1/openapi.json", nil))
