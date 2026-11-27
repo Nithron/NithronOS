@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider, Navigate, Outlet } from 'react-router-dom'
 import { AppShell } from './components/layout/AppShell'
+import { useAppliedTheme } from './api/appearance'
 import { Dashboard } from './pages/Dashboard'
 import { Storage } from './pages/Storage'
 import { SharesList } from './pages/SharesList'
@@ -69,10 +70,17 @@ function RootLayout() {
 // Protected Layout Component
 // ============================================================================
 
+// The administrator's theme, once signed in (the setting needs a session).
+function AppliedTheme() {
+  useAppliedTheme()
+  return null
+}
+
 function ProtectedLayout() {
   return (
     <AuthGuard requireAuth={true}>
       <AppShell>
+        <AppliedTheme />
         <Outlet />
       </AppShell>
     </AuthGuard>

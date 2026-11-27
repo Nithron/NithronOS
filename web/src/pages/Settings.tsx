@@ -21,6 +21,8 @@ import {
   useTimezone,
   useTimezoneList,
 } from '@/api/system'
+import { useAppearance, useSetTheme } from '@/api/appearance'
+import { isThemeChoice, themeChoices, type ThemeChoice } from '@/lib/theme'
 
 type Section = 'system' | 'account' | 'about'
 
@@ -209,6 +211,51 @@ function TimeCard({ canEdit }: { canEdit: boolean }) {
   )
 }
 
+function ThemeCard({ canEdit }: { canEdit: boolean }) {
+  const { data, isLoading, error, refetch } = useAppearance()
+  const setTheme = useSetTheme()
+  const current: ThemeChoice = isThemeChoice(data?.theme) ? data.theme : 'auto'
+  const choose = (theme: ThemeChoice) =>
+    setTheme.mutate(theme, {
+      onSuccess: () => toast.success(theme === 'auto' ? 'The theme follows each device' : `The theme is ${theme}`),
+      onError: (e) => toast.error(getErrorMessage(e)),
+    })
+  return (
+    <Card
+      title="Theme"
+      description="Light or dark for everyone who signs in. Follow the system uses each device's own setting."
+      isLoading={isLoading}
+      error={error ? getErrorMessage(error) : null}
+      onRetry={() => refetch()}
+    >
+      <fieldset disabled={!canEdit || setTheme.isPending}>
+        <legend className="sr-only">Theme</legend>
+        <div className="inline-flex divide-x divide-rule overflow-hidden rounded-lg border border-rule">
+          {themeChoices.map((c) => (
+            <label
+              key={c.value}
+              className={cn(
+                'flex min-h-11 cursor-pointer items-center px-4 text-sm transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-4 has-[:focus-visible]:outline-ink',
+                current === c.value ? 'bg-ink text-page' : 'hover:bg-ink/[.09]',
+              )}
+            >
+              <input
+                type="radio"
+                name="theme"
+                value={c.value}
+                checked={current === c.value}
+                onChange={() => choose(c.value)}
+                className="sr-only"
+              />
+              {c.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    </Card>
+  )
+}
+
 function SystemSection() {
   const isAdmin = useIsAdmin()
   return (
@@ -218,6 +265,7 @@ function SystemSection() {
       )}
       <HostnameCard canEdit={isAdmin} />
       <TimeCard canEdit={isAdmin} />
+      <ThemeCard canEdit={isAdmin} />
     </div>
   )
 }

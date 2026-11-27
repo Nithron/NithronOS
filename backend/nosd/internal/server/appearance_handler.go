@@ -40,11 +40,13 @@ func NewAppearanceHandler(cfg config.Config) *AppearanceHandler {
 	}
 }
 
-// Routes returns the routes for the appearance handler
-func (h *AppearanceHandler) Routes() chi.Router {
+// Routes returns the routes for the appearance handler. Every signed-in
+// user reads the settings (the UI applies the theme); they are the whole
+// system's, so only adminOnly lets a change through.
+func (h *AppearanceHandler) Routes(adminOnly func(http.Handler) http.Handler) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", h.GetAppearanceSettings)
-	r.Put("/", h.UpdateAppearanceSettings)
+	r.With(adminOnly).Put("/", h.UpdateAppearanceSettings)
 	return r
 }
 
