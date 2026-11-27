@@ -43,7 +43,7 @@ Local-first storage management (Btrfs/ZFS*), snapshots, shares, backups, and a m
 ## Why nOS?
 - **Local-first, privacy-first** — admin UI served on your LAN by default; remote access is opt-in.
 - **Btrfs-first** — snapshots, send/receive; optional ZFS via DKMS*.
-- **NithronSync** — file sync with your computers (a sync daemon and a desktop app; mobile apps to come), and WebDAV for file managers.
+- **NithronSync** — file sync with your computers (a sync daemon, a desktop app, and an early Android app), and WebDAV for file managers.
 - **One-click apps** — Docker/Compose (Plex/Jellyfin, Nextcloud, Immich, etc.).
 - **Real safety features** — dry-run plans, pre-update snapshots, easy rollback.
 - **Clean UX** — React dashboard with real-time updates, clear health/status, sensible defaults.
@@ -213,7 +213,7 @@ Back to the defaults:
 - [x] **Web UI**: device management and one pairing link per device (also the mobile QR code), with the server's key for its self-signed certificate
 - [x] **Sync daemon** (`clients/sync-core`): tested end to end in CI against a real nOS (up, down, folders, deltas)
 - [ ] **Desktop app** (Wails): builds in CI for Linux and Windows; macOS and installers to come
-- [ ] **Mobile apps**: not working yet (dependencies no longer published, no native projects)
+- [ ] **Mobile apps**: Android builds in CI as a debug APK that pairs by QR code or link (pinning the server's key) and browses shares; it doesn't sync files yet, no store release; iOS later
 
 ### Post-v1 / Alpha
 - [ ] **A1 — Reliability & Telemetry (opt-in)**: Crash reports (symbolized), perf traces, health pings; redaction; one-click diagnostics.

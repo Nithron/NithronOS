@@ -1,161 +1,68 @@
 # NithronSync Mobile
 
-Cross-platform mobile client for nOS file synchronization, supporting iOS and Android.
+The NithronSync app for Android (React Native 0.76). iOS comes later: the
+JavaScript is shared, but there is no iOS project yet.
 
-## Features
+What it does today:
 
-- **QR Code Setup** — Scan a QR code from your nOS dashboard for instant configuration
-- **File Browser** — Browse and manage your synced files on the go
-- **Background Sync** — Automatic file synchronization in the background
-- **Conflict Resolution** — Visual interface for resolving file conflicts
-- **Activity History** — Track all sync operations
-- **Offline Support** — Access cached files when offline
+- **Pairs** with nOS from the pairing link the web interface shows
+  (**Settings → Sync → Devices → Add Device**), by scanning its QR code or
+  pasting the link.
+- **Trusts nOS's self-signed certificate** by the server key in the link
+  (see [Pinning](#pinning)).
+- **Browses shares**: folders and files over WebDAV, a file's details,
+  deleting a file on a share you may change.
+- Shows this device's **activity** and **conflicts** as nOS records them,
+  renames the device, and **unpairs** (removes the device in nOS).
 
-## Requirements
+It doesn't sync files to the phone yet. User guide:
+[docs/sync/client-setup.md](../../docs/sync/client-setup.md#android-app).
 
-### Development
+## Build
 
-- Node.js 20+
-- React Native CLI
-- Xcode 15+ (for iOS development)
-- Android Studio / Android SDK (for Android development)
-
-### Runtime
-
-- iOS 15.0+
-- Android 10+ (API 29+)
-
-## Installation
-
-### Development Setup
+Needs Node 20+, JDK 17 and the Android SDK (`ANDROID_HOME`; platform 35,
+build tools 35, NDK 26.1.10909125, CMake 3.22.1).
 
 ```bash
-# Install dependencies
-npm install
-
-# Install iOS pods (macOS only)
-cd ios && pod install && cd ..
-
-# Start Metro bundler
-npm start
+npm ci
+npm run typecheck && npm run lint && npm test
+cd android && ./gradlew assembleDebug testDebugUnitTest
+# app/build/outputs/apk/debug/app-debug.apk
 ```
 
-### Running on iOS
+The debug APK bundles its JavaScript, so it runs without Metro; with
+`npm start` running it loads from Metro instead. `-PreactNativeArchitectures=arm64-v8a,x86_64`
+builds fewer ABIs (what CI does). A release build is signed with the key in
+`android/keystore.properties` (`storeFile`, `storePassword`, `keyAlias`,
+`keyPassword`) and is unsigned without it.
 
-```bash
-# Run on iOS simulator
-npm run ios
+CI (`Mobile (Android)` in `.github/workflows/ci.yml`) runs all of the above
+and keeps the debug APK as an artifact for 14 days.
 
-# Run on connected device
-npm run ios -- --device "iPhone Name"
-```
-
-### Running on Android
-
-```bash
-# Run on Android emulator/device
-npm run android
-```
-
-## Project Structure
+## Layout
 
 ```
-src/
-├── api/                 # API client and types
-│   ├── client.ts        # NithronSync API client
-│   └── types.ts         # TypeScript type definitions
-├── navigation/          # React Navigation setup
-│   └── RootNavigator.tsx
-├── screens/             # Screen components
-│   ├── auth/            # Authentication screens
-│   │   ├── WelcomeScreen.tsx
-│   │   ├── QRScannerScreen.tsx
-│   │   └── ManualSetupScreen.tsx
-│   ├── main/            # Main tab screens
-│   │   ├── FilesScreen.tsx
-│   │   ├── ActivityScreen.tsx
-│   │   ├── ConflictsScreen.tsx
-│   │   └── SettingsScreen.tsx
-│   ├── files/           # File management screens
-│   │   ├── SharesScreen.tsx
-│   │   ├── FolderScreen.tsx
-│   │   └── FileDetailScreen.tsx
-│   ├── conflicts/       # Conflict resolution screens
-│   │   └── ConflictDetailScreen.tsx
-│   └── settings/        # Settings screens
-│       ├── DeviceSettingsScreen.tsx
-│       ├── SyncSettingsScreen.tsx
-│       └── AboutScreen.tsx
-├── stores/              # Zustand state management
-│   ├── authStore.ts     # Authentication state
-│   └── syncStore.ts     # Sync state
-└── components/          # Reusable components
+src/api/          pairing link parser, nosd client (refresh once on 401), WebDAV listing, secure token storage
+src/native/       the JavaScript side of the pinning module
+src/stores/       zustand stores: the pairing, shares/activity/conflicts
+src/screens/      auth (welcome, QR scanner, paste link), files, main tabs, settings
+android/app/src/main/java/com/nithron/sync/pinning/   key pinning for React Native's HTTP client
+__tests__/        Jest tests (pairing link, WebDAV, client); android/app/src/test: JVM tests for pinning
 ```
 
-## Authentication Flow
+## Pinning
 
-1. **Welcome Screen** — User chooses QR code scan or manual setup
-2. **QR Scanner** — Scan QR code from nOS dashboard
-3. **Manual Setup** — Enter server URL and register device
-4. **Main App** — Access files, activity, and settings
+nOS's web certificate is self-signed, so no certificate authority vouches
+for it. The pairing link's `key` is the SHA-256 of the server certificate's
+public key (SubjectPublicKeyInfo), as the desktop client uses it
+(`clients/sync-core/api/tls.go`). On Android, `MainApplication` installs an
+OkHttp factory for React Native's networking whose trust manager accepts a
+pinned host's connection only if the leaf certificate's key matches the pin
+(no CA check for that host, which can't pass) and validates every other host
+the normal way. A pinned host's name isn't checked against the certificate
+(its key identifies it), and every request checks the pin again, so a pooled
+connection from before a re-pairing isn't reused. Pins are kept in
+SharedPreferences by the `NosPinning` native module, so they apply from the
+first request after a restart.
 
-## Configuration
-
-The app stores configuration in AsyncStorage:
-
-| Key | Description |
-|-----|-------------|
-| `@nithron_server_url` | Server URL |
-| `@nithron_device_id` | Device ID |
-| `@nithron_device_token` | Access token |
-| `@nithron_refresh_token` | Refresh token |
-| `@nithron_token_expires` | Token expiration |
-
-## Building for Production
-
-### iOS
-
-```bash
-# Build release archive
-cd ios
-xcodebuild -workspace NithronSync.xcworkspace -scheme NithronSync -configuration Release archive -archivePath build/NithronSync.xcarchive
-
-# Export IPA
-xcodebuild -exportArchive -archivePath build/NithronSync.xcarchive -exportPath build -exportOptionsPlist ExportOptions.plist
-```
-
-### Android
-
-```bash
-# Build release APK
-cd android
-./gradlew assembleRelease
-
-# Build release AAB (for Play Store)
-./gradlew bundleRelease
-```
-
-## Testing
-
-```bash
-# Run tests
-npm test
-
-# Run with coverage
-npm test -- --coverage
-
-# Lint code
-npm run lint
-
-# Type check
-npm run typecheck
-```
-
-## Contributing
-
-See the main [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines.
-
-## License
-
-NithronSync Mobile is part of nOS and is licensed under the Nithron Community License (NCL).
-
+Tokens are kept with react-native-keychain (Android Keystore-backed).

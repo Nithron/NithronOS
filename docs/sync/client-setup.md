@@ -1,7 +1,7 @@
 # NithronSync Client Setup
 
-How to connect a computer to nOS with NithronSync, or reach a share with a
-file manager over WebDAV.
+How to connect a computer or an Android phone to nOS with NithronSync, or
+reach a share with a file manager over WebDAV.
 
 What exists today:
 
@@ -10,7 +10,8 @@ What exists today:
 | Sync daemon (`nithron-sync-daemon`, Linux, Windows, macOS) | Works; tested end to end in CI against a real nOS |
 | Desktop app (Wails), Linux and Windows | Builds in CI (download the binary from a CI run's artifacts); no installer yet |
 | Desktop app, macOS | Not built yet |
-| Mobile apps (iOS, Android) | Not available yet |
+| Android app | A debug build from CI (download the APK from a CI run's artifacts): pairs by QR code or pasted link and browses shares; it doesn't sync files yet, and there is no store release |
+| iOS app | Not available yet |
 | File managers over WebDAV | Work with a device token as the password |
 
 ## Before you start
@@ -69,6 +70,35 @@ Start NithronSync, paste the pairing link, and choose a folder (default
 the window is closed; on Linux closing the window quits it (there is no tray
 there yet; use the daemon for background sync).
 
+## Android app
+
+The Android app pairs with nOS and browses its shares: the folders and
+files of every share you may read, a file's details, deleting a file on a
+share you may change, and the device's sync activity. It doesn't sync files
+to the phone yet.
+
+1. Get the APK: on GitHub, open a CI run of the branch you want (**Actions →
+   CI**), and download the `nithronsync-android-debug-…` artifact (kept 14
+   days). It is a debug build, signed with the shared debug key, for 64-bit
+   ARM phones and x86_64 emulators.
+2. Install it: allow installing apps from your browser or file manager when
+   Android asks, then open the APK. (Or `adb install app-debug.apk`.)
+3. In the web interface, **Settings → Sync → Devices → Add Device**: name the
+   device, pick **Android**, and register it.
+4. In the app, **Scan QR Code** and point the camera at the code the web
+   interface shows; or copy the pairing link to the phone and use **Paste
+   Pairing Link**. (The **Scan QR Code** button on the Devices page shows a
+   different code that only names the server; it can't pair a device.)
+
+The app keeps the tokens in Android's keystore-backed storage and trusts
+the server's key from the link instead of a certificate authority, as the
+desktop clients do. **Unpair This Phone** (Settings) removes the device in
+nOS and forgets the pairing.
+
+Build it yourself: `cd clients/mobile && npm ci && cd android && ./gradlew
+assembleDebug` (Node, JDK 17 and the Android SDK; the APK is in
+`android/app/build/outputs/apk/debug/`).
+
 ## How syncing behaves
 
 - Changes are picked up from the folder at once and from the server on every
@@ -108,6 +138,8 @@ pairing link, URL-decoded, `nos_dt_…`) as the password.
   again.
 - Without a key in the pairing link, the server needs a certificate from a
   public authority (a public domain).
+- Android: "the camera" is only for the QR code; if you refused it, allow it
+  in Android's app settings, or paste the link instead.
 
 **Nothing syncs**
 - Is the share's sync turned on, and may you read it?
