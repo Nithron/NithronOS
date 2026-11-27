@@ -1,489 +1,235 @@
 # NithronSync API Reference
 
-This document describes the REST API endpoints for NithronSync file synchronization.
+The API sync clients use, as nosd serves it. The wire types are in
+`backend/nosd/pkg/sync/types.go`; `clients/sync-core/api` is the client, and
+its tests decode these shapes. The full route list is in
+`docs/api/openapi.json`.
 
 ## Authentication
 
-### Device Token Authentication
-
-Most sync endpoints require device token authentication. After registering a device, you receive an access token that must be included in the `Authorization` header:
+Every endpoint below `/api/v1/sync/` (except pairing and refresh) takes
+either a **device token** or the web interface's signed-in session (cookie
+plus `X-CSRF-Token` for changes):
 
 ```http
-Authorization: Bearer nos_at_...
+Authorization: Bearer nos_dt_...
 ```
 
-### Token Types
+| Token | Prefix | Lifetime | Use |
+|-------|--------|----------|-----|
+| Device token | `nos_dt_` | 90 days | Every request, and WebDAV |
+| Refresh token | `nos_rt_` | 365 days | Getting a new device token |
 
-| Token Type | Prefix | Lifetime | Purpose |
-|------------|--------|----------|---------|
-| Access Token | `nos_at_` | 24 hours | API requests |
-| Refresh Token | `nos_rt_` | 90 days | Obtain new access tokens |
-| Device Token | `nos_dt_` | Indefinite | Stored on device, paired with refresh token |
+nOS's own certificate is self-signed: clients pin the server's key
+(`server_key_sha256`, SHA-256 of the certificate's public key, hex) instead
+of checking it against certificate authorities.
 
-## Device Management
+### Pairing link
 
-### Register Device
+The web interface hands a new device everything as one link (also the
+mobile QR code):
 
-Register a new sync device and receive authentication tokens.
+```
+nos://sync?server=<URL>&token=<device token>&refresh=<refresh token>&key=<server key>&name=<device name>
+```
 
-**Endpoint:** `POST /api/v1/sync/devices/register`
+`refresh`, `key` and `name` may be missing. Built by
+`web/src/lib/pairing.ts`, parsed by `clients/sync-core/api/pairing.go`.
 
-**Authentication:** User session (cookie auth)
+## Devices
 
-**Request:**
+### Register a device
+
+Signed-in session only (the pairing dialog does this).
+
+```http
+POST /api/v1/sync/devices/register
+{"device_name": "Laptop", "device_type": "linux", "os_version": "...", "client_version": "..."}
+```
+
+`device_type`: `windows`, `linux`, `macos`, `android`, `ios`.
+
 ```json
+201
 {
-  "device_name": "My Laptop",
-  "device_type": "windows",
-  "client_version": "1.0.0",
-  "os_version": "Windows 11 23H2"
+  "device_id": "…",
+  "device_token": "nos_dt_…",
+  "refresh_token": "nos_rt_…",
+  "expires_at": "2027-02-25T10:00:00Z",
+  "server_key_sha256": "…"
 }
 ```
 
-**Response:**
-```json
-{
-  "device_token": {
-    "id": "dt_abc123",
-    "user_id": "usr_xyz",
-    "device_name": "My Laptop",
-    "device_type": "windows",
-    "scopes": ["sync.read", "sync.write"],
-    "created_at": "2024-01-15T10:30:00Z"
-  },
-  "access_token": "nos_at_...",
-  "refresh_token": "nos_rt_...",
-  "access_expires_at": "2024-01-16T10:30:00Z",
-  "refresh_expires_at": "2024-04-15T10:30:00Z"
-}
+`server_key_sha256` is missing when nosd couldn't read the web interface's
+certificate.
+
+### Refresh the device token
+
+No authentication; the refresh token is the credential.
+
+```http
+POST /api/v1/sync/devices/refresh
+{"refresh_token": "nos_rt_…"}
 ```
 
-**Device Types:**
-- `windows` — Windows desktop
-- `linux` — Linux desktop
-- `macos` — macOS desktop
-- `ios` — iPhone/iPad
-- `android` — Android phone/tablet
-
-### Refresh Access Token
-
-Exchange a refresh token for a new access token.
-
-**Endpoint:** `POST /api/v1/sync/devices/refresh`
-
-**Request:**
 ```json
-{
-  "refresh_token": "nos_rt_...",
-  "device_id": "dt_abc123"
-}
+{"device_token": "nos_dt_…", "refresh_token": "nos_rt_…", "expires_at": "…"}
 ```
 
-**Response:**
-```json
-{
-  "access_token": "nos_at_...",
-  "refresh_token": "nos_rt_...",
-  "access_expires_at": "2024-01-16T10:30:00Z",
-  "refresh_expires_at": "2024-04-16T10:30:00Z"
-}
+Both tokens are replaced. A client retries a request once after a refresh.
+
+### List, rename, revoke
+
+```http
+GET    /api/v1/sync/devices                  → {"devices": [Device], "count": n}
+GET    /api/v1/sync/devices/{device_id}      → Device
+PATCH  /api/v1/sync/devices/{device_id}      {"device_name": "…"} → Device
+DELETE /api/v1/sync/devices/{device_id}
 ```
 
-> Note: The refresh token is rotated on each use for security.
+`Device`: `id`, `device_name`, `device_type`, `os_version`,
+`client_version`, `created_at`, `last_sync_at`, `last_seen_at`, `last_ip`,
+`sync_count`, `bytes_synced`, `is_revoked`.
 
-### List Devices
+## Shares
 
-Get all registered devices for the authenticated user.
+```http
+GET /api/v1/sync/shares
+```
 
-**Endpoint:** `GET /api/v1/sync/devices`
-
-**Authentication:** Device token (Bearer)
-
-**Response:**
 ```json
 {
-  "devices": [
-    {
-      "id": "dt_abc123",
-      "device_name": "My Laptop",
-      "device_type": "windows",
-      "client_version": "1.0.0",
-      "last_seen_at": "2024-01-15T12:00:00Z",
-      "last_sync_at": "2024-01-15T11:45:00Z",
-      "status": "active",
-      "ip_address": "192.168.1.100",
-      "created_at": "2024-01-10T08:00:00Z"
-    }
+  "shares": [
+    {"share_id": "…", "share_name": "Documents", "share_path": "/srv/shares/Documents",
+     "sync_enabled": true, "total_size": 123, "file_count": 4}
   ],
   "count": 1
 }
 ```
 
-### Get Device
+The shares the device's user may read, except those with sync turned off.
+A share with sync turned off answers 404 everywhere below.
 
-Get details for a specific device.
+## Changes
 
-**Endpoint:** `GET /api/v1/sync/devices/{device_id}`
-
-**Response:** Same as single device in list response.
-
-### Update Device
-
-Update device name or configuration.
-
-**Endpoint:** `PATCH /api/v1/sync/devices/{device_id}`
-
-**Request:**
-```json
-{
-  "device_name": "Work Laptop"
-}
+```http
+GET /api/v1/sync/changes?share_id=<id>&cursor=<cursor>&limit=<1-1000>
 ```
 
-### Revoke Device
-
-Remove a device and invalidate its tokens.
-
-**Endpoint:** `DELETE /api/v1/sync/devices/{device_id}`
-
-**Response:** `204 No Content`
-
-## Sync Configuration
-
-### List Sync-Enabled Shares
-
-Get all shares that have sync enabled.
-
-**Endpoint:** `GET /api/v1/sync/shares`
-
-**Response:**
-```json
-[
-  {
-    "id": "share_abc123",
-    "name": "Documents",
-    "path": "/mnt/pool1/documents",
-    "sync_enabled": true,
-    "sync_max_size": 10737418240,
-    "sync_exclude": ["*.tmp", "~$*", ".git/**"]
-  }
-]
-```
-
-### Get Sync Configuration
-
-Get per-device sync configuration.
-
-**Endpoint:** `GET /api/v1/sync/config`
-
-**Response:**
-```json
-{
-  "device_id": "dt_abc123",
-  "enabled": true,
-  "sync_shares": ["share_abc123", "share_def456"],
-  "bandwidth_limit_kbps": 0,
-  "sync_on_metered": false,
-  "selective_sync": {
-    "share_abc123": {
-      "include_paths": ["/Work", "/Projects"],
-      "exclude_paths": ["/Archive"]
-    }
-  }
-}
-```
-
-### Update Sync Configuration
-
-Update device sync settings.
-
-**Endpoint:** `PUT /api/v1/sync/config`
-
-**Request:**
-```json
-{
-  "enabled": true,
-  "sync_shares": ["share_abc123"],
-  "bandwidth_limit_kbps": 5000,
-  "sync_on_metered": false
-}
-```
-
-## File Synchronization
-
-### Get Changes
-
-Fetch file changes since a cursor position.
-
-**Endpoint:** `GET /api/v1/sync/changes`
-
-**Query Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `share_id` | string | Required. Share to get changes for |
-| `cursor` | string | Optional. Cursor from previous response |
-| `limit` | int | Optional. Max changes to return (default: 1000) |
-
-**Response:**
 ```json
 {
   "changes": [
-    {
-      "path": "/Documents/report.docx",
-      "type": "file",
-      "action": "modified",
-      "size": 45678,
-      "mod_time": "2024-01-15T14:30:00Z",
-      "content_hash": "sha256:abc123...",
-      "version": 3
-    },
-    {
-      "path": "/Images/photo.jpg",
-      "type": "file",
-      "action": "created",
-      "size": 2345678,
-      "mod_time": "2024-01-15T14:35:00Z",
-      "content_hash": "sha256:def456..."
-    },
-    {
-      "path": "/Old Folder",
-      "type": "dir",
-      "action": "deleted"
-    }
+    {"path": "docs/a.txt", "type": "modify", "size": 12, "mtime": "…", "hash": "<sha256>", "is_dir": false},
+    {"path": "old.txt", "type": "delete", "mtime": "…"}
   ],
-  "cursor": "eyJ0cyI6MTcwNTMyNDIwMH0",
+  "cursor": "<id>",
   "has_more": false
 }
 ```
 
-**Actions:**
-- `created` — New file or folder
-- `modified` — File content changed
-- `deleted` — File or folder removed
-- `moved` — File or folder renamed/moved (includes `previous_path`)
+- `type`: `create`, `modify`, `delete` (and `rename` with `old_path`).
+- No cursor: every file is listed as `create`.
+- The cursor is a short id; nosd keeps the snapshot it stands for, per device
+  and share (only the latest). An unknown cursor lists everything again, so
+  clients decide by comparing `hash` with what they last synced.
+- `has_more`: fetch again with the new cursor.
 
-### Get File Metadata
+## Files
 
-Get metadata for a specific file or folder.
-
-**Endpoint:** `GET /api/v1/sync/files/{share_id}/metadata`
-
-**Query Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `path` | string | Required. Path within share |
-| `include_children` | bool | Include children for directories |
-
-**Response (file):**
-```json
-{
-  "path": "/Documents/report.docx",
-  "type": "file",
-  "size": 45678,
-  "mod_time": "2024-01-15T14:30:00Z",
-  "content_hash": "sha256:abc123...",
-  "version": 3
-}
-```
-
-**Response (directory with children):**
-```json
-{
-  "path": "/Documents",
-  "type": "dir",
-  "mod_time": "2024-01-15T14:30:00Z",
-  "children": [
-    {"path": "/Documents/report.docx", "type": "file", "size": 45678},
-    {"path": "/Documents/Invoices", "type": "dir"}
-  ]
-}
-```
-
-### Get Block Hashes
-
-Get block-level hashes for delta sync.
-
-**Endpoint:** `POST /api/v1/sync/files/{share_id}/hash`
-
-**Request:**
-```json
-{
-  "path": "/Documents/large-file.zip",
-  "block_size": 4194304
-}
-```
-
-**Response:**
-```json
-{
-  "path": "/Documents/large-file.zip",
-  "size": 104857600,
-  "block_size": 4194304,
-  "blocks": [
-    {
-      "index": 0,
-      "offset": 0,
-      "size": 4194304,
-      "strong_hash": "sha256:abc123...",
-      "weak_hash": 12345678
-    },
-    {
-      "index": 1,
-      "offset": 4194304,
-      "size": 4194304,
-      "strong_hash": "sha256:def456...",
-      "weak_hash": 87654321
-    }
-  ]
-}
-```
-
-### Get Sync State
-
-Get current sync state for a share.
-
-**Endpoint:** `GET /api/v1/sync/state/{share_id}`
-
-**Response:**
-```json
-{
-  "share_id": "share_abc123",
-  "device_id": "dt_abc123",
-  "last_sync_at": "2024-01-15T14:30:00Z",
-  "cursor": "eyJ0cyI6MTcwNTMyNDIwMH0",
-  "sync_status": "synced",
-  "pending_uploads": 0,
-  "pending_downloads": 2,
-  "errors": []
-}
-```
-
-### Update Sync State
-
-Save sync state after completing operations.
-
-**Endpoint:** `PUT /api/v1/sync/state/{share_id}`
-
-**Request:**
-```json
-{
-  "cursor": "eyJ0cyI6MTcwNTMyNDIwMH0",
-  "sync_status": "synced"
-}
-```
-
-## WebDAV Access
-
-NithronSync provides WebDAV access for broader client compatibility.
-
-**Base URL:** `/dav/{share_id}/`
-
-### Authentication
-
-Include device access token in the `Authorization` header:
+### Metadata
 
 ```http
-Authorization: Bearer nos_at_...
+GET  /api/v1/sync/files/{share_id}/metadata?path=<path>   → FileMetadata
+POST /api/v1/sync/files/{share_id}/metadata  {"paths": ["a", "b"]} → {"files": [FileMetadata]}
 ```
 
-### Supported Methods
+`FileMetadata`: `path`, `size`, `mtime`, `hash`, `is_dir`, `mode`.
 
-| Method | Description |
-|--------|-------------|
-| GET | Download file |
-| PUT | Upload file |
-| DELETE | Delete file/folder |
-| MKCOL | Create folder |
-| COPY | Copy file/folder |
-| MOVE | Move/rename file/folder |
-| PROPFIND | List directory or get file properties |
-| PROPPATCH | Update properties |
-
-### Example: List Directory
+### Block hashes (delta transfers)
 
 ```http
-PROPFIND /dav/share_abc123/Documents/ HTTP/1.1
-Authorization: Bearer nos_at_...
-Depth: 1
-Content-Type: application/xml
-
-<?xml version="1.0" encoding="utf-8" ?>
-<D:propfind xmlns:D="DAV:">
-  <D:prop>
-    <D:displayname/>
-    <D:getcontentlength/>
-    <D:getlastmodified/>
-    <D:resourcetype/>
-  </D:prop>
-</D:propfind>
+POST /api/v1/sync/files/{share_id}/hash
+{"path": "big.bin"}
 ```
-
-### Example: Upload File
-
-```http
-PUT /dav/share_abc123/Documents/newfile.txt HTTP/1.1
-Authorization: Bearer nos_at_...
-Content-Type: application/octet-stream
-Content-Length: 1234
-
-[file content]
-```
-
-## Error Responses
-
-All error responses follow this format:
 
 ```json
-{
-  "error": "Human-readable error message",
-  "code": "error_code",
-  "details": {}
-}
+{"path": "big.bin", "size": 9437184, "hash": "<sha256>", "block_size": 4194304,
+ "blocks": [{"offset": 0, "size": 4194304, "hash": "<sha256>", "weak": 123456789}]}
 ```
 
-### Error Codes
+`weak` is Adler-32. nosd picks the block size; clients use the one it
+returns.
 
-| Code | HTTP Status | Description |
-|------|-------------|-------------|
-| `unauthorized` | 401 | Invalid or missing authentication |
-| `forbidden` | 403 | Insufficient permissions |
-| `not_found` | 404 | Resource not found |
-| `conflict` | 409 | Conflict (e.g., file exists) |
-| `rate_limited` | 429 | Too many requests |
-| `internal_error` | 500 | Server error |
-| `device_limit_reached` | 400 | Max devices per user exceeded |
-| `token_expired` | 401 | Access token expired |
-| `token_revoked` | 401 | Device token was revoked |
-| `share_not_enabled` | 403 | Share doesn't have sync enabled |
-| `file_too_large` | 413 | File exceeds max sync size |
+### Delta upload
 
-## Rate Limits
+Owners of the share only.
 
-| Endpoint | Limit |
-|----------|-------|
-| Device registration | 10/hour per user |
-| Token refresh | 60/hour per device |
-| File changes | 120/minute per device |
-| File operations | 1000/hour per device |
-
-Rate limit headers are included in responses:
 ```http
-X-RateLimit-Limit: 120
-X-RateLimit-Remaining: 118
-X-RateLimit-Reset: 1705325400
+POST /api/v1/sync/files/{share_id}/delta
+{"path": "big.bin", "sha256": "<sha256 of the new file>",
+ "ops": [{"offset": 0, "size": 4194304}, {"data": "<base64>"}, {"offset": 8388608, "size": 1048576}]}
 ```
 
-## Pagination
+Each op copies `size` bytes at `offset` of the server's current file, or
+appends `data`. nosd rebuilds the file next to the old one and replaces it
+only if the result hashes to `sha256`.
 
-List endpoints support cursor-based pagination:
+| Status | Code | Meaning |
+|--------|------|---------|
+| 200 | | `{"path", "size", "sha256"}` |
+| 404 | `sync.no_base` | No current file: upload it whole |
+| 409 | `sync.delta_mismatch` | The server's file changed: upload it whole |
+| 400 | `sync.delta_invalid` | An op outside the current file |
+
+At most 64 MiB per request.
+
+## Sync state
+
+```http
+GET /api/v1/sync/state/{share_id}
+PUT /api/v1/sync/state/{share_id}   {"cursor": "…", "total_files": n, "total_bytes": n}
+```
+
+A device's own record (`device_id`, `share_id`, `cursor`, `last_sync`,
+`total_files`, `total_bytes`); the PUT also counts toward the device's sync
+statistics.
+
+## WebDAV
+
+```
+/dav/{share_id}/{path}
+```
+
+Methods: `GET`, `HEAD`, `PUT`, `DELETE`, `PROPFIND`, `PROPPATCH`, `MKCOL`,
+`COPY`, `MOVE`, `LOCK`, `UNLOCK`, `OPTIONS`. Readers may read; owners may
+also change.
+
+Authentication: the device token as `Authorization: Bearer nos_dt_…`, or as
+the password of Basic authentication with any user name (file managers). A
+request without one gets `401` with a Basic challenge.
+
+```bash
+curl -u "any:nos_dt_…" -X PROPFIND -H "Depth: 1" https://nas.local/dav/<share_id>/
+curl -u "any:nos_dt_…" -T report.pdf https://nas.local/dav/<share_id>/docs/report.pdf
+```
+
+A `PUT` into a folder that doesn't exist answers `409`; create it with
+`MKCOL` first.
+
+## Errors
 
 ```json
-{
-  "data": [...],
-  "cursor": "eyJ0cyI6MTcwNTMyNDIwMH0",
-  "has_more": true
-}
+{"error": {"code": "share.not_found", "message": "Share not found"}}
 ```
 
-To get the next page, include `cursor` in your request query parameters.
+| Code | Status | Meaning |
+|------|--------|---------|
+| `auth.required` | 401 | No or invalid token or session |
+| `input.invalid` | 400 | A missing or malformed field, or a path outside the share |
+| `share.not_found` | 404 | No such share, not readable, or its sync is off |
+| `device.limit` | 409 | The user has as many devices as allowed |
+| `sync.changes_failed` | 500 | The share couldn't be scanned |
+| `sync.delta_mismatch` | 409 | See delta upload |
 
+Paths are always relative to the share; `..` can't leave it, and symbolic
+links that point outside it are refused.
