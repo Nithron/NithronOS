@@ -60,7 +60,9 @@ for (const path of files(SRC)) {
   const rel = relative(WEB, path)
   const text = readFileSync(path, 'utf8')
   if (rel !== ICONS && /from\s+['"]lucide-react['"]/.test(text)) {
-    problems.push(`${rel}: imports lucide-react; import the icon from '@/components/icons' by its meaning`)
+    problems.push(
+      `${rel}: imports lucide-react; import the icon from '@/components/icons' by its meaning`,
+    )
   }
   const n = rawCount(text)
   if (n > 0) counts[rel] = n
@@ -77,7 +79,9 @@ if (process.argv.includes('--update')) {
     next[rel] = n
   }
   writeFileSync(LEGACY, JSON.stringify(next, null, 2) + '\n')
-  console.log(`ui-legacy.json: ${Object.keys(next).length} files, ${Object.values(next).reduce((a, b) => a + b, 0)} raw colours left`)
+  console.log(
+    `ui-legacy.json: ${Object.keys(next).length} files, ${Object.values(next).reduce((a, b) => a + b, 0)} raw colours left`,
+  )
   process.exit(0)
 }
 
@@ -95,5 +99,8 @@ if (problems.length) {
   process.exit(1)
 }
 const left = Object.values(counts).reduce((a, b) => a + b, 0)
-console.log(`ui check: ok (${left} raw colours left in ${Object.keys(counts).length} files written before the rework)`)
-if (lowered.length) console.log(`fewer than listed in ${lowered.length} files: run with --update to lower the counts`)
+console.log(
+  `ui check: ok (${left} raw colours left in ${Object.keys(counts).length} files written before the rework)`,
+)
+if (lowered.length)
+  console.log(`fewer than listed in ${lowered.length} files: run with --update to lower the counts`)

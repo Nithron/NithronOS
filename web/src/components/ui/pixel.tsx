@@ -21,7 +21,9 @@ const markTone: Record<MarkState, string> = {
 }
 
 /** An 8 by 8 pixel cross, one pixel wide, corner to corner. */
-const CROSS = Array.from({ length: 8 }, (_, i) => `M${i} ${i}h1v1h-1zM${7 - i} ${i}h1v1h-1z`).join('')
+const CROSS = Array.from({ length: 8 }, (_, i) => `M${i} ${i}h1v1h-1zM${7 - i} ${i}h1v1h-1z`).join(
+  '',
+)
 /** An 8 by 8 square with a one-pixel edge. */
 const OPEN = 'M0 0h8v8h-8zM1 1v6h6v-6z'
 
@@ -53,7 +55,12 @@ export function Mark({ state, className }: MarkProps) {
       height="8"
       shapeRendering="crispEdges"
       aria-hidden
-      className={cn('inline-block shrink-0 fill-current', markTone[state], state === 'running' && 'pixel-blink', className)}
+      className={cn(
+        'inline-block shrink-0 fill-current',
+        markTone[state],
+        state === 'running' && 'pixel-blink',
+        className,
+      )}
     >
       {shape}
     </svg>
