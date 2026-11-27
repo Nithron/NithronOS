@@ -98,6 +98,22 @@ echo "made on the client" >"$local_dir/up.txt"
 wait_for "up.txt reached the server" \
 	sh -c "[ \"\$(docker exec $NAME cat '$share_path/up.txt')\" = 'made on the client' ]"
 
+# A folder made here reaches the share with its file (WebDAV MKCOL).
+mkdir -p "$local_dir/notes/2026"
+echo "in a folder" >"$local_dir/notes/2026/todo.txt"
+wait_for "notes/2026/todo.txt reached the server" \
+	sh -c "[ \"\$(docker exec $NAME cat '$share_path/notes/2026/todo.txt')\" = 'in a folder' ]"
+
+# A file manager lists the share: PROPFIND with the device token as the
+# Basic password.
+share_id="$(jq -r .id <<<"$share")"
+token="$(jq -r .device_token <<<"$reg")"
+code="$(curl -s -o "$WORK/propfind.xml" -w '%{http_code}' -u "files:$token" -X PROPFIND -H 'Depth: 1' "$BASE/dav/$share_id/")"
+if [ "$code" != 207 ] || ! grep -q 'up.txt' "$WORK/propfind.xml"; then
+	fail "PROPFIND as a file manager: $code $(head -c 300 "$WORK/propfind.xml")"
+fi
+log "ok: a file manager can list the share"
+
 # Down: a file put in the share (as SMB would) reaches the client.
 docker exec "$NAME" sh -c "echo 'made on the server' >'$share_path/down.txt' && chown --reference='$share_path' '$share_path/down.txt'"
 wait_for "down.txt reached the client" sh -c "[ \"\$(cat '$local_dir/down.txt')\" = 'made on the server' ]"
