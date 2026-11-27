@@ -63,12 +63,12 @@
     --status-warning-bar: var(--status-earlier-bar);
     /* --status-failed and its endings keep the tokens' name. */
 
-    /* Chart series until the monitoring screens are reworked: the subject
-       in ink, the others in greys (told apart by line style later). */
+    /* Chart series: the subject in ink, the others from the tokens' series
+       (the monitoring screens also tell them apart by line style later). */
     --chart-1: var(--ink);
-    --chart-2: var(--ink-2);
-    --chart-3: var(--dim);
-    --chart-4: var(--edge);
+    --chart-2: var(--series-1);
+    --chart-3: var(--series-2);
+    --chart-4: var(--series-3);
   }
 
   * {

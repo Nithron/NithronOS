@@ -21,5 +21,5 @@ Third-party type faces, shipped in web/public/fonts with their licence texts:
   (web/public/fonts/MONASPACE-LICENSE.txt).
 Both files are the upstream release files, unchanged (renamed only).
 
-The design tokens in web/src/styles/nithron-tokens.css come from @nithron/tokens 0.2.0 (Nithron, under the
+The design tokens in web/src/styles/nithron-tokens.css come from @nithron/tokens 0.3.0 (Nithron, under the
 Nithron Community License v1.0).

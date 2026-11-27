@@ -24,10 +24,11 @@ These decisions override what the proposal below says:
   arrives every icon goes through `web/src/components/icons.ts`, named by
   meaning.
 - **Tokens and fonts.** `@nithron/tokens` is under the Nithron Community
-  License. `line.css` 0.2.0 is copied whole into
-  `web/src/styles/nithron-tokens.css` and is replaced whole on a new
-  release (0.3 brings soft grounds and a neutral `--main`). The fonts ship
-  in `web/public/fonts`.
+  License. `line.css` (0.3.0: soft grounds, `--main` as ink, a true green
+  for passed, gold for a warning, a syntax palette for code and logs,
+  chart series) is copied whole into `web/src/styles/nithron-tokens.css`
+  and is replaced whole on a new release. The fonts ship in
+  `web/public/fonts`.
 - **Answers to the questions at the end:**
   1. The theme follows the system, with a setting through the appearance
      API that pins it.
