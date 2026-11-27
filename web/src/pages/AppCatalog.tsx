@@ -2,11 +2,12 @@ import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AppIcon, AutomationIcon, ChevronRightIcon, CloudIcon, DatabaseIcon, DevelopmentIcon, DownloadIcon, FailedIcon, GamingIcon, GridViewIcon, HealthIcon, ListViewIcon, MediaIcon, NoticeIcon, OkIcon, OpenExternalIcon, RestartIcon, SearchIcon, SecurityIcon, SmartHomeIcon, StartIcon, StopIcon, UtilitiesIcon, WorkingIcon } from '@/components/icons'
+import { AppIcon, AutomationIcon, ChevronRightIcon, CloudIcon, DatabaseIcon, DevelopmentIcon, DownloadIcon, FailedIcon, GamingIcon, HealthIcon, MediaIcon, NoticeIcon, OkIcon, OpenExternalIcon, RestartIcon, SearchIcon, SecurityIcon, SmartHomeIcon, StartIcon, StopIcon, UtilitiesIcon, WorkingIcon } from '@/components/icons'
 import { appsApi } from '../api/apps';
 import type { CatalogEntry, InstalledApp } from '../api/apps.types';
 import { cn } from '../lib/utils';
 import { StatusMark } from '@/components/ui/pixel';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card-enhanced';
 import { toast } from '@/components/ui/toast';
@@ -410,64 +411,30 @@ export function AppCatalog() {
         </Button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1 p-1 bg-muted rounded-lg">
-          <button
-            onClick={() => setActiveTab('catalog')}
-            className={cn(
-              'px-4 py-2 rounded-md transition-all font-medium',
-              activeTab === 'catalog'
-                ? 'bg-background text-foreground '
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <AppIcon className="w-4 h-4 inline-block mr-2" />
-            Catalog
-          </button>
-          <button
-            onClick={() => setActiveTab('installed')}
-            className={cn(
-              'px-4 py-2 rounded-md transition-all font-medium relative',
-              activeTab === 'installed'
-                ? 'bg-background text-foreground '
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <DownloadIcon className="w-4 h-4 inline-block mr-2" />
-            Installed
-            {installedApps.length > 0 && (
-              <Badge className="ml-2" variant="secondary">
-                {installedApps.length}
-              </Badge>
-            )}
-          </button>
-        </div>
-        
-        {/* View Mode Toggle */}
-        <div className="flex gap-1 p-1 bg-muted rounded-lg">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={cn(
-              'p-2 rounded transition-all',
-              viewMode === 'grid'
-                ? 'bg-background text-foreground '
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <GridViewIcon className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={cn(
-              'p-2 rounded transition-all',
-              viewMode === 'list'
-                ? 'bg-background text-foreground '
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <ListViewIcon className="w-4 h-4" />
-          </button>
+      {/* Catalog or installed: the shared row of words. The view is a
+          radio frame of two words. */}
+      <div className="flex items-end justify-between gap-4">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-auto flex-1">
+          <TabsList>
+            <TabsTrigger value="catalog">Catalog</TabsTrigger>
+            <TabsTrigger value="installed">
+              Installed{installedApps.length > 0 && <span className="ml-2 font-mono text-ink-2">{installedApps.length}</span>}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div role="radiogroup" aria-label="View" className="inline-flex divide-x divide-rule overflow-hidden rounded-lg border border-rule text-sm">
+          {(['grid', 'list'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={viewMode === m}
+              onClick={() => setViewMode(m)}
+              className={cn('min-h-8 px-3', viewMode === m ? 'bg-ink text-page' : 'hover:bg-ink/[.09]')}
+            >
+              {m === 'grid' ? 'Grid' : 'List'}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -562,7 +529,7 @@ export function AppCatalog() {
                 animate="visible"
                 className={cn(
                   viewMode === 'grid'
-                    ? "grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                    ? "grid border-l border-t border-hairline md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>*]:border-b [&>*]:border-r [&>*]:border-hairline [&>*>*]:border-0"
                     : "space-y-4"
                 )}
               >
@@ -605,7 +572,7 @@ export function AppCatalog() {
                 animate="visible"
                 className={cn(
                   viewMode === 'grid'
-                    ? "grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                    ? "grid border-l border-t border-hairline md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>*]:border-b [&>*]:border-r [&>*]:border-hairline [&>*>*]:border-0"
                     : "space-y-4"
                 )}
               >
