@@ -13,10 +13,11 @@ import (
 // Config represents the sync client configuration.
 type Config struct {
 	// Server settings
-	ServerURL    string `json:"server_url"`
-	DeviceID     string `json:"device_id"`
+	ServerURL string `json:"server_url"`
+	DeviceID  string `json:"device_id"`
+	// DeviceToken is what every request sends (nosd's nos_dt_ token);
+	// RefreshToken gets a new one when it expires.
 	DeviceToken  string `json:"device_token"`
-	AccessToken  string `json:"access_token,omitempty"`
 	RefreshToken string `json:"refresh_token,omitempty"`
 	// ServerKeySHA256 pins the server's TLS public key (SHA-256 of its
 	// SubjectPublicKeyInfo, hex): nOS's own certificate is self-signed, so
@@ -282,17 +283,10 @@ func (c *Config) GetDeviceToken() string {
 	return c.DeviceToken
 }
 
-// GetAccessToken returns the current access token.
-func (c *Config) GetAccessToken() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.AccessToken
-}
-
-// SetTokens updates the access and refresh tokens.
-func (c *Config) SetTokens(accessToken, refreshToken string) error {
+// SetTokens stores a refreshed device token and its refresh token.
+func (c *Config) SetTokens(deviceToken, refreshToken string) error {
 	return c.Update(func(cfg *Config) {
-		cfg.AccessToken = accessToken
+		cfg.DeviceToken = deviceToken
 		cfg.RefreshToken = refreshToken
 	})
 }

@@ -58,9 +58,8 @@ func (w *WebDAVClient) doRequest(ctx context.Context, method, url string, body i
 	}
 
 	// Set auth header
-	accessToken := w.cfg.GetAccessToken()
-	if accessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+accessToken)
+	if tok := w.cfg.GetDeviceToken(); tok != "" {
+		req.Header.Set("Authorization", "Bearer "+tok)
 	}
 
 	// Set additional headers
