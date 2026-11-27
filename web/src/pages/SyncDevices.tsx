@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
+import { pairingLink } from '@/lib/pairing';
 import {
   Smartphone,
   Monitor,
@@ -56,29 +57,18 @@ import {
 
 // QR Code component
 function TokenQRCode({ 
-  token, 
-  serverUrl,
-  serverKey,
-  deviceName,
+  link,
   size = 200 
 }: { 
-  token: string; 
-  serverUrl: string;
-  serverKey?: string;
-  deviceName: string;
+  link: string;
   size?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!canvasRef.current || !token) return;
-
-    // Create a sync URL that the mobile app can parse
-    // Format: nos://sync?server=<url>&token=<token>&name=<name>[&key=<sha256>]
-    // (key pins the server's self-signed certificate)
-    const keyParam = serverKey ? `&key=${encodeURIComponent(serverKey)}` : '';
-    const syncUrl = `nos://sync?server=${encodeURIComponent(serverUrl)}&token=${encodeURIComponent(token)}&name=${encodeURIComponent(deviceName)}${keyParam}`;
+    if (!canvasRef.current || !link) return;
+    const syncUrl = link;
 
     QRCode.toCanvas(canvasRef.current, syncUrl, {
       width: size,
@@ -94,7 +84,7 @@ function TokenQRCode({
         setError('Failed to generate QR code');
       }
     });
-  }, [token, serverUrl, serverKey, deviceName, size]);
+  }, [link, size]);
 
   if (error) {
     return (
@@ -366,10 +356,20 @@ export default function SyncDevices() {
     }
   };
 
-  // Copy token to clipboard
+  const registeredLink = registeredDevice
+    ? pairingLink({
+        server: window.location.origin,
+        deviceToken: registeredDevice.device_token,
+        refreshToken: registeredDevice.refresh_token,
+        serverKey: registeredDevice.server_key_sha256,
+        deviceName: newDeviceName,
+      })
+    : '';
+
+  // Copy the pairing link to the clipboard
   const copyToken = () => {
     if (!registeredDevice) return;
-    navigator.clipboard.writeText(registeredDevice.device_token);
+    navigator.clipboard.writeText(registeredLink);
     setCopiedToken(true);
     setTimeout(() => setCopiedToken(false), 2000);
   };
@@ -612,61 +612,42 @@ export default function SyncDevices() {
                   </div>
                   <p className="text-sm text-green-600">
                     {(newDeviceType === 'ios' || newDeviceType === 'android')
-                      ? 'Scan the QR code with the NithronSync app, or copy the token manually.'
-                      : 'Copy the token below and paste it in your NithronSync client.'}
+                      ? 'Scan the QR code with the NithronSync app, or copy the pairing link.'
+                      : 'Copy the pairing link and paste it in NithronSync (or run nithron-sync-daemon --pair <link>).'}
                   </p>
                 </div>
 
                 {/* Show QR code for mobile devices */}
                 {(newDeviceType === 'ios' || newDeviceType === 'android') && (
                   <div className="flex justify-center py-4">
-                    <TokenQRCode
-                      token={registeredDevice.device_token}
-                      serverUrl={window.location.origin}
-                      serverKey={registeredDevice.server_key_sha256}
-                      deviceName={newDeviceName}
-                      size={180}
-                    />
+                    <TokenQRCode link={registeredLink} size={180} />
                   </div>
                 )}
                 
                 <div>
-                  <Label>Device Token</Label>
+                  <Label>Pairing Link</Label>
                   <div className="flex gap-2 mt-2">
                     <Input
-                      value={registeredDevice.device_token}
+                      value={registeredLink}
                       readOnly
                       className="font-mono text-xs"
+                      data-testid="pairing-link"
                     />
-                    <Button variant="outline" size="icon" onClick={copyToken}>
+                    <Button variant="outline" size="icon" onClick={copyToken} aria-label="Copy pairing link">
                       {copiedToken ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    This token will only be shown once. Store it securely.
+                    It holds this device's tokens and is shown only once: keep it private.
+                    {registeredDevice.server_key_sha256 &&
+                      " It also holds this server's key, so the client trusts this server's own certificate and no other."}
                   </p>
                 </div>
 
-                {registeredDevice.server_key_sha256 && (
-                  <div>
-                    <Label>Server Key</Label>
-                    <Input
-                      value={registeredDevice.server_key_sha256}
-                      readOnly
-                      className="font-mono text-xs mt-2"
-                      data-testid="server-key"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      This server's certificate is its own, not from a certificate authority. Give the client this key
-                      (<code>--server-key</code>) so it trusts this server and no other. Not needed with a public domain.
-                    </p>
-                  </div>
-                )}
-
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-sm text-yellow-700">
-                    <strong>Important:</strong> The device token expires in 90 days.
-                    The client will automatically refresh it before expiration.
+                    The device token lasts 90 days; the client renews it with the refresh
+                    token in the link.
                   </p>
                 </div>
               </div>

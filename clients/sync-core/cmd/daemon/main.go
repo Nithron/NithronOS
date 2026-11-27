@@ -33,6 +33,7 @@ func main() {
 		serverURL   = flag.String("server", "", "Server URL (for initial setup)")
 		deviceToken = flag.String("token", "", "Device token (for initial setup)")
 		syncFolder  = flag.String("folder", "", "Sync folder path (for initial setup)")
+		pairLink    = flag.String("pair", "", "Pairing link from the nOS web interface (nos://sync?...), instead of --server, --token and --server-key")
 		serverKey   = flag.String("server-key", "", "The server's TLS key, SHA-256 in hex, as the pairing page shows it (for initial setup; not needed for a public domain)")
 	)
 	flag.Parse()
@@ -77,7 +78,23 @@ func main() {
 	}
 
 	// Handle initial setup via command line
-	if *serverURL != "" && *deviceToken != "" {
+	if *pairLink != "" {
+		p, err := api.ParsePairingLink(*pairLink)
+		if err != nil {
+			log.Fatal().Err(err).Msg("--pair")
+		}
+		folder := *syncFolder
+		if folder == "" {
+			folder, _ = config.GetDefaultSyncFolder()
+		}
+		if err := p.Apply(cfg, folder); err != nil {
+			log.Fatal().Err(err).Msg("Failed to save configuration")
+		}
+		if err := os.MkdirAll(folder, 0o755); err != nil {
+			log.Fatal().Err(err).Msg("Failed to create sync folder")
+		}
+		log.Info().Str("server", p.ServerURL).Str("folder", folder).Msg("Paired")
+	} else if *serverURL != "" && *deviceToken != "" {
 		log.Info().Msg("Setting up from command line arguments...")
 
 		folder := *syncFolder

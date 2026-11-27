@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # NithronSync end to end, against the live container (run.sh calls it after
 # first-boot setup): signs in, makes a share, pairs a device, runs the real
-# sync daemon (clients/sync-core) on this machine against the container's
-# nosd, and checks that files go up, come down, and that a small change to a
+# sync daemon (clients/sync-core, paired with the pairing link) on this
+# machine against the container's nosd, and checks that files go up, come down, and that a small change to a
 # large file goes up as a delta.
 #
 #   scripts/live-ui/sync-e2e.sh <nosd base URL> <container> <user> <password>
@@ -79,15 +79,16 @@ docker exec "$NAME" test -d "$share_path" || fail "share folder $share_path miss
 
 log "pairing a device"
 reg="$(api POST /api/v1/sync/devices/register '{"device_name":"sync-e2e","device_type":"linux"}')" || fail "device register"
-jq -n --arg url "$BASE" --arg folder "$WORK/sync" --argjson reg "$reg" '{
-	server_url: $url, device_id: $reg.device_id, device_token: $reg.device_token,
-	refresh_token: $reg.refresh_token, sync_folder: $folder, sync_enabled: true,
-	poll_interval_secs: 5, conflict_policy: "keep_both"}' >"$WORK/config.json"
+# The pairing link, as the web interface builds it (web/src/lib/pairing.ts).
+link="$(jq -rn --arg url "$BASE" --argjson reg "$reg" \
+	'"nos://sync?server=\($url|@uri)&token=\($reg.device_token|@uri)&refresh=\($reg.refresh_token|@uri)&name=sync-e2e"')"
+# A 5-second poll (the default is 30); --pair fills in the rest.
+echo '{"poll_interval_secs": 5, "conflict_policy": "keep_both"}' >"$WORK/config.json"
 mkdir -p "$WORK/sync" "$WORK/home"
 
 log "starting the daemon"
 HOME="$WORK/home" XDG_CONFIG_HOME="$WORK/home/.config" XDG_DATA_HOME="$WORK/home/.local/share" \
-	"$WORK/nithron-sync-daemon" --debug --config "$WORK/config.json" >"$WORK/daemon.log" 2>&1 &
+	"$WORK/nithron-sync-daemon" --debug --config "$WORK/config.json" --pair "$link" --folder "$WORK/sync" >"$WORK/daemon.log" 2>&1 &
 DAEMON_PID=$!
 local_dir="$WORK/sync/$SHARE"
 wait_for "the daemon made the share's folder" test -d "$local_dir"
