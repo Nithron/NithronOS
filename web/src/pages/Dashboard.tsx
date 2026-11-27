@@ -252,8 +252,8 @@ function StorageWidget({ data, isLoading }: any) {
   const usagePercent = storage.totalBytes ? (storage.usedBytes / storage.totalBytes) * 100 : 0
   
   const chartData = [
-    { name: 'Used', value: storage.usedBytes || 0, fill: 'hsl(var(--primary))' },
-    { name: 'Free', value: (storage.totalBytes || 0) - (storage.usedBytes || 0), fill: 'hsl(var(--muted))' }
+    { name: 'Used', value: storage.usedBytes || 0, fill: 'var(--primary)' },
+    { name: 'Free', value: (storage.totalBytes || 0) - (storage.usedBytes || 0), fill: 'var(--muted)' }
   ]
 
   return (

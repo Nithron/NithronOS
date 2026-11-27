@@ -350,8 +350,8 @@ export default function MonitoringDashboard() {
                     />
                     <Tooltip 
                       contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        border: '1px solid hsl(var(--border))'
+                        backgroundColor: 'var(--background)',
+                        border: '1px solid var(--border)'
                       }}
                       formatter={(value) => `${toFixedSafe(Number(value), 1, '0.0')}%`}
                     />
@@ -359,7 +359,7 @@ export default function MonitoringDashboard() {
                     <Line 
                       type="monotone" 
                       dataKey="cpu" 
-                      stroke="hsl(var(--primary))" 
+                      stroke="var(--primary)" 
                       strokeWidth={2}
                       dot={false}
                       name="CPU"
@@ -367,7 +367,7 @@ export default function MonitoringDashboard() {
                     <Line 
                       type="monotone" 
                       dataKey="memory" 
-                      stroke="hsl(var(--chart-2))" 
+                      stroke="var(--chart-2)" 
                       strokeWidth={2}
                       dot={false}
                       name="Memory"
@@ -399,8 +399,8 @@ export default function MonitoringDashboard() {
                     />
                     <Tooltip 
                       contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        border: '1px solid hsl(var(--border))'
+                        backgroundColor: 'var(--background)',
+                        border: '1px solid var(--border)'
                       }}
                       formatter={(value) => formatBytes(Number(value)) + '/s'}
                     />
@@ -409,8 +409,8 @@ export default function MonitoringDashboard() {
                       type="monotone" 
                       dataKey="network_rx" 
                       stackId="1"
-                      stroke="hsl(var(--chart-3))" 
-                      fill="hsl(var(--chart-3))"
+                      stroke="var(--chart-3)" 
+                      fill="var(--chart-3)"
                       fillOpacity={0.6}
                       name="Download"
                     />
@@ -418,8 +418,8 @@ export default function MonitoringDashboard() {
                       type="monotone" 
                       dataKey="network_tx" 
                       stackId="1"
-                      stroke="hsl(var(--chart-4))" 
-                      fill="hsl(var(--chart-4))"
+                      stroke="var(--chart-4)" 
+                      fill="var(--chart-4)"
                       fillOpacity={0.6}
                       name="Upload"
                     />
@@ -461,8 +461,8 @@ export default function MonitoringDashboard() {
                     />
                     <Tooltip 
                       contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        border: '1px solid hsl(var(--border))'
+                        backgroundColor: 'var(--background)',
+                        border: '1px solid var(--border)'
                       }}
                       formatter={(value) => formatBytes(Number(value)) + '/s'}
                     />
@@ -471,8 +471,8 @@ export default function MonitoringDashboard() {
                       type="monotone" 
                       dataKey="disk_read" 
                       stackId="1"
-                      stroke="hsl(var(--chart-1))" 
-                      fill="hsl(var(--chart-1))"
+                      stroke="var(--chart-1)" 
+                      fill="var(--chart-1)"
                       fillOpacity={0.6}
                       name="Read"
                     />
@@ -480,8 +480,8 @@ export default function MonitoringDashboard() {
                       type="monotone" 
                       dataKey="disk_write" 
                       stackId="1"
-                      stroke="hsl(var(--chart-2))" 
-                      fill="hsl(var(--chart-2))"
+                      stroke="var(--chart-2)" 
+                      fill="var(--chart-2)"
                       fillOpacity={0.6}
                       name="Write"
                     />

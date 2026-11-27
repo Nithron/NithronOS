@@ -11,3 +11,15 @@ This license was previously named the “NithronOS Community License (NCL) v1.0�
 product references changed, the terms are the same.
 
 Trademarks: “Nithron”, “NithronOS”, “nOS”, “NithronAI”, “nAI”, “Niro” and associated logos are trademarks of Nithron. All other marks are the property of their respective owners.
+
+Third-party type faces, shipped in web/public/fonts with their licence texts:
+- Mona Sans 2.0.27 (MonaSansVF-opsz-wght.woff2), Copyright 2022 The Mona Sans Project Authors
+  (https://github.com/github/mona-sans), Reserved Font Name "Mona"; SIL Open Font License 1.1
+  (web/public/fonts/MONA-SANS-LICENSE.txt).
+- Monaspace Neon 1.400 (MonaspaceNeon-Regular.woff2), Copyright (c) 2023 GitHub
+  (https://github.com/githubnext/monaspace), Reserved Font Name "Monaspace"; SIL Open Font License 1.1
+  (web/public/fonts/MONASPACE-LICENSE.txt).
+Both files are the upstream release files, unchanged (renamed only).
+
+The design tokens in web/src/styles/nithron-tokens.css come from @nithron/tokens 0.2.0 (Nithron, under the
+Nithron Community License v1.0).
