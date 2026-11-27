@@ -34,28 +34,33 @@ NithronSync uses a device token system separate from user sessions:
 
 ### Token Types
 
-| Token | Storage | Lifetime | Purpose |
-|-------|---------|----------|---------|
-| Device Token | Hashed in DB | Permanent | Device identity |
-| Access Token | Not stored | 24 hours | API authentication |
-| Refresh Token | Hashed in DB | 90 days | Token renewal |
+| Token | Prefix | Storage | Lifetime | Purpose |
+|-------|--------|---------|----------|---------|
+| Device token | `nos_dt_` | bcrypt hash | 90 days | Every API and WebDAV request |
+| Refresh token | `nos_rt_` | bcrypt hash | 365 days | A new device token (both are replaced) |
+
+There is no separate access token: the device token is sent with every
+request (`Authorization: Bearer`, or as the Basic password for WebDAV).
 
 ### Token Generation
 
-Tokens are generated using cryptographically secure random bytes:
+32 random bytes from `crypto/rand`, base64url encoded, with the prefix
+(`backend/nosd/pkg/sync/device_manager.go`). Both tokens are shown once, in
+the pairing link.
 
-```go
-// 32 bytes of entropy, base64url encoded
-token := "nos_at_" + base64.URLEncoding.EncodeToString(randomBytes(32))
-```
+### Server identity
+
+nOS's web certificate is self-signed, so a client can't check it against
+certificate authorities. The pairing link carries the SHA-256 of the
+certificate's public key and the client accepts only that key
+(`clients/sync-core/api/tls.go`). The key survives certificate renewal; a
+reinstalled machine has a new one, and devices must be paired again.
 
 ### Token Validation
 
-1. Token format is verified (prefix, length)
-2. Token is hashed and looked up in database
-3. Expiration is checked
-4. Associated device status is verified
-5. Rate limits are enforced
+1. The prefix is checked
+2. The token is compared with the stored bcrypt hashes
+3. Expiry and revocation are checked
 
 ### Token Revocation
 
