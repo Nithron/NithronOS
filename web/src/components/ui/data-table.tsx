@@ -12,6 +12,7 @@ import {
   VisibilityState,
 } from '@tanstack/react-table'
 import { cn } from '@/lib/utils'
+import { Working } from './pixel'
 import { Button } from './button'
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, SortIcon } from '@/components/icons'
 
@@ -66,20 +67,20 @@ export function DataTable<TData, TValue>({
             placeholder={searchPlaceholder}
             value={globalFilter ?? ''}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            className="max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="field max-w-sm"
           />
         </div>
       )}
-      <div className="rounded-lg border border-border">
+      <div className="border-y border-hairline">
         <table className="w-full">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="border-b border-border">
+              <tr key={headerGroup.id} className="border-b border-hairline">
                 {headerGroup.headers.map((header) => {
                   return (
                     <th
                       key={header.id}
-                      className="px-4 py-3 text-left text-sm font-medium text-muted-foreground"
+                      className="px-4 py-3 text-left font-mono text-[0.8125rem] font-normal text-ink-2"
                     >
                       {header.isPlaceholder ? null : (
                         <button
@@ -115,10 +116,8 @@ export function DataTable<TData, TValue>({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={columns.length} className="h-24 text-center">
-                  <div className="flex items-center justify-center">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                  </div>
+                <td colSpan={columns.length} className="h-24 px-4">
+                  <Working />
                 </td>
               </tr>
             ) : table.getRowModel().rows?.length ? (
@@ -126,8 +125,8 @@ export function DataTable<TData, TValue>({
                 <tr
                   key={row.id}
                   className={cn(
-                    'border-b border-border transition-colors',
-                    onRowClick && 'cursor-pointer hover:bg-muted/50'
+                    'border-b border-hairline transition-colors',
+                    onRowClick && 'cursor-pointer hover:bg-ink/[.09]'
                   )}
                   onClick={() => onRowClick?.(row.original)}
                 >
@@ -142,9 +141,9 @@ export function DataTable<TData, TValue>({
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="h-24 text-center text-muted-foreground"
+                  className="h-24 px-4 text-ink-2"
                 >
-                  No results.
+                  Nothing to show.
                 </td>
               </tr>
             )}

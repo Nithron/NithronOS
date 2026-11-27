@@ -14,7 +14,9 @@
 //                                       ever lower them)
 //
 // A line that must hold a fixed colour (a QR code is black on white in
-// both themes) says so with the comment `ui-check: fixed colour`.
+// both themes) says so with the comment `ui-check: fixed colour`; a line
+// that only matches class names (a pattern that removes them) says
+// `ui-check: pattern`.
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -37,7 +39,7 @@ const RAW = [
   /(?<![\w-])bg-gradient-to-[a-z]+/g,
   /(?<![\w-])(?:backdrop-)?blur(?:-[a-z0-9]+)?(?![\w-])/g,
 ]
-const FIXED = 'ui-check: fixed colour'
+const ALLOWED = /ui-check: (?:fixed colour|pattern)/
 
 function files(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -50,7 +52,7 @@ function files(dir) {
 function rawCount(text) {
   return text
     .split('\n')
-    .filter((line) => !line.includes(FIXED))
+    .filter((line) => !ALLOWED.test(line))
     .reduce((n, line) => n + RAW.reduce((m, re) => m + (line.match(re)?.length ?? 0), 0), 0)
 }
 

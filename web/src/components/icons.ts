@@ -23,7 +23,6 @@ import {
   Calendar,
   Camera,
   Check,
-  CheckCircle,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -58,7 +57,6 @@ import {
   History,
   Home,
   Inbox,
-  Info,
   Key,
   Laptop,
   LayoutDashboard,
@@ -105,153 +103,170 @@ import {
   Wifi,
   Wrench,
   X,
-  XCircle,
   Zap,
 } from 'lucide-react'
 
 export type IconComponent = LucideIcon
 
+const SPIN = /(?<![\w-])animate-spin(?![\w-])/g
+
+/** A lucide icon that never spins: a caller's animate-spin is dropped. */
+function still(icon: LucideIcon, name: string): IconComponent {
+  const wrapped = forwardRef<SVGSVGElement, LucideProps>(({ className, ...rest }, ref) =>
+    createElement(icon, { ...rest, ref, className: className?.replace(SPIN, '').trim() }),
+  )
+  wrapped.displayName = name
+  return wrapped as unknown as IconComponent
+}
+
 /**
- * A square drawn on whole pixels of a 16 px slot, for the marks that are
- * already pixel shapes. `blink` makes it the lamp of something running
- * (styles.css stops it under reduced motion). A caller's animate-spin is
- * dropped: nothing spins.
+ * A mark drawn on whole pixels: an 8 by 8 shape in the middle of a 16 px
+ * slot, one unit a pixel. `blink` makes it the lamp of something running
+ * (styles.css stops it under reduced motion). Nothing spins.
  */
-function pixelSquare(name: string, size: number, blink: boolean): IconComponent {
-  const offset = (16 - size) / 2
-  const icon = forwardRef<SVGSVGElement, LucideProps>(({ className, color: _c, size: _s, strokeWidth: _w, absoluteStrokeWidth: _a, ...rest }, ref) =>
-    createElement(
-      'svg',
-      {
-        ref,
-        viewBox: '0 0 16 16',
-        shapeRendering: 'crispEdges',
-        'aria-hidden': true,
-        ...rest,
-        className: [className?.replace(/\banimate-spin\b/g, ''), 'fill-current', blink ? 'pixel-blink' : ''].filter(Boolean).join(' '),
-      },
-      createElement('rect', { x: offset, y: offset, width: size, height: size }),
-    ),
+function pixelMark(name: string, d: string, blink = false): IconComponent {
+  const icon = forwardRef<SVGSVGElement, LucideProps>(
+    ({ className, color: _c, size: _s, strokeWidth: _w, absoluteStrokeWidth: _a, ...rest }, ref) =>
+      createElement(
+        'svg',
+        {
+          ref,
+          viewBox: '-4 -4 16 16',
+          shapeRendering: 'crispEdges',
+          'aria-hidden': true,
+          ...rest,
+          className: [className?.replace(SPIN, ''), 'fill-current', blink ? 'pixel-blink' : '']
+            .filter(Boolean)
+            .join(' '),
+        },
+        createElement('path', { d, fillRule: 'evenodd' }),
+      ),
   )
   icon.displayName = name
   return icon as unknown as IconComponent
 }
 
-/** Working: a square that blinks, never a spinner. */
-export const WorkingIcon: IconComponent = pixelSquare('WorkingIcon', 8, true)
-/** A bullet or a chosen item: a small square, never a dot. */
-export const DotIcon: IconComponent = pixelSquare('DotIcon', 4, false)
+const SQUARE = 'M0 0h8v8h-8z'
+const OPEN_SQUARE = 'M0 0h8v8h-8zM1 1v6h6v-6z'
+const SMALL_SQUARE = 'M2 2h4v4h-4z'
+const CROSS = Array.from({ length: 8 }, (_, i) => `M${i} ${i}h1v1h-1zM${7 - i} ${i}h1v1h-1z`).join('')
 
-export const AccountIcon: IconComponent = UserCog
-export const ActivityIcon: IconComponent = Activity
-export const AddIcon: IconComponent = Plus
-export const AddUserIcon: IconComponent = UserPlus
-export const AlertsIcon: IconComponent = Bell
-export const AppIcon: IconComponent = Package
-export const AppsIcon: IconComponent = Boxes
-export const AutomationIcon: IconComponent = Zap
-export const BackIcon: IconComponent = ArrowLeft
-export const BackupIcon: IconComponent = Archive
-export const ChannelIcon: IconComponent = GitBranch
-export const ChevronDownIcon: IconComponent = ChevronDown
-export const ChevronLeftIcon: IconComponent = ChevronLeft
-export const ChevronRightIcon: IconComponent = ChevronRight
-export const ChevronUpIcon: IconComponent = ChevronUp
-export const ChosenIcon: IconComponent = Check
-export const CloseIcon: IconComponent = X
-export const CloudIcon: IconComponent = Cloud
-export const ConflictsIcon: IconComponent = AlertTriangle
-export const ConnectionIcon: IconComponent = Wifi
-export const CopyIcon: IconComponent = Copy
-export const CpuIcon: IconComponent = Cpu
-export const DashboardIcon: IconComponent = LayoutDashboard
-export const DatabaseIcon: IconComponent = Database
-export const DeleteIcon: IconComponent = Trash2
-export const DesktopIcon: IconComponent = Monitor
-export const DevelopmentIcon: IconComponent = Code
-export const DiskIcon: IconComponent = HardDrive
-export const DownloadIcon: IconComponent = Download
-export const EditIcon: IconComponent = Edit
-export const EmptyIcon: IconComponent = Inbox
-export const EncryptionIcon: IconComponent = Shield
-export const FallingIcon: IconComponent = TrendingDown
-export const FailedIcon: IconComponent = XCircle
-export const FileIcon: IconComponent = FileText
-export const FileChangedIcon: IconComponent = FileEdit
-export const FirewallIcon: IconComponent = Shield
-export const FolderIcon: IconComponent = FolderOpen
-export const GamingIcon: IconComponent = Gamepad
-export const GridViewIcon: IconComponent = Grid3x3
-export const HealthIcon: IconComponent = Heart
-export const HelpIcon: IconComponent = HelpCircle
-export const HideIcon: IconComponent = EyeOff
-export const HistoryIcon: IconComponent = History
-export const HomeIcon: IconComponent = Home
-export const InternetIcon: IconComponent = Globe
-export const KeyIcon: IconComponent = Key
-export const LaptopIcon: IconComponent = Laptop
-export const ListViewIcon: IconComponent = List
-export const LiveIcon: IconComponent = Activity
-export const LockIcon: IconComponent = Lock
-export const MailIcon: IconComponent = Mail
-export const MaintenanceIcon: IconComponent = Wrench
-export const MediaIcon: IconComponent = Film
-export const MemoryIcon: IconComponent = MemoryStick
-export const MenuIcon: IconComponent = Menu
-export const MonitoringIcon: IconComponent = Activity
-export const MoreIcon: IconComponent = MoreVertical
-export const NetworkIcon: IconComponent = Network
-export const NotFoundIcon: IconComponent = FileX
-export const NoticeIcon: IconComponent = Info
-export const OffSiteIcon: IconComponent = Globe
-export const OfflineIcon: IconComponent = CloudOff
-export const OkIcon: IconComponent = CheckCircle
-export const OpenExternalIcon: IconComponent = ExternalLink
-export const OwnerIcon: IconComponent = Crown
-export const PauseIcon: IconComponent = Pause
-export const PermissionsIcon: IconComponent = Shield
-export const PhoneIcon: IconComponent = Smartphone
-export const PoolIcon: IconComponent = Database
-export const QuickIcon: IconComponent = Zap
-export const RefreshIcon: IconComponent = RefreshCw
-export const RestartIcon: IconComponent = RotateCw
-export const RisingIcon: IconComponent = TrendingUp
-export const RollBackIcon: IconComponent = RotateCcw
-export const RouterIcon: IconComponent = Router
-export const ScheduleIcon: IconComponent = Calendar
-export const SearchIcon: IconComponent = Search
-export const SecurityIcon: IconComponent = Shield
-export const SecurityOffIcon: IconComponent = ShieldOff
-export const SendTestIcon: IconComponent = Send
-export const ServerIcon: IconComponent = Server
-export const SettingsIcon: IconComponent = Settings
-export const ShareIcon: IconComponent = Share2
-export const SharingIcon: IconComponent = Users
-export const ShowIcon: IconComponent = Eye
-export const SignOutIcon: IconComponent = LogOut
-export const SmartHomeIcon: IconComponent = Home
-export const SnapshotIcon: IconComponent = Camera
-export const SortIcon: IconComponent = ChevronsUpDown
-export const StartIcon: IconComponent = Play
-export const StatisticsIcon: IconComponent = BarChart3
-export const StopIcon: IconComponent = Square
-export const StorageIcon: IconComponent = HardDrive
-export const SyncIcon: IconComponent = Cloud
-export const SyncedFolderIcon: IconComponent = FolderSync
-export const TemperatureIcon: IconComponent = Thermometer
-export const TerminalIcon: IconComponent = Terminal
-export const TimeIcon: IconComponent = Clock
-export const TurnedOffIcon: IconComponent = ToggleLeft
-export const TurnedOnIcon: IconComponent = ToggleRight
-export const TwoFactorIcon: IconComponent = Shield
-export const UnlockIcon: IconComponent = Unlock
-export const UnreachableIcon: IconComponent = ServerCrash
-export const UpgradeIcon: IconComponent = ArrowUp
-export const UploadIcon: IconComponent = Upload
-export const UserIcon: IconComponent = User
-export const UsersIcon: IconComponent = Users
-export const UtilitiesIcon: IconComponent = Server
-export const WarningIcon: IconComponent = AlertTriangle
+/** States: the marks of components/ui/pixel.tsx, as icons. */
+export const OkIcon: IconComponent = pixelMark('OkIcon', SQUARE)
+export const WarningIcon: IconComponent = pixelMark('WarningIcon', OPEN_SQUARE)
+export const FailedIcon: IconComponent = pixelMark('FailedIcon', CROSS)
+export const NoticeIcon: IconComponent = pixelMark('NoticeIcon', SMALL_SQUARE)
+/** Working: a square that blinks, never a spinner. */
+export const WorkingIcon: IconComponent = pixelMark('WorkingIcon', SQUARE, true)
+/** A bullet or a chosen item: a small square, never a dot. */
+export const DotIcon: IconComponent = pixelMark('DotIcon', SMALL_SQUARE)
+
+export const AccountIcon: IconComponent = still(UserCog, 'AccountIcon')
+export const ActivityIcon: IconComponent = still(Activity, 'ActivityIcon')
+export const AddIcon: IconComponent = still(Plus, 'AddIcon')
+export const AddUserIcon: IconComponent = still(UserPlus, 'AddUserIcon')
+export const AlertsIcon: IconComponent = still(Bell, 'AlertsIcon')
+export const AppIcon: IconComponent = still(Package, 'AppIcon')
+export const AppsIcon: IconComponent = still(Boxes, 'AppsIcon')
+export const AutomationIcon: IconComponent = still(Zap, 'AutomationIcon')
+export const BackIcon: IconComponent = still(ArrowLeft, 'BackIcon')
+export const BackupIcon: IconComponent = still(Archive, 'BackupIcon')
+export const ChannelIcon: IconComponent = still(GitBranch, 'ChannelIcon')
+export const ChevronDownIcon: IconComponent = still(ChevronDown, 'ChevronDownIcon')
+export const ChevronLeftIcon: IconComponent = still(ChevronLeft, 'ChevronLeftIcon')
+export const ChevronRightIcon: IconComponent = still(ChevronRight, 'ChevronRightIcon')
+export const ChevronUpIcon: IconComponent = still(ChevronUp, 'ChevronUpIcon')
+export const ChosenIcon: IconComponent = still(Check, 'ChosenIcon')
+export const CloseIcon: IconComponent = still(X, 'CloseIcon')
+export const CloudIcon: IconComponent = still(Cloud, 'CloudIcon')
+export const ConflictsIcon: IconComponent = still(AlertTriangle, 'ConflictsIcon')
+export const ConnectionIcon: IconComponent = still(Wifi, 'ConnectionIcon')
+export const CopyIcon: IconComponent = still(Copy, 'CopyIcon')
+export const CpuIcon: IconComponent = still(Cpu, 'CpuIcon')
+export const DashboardIcon: IconComponent = still(LayoutDashboard, 'DashboardIcon')
+export const DatabaseIcon: IconComponent = still(Database, 'DatabaseIcon')
+export const DeleteIcon: IconComponent = still(Trash2, 'DeleteIcon')
+export const DesktopIcon: IconComponent = still(Monitor, 'DesktopIcon')
+export const DevelopmentIcon: IconComponent = still(Code, 'DevelopmentIcon')
+export const DiskIcon: IconComponent = still(HardDrive, 'DiskIcon')
+export const DownloadIcon: IconComponent = still(Download, 'DownloadIcon')
+export const EditIcon: IconComponent = still(Edit, 'EditIcon')
+export const EmptyIcon: IconComponent = still(Inbox, 'EmptyIcon')
+export const EncryptionIcon: IconComponent = still(Shield, 'EncryptionIcon')
+export const FallingIcon: IconComponent = still(TrendingDown, 'FallingIcon')
+export const FileIcon: IconComponent = still(FileText, 'FileIcon')
+export const FileChangedIcon: IconComponent = still(FileEdit, 'FileChangedIcon')
+export const FirewallIcon: IconComponent = still(Shield, 'FirewallIcon')
+export const FolderIcon: IconComponent = still(FolderOpen, 'FolderIcon')
+export const GamingIcon: IconComponent = still(Gamepad, 'GamingIcon')
+export const GridViewIcon: IconComponent = still(Grid3x3, 'GridViewIcon')
+export const HealthIcon: IconComponent = still(Heart, 'HealthIcon')
+export const HelpIcon: IconComponent = still(HelpCircle, 'HelpIcon')
+export const HideIcon: IconComponent = still(EyeOff, 'HideIcon')
+export const HistoryIcon: IconComponent = still(History, 'HistoryIcon')
+export const HomeIcon: IconComponent = still(Home, 'HomeIcon')
+export const InternetIcon: IconComponent = still(Globe, 'InternetIcon')
+export const KeyIcon: IconComponent = still(Key, 'KeyIcon')
+export const LaptopIcon: IconComponent = still(Laptop, 'LaptopIcon')
+export const ListViewIcon: IconComponent = still(List, 'ListViewIcon')
+export const LiveIcon: IconComponent = still(Activity, 'LiveIcon')
+export const LockIcon: IconComponent = still(Lock, 'LockIcon')
+export const MailIcon: IconComponent = still(Mail, 'MailIcon')
+export const MaintenanceIcon: IconComponent = still(Wrench, 'MaintenanceIcon')
+export const MediaIcon: IconComponent = still(Film, 'MediaIcon')
+export const MemoryIcon: IconComponent = still(MemoryStick, 'MemoryIcon')
+export const MenuIcon: IconComponent = still(Menu, 'MenuIcon')
+export const MonitoringIcon: IconComponent = still(Activity, 'MonitoringIcon')
+export const MoreIcon: IconComponent = still(MoreVertical, 'MoreIcon')
+export const NetworkIcon: IconComponent = still(Network, 'NetworkIcon')
+export const NotFoundIcon: IconComponent = still(FileX, 'NotFoundIcon')
+export const OffSiteIcon: IconComponent = still(Globe, 'OffSiteIcon')
+export const OfflineIcon: IconComponent = still(CloudOff, 'OfflineIcon')
+export const OpenExternalIcon: IconComponent = still(ExternalLink, 'OpenExternalIcon')
+export const OwnerIcon: IconComponent = still(Crown, 'OwnerIcon')
+export const PauseIcon: IconComponent = still(Pause, 'PauseIcon')
+export const PermissionsIcon: IconComponent = still(Shield, 'PermissionsIcon')
+export const PhoneIcon: IconComponent = still(Smartphone, 'PhoneIcon')
+export const PoolIcon: IconComponent = still(Database, 'PoolIcon')
+export const QuickIcon: IconComponent = still(Zap, 'QuickIcon')
+export const RefreshIcon: IconComponent = still(RefreshCw, 'RefreshIcon')
+export const RestartIcon: IconComponent = still(RotateCw, 'RestartIcon')
+export const RisingIcon: IconComponent = still(TrendingUp, 'RisingIcon')
+export const RollBackIcon: IconComponent = still(RotateCcw, 'RollBackIcon')
+export const RouterIcon: IconComponent = still(Router, 'RouterIcon')
+export const ScheduleIcon: IconComponent = still(Calendar, 'ScheduleIcon')
+export const SearchIcon: IconComponent = still(Search, 'SearchIcon')
+export const SecurityIcon: IconComponent = still(Shield, 'SecurityIcon')
+export const SecurityOffIcon: IconComponent = still(ShieldOff, 'SecurityOffIcon')
+export const SendTestIcon: IconComponent = still(Send, 'SendTestIcon')
+export const ServerIcon: IconComponent = still(Server, 'ServerIcon')
+export const SettingsIcon: IconComponent = still(Settings, 'SettingsIcon')
+export const ShareIcon: IconComponent = still(Share2, 'ShareIcon')
+export const SharingIcon: IconComponent = still(Users, 'SharingIcon')
+export const ShowIcon: IconComponent = still(Eye, 'ShowIcon')
+export const SignOutIcon: IconComponent = still(LogOut, 'SignOutIcon')
+export const SmartHomeIcon: IconComponent = still(Home, 'SmartHomeIcon')
+export const SnapshotIcon: IconComponent = still(Camera, 'SnapshotIcon')
+export const SortIcon: IconComponent = still(ChevronsUpDown, 'SortIcon')
+export const StartIcon: IconComponent = still(Play, 'StartIcon')
+export const StatisticsIcon: IconComponent = still(BarChart3, 'StatisticsIcon')
+export const StopIcon: IconComponent = still(Square, 'StopIcon')
+export const StorageIcon: IconComponent = still(HardDrive, 'StorageIcon')
+export const SyncIcon: IconComponent = still(Cloud, 'SyncIcon')
+export const SyncedFolderIcon: IconComponent = still(FolderSync, 'SyncedFolderIcon')
+export const TemperatureIcon: IconComponent = still(Thermometer, 'TemperatureIcon')
+export const TerminalIcon: IconComponent = still(Terminal, 'TerminalIcon')
+export const TimeIcon: IconComponent = still(Clock, 'TimeIcon')
+export const TurnedOffIcon: IconComponent = still(ToggleLeft, 'TurnedOffIcon')
+export const TurnedOnIcon: IconComponent = still(ToggleRight, 'TurnedOnIcon')
+export const TwoFactorIcon: IconComponent = still(Shield, 'TwoFactorIcon')
+export const UnlockIcon: IconComponent = still(Unlock, 'UnlockIcon')
+export const UnreachableIcon: IconComponent = still(ServerCrash, 'UnreachableIcon')
+export const UpgradeIcon: IconComponent = still(ArrowUp, 'UpgradeIcon')
+export const UploadIcon: IconComponent = still(Upload, 'UploadIcon')
+export const UserIcon: IconComponent = still(User, 'UserIcon')
+export const UsersIcon: IconComponent = still(Users, 'UsersIcon')
+export const UtilitiesIcon: IconComponent = still(Server, 'UtilitiesIcon')
 
 /** The icons by name, for code that picks one at run time. */
 export const icons = {

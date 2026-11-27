@@ -8,18 +8,20 @@ interface BadgeProps {
 }
 
 export function Badge({ children, variant = 'default', className }: BadgeProps) {
+  // A badge is a hairline box with ink text; a state's colour is its line
+  // and tint, beside its mark (pass one in children), never a fill.
   const variants = {
-    default: 'bg-primary text-primary-foreground',
-    outline: 'border border-muted-foreground/40 text-foreground',
-    secondary: 'bg-secondary text-secondary-foreground',
-    destructive: 'bg-destructive text-destructive-foreground',
-    success: 'bg-green-500 text-white',
+    default: 'border-rule',
+    outline: 'border-rule',
+    secondary: 'border-rule',
+    destructive: 'border-status-failed bg-status-failed-tint',
+    success: 'border-status-ok bg-status-ok-tint',
   }
   
   return (
     <span 
       className={cn(
-        'inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold transition-colors',
+        'inline-flex items-center gap-1.5 rounded-sm border px-2 py-0.5 text-xs font-[560] text-ink',
         variants[variant],
         className
       )}

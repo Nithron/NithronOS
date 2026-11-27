@@ -91,6 +91,137 @@
   }
 }
 
+/* The title of a screen: --text-h3, weight 560, sentence case. */
+@layer components {
+  .screen-title {
+    font-size: var(--text-h3);
+    line-height: var(--leading-h3);
+    font-weight: var(--weight-h3);
+    letter-spacing: var(--tracking-h3);
+    color: var(--ink);
+  }
+}
+
+/* Fields: 44 px high, a 1 px --edge line that turns ink on focus. */
+@layer components {
+  .field {
+    display: flex;
+    height: var(--control-height);
+    width: 100%;
+    border: 1px solid var(--edge);
+    border-radius: var(--radius-control);
+    background: var(--page);
+    color: var(--ink);
+    padding: 0 0.75rem;
+    font-size: var(--text-small);
+  }
+
+  .field::placeholder {
+    color: var(--dim);
+  }
+
+  .field:focus {
+    border-color: var(--ink);
+    outline: none;
+  }
+
+  .field:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+
+  .field:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .field[aria-invalid='true'] {
+    border-color: var(--status-failed);
+  }
+}
+
+/* Buttons outside components/ui/button (the same two kinds): the first
+   action in ink, every other one a line button. */
+@layer components {
+  .btn {
+    display: inline-flex;
+    min-height: var(--control-height);
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-control);
+    padding: 0 1.25rem;
+    font-size: var(--text-small);
+    font-weight: var(--weight-strong);
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 4px;
+  }
+
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .btn-primary {
+    background: var(--ink);
+    color: var(--page);
+  }
+
+  .btn-line {
+    border: 1px solid var(--rule);
+    color: var(--ink);
+  }
+
+  .btn-line:hover {
+    border-color: var(--ink);
+  }
+}
+
+/* A check box is a drawn square: its edge, and a filled square when on. */
+@layer base {
+  /* :where() keeps these at zero specificity, so utility classes win. */
+  :where(input[type='checkbox']) {
+    appearance: none;
+    display: inline-grid;
+    place-content: center;
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+    border: 1px solid var(--edge);
+    background: var(--page);
+    cursor: pointer;
+  }
+
+  :where(input[type='checkbox'])::before {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    background: var(--ink);
+    transform: scale(0);
+  }
+
+  :where(input[type='checkbox']:checked) {
+    border-color: var(--ink);
+  }
+
+  :where(input[type='checkbox']:checked)::before {
+    transform: scale(1);
+  }
+
+  :where(input[type='checkbox']:focus-visible) {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+
+  :where(input[type='checkbox']:disabled) {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
 /* The pixel layer (components/ui/pixel.tsx): whole pixels, no smoothing. */
 @layer components {
   .pixel {

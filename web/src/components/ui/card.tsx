@@ -1,5 +1,5 @@
 import { forwardRef, HTMLAttributes } from 'react'
-import { cn } from '@/lib/utils'
+import { cn, flatPanel } from '@/lib/utils'
 
 export type CardProps = HTMLAttributes<HTMLDivElement>
 
@@ -7,10 +7,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(
-        'rounded-xl border bg-card text-card-foreground shadow-sm',
-        className
-      )}
+      className={cn('border border-hairline bg-page text-ink', flatPanel(className))}
       {...props}
     />
   )
@@ -32,7 +29,7 @@ const CardTitle = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLHeadingEle
   ({ className, ...props }, ref) => (
     <h3
       ref={ref}
-      className={cn('text-2xl font-semibold leading-none tracking-tight', className)}
+      className={cn('text-xl font-[560] leading-tight tracking-[-0.012em]', className)}
       {...props}
     />
   )
@@ -43,7 +40,7 @@ const CardDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLPara
   ({ className, ...props }, ref) => (
     <p
       ref={ref}
-      className={cn('text-sm text-muted-foreground', className)}
+      className={cn('text-sm text-ink-2', className)}
       {...props}
     />
   )

@@ -1,5 +1,5 @@
 import React from 'react'
-import { cn } from '@/lib/utils'
+import { cn, flatPanel } from '@/lib/utils'
 import { FailedIcon, HelpIcon } from '@/components/icons'
 import { Working } from './pixel'
 import { Button } from './button'
@@ -33,26 +33,23 @@ export function Card({
 }: CardProps) {
   return (
     <div
-      className={cn(
-        'rounded-2xl border border-border bg-card shadow-sm',
-        className
-      )}
+      className={cn('border border-hairline bg-page', flatPanel(className))}
     >
       {(title || actions) && (
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+        <div className="flex items-center justify-between border-b border-hairline px-6 py-4">
           <div className="flex items-center gap-2">
             {title && (
               <div>
-                <h3 className="text-lg font-semibold">{title}</h3>
+                <h3 className="text-xl font-[560] tracking-[-0.012em]">{title}</h3>
                 {description && (
-                  <p className="text-sm text-muted-foreground">{description}</p>
+                  <p className="text-sm text-ink-2">{description}</p>
                 )}
               </div>
             )}
             {helpTooltip && (
               <div className="group relative">
-                <HelpIcon className="h-4 w-4 text-muted-foreground" />
-                <div className="absolute left-0 top-full z-10 mt-1 hidden w-64 rounded-lg bg-popover p-2 text-sm text-popover-foreground shadow-lg group-hover:block">
+                <HelpIcon className="h-4 w-4 text-ink-2" />
+                <div className="absolute left-0 top-full z-10 mt-1 hidden w-64 border border-edge bg-page p-2 text-sm text-ink group-hover:block">
                   {helpTooltip}
                 </div>
               </div>
@@ -68,9 +65,11 @@ export function Card({
             <Working />
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <FailedIcon className="mb-4 h-12 w-12 text-destructive" />
-            <p className="mb-4 text-sm text-muted-foreground">{error}</p>
+          <div className="py-8" role="alert">
+            <p className="mb-4 flex items-center gap-2 text-sm text-ink">
+              <FailedIcon className="h-4 w-4 text-status-failed" />
+              {error}
+            </p>
             {onRetry && (
               <Button onClick={onRetry} variant="outline" size="sm">
                 Retry
@@ -83,7 +82,7 @@ export function Card({
       </div>
 
       {footer && (
-        <div className="border-t border-border px-6 py-4">{footer}</div>
+        <div className="border-t border-hairline px-6 py-4">{footer}</div>
       )}
     </div>
   )
@@ -98,7 +97,7 @@ export function CardGrid({ children, className }: CardGridProps) {
   return (
     <div
       className={cn(
-        'grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
+        'grid gap-px border border-hairline bg-hairline md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>*]:border-0',
         className
       )}
     >
