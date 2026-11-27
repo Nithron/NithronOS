@@ -27,7 +27,7 @@ func (d *routeDeps) registerServices(pr chi.Router) {
 
 	// Health endpoints
 	healthHandler := NewHealthHandler(agentclient.New(cfg.AgentSocket()))
-	pr.Mount("/api/v1/health", healthHandler.Routes())
+	healthHandler.Register(pr)
 
 	// Storage endpoints
 	storageHandler := NewStorageHandler(agentclient.New(cfg.AgentSocket()))

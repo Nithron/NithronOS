@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"nos/backend/nosd/internal/version"
 	"nos/backend/nosd/pkg/httpx"
 	"strings"
 	"time"
@@ -54,21 +53,14 @@ func NewHealthHandler(agentClient AgentClient) *HealthHandler {
 	}
 }
 
-// Routes registers the health routes
-func (h *HealthHandler) Routes() chi.Router {
-	r := chi.NewRouter()
-
-	// Root health endpoint
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "version": version.Version})
-	})
-
-	r.Get("/smart/summary", h.GetSmartSummary)
-	r.Get("/smart/{device}", h.GetSmartDevice)
-	r.Post("/smart/scan", h.StartSmartScan)
-
-	return r
+// Register adds the SMART health routes (signed-in users) to pr.
+func (h *HealthHandler) Register(pr chi.Router) {
+	// Registered one by one: mounted as a router at /api/v1/health, it
+	// took over the public GET /api/v1/health, which then needed a session
+	// (sync clients and monitoring got 401).
+	pr.Get("/api/v1/health/smart/summary", h.GetSmartSummary)
+	pr.Get("/api/v1/health/smart/{device}", h.GetSmartDevice)
+	pr.Post("/api/v1/health/smart/scan", h.StartSmartScan)
 }
 
 // smartStatus maps the agent's health values to this API's statuses.
