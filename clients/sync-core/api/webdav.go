@@ -34,6 +34,7 @@ func NewWebDAVClient(cfg *config.Config) *WebDAVClient {
 				DisableCompression:    true, // Don't compress, we handle our own
 				ResponseHeaderTimeout: 30 * time.Second,
 				ExpectContinueTimeout: 1 * time.Second,
+				TLSClientConfig:       tlsConfig(cfg.GetServerKeySHA256()),
 			},
 		},
 	}

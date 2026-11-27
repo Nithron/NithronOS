@@ -31,6 +31,9 @@ type SyncHandler struct {
 	access             shareAccessChecker
 	logger             zerolog.Logger
 	cfg                config.Config
+	// webTLSAddr is where Caddy serves the web interface (the key pin
+	// comes from there); tests point it elsewhere.
+	webTLSAddr string
 }
 
 // shareAccessChecker says what a nOS user (by id) may do in a share.
@@ -95,6 +98,7 @@ func NewSyncHandler(cfg config.Config, shareStore *shares.Store, access shareAcc
 	}
 
 	return &SyncHandler{
+		webTLSAddr:         "127.0.0.1:443",
 		deviceMgr:          deviceMgr,
 		changeTracker:      changeTracker,
 		deltaSync:          deltaSync,
@@ -286,6 +290,7 @@ func (h *SyncHandler) RegisterDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	response.ServerKeySHA256 = h.webKeyPin(r.Context())
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, response)
 }

@@ -58,11 +58,13 @@ import {
 function TokenQRCode({ 
   token, 
   serverUrl,
+  serverKey,
   deviceName,
   size = 200 
 }: { 
   token: string; 
   serverUrl: string;
+  serverKey?: string;
   deviceName: string;
   size?: number;
 }) {
@@ -73,8 +75,10 @@ function TokenQRCode({
     if (!canvasRef.current || !token) return;
 
     // Create a sync URL that the mobile app can parse
-    // Format: nos://sync?server=<url>&token=<token>&name=<name>
-    const syncUrl = `nos://sync?server=${encodeURIComponent(serverUrl)}&token=${encodeURIComponent(token)}&name=${encodeURIComponent(deviceName)}`;
+    // Format: nos://sync?server=<url>&token=<token>&name=<name>[&key=<sha256>]
+    // (key pins the server's self-signed certificate)
+    const keyParam = serverKey ? `&key=${encodeURIComponent(serverKey)}` : '';
+    const syncUrl = `nos://sync?server=${encodeURIComponent(serverUrl)}&token=${encodeURIComponent(token)}&name=${encodeURIComponent(deviceName)}${keyParam}`;
 
     QRCode.toCanvas(canvasRef.current, syncUrl, {
       width: size,
@@ -90,7 +94,7 @@ function TokenQRCode({
         setError('Failed to generate QR code');
       }
     });
-  }, [token, serverUrl, deviceName, size]);
+  }, [token, serverUrl, serverKey, deviceName, size]);
 
   if (error) {
     return (
@@ -290,6 +294,7 @@ export default function SyncDevices() {
     device_id: string;
     device_token: string;
     refresh_token: string;
+    server_key_sha256?: string;
   } | null>(null);
   const [copiedToken, setCopiedToken] = useState(false);
 
@@ -618,6 +623,7 @@ export default function SyncDevices() {
                     <TokenQRCode
                       token={registeredDevice.device_token}
                       serverUrl={window.location.origin}
+                      serverKey={registeredDevice.server_key_sha256}
                       deviceName={newDeviceName}
                       size={180}
                     />
@@ -640,6 +646,22 @@ export default function SyncDevices() {
                     This token will only be shown once. Store it securely.
                   </p>
                 </div>
+
+                {registeredDevice.server_key_sha256 && (
+                  <div>
+                    <Label>Server Key</Label>
+                    <Input
+                      value={registeredDevice.server_key_sha256}
+                      readOnly
+                      className="font-mono text-xs mt-2"
+                      data-testid="server-key"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      This server's certificate is its own, not from a certificate authority. Give the client this key
+                      (<code>--server-key</code>) so it trusts this server and no other. Not needed with a public domain.
+                    </p>
+                  </div>
+                )}
 
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-sm text-yellow-700">

@@ -38,6 +38,7 @@ func NewClient(cfg *config.Config) *Client {
 				DisableCompression: false,
 				DisableKeepAlives:  false,
 				MaxConnsPerHost:    10,
+				TLSClientConfig:    tlsConfig(cfg.GetServerKeySHA256()),
 			},
 		},
 		baseURL: cfg.GetServerURL(),

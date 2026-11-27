@@ -18,6 +18,11 @@ type Config struct {
 	DeviceToken  string `json:"device_token"`
 	AccessToken  string `json:"access_token,omitempty"`
 	RefreshToken string `json:"refresh_token,omitempty"`
+	// ServerKeySHA256 pins the server's TLS public key (SHA-256 of its
+	// SubjectPublicKeyInfo, hex): nOS's own certificate is self-signed, so
+	// a client trusts exactly that machine instead of a CA. Empty: the
+	// usual CA check (a public domain's Let's Encrypt certificate).
+	ServerKeySHA256 string `json:"server_key_sha256,omitempty"`
 
 	// Local settings
 	SyncFolder      string   `json:"sync_folder"`
@@ -261,6 +266,13 @@ func (c *Config) GetServerURL() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.ServerURL
+}
+
+// GetServerKeySHA256 returns the pinned server key, if any.
+func (c *Config) GetServerKeySHA256() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.ServerKeySHA256
 }
 
 // GetDeviceToken returns the device token.

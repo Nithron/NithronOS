@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"nos/clients/sync-core/api"
 	"nos/clients/sync-core/config"
 	"nos/clients/sync-core/engine"
 )
@@ -32,6 +33,7 @@ func main() {
 		serverURL   = flag.String("server", "", "Server URL (for initial setup)")
 		deviceToken = flag.String("token", "", "Device token (for initial setup)")
 		syncFolder  = flag.String("folder", "", "Sync folder path (for initial setup)")
+		serverKey   = flag.String("server-key", "", "The server's TLS key, SHA-256 in hex, as the pairing page shows it (for initial setup; not needed for a public domain)")
 	)
 	flag.Parse()
 
@@ -83,7 +85,14 @@ func main() {
 			folder, _ = config.GetDefaultSyncFolder()
 		}
 
+		pin := ""
+		if *serverKey != "" {
+			if pin, err = api.NormalizeKeyPin(*serverKey); err != nil {
+				log.Fatal().Err(err).Msg("--server-key")
+			}
+		}
 		if err := cfg.Update(func(c *config.Config) {
+			c.ServerKeySHA256 = pin
 			c.ServerURL = *serverURL
 			c.DeviceToken = *deviceToken
 			c.SyncFolder = folder

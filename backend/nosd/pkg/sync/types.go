@@ -208,6 +208,10 @@ type DeviceRegisterResponse struct {
 	DeviceToken  string    `json:"device_token"`  // nos_dt_...
 	RefreshToken string    `json:"refresh_token"` // nos_rt_...
 	ExpiresAt    time.Time `json:"expires_at"`
+	// ServerKeySHA256 is the key the web interface's certificate uses
+	// (SHA-256 of its public key, hex): a client pins it, since the
+	// certificate is self-signed. Empty if nosd couldn't read it.
+	ServerKeySHA256 string `json:"server_key_sha256,omitempty"`
 }
 
 // DeviceRefreshRequest is the request to refresh device tokens
