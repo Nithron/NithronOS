@@ -194,6 +194,36 @@ A device's own record (`device_id`, `share_id`, `cursor`, `last_sync`,
 `total_files`, `total_bytes`); the PUT also counts toward the device's sync
 statistics.
 
+## Device settings, conflicts, activity
+
+```http
+GET /api/v1/sync/config                    → SyncConfig of the calling device
+PUT /api/v1/sync/config  SyncConfig        → SyncConfig
+```
+
+`SyncConfig`: `device_id` (the calling device: how a client learns its own
+id, which the pairing link doesn't carry), `sync_shares`, `selective_paths`,
+`bandwidth_limit_kbps`, `pause_sync`, `sync_on_mobile_data`.
+
+```http
+GET /api/v1/sync/conflicts?share_id=<id>&unresolved_only=true  → [Conflict]
+GET /api/v1/sync/conflicts/{conflict_id}                       → Conflict
+PUT /api/v1/sync/conflicts/{conflict_id}  {"resolution": "keep_local" | "keep_remote" | "keep_both" | "merge"}
+```
+
+`Conflict`: `id`, `share_id`, `device_id`, `path`, `local_version`,
+`remote_version`, `detected_at`, `resolved`, `resolution`, `resolved_at`,
+`resolved_by`.
+
+```http
+GET /api/v1/sync/activity?share_id=<id>&page=1&page_size=50
+    → {"activities": [Activity], "total": n, "page": 1, "page_size": 50}
+GET /api/v1/sync/activity/recent?limit=20   → [Activity]
+GET /api/v1/sync/activity/stats
+```
+
+The calling device's records (a signed-in session sees its user's devices).
+
 ## WebDAV
 
 ```

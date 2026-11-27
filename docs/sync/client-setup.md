@@ -8,8 +8,7 @@ What exists today:
 | Client | State |
 |--------|-------|
 | Sync daemon (`nithron-sync-daemon`, Linux, Windows, macOS) | Works; tested end to end in CI against a real nOS |
-| Desktop app (Wails), Linux and Windows | Builds in CI (download the binary from a CI run's artifacts); no installer yet |
-| Desktop app, macOS | Not built yet |
+| Desktop app (Wails), Linux, Windows and macOS | Builds in CI (download the binary from a CI run's artifacts); no installer, macOS unsigned |
 | Android app | A debug build from CI (download the APK from a CI run's artifacts): pairs by QR code or pasted link and browses shares; it doesn't sync files yet, and there is no store release |
 | iOS app | Not available yet |
 | File managers over WebDAV | Work with a device token as the password |

@@ -212,7 +212,7 @@ Back to the defaults:
 - [x] **Server**: sync API with device tokens, WebDAV (file managers sign in with a device token), delta uploads and downloads, a change feed that scales with the share, per-share sync switch
 - [x] **Web UI**: device management and one pairing link per device (also the mobile QR code), with the server's key for its self-signed certificate
 - [x] **Sync daemon** (`clients/sync-core`): tested end to end in CI against a real nOS (up, down, folders, deltas)
-- [ ] **Desktop app** (Wails): builds in CI for Linux and Windows; macOS and installers to come
+- [ ] **Desktop app** (Wails): builds in CI for Linux, Windows and macOS (unsigned); installers to come
 - [ ] **Mobile apps**: Android builds in CI as a debug APK that pairs by QR code or link (pinning the server's key) and browses shares; it doesn't sync files yet, no store release; iOS later
 
 ### Post-v1 / Alpha
