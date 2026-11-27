@@ -23,7 +23,6 @@ export function Health() {
     <div className="space-y-6">
       <PageHeader
         title="Health monitoring"
-        description="Monitor system and disk health status"
       />
       
       {/* The same row of words as the Tabs component, as links. */}

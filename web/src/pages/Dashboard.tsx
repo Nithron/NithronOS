@@ -414,13 +414,11 @@ function NetworkSharesWidget({ data, isLoading }: any) {
                 <div className="flex items-center gap-2">
                   <FolderIcon className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">{share.name}</span>
-                  <Badge variant="outline" className="text-xs">
-                    {share.proto}
-                  </Badge>
+                  {share.proto && <span className="font-mono text-xs text-ink-2">{share.proto}</span>}
                 </div>
-                <Badge variant={share.state === 'active' ? 'default' : 'secondary'}>
+                <StatusMark state={share.state === 'active' ? 'ok' : 'off'} className="text-sm">
                   {share.state}
-                </Badge>
+                </StatusMark>
               </div>
             ))}
             {shares.length > 3 && (

@@ -295,11 +295,11 @@ export default function DiskHealth() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Total capacity</p>
-                  <p className="text-xl font-bold">{formatBytes(summary.totalCapacity)}</p>
+                  <p className="pixel-display pixel-24 mt-1">{formatBytes(summary.totalCapacity)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Used space</p>
-                  <p className="text-xl font-bold">{formatBytes(summary.totalUsed)}</p>
+                  <p className="pixel-display pixel-24 mt-1">{formatBytes(summary.totalUsed)}</p>
                   <p className="text-xs text-muted-foreground">{Math.round(summary.usagePercent)}% used</p>
                 </div>
                 <div>
@@ -313,7 +313,7 @@ export default function DiskHealth() {
                 {summary.avgTemp !== undefined && (
                   <div>
                     <p className="text-sm text-muted-foreground">Avg temperature</p>
-                    <p className="font-mono text-xl tabular-nums">
+                    <p className="pixel-display pixel-24 mt-1">
                       {toFixedSafe(summary.avgTemp, 0, '0')} °C
                     </p>
                   </div>

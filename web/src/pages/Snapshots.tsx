@@ -144,10 +144,10 @@ export default function Snapshots() {
                           <span>
                             Created {formatDistanceToNow(new Date(snapshot.created_at), { addSuffix: true })}
                           </span>
-                          {snapshot.size_bytes && (
+                          {(snapshot.size_bytes ?? 0) > 0 && (
                             <>
                               <span>•</span>
-                              <span>{formatBytes(snapshot.size_bytes)}</span>
+                              <span>{formatBytes(snapshot.size_bytes ?? 0)}</span>
                             </>
                           )}
                           {snapshot.schedule_id && (
@@ -162,7 +162,7 @@ export default function Snapshots() {
                             {snapshot.tags.map((tag: any) => (
                               <span
                                 key={tag}
-                                className="px-2 py-1 bg-primary/10 text-primary rounded text-xs"
+                                className="rounded-sm border border-rule px-2 py-0.5 text-xs text-ink"
                               >
                                 {tag}
                               </span>
