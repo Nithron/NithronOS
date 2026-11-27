@@ -7,6 +7,7 @@ import (
 	stdnet "net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -27,8 +28,8 @@ type NetHandler struct {
 }
 
 // NewNetHandler creates a new networking handler
-func NewNetHandler(logger zerolog.Logger, agent AgentClient) (*NetHandler, error) {
-	wgMgr, err := net.NewWireGuardManager()
+func NewNetHandler(logger zerolog.Logger, agent AgentClient, stateDir string) (*NetHandler, error) {
+	wgMgr, err := net.NewWireGuardManager(filepath.Join(stateDir, "wireguard.json"), agent)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +39,7 @@ func NewNetHandler(logger zerolog.Logger, agent AgentClient) (*NetHandler, error
 	return &NetHandler{
 		firewallMgr: fw,
 		wgMgr:       wgMgr,
-		httpsMgr:    net.NewHTTPSManager(),
+		httpsMgr:    net.NewHTTPSManager(filepath.Join(stateDir, "https.json"), agent),
 		logger:      logger,
 	}, nil
 }
@@ -130,6 +131,7 @@ func (h *NetHandler) PlanFirewall(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create firewall plan
+	h.syncWireGuardPort()
 	plan, err := h.firewallMgr.CreatePlan(req.DesiredMode, req.EnableWG, req.EnableHTTPS, req.CustomRules)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, err.Error())
@@ -367,6 +369,10 @@ func (h *NetHandler) WizardNext(w http.ResponseWriter, r *http.Request) {
 
 	case 4: // Firewall plan
 		// Generate firewall plan based on selections
+		h.syncWireGuardPort()
+		if wg := state.WireGuardConfig; wg != nil && wg.ListenPort > 0 {
+			h.firewallMgr.SetWireGuardPort(wg.ListenPort)
+		}
 		plan, err := h.firewallMgr.CreatePlan(
 			state.AccessMode,
 			state.WireGuardConfig != nil,
@@ -581,4 +587,12 @@ func (a agentNFTables) List(json bool) ([]byte, error) {
 
 func (a agentNFTables) Apply(script string, persist bool) error {
 	return a.agent.PostJSON(context.Background(), "/v1/firewall/apply", map[string]any{"ruleset_text": script, "persist": persist}, nil)
+}
+
+// syncWireGuardPort opens the port WireGuard actually listens on (not a
+// fixed 51820).
+func (h *NetHandler) syncWireGuardPort() {
+	if st, err := h.wgMgr.GetState(); err == nil && st.ListenPort > 0 {
+		h.firewallMgr.SetWireGuardPort(st.ListenPort)
+	}
 }

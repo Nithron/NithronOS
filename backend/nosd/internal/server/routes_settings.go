@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
 	// "nos/backend/nosd/pkg/firewall"
@@ -30,7 +31,7 @@ func (d *routeDeps) registerSettings(pr chi.Router) {
 
 	// Network endpoints (M4)
 	netLogger := Logger(cfg)
-	netHandler, err := NewNetHandler(*netLogger, d.agentClient)
+	netHandler, err := NewNetHandler(*netLogger, d.agentClient, filepath.Dir(cfg.SessionsPath))
 	if err != nil {
 		netLogger.Error().Err(err).Msg("Failed to create network handler")
 		// Continue without networking features

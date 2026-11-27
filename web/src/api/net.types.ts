@@ -1,7 +1,8 @@
 // Network and Remote Access Types
 
 export type AccessMode = 'lan_only' | 'wireguard' | 'public_https';
-export type HTTPSMode = 'self_signed' | 'http_01' | 'dns_01';
+// 'dns_01' isn't offered: it needs Caddy plugins Debian's caddy lacks.
+export type HTTPSMode = 'self_signed' | 'http_01';
 
 export interface NetworkStatus {
   access_mode: AccessMode;

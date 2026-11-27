@@ -428,7 +428,6 @@ export function NetworkSettings() {
                 <Badge>
                   {httpsConfig.data?.mode === 'self_signed' && 'Self-Signed'}
                   {httpsConfig.data?.mode === 'http_01' && 'Let\'s Encrypt (HTTP-01)'}
-                  {httpsConfig.data?.mode === 'dns_01' && 'Let\'s Encrypt (DNS-01)'}
                 </Badge>
               </div>
             </div>

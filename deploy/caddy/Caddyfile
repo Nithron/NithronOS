@@ -6,18 +6,16 @@
 {
   # Admin API on a socket only root and caddy can reach (reloads need it).
   admin unix//var/lib/caddy/admin.sock
-  auto_https off
+  # Certificates are managed only for a public domain (Caddyfile.d/
+  # site-public.caddy, from the HTTPS settings); the :80 redirect is ours.
+  auto_https disable_redirects
 }
 
-:80 {
-  redir https://{host}{uri} permanent
-}
-
-:443 {
+# The web interface: shared by the LAN site and a public domain's site.
+(nos_site) {
   # Apps installed by nOS (written by nos-agent)
   import /etc/caddy/Caddyfile.d/app-*.caddy
 
-  tls /etc/ssl/nos/cert.pem /etc/ssl/nos/key.pem
   encode gzip zstd
 
   # No Strict-Transport-Security: with a self-signed certificate it makes
@@ -44,4 +42,16 @@
   log {
     output file /var/log/caddy/access.log
   }
+}
+
+# A public domain with a Let's Encrypt certificate, when one is set up.
+import /etc/caddy/Caddyfile.d/site-*.caddy
+
+:80 {
+  redir https://{host}{uri} permanent
+}
+
+:443 {
+  tls /etc/ssl/nos/cert.pem /etc/ssl/nos/key.pem
+  import nos_site
 }
