@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { Switch } from '@/components/ui/switch';
 import { confirmAction } from '@/components/ui/confirm';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { AddIcon, DeleteIcon, EditIcon, ScheduleIcon, StartIcon, TimeIcon, TurnedOffIcon, TurnedOnIcon } from '@/components/icons'
+import { AddIcon, DeleteIcon, EditIcon, ScheduleIcon, TimeIcon } from '@/components/icons'
 import { backupApi } from '@/api/backup';
 import type { Schedule, ScheduleFrequency, RetentionPolicy } from '@/api/backup.types';
 import { toast } from '@/components/ui/toast';
@@ -142,17 +143,12 @@ export default function BackupSchedules() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
-                      <button
-                        onClick={() => handleToggle(schedule)}
-                        className="text-primary"
+                      <Switch
+                        aria-label={`Schedule ${schedule.name}`}
+                        checked={schedule.enabled}
+                        onCheckedChange={() => handleToggle(schedule)}
                         disabled={toggleMutation.isPending}
-                      >
-                        {schedule.enabled ? (
-                          <TurnedOnIcon className="w-6 h-6" />
-                        ) : (
-                          <TurnedOffIcon className="w-6 h-6 text-muted-foreground" />
-                        )}
-                      </button>
+                      />
                       <div>
                         <p className="font-medium">{schedule.name}</p>
                         <div className="flex items-center space-x-4 mt-1 text-sm text-muted-foreground">
@@ -186,9 +182,8 @@ export default function BackupSchedules() {
                     <button
                       onClick={() => handleRunNow(schedule)}
                       className="btn btn-line min-h-8 px-3"
-                      title="Run backup now"
                     >
-                      <StartIcon className="w-4 h-4" />
+                      Run now
                     </button>
                     <button
                       onClick={() => setEditingSchedule(schedule)}

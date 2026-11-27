@@ -1,12 +1,11 @@
 /**
- * The pixel layer of the identity that needs no drawn asset: marks, meters
- * and the working cursor, on whole pixels only (crisp edges, whole-number
- * sizes, no circles, no smooth bars). Icons, the pixel display face and
- * pictures come from the shared set later (components/icons.ts and the
- * pixel-display class in styles.css are their slots).
+ * The pixel layer: state marks (the set's six state icons), meters as rows
+ * of square blocks with their number in the pixel face, and loading as
+ * words in the pixel face with a block cursor. On whole pixels only.
  */
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { FailedIcon, NoticeIcon, OfflineIcon, OkIcon, WarningIcon, WorkingIcon, type IconComponent } from '@/components/icons'
 
 /** The state of a thing, as a mark beside its word. */
 export type MarkState = 'ok' | 'warning' | 'failed' | 'running' | 'notice' | 'off'
@@ -17,15 +16,17 @@ const markTone: Record<MarkState, string> = {
   failed: 'text-status-failed',
   running: 'text-ink',
   notice: 'text-ink',
-  off: 'text-dim',
+  off: 'text-ink-2',
 }
 
-/** An 8 by 8 pixel cross, one pixel wide, corner to corner. */
-const CROSS = Array.from({ length: 8 }, (_, i) => `M${i} ${i}h1v1h-1zM${7 - i} ${i}h1v1h-1z`).join(
-  '',
-)
-/** An 8 by 8 square with a one-pixel edge. */
-const OPEN = 'M0 0h8v8h-8zM1 1v6h6v-6z'
+const markIcon: Record<MarkState, IconComponent> = {
+  ok: OkIcon,
+  warning: WarningIcon,
+  failed: FailedIcon,
+  running: WorkingIcon,
+  notice: NoticeIcon,
+  off: OfflineIcon,
+}
 
 interface MarkProps {
   state: MarkState
@@ -33,38 +34,13 @@ interface MarkProps {
 }
 
 /**
- * Filled square: in order. Open square: warning (and off, in grey). Cross:
- * failed. A square that blinks: running. A small ink square: a notice,
- * which is no state. Never alone: put its word beside it (StatusMark does).
+ * The set's six state icons at 16 px: ok, warning, failed, running (it
+ * blinks), notice (no state), off. Never alone: put its word beside it
+ * (StatusMark does).
  */
 export function Mark({ state, className }: MarkProps) {
-  const shape =
-    state === 'failed' ? (
-      <path d={CROSS} />
-    ) : state === 'warning' || state === 'off' ? (
-      <path d={OPEN} fillRule="evenodd" />
-    ) : state === 'notice' ? (
-      <rect x="2" y="2" width="4" height="4" />
-    ) : (
-      <rect width="8" height="8" />
-    )
-  return (
-    <svg
-      viewBox="0 0 8 8"
-      width="8"
-      height="8"
-      shapeRendering="crispEdges"
-      aria-hidden
-      className={cn(
-        'inline-block shrink-0 fill-current',
-        markTone[state],
-        state === 'running' && 'pixel-blink',
-        className,
-      )}
-    >
-      {shape}
-    </svg>
-  )
+  const Icon = markIcon[state]
+  return <Icon className={cn(markTone[state], className)} />
 }
 
 interface StatusMarkProps extends MarkProps {
@@ -139,7 +115,7 @@ export function Meter({
           />
         ))}
       </span>
-      {showValue && <span className="font-mono text-sm tabular-nums">{text}</span>}
+      {showValue && <span className="pixel-display">{text}</span>}
     </span>
   )
 }
@@ -152,7 +128,7 @@ interface WorkingProps {
 /** Loading or working: words in the mono face and a block cursor. */
 export function Working({ children = 'Loading', className }: WorkingProps) {
   return (
-    <span role="status" className={cn('font-mono text-sm text-ink-2', className)}>
+    <span role="status" className={cn('pixel-display text-ink-2', className)}>
       <span className="pixel-cursor">{children}</span>
     </span>
   )

@@ -13,6 +13,14 @@
  */
 @layer base {
   @font-face {
+    font-family: 'Nithron Pixel';
+    src: url('/fonts/nithron-pixel.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  @font-face {
     font-family: 'Mona Sans Variable';
     src: url('/fonts/MonaSansVF-opsz-wght.woff2') format('woff2');
     font-weight: 200 900;
@@ -224,16 +232,29 @@
 
 /* The pixel layer (components/ui/pixel.tsx): whole pixels, no smoothing. */
 @layer components {
-  .pixel {
-    image-rendering: pixelated;
-    shape-rendering: crispEdges;
+  /* The pixel display face (Nithron Pixel, @nithron/tokens 0.4.0): the
+     product's name, a screen's one large number, the words of an empty
+     or loading screen, the number beside a block meter. Nothing else.
+     Sharp only at whole multiples of 8 px, on whole pixels, left aligned,
+     with nothing synthesised. */
+  .pixel-display {
+    font-family: var(--font-pixel);
+    font-size: 16px;
+    line-height: 1.25;
+    font-weight: 400;
+    font-style: normal;
+    font-synthesis: none;
+    letter-spacing: 0;
+    font-kerning: none;
+    font-variant-ligatures: none;
   }
 
-  /* The product's name, a screen's one large number, the words of an empty
-     or loading screen. The shared pixel display face is not issued yet;
-     until then --font-pixel is unset and the mono face stands in. */
-  .pixel-display {
-    font-family: var(--font-pixel, var(--font-mono));
+  .pixel-display.pixel-24 {
+    font-size: 24px;
+  }
+
+  .pixel-display.pixel-32 {
+    font-size: 32px;
   }
 
   /* A lamp for something running: it dims and comes back in steps, so the

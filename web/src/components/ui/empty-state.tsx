@@ -59,7 +59,7 @@ export function EmptyState({
         className
       )}
     >
-      <h3 className="mb-2 text-xl font-[560] tracking-[-0.012em]">{title || config.defaultTitle}</h3>
+      <h3 className="pixel-display pixel-24 mb-2">{title || config.defaultTitle}</h3>
       {description && (
         <p className="mb-6 max-w-sm text-sm text-ink-2">
           {description}

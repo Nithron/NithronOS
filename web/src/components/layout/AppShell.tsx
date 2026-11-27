@@ -132,7 +132,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
           <div className="flex h-14 items-center border-b border-hairline px-4">
             {/* The product's name in type (the pixel display face once it is
                 issued); the drawn mark waits for the identity step. */}
-            <Link to="/" className="pixel-display text-lg text-ink">
+            <Link to="/" className="pixel-display pixel-24 text-ink">
               nOS
             </Link>
             <button

@@ -239,31 +239,14 @@ function StorageWidget({ data, isLoading }: any) {
               tone={usagePercent > 90 ? 'failed' : usagePercent > 80 ? 'warning' : 'ink'}
             />
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Used</p>
-              <motion.p
-                key={storage.usedBytes}
-                initial={false}
-                animate={{ opacity: 1 }}
-                className="text-lg font-semibold"
-              >
-                {bytesSafe(storage.usedBytes)}
-              </motion.p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total</p>
-              <p className="text-lg font-semibold">
-                {bytesSafe(storage.totalBytes)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Usage</p>
-              <p className="text-lg font-semibold">
-                {toFixedSafe(usagePercent, 1, '0.0')}%
-              </p>
-            </div>
-          </div>
+          {/* The two large numbers in the pixel face; the usage is the
+              meter's own number above. */}
+          <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2">
+            <dt className="text-sm text-ink-2">Used</dt>
+            <dd className="pixel-display pixel-24">{bytesSafe(storage.usedBytes)}</dd>
+            <dt className="text-sm text-ink-2">Total</dt>
+            <dd className="pixel-display pixel-24">{bytesSafe(storage.totalBytes)}</dd>
+          </dl>
         </div>
       </CardContent>
     </Card>

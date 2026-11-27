@@ -1,8 +1,9 @@
-/* @nithron/tokens 0.3.0 (dist/line.css, Nithron Community License v1.0). Copied whole from the nithron-site repository; replace it whole with a new release, never edit it here. */
+/* @nithron/tokens 0.4.0 (dist/line.css, Nithron Community License v1.0). Copied whole from the nithron-site repository; replace it whole with a new release, never edit it here. */
 /* @nithron/tokens line: generated from src/tokens.json by scripts/build.mjs. Do not edit. */
 :root {
   --font-sans: "Mona Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Monaspace Neon", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-pixel: "Nithron Pixel", "Monaspace Neon", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --text-h1: clamp(2.875rem, 6.2vw, 6.25rem);
   --leading-h1: 0.96;
   --weight-h1: 600;

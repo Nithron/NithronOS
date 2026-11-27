@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { confirmAction } from '@/components/ui/confirm';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { AppIcon, ChannelIcon, DeleteIcon, DownloadIcon, RefreshIcon, RollBackIcon, ServerIcon, SnapshotIcon, TimeIcon, WorkingIcon } from '@/components/icons'
+import { AppIcon, ChannelIcon, DeleteIcon, DownloadIcon, RefreshIcon, ServerIcon, SnapshotIcon, TimeIcon, WorkingIcon } from '@/components/icons'
 import { format } from 'date-fns';
 import { toast } from '@/components/ui/toast';
 import { Meter, StatusMark } from '@/components/ui/pixel';
@@ -427,9 +427,8 @@ export default function Updates() {
                       <button
                         onClick={() => handleRollback(snapshot.id)}
                         className="p-2 text-ink-2 hover:bg-ink/[.09] hover:text-ink"
-                        title="Rollback to this snapshot"
                       >
-                        <RollBackIcon className="w-4 h-4" />
+                        Restore
                       </button>
                     )}
                     <button
