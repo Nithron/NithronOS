@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+npm-debug.log
+
+# Android / Gradle (build outputs and machine-local files)
+android/.gradle/
+android/build/
+android/app/build/
+android/app/.cxx/
+android/.kotlin/
+android/local.properties
+android/keystore.properties
+android/app/release.keystore
+*.keystore
+!debug.keystore
+*.iml
+*.hprof
+.idea/
+
+# Metro / bundles
+*.jsbundle
+.metro-health-check*
+
+# Tests
+coverage/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
