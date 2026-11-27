@@ -327,7 +327,7 @@ export default function DiskHealth() {
       {/* Disk cards grid */}
       <motion.div 
         variants={containerVariants}
-        className="grid gap-px border border-hairline bg-hairline md:grid-cols-2 lg:grid-cols-3 [&>*]:bg-page [&>*>*]:h-full [&>*>*]:border-0"
+        className="grid border-l border-t border-hairline md:grid-cols-2 lg:grid-cols-3 [&>*]:border-b [&>*]:border-r [&>*]:border-hairline [&>*>*]:h-full [&>*>*]:border-0"
       >
         {disks.map((disk) => (
           <DiskCard
