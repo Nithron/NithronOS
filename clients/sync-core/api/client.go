@@ -367,6 +367,22 @@ func (c *Client) GetBlockHashes(ctx context.Context, shareID, path string, block
 	return &resp, err
 }
 
+// DeltaOp is one step of a delta upload: copy Size bytes at Offset of the
+// server's current file, or new Data.
+type DeltaOp struct {
+	Offset int64  `json:"offset,omitempty"`
+	Size   int64  `json:"size,omitempty"`
+	Data   []byte `json:"data,omitempty"`
+}
+
+// UploadDelta rebuilds path on the server from its current content and ops;
+// sha256Hex is what the result must hash to (the server refuses otherwise).
+func (c *Client) UploadDelta(ctx context.Context, shareID, path, sha256Hex string, ops []DeltaOp) error {
+	reqPath := fmt.Sprintf("/api/v1/sync/files/%s/delta", url.QueryEscape(shareID))
+	body := map[string]any{"path": path, "sha256": sha256Hex, "ops": ops}
+	return c.request(ctx, "POST", reqPath, body, nil)
+}
+
 // GetSyncState returns the sync state for a share.
 func (c *Client) GetSyncState(ctx context.Context, shareID string) (*SyncState, error) {
 	path := fmt.Sprintf("/api/v1/sync/state/%s", url.QueryEscape(shareID))

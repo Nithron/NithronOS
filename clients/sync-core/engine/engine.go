@@ -3,6 +3,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -806,15 +807,34 @@ func (e *Engine) deltaUpload(ctx context.Context, shareID, remotePath, localPath
 	}
 
 	// If delta savings are minimal, do full upload
-	if float64(plan.SavedBytes)/float64(plan.TotalBytes) < 0.2 {
-		return fmt.Errorf("delta savings too small")
+	if plan.TotalBytes == 0 || float64(plan.SavedBytes)/float64(plan.TotalBytes) < 0.2 {
+		return errDeltaNotWorthIt
 	}
-
-	// For simplicity, we'll do a full upload for now
-	// A full delta upload implementation would send only the changed blocks
-	// and have the server reconstruct the file
-	return fmt.Errorf("delta upload requires server-side support")
+	sum, err := hash.FileHash(localPath)
+	if err != nil {
+		return err
+	}
+	ops := make([]api.DeltaOp, 0, len(plan.Operations))
+	var newBytes int64
+	for _, op := range plan.Operations {
+		if op.Type == "copy" {
+			ops = append(ops, api.DeltaOp{Offset: op.Offset, Size: int64(op.Size)})
+			continue
+		}
+		newBytes += int64(len(op.Data))
+		ops = append(ops, api.DeltaOp{Data: op.Data})
+	}
+	// The server takes at most 64 MiB per request (base64 grows data by a
+	// third); more new data goes as a whole-file upload.
+	if newBytes > 40<<20 {
+		return errDeltaNotWorthIt
+	}
+	// The server rebuilds the file and checks it against the hash; if the
+	// file changed there meanwhile it refuses and the caller uploads it whole.
+	return e.apiClient.UploadDelta(ctx, shareID, remotePath, sum, ops)
 }
+
+var errDeltaNotWorthIt = errors.New("a delta upload wouldn't save enough")
 
 func (e *Engine) handleConflict(shareID, path string, localModTime time.Time, localHash string, remote api.FileChange) {
 	e.logger.Warn().
