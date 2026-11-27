@@ -43,11 +43,11 @@ fi
 
 # 3. Services that must start on first boot. nosd shows the first-boot setup
 #    code on the console; nos-issue-reload.path refreshes the login prompts.
-for unit in nosd.service nos-agent.service; do
+for unit in nosd.service nos-agent.service nos-firewall.service nos-certgen.service caddy.service; do
 	in-target systemctl enable "$unit" || fail "cannot enable $unit"
 done
 # (the nosd package also enables nos-issue-reload.path itself)
-for unit in nos-issue-reload.path caddy.service docker.service ssh.service; do
+for unit in nos-issue-reload.path docker.service ssh.service; do
 	in-target systemctl enable "$unit" 2>/dev/null || log "optional unit $unit not enabled"
 done
 

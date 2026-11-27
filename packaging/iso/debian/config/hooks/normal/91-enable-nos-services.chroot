@@ -1,6 +1,0 @@
-#!/bin/bash
-set -euo pipefail
-
-# Services are already enabled in hook 10, this is just for verification
-echo "[91-enable-nos-services] Services should already be enabled by hook 10"
-

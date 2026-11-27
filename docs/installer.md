@@ -11,7 +11,7 @@ downloads needed) and asks only what a person has to decide.
 - **Disk**: one disk for the system, at least 20 GB (50 GB or more recommended). Keep your data disks separate;
   they are set up later from the web UI.
 - **Memory**: at least 2 GB RAM, 4 GB or more recommended.
-- **Firmware**: UEFI or legacy BIOS. Secure Boot must be disabled for now (the ISO isn't shim-signed yet).
+- **Firmware**: UEFI or legacy BIOS. Secure Boot: see [Secure Boot](#secure-boot) (known limitations).
 - **Network**: optional during the install; DHCP is used when available.
 
 ## Installing
@@ -129,10 +129,11 @@ mount /var/lib/docker
 
 ### Secure Boot
 
-nOS currently does not support Secure Boot. If you encounter boot issues:
+Known limitation, not yet tested in CI. The boot chain is Debian's: the ISO and installed systems boot through Debian's signed `shim` and GRUB (`shim-signed`, `grub-efi-amd64-signed`) and Debian's signed kernel, so they are expected to boot with Secure Boot on.
 
-1. Disable Secure Boot in the UEFI settings
-2. Boot in UEFI mode, or in legacy/CSM mode; both are supported
+What doesn't work with Secure Boot on: **ZFS**. Its kernel module is built on the machine by DKMS and isn't signed, so the kernel refuses to load it. Either turn Secure Boot off, or enroll the DKMS signing key as a Machine Owner Key (`mokutil --import /var/lib/dkms/mok.pub`, then confirm it in the MOK manager at the next boot). Btrfs pools are not affected.
+
+If the ISO doesn't boot with Secure Boot on, turn it off in the UEFI settings and please report it; UEFI and legacy BIOS boots are both tested.
 
 ## Advanced Installation
 

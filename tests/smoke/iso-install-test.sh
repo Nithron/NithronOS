@@ -146,4 +146,21 @@ if [ "${applied:-0}" -eq 0 ]; then
 fi
 log "nos-agent applied the share configuration"
 
+# 6. Caddy passes WebDAV to nosd (it used to answer /dav with the web
+#    interface's HTML).
+dav=$(curl -sk -m 10 -o /dev/null -w '%{http_code} %{content_type}' -X PROPFIND "https://127.0.0.1:$PORT/dav/" || true)
+case "$dav" in
+	*text/html*|"") fail "WebDAV isn't reaching nosd: $dav" ;;
+esac
+log "WebDAV reaches nosd ($dav)"
+
+# 7. Nothing failed to start at boot (nftables, smbd and a TLS generator
+#    used to).
+failed=$(tr -cd '\11\12\15\40-\176' < "$WORK_DIR/boot-serial.log" | grep -o 'Failed to start [^.]*' | sed 's/\x1b\[[0-9;]*m//g' | sort -u || true)
+if [ -n "$failed" ]; then
+	echo "$failed"
+	fail "units failed at boot"
+fi
+log "no unit failed at boot"
+
 log "PASS: installed, console shows the setup code, the API accepts it, nos-agent works"
