@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button } from './button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './dialog'
 
 /**
  * nOS's own confirmation, in place of the browser's confirm box:

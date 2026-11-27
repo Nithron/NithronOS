@@ -64,7 +64,15 @@ export function SeriesKey({ items }: { items: SeriesKeyItem[] }) {
       {items.map((s) => (
         <li key={s.name} className="flex items-center gap-2">
           <svg width="24" height="8" aria-hidden className="shrink-0">
-            <line x1="0" y1="4" x2="24" y2="4" stroke={`var(--series-${s.n})`} strokeWidth="1.5" strokeDasharray={dashes[s.n]} />
+            <line
+              x1="0"
+              y1="4"
+              x2="24"
+              y2="4"
+              stroke={`var(--series-${s.n})`}
+              strokeWidth="1.5"
+              strokeDasharray={dashes[s.n]}
+            />
           </svg>
           <span>{s.name}</span>
           <span className="font-mono tabular-nums">{s.value}</span>
