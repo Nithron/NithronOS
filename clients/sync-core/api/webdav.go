@@ -119,7 +119,7 @@ func (w *WebDAVClient) Download(ctx context.Context, shareID, remotePath, localP
 	// Set modification time if available
 	if lastMod := resp.Header.Get("Last-Modified"); lastMod != "" {
 		if t, err := http.ParseTime(lastMod); err == nil {
-			os.Chtimes(localPath, t, t)
+			_ = os.Chtimes(localPath, t, t) // the content is what matters
 		}
 	}
 

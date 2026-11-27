@@ -3,6 +3,7 @@ package watcher
 
 import (
 	"context"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -281,18 +282,21 @@ func (w *Watcher) handleEvent(fsEvent fsnotify.Event) {
 		op = OpCreate
 		// If a directory was created, add it to the watcher
 		if info, err := os.Stat(fsEvent.Name); err == nil && info.IsDir() {
-			w.watcher.Add(fsEvent.Name)
+			// A folder that can't be watched would miss its changes
+			// silently (inotify's watch limit, say): say so.
+			if err := w.watcher.Add(fsEvent.Name); err != nil {
+				log.Printf("sync watcher: can't watch %s, its changes won't be seen: %v", fsEvent.Name, err)
+			}
 		}
 	case fsEvent.Has(fsnotify.Write):
 		op = OpWrite
 	case fsEvent.Has(fsnotify.Remove):
 		op = OpRemove
 		// Remove from watcher (ignore error if not watched)
-		w.watcher.Remove(fsEvent.Name)
+		_ = w.watcher.Remove(fsEvent.Name)
 	case fsEvent.Has(fsnotify.Rename):
 		op = OpRename
 	case fsEvent.Has(fsnotify.Chmod):
-		op = OpChmod
 		// Ignore chmod-only events
 		return
 	default:

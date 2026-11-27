@@ -407,7 +407,9 @@ func (d *Database) DequeueOperations(limit int) ([]QueueOperation, error) {
 
 	// Remove dequeued operations
 	for _, op := range ops {
-		d.db.Exec("DELETE FROM sync_queue WHERE id = ?", op.ID)
+		if _, err := d.db.Exec("DELETE FROM sync_queue WHERE id = ?", op.ID); err != nil {
+			return nil, fmt.Errorf("dequeue %d: %w", op.ID, err)
+		}
 	}
 
 	return ops, rows.Err()

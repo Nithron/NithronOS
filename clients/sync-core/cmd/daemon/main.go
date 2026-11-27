@@ -169,7 +169,9 @@ func main() {
 
 	done := make(chan struct{})
 	go func() {
-		eng.Stop()
+		if err := eng.Stop(); err != nil {
+			log.Error().Err(err).Msg("stopping the sync engine")
+		}
 		close(done)
 	}()
 

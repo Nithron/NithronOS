@@ -318,19 +318,26 @@ func QuickHash(path string) (string, error) {
 	h := sha256.New()
 
 	// Read first 64KB
+	// A failed read is an error, not a hash of whatever was read (that
+	// could make a changed file look unchanged).
 	buf := make([]byte, 64*1024)
-	n, _ := f.Read(buf)
+	n, err := io.ReadFull(f, buf)
+	if err != nil && err != io.ErrUnexpectedEOF && err != io.EOF {
+		return "", err
+	}
 	h.Write(buf[:n])
 
 	// Read last 64KB if file is large enough
 	if size > 128*1024 {
-		f.Seek(-64*1024, io.SeekEnd)
-		n, _ = f.Read(buf)
+		n, err = f.ReadAt(buf, size-64*1024)
+		if err != nil && err != io.EOF {
+			return "", err
+		}
 		h.Write(buf[:n])
 	}
 
 	// Include size in hash
-	h.Write([]byte(fmt.Sprintf(":%d", size)))
+	fmt.Fprintf(h, ":%d", size)
 
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
