@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getErrorMessage } from '@/lib/nos-client';
-import { AppIcon, ChevronLeftIcon, CopyIcon, DeleteIcon, DownloadIcon, FailedIcon, HealthIcon, HistoryIcon, OkIcon, OpenExternalIcon, PauseIcon, RestartIcon, SecurityIcon, SettingsIcon, StartIcon, StopIcon, StorageIcon, TerminalIcon, TimeIcon, UpgradeIcon, WorkingIcon } from '@/components/icons'
+import { AppIcon, ChevronLeftIcon, CopyIcon, DeleteIcon, DownloadIcon, FailedIcon, HistoryIcon, OkIcon, OpenExternalIcon, PauseIcon, RestartIcon, SecurityIcon, StartIcon, StopIcon, StorageIcon, TimeIcon, UpgradeIcon, WorkingIcon } from '@/components/icons'
 import { appsApi } from '../api/apps';
 import type { AppSnapshot, AppEvent, ContainerHealth, PortMapping } from '../api/apps.types';
 import { cn } from '../lib/utils';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/toast';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -158,28 +159,28 @@ export function AppDetails() {
   const getStatusColor = (status?: string) => {
     switch (status) {
       case 'running':
-        return 'text-green-500';
+        return 'text-status-ok-text';
       case 'stopped':
-        return 'text-gray-500';
+        return 'text-ink-2';
       case 'error':
-        return 'text-red-500';
+        return 'text-status-failed-text';
       case 'starting':
       case 'stopping':
       case 'upgrading':
-        return 'text-yellow-500';
+        return 'text-status-warning-text';
       default:
-        return 'text-gray-400';
+        return 'text-ink-2';
     }
   };
 
   const getHealthColor = (status?: string) => {
     switch (status) {
       case 'healthy':
-        return 'text-green-500';
+        return 'text-status-ok-text';
       case 'unhealthy':
-        return 'text-red-500';
+        return 'text-status-failed-text';
       default:
-        return 'text-gray-400';
+        return 'text-ink-2';
     }
   };
 
@@ -192,7 +193,7 @@ export function AppDetails() {
     return (
       <div className="container mx-auto py-6">
         <div className="flex justify-center py-12">
-          <WorkingIcon className="w-8 h-8 animate-spin text-gray-400" />
+          <WorkingIcon className="w-8 h-8 animate-spin text-ink-2" />
         </div>
       </div>
     );
@@ -202,7 +203,7 @@ export function AppDetails() {
     return (
       <div className="container mx-auto py-6">
         <div className="text-center py-12">
-          <FailedIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <FailedIcon className="w-12 h-12 text-status-failed-text mx-auto mb-4" />
           <p className="text-lg">App not found</p>
           <button
             onClick={() => navigate('/apps')}
@@ -218,7 +219,7 @@ export function AppDetails() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
-      <div className="bg-gray-800 rounded-lg p-6">
+      <div className="border border-hairline p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4">
             <button
@@ -227,13 +228,13 @@ export function AppDetails() {
             >
               <ChevronLeftIcon className="w-4 h-4" />
             </button>
-            <div className="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center">
-              <AppIcon className="w-8 h-8 text-gray-400" />
+            <div className="w-16 h-16 border border-hairline flex items-center justify-center">
+              <AppIcon className="w-8 h-8 text-ink-2" />
             </div>
             <div>
               <h1 className="screen-title">{app.name}</h1>
               <div className="flex items-center gap-4 mt-2">
-                <span className="text-sm text-gray-400">v{app.version}</span>
+                <span className="text-sm text-ink-2">v{app.version}</span>
                 <div className={cn('flex items-center gap-1', getStatusColor(app.status))}>
                   {app.status === 'running' && <OkIcon className="w-4 h-4" />}
                   {app.status === 'stopped' && <FailedIcon className="w-4 h-4" />}
@@ -308,35 +309,21 @@ export function AppDetails() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-gray-800 rounded-lg w-fit">
-        {[
-          { key: 'health', label: 'Health', icon: HealthIcon },
-          { key: 'logs', label: 'Logs', icon: TerminalIcon },
-          { key: 'config', label: 'Config', icon: SettingsIcon },
-          { key: 'snapshots', label: 'Snapshots', icon: HistoryIcon },
-        ].map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
-            className={cn(
-              'px-4 py-2 rounded-md transition-colors flex items-center gap-2',
-              activeTab === tab.key
-                ? 'bg-gray-700 text-white'
-                : 'text-gray-400 hover:text-white'
-            )}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+        <TabsList>
+          <TabsTrigger value="health">Health</TabsTrigger>
+          <TabsTrigger value="logs">Logs</TabsTrigger>
+          <TabsTrigger value="config">Config</TabsTrigger>
+          <TabsTrigger value="snapshots">Snapshots</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Tab Content */}
-      <div className="bg-gray-800 rounded-lg p-6">
+      <div className="border border-hairline p-6">
         {activeTab === 'health' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Health status</h2>
+              <h2 className="text-xl font-[560]">Health status</h2>
               <button
                 onClick={() => healthCheckMutation.mutate()}
                 disabled={healthCheckMutation.isPending}
@@ -351,22 +338,22 @@ export function AppDetails() {
             </div>
             
             {/* Overall Health */}
-            <div className="bg-gray-700 rounded-lg p-4">
+            <div className="border border-hairline p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-400">Overall health</p>
-                  <p className={cn('text-2xl font-semibold', getHealthColor(app.health?.status))}>
+                  <p className="text-sm text-ink-2">Overall health</p>
+                  <p className={cn('text-2xl font-[560]', getHealthColor(app.health?.status))}>
                     {app.health?.status || 'Unknown'}
                   </p>
                 </div>
                 {app.health?.checked_at && (
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-ink-2">
                     Last checked: {formatDistanceToNow(new Date(app.health.checked_at), { addSuffix: true })}
                   </p>
                 )}
               </div>
               {app.health?.message && (
-                <p className="text-sm text-gray-300 mt-2">{app.health.message}</p>
+                <p className="text-sm text-ink mt-2">{app.health.message}</p>
               )}
             </div>
             
@@ -376,20 +363,20 @@ export function AppDetails() {
                 <h3 className="font-medium mb-3">Containers</h3>
                 <div className="space-y-2">
                   {app.health.containers.map((container: ContainerHealth, idx: number) => (
-                    <div key={idx} className="bg-gray-700 rounded-lg p-3">
+                    <div key={idx} className="border border-hairline p-3">
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{container.name}</span>
                         <div className="flex items-center gap-4">
                           <span className={cn(
                             'text-sm',
-                            container.status === 'running' ? 'text-green-500' : 'text-gray-400'
+                            container.status === 'running' ? 'text-status-ok-text' : 'text-ink-2'
                           )}>
                             {container.status}
                           </span>
                           {container.health && (
                             <span className={cn(
                               'text-sm',
-                              container.health === 'healthy' ? 'text-green-500' : 'text-red-500'
+                              container.health === 'healthy' ? 'text-status-ok-text' : 'text-status-failed-text'
                             )}>
                               {container.health}
                             </span>
@@ -408,18 +395,18 @@ export function AppDetails() {
                 <h3 className="font-medium mb-3">Recent events</h3>
                 <div className="space-y-2">
                   {eventsData.events.slice(0, 5).map((event: AppEvent) => (
-                    <div key={event.id} className="bg-gray-700 rounded-lg p-3">
+                    <div key={event.id} className="border border-hairline p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <TimeIcon className="w-4 h-4 text-gray-400" />
+                          <TimeIcon className="w-4 h-4 text-ink-2" />
                           <span className="text-sm">{event.type}</span>
                         </div>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-ink-2">
                           {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}
                         </span>
                       </div>
                       {event.details && (
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-ink-2 mt-1">
                           {JSON.stringify(event.details)}
                         </p>
                       )}
@@ -434,7 +421,7 @@ export function AppDetails() {
         {activeTab === 'logs' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Logs</h2>
+              <h2 className="text-xl font-[560]">Logs</h2>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setLogsPaused(!logsPaused)}
@@ -470,15 +457,15 @@ export function AppDetails() {
               </div>
             </div>
             
-            <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm h-96 overflow-y-auto">
+            <div className="border border-hairline p-4 font-mono text-sm h-96 overflow-y-auto">
               {logs.length === 0 ? (
-                <p className="text-gray-500">No logs available</p>
+                <p className="text-ink-2">No logs available</p>
               ) : (
                 <>
                   {logs.map((line, idx) => (
-                    <div key={idx} className="hover:bg-gray-800 px-2 py-0.5">
-                      <span className="text-gray-500 mr-4">{idx + 1}</span>
-                      <span className="text-gray-300">{line}</span>
+                    <div key={idx} className="hover:bg-ink/[.09] px-2 py-0.5">
+                      <span className="text-ink-2 mr-4">{idx + 1}</span>
+                      <span className="text-ink">{line}</span>
                     </div>
                   ))}
                   <div ref={logsEndRef} />
@@ -490,7 +477,7 @@ export function AppDetails() {
 
         {activeTab === 'config' && (
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Configuration</h2>
+            <h2 className="text-xl font-[560]">Configuration</h2>
             
             {/* Environment Variables */}
             <div>
@@ -504,7 +491,7 @@ export function AppDetails() {
                   Copy
                 </button>
               </div>
-              <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm">
+              <div className="border border-hairline p-4 font-mono text-sm">
                 <pre>{JSON.stringify(app.params, null, 2)}</pre>
               </div>
             </div>
@@ -515,7 +502,7 @@ export function AppDetails() {
                 <h3 className="font-medium mb-3">Port mappings</h3>
                 <div className="space-y-2">
                   {app.ports.map((port: PortMapping, idx: number) => (
-                    <div key={idx} className="bg-gray-700 rounded-lg p-3">
+                    <div key={idx} className="border border-hairline p-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm">
                           Container: {port.container}/{port.protocol}
@@ -535,7 +522,7 @@ export function AppDetails() {
         {activeTab === 'snapshots' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Snapshots</h2>
+              <h2 className="text-xl font-[560]">Snapshots</h2>
               <button
                 className="btn btn-secondary btn-sm"
                 onClick={() => snapshotMutation.mutate()}
@@ -549,14 +536,14 @@ export function AppDetails() {
             {app.snapshots && app.snapshots.length > 0 ? (
               <div className="space-y-2">
                 {app.snapshots.map((snapshot: AppSnapshot) => (
-                  <div key={snapshot.id} className="bg-gray-700 rounded-lg p-4">
+                  <div key={snapshot.id} className="border border-hairline p-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">{snapshot.name}</p>
-                        <p className="text-sm text-gray-400">
+                        <p className="text-sm text-ink-2">
                           {formatDistanceToNow(new Date(snapshot.timestamp), { addSuffix: true })}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-ink-2">
                           Type: {snapshot.type} • ID: {snapshot.id}
                         </p>
                       </div>
@@ -591,8 +578,8 @@ export function AppDetails() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <StorageIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-400">No snapshots available</p>
+                <StorageIcon className="w-12 h-12 text-ink-2 mx-auto mb-4" />
+                <p className="text-ink-2">No snapshots available</p>
               </div>
             )}
           </div>
@@ -600,8 +587,8 @@ export function AppDetails() {
       </div>
 
       {/* Danger Zone */}
-      <div className="bg-red-900/20 border border-red-800 rounded-lg p-6">
-        <h2 className="text-xl font-semibold text-red-400 mb-4">Danger zone</h2>
+      <div className="border border-status-failed p-6">
+        <h2 className="text-xl font-[560] text-status-failed-text mb-4">Danger zone</h2>
         {!showDeleteConfirm ? (
           <button
             onClick={() => setShowDeleteConfirm(true)}
@@ -612,7 +599,7 @@ export function AppDetails() {
           </button>
         ) : (
           <div className="space-y-4">
-            <p className="text-sm text-gray-300">
+            <p className="text-sm text-ink">
               This will stop and remove the app. You can choose to keep the data.
             </p>
             <label className="flex items-center gap-2 cursor-pointer">

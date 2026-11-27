@@ -179,7 +179,7 @@ function DeviceCard({
         
         {device.last_ip && (
           <div className="text-sm text-muted-foreground mb-4">
-            Last IP: <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">{device.last_ip}</code>
+            Last IP: <code className="font-mono text-xs text-ink">{device.last_ip}</code>
           </div>
         )}
         

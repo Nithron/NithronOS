@@ -6,6 +6,7 @@ import { AppIcon, AutomationIcon, ChevronRightIcon, CloudIcon, DatabaseIcon, Dev
 import { appsApi } from '../api/apps';
 import type { CatalogEntry, InstalledApp } from '../api/apps.types';
 import { cn } from '../lib/utils';
+import { StatusMark } from '@/components/ui/pixel';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card-enhanced';
 import { toast } from '@/components/ui/toast';
@@ -150,18 +151,18 @@ export function AppCatalog() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'running':
-        return 'text-green-500';
+        return 'text-status-ok-text';
       case 'stopped':
-        return 'text-gray-500';
+        return 'text-ink-2';
       case 'error':
       case 'unhealthy':
-        return 'text-red-500';
+        return 'text-status-failed-text';
       case 'starting':
       case 'stopping':
       case 'upgrading':
-        return 'text-yellow-500';
+        return 'text-status-warning-text';
       default:
-        return 'text-gray-400';
+        return 'text-ink-2';
     }
   };
 
@@ -213,40 +214,24 @@ export function AppCatalog() {
     
     return (
       <motion.div variants={itemVariants}>
-        <Card className="group hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
+        <Card className="h-full overflow-hidden">
           <div className="relative">
-            {/* App Header with Gradient Background */}
-            <div className={cn(
-              "h-32 relative overflow-hidden",
-              "bg-gradient-to-br",
-              isInstalled ? "from-green-600 to-green-800" : "from-blue-600 to-purple-800"
-            )}>
-              <div className="absolute inset-0 bg-black/20" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <CategoryIcon className="w-16 h-16 text-white/80" />
-              </div>
-              {(app as any).verified && (
-                <div className="absolute top-2 right-2">
-                  <Badge className="bg-yellow-500 text-black">
-                    <SecurityIcon className="w-3 h-3 mr-1" />
-                    Verified
-                  </Badge>
-                </div>
-              )}
-              {isInstalled && (
-                <div className="absolute top-2 left-2">
-                  <Badge className="bg-green-500">
-                    <OkIcon className="w-3 h-3 mr-1" />
-                    Installed
-                  </Badge>
-                </div>
-              )}
+            {/* The category in the mono face and the app's states in words. */}
+            <div className="flex items-center justify-between gap-3 border-b border-hairline px-4 py-3">
+              <span className="flex items-center gap-2 font-mono text-[0.8125rem] text-ink-2">
+                <CategoryIcon className="h-4 w-4" />
+                {app.categories?.[0] ?? 'app'}
+              </span>
+              <span className="flex items-center gap-3 text-sm">
+                {(app as any).verified && <span>Verified</span>}
+                {isInstalled && <StatusMark state="ok">Installed</StatusMark>}
+              </span>
             </div>
-            
+
             {/* App Info */}
             <div className="p-4 space-y-3">
               <div>
-                <h3 className="font-semibold text-lg line-clamp-1">{app.name}</h3>
+                <h3 className="font-[560] text-lg line-clamp-1">{app.name}</h3>
                 <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
                   {app.description}
                 </p>
@@ -307,16 +292,16 @@ export function AppCatalog() {
     
     return (
       <motion.div variants={itemVariants}>
-        <Card className="group hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
+        <Card className="h-full overflow-hidden">
           <div className="relative">
             {/* Status Bar */}
-            <div className={cn(
-              "h-2",
-              app.status === 'running' && "bg-green-500",
-              app.status === 'stopped' && "bg-gray-500",
-              app.status === 'error' && "bg-red-500",
-              (app.status === 'starting' || app.status === 'stopping') && "bg-yellow-500 animate-pulse"
-            )} />
+            <div className="border-b border-hairline px-4 py-3 text-sm">
+              <StatusMark
+                state={app.status === 'running' ? 'ok' : app.status === 'error' ? 'failed' : app.status === 'starting' || app.status === 'stopping' ? 'running' : 'off'}
+              >
+                {app.status}
+              </StatusMark>
+            </div>
             
             {/* App Content */}
             <div className="p-4 space-y-3">
@@ -326,7 +311,7 @@ export function AppCatalog() {
                     <CategoryIcon className="w-8 h-8 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">{app.name}</h3>
+                    <h3 className="font-[560] text-lg">{app.name}</h3>
                     <div className={cn("flex items-center gap-1 text-sm", getStatusColor(app.status))}>
                       {getStatusIcon(app.status)}
                       <span className="capitalize">{app.status}</span>
@@ -405,9 +390,6 @@ export function AppCatalog() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
-            <AppIcon className="w-8 h-8 text-white" />
-          </div>
           <div>
             <h1 className="screen-title">App catalog</h1>
             <p className="text-muted-foreground">
@@ -436,7 +418,7 @@ export function AppCatalog() {
             className={cn(
               'px-4 py-2 rounded-md transition-all font-medium',
               activeTab === 'catalog'
-                ? 'bg-background text-foreground shadow-sm'
+                ? 'bg-background text-foreground '
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -448,7 +430,7 @@ export function AppCatalog() {
             className={cn(
               'px-4 py-2 rounded-md transition-all font-medium relative',
               activeTab === 'installed'
-                ? 'bg-background text-foreground shadow-sm'
+                ? 'bg-background text-foreground '
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -469,7 +451,7 @@ export function AppCatalog() {
             className={cn(
               'p-2 rounded transition-all',
               viewMode === 'grid'
-                ? 'bg-background text-foreground shadow-sm'
+                ? 'bg-background text-foreground '
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -480,7 +462,7 @@ export function AppCatalog() {
             className={cn(
               'p-2 rounded transition-all',
               viewMode === 'list'
-                ? 'bg-background text-foreground shadow-sm'
+                ? 'bg-background text-foreground '
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -520,11 +502,10 @@ export function AppCatalog() {
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setSelectedCategory(null)}
+                aria-pressed={selectedCategory === null}
                 className={cn(
-                  'px-4 py-2 rounded-full text-sm font-medium transition-all',
-                  selectedCategory === null
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted hover:bg-muted/80'
+                  'min-h-8 border px-3 text-sm',
+                  selectedCategory === null ? 'border-ink bg-ink text-page' : 'border-rule hover:border-ink'
                 )}
               >
                 All categories
@@ -535,11 +516,10 @@ export function AppCatalog() {
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
+                    aria-pressed={selectedCategory === cat}
                     className={cn(
-                      'px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2',
-                      selectedCategory === cat
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted hover:bg-muted/80'
+                      'flex min-h-8 items-center gap-2 border px-3 text-sm',
+                      selectedCategory === cat ? 'border-ink bg-ink text-page' : 'border-rule hover:border-ink'
                     )}
                   >
                     <Icon className="w-4 h-4" />
@@ -568,7 +548,7 @@ export function AppCatalog() {
             ) : filteredEntries.length === 0 ? (
               <Card className="p-12 text-center">
                 <AppIcon className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No apps found</h3>
+                <h3 className="text-lg font-[560] mb-2">No apps found</h3>
                 <p className="text-muted-foreground">
                   {searchQuery || selectedCategory
                     ? 'Try adjusting your filters'
@@ -610,7 +590,7 @@ export function AppCatalog() {
             ) : installedApps.length === 0 ? (
               <Card className="p-12 text-center">
                 <AppIcon className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No apps installed</h3>
+                <h3 className="text-lg font-[560] mb-2">No apps installed</h3>
                 <p className="text-muted-foreground mb-6">
                   Install apps from the catalog to get started
                 </p>

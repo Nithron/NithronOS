@@ -5,6 +5,7 @@ import { AppIcon, ChevronLeftIcon, ChevronRightIcon, ChosenIcon, FailedIcon, Hid
 import { appsApi } from '../api/apps';
 import type { CatalogEntry, JsonSchemaProperty, PortMapping, VolumeMount } from '../api/apps.types';
 import { cn } from '../lib/utils';
+import { StatusMark } from '@/components/ui/pixel';
 import { toast } from '@/components/ui/toast';
 
 interface FormData {
@@ -158,7 +159,7 @@ export function AppInstallWizard() {
         <label className="block">
           <span className="text-sm font-medium">{prop.title || key}</span>
           {schema?.required?.includes(key) && (
-            <span className="text-red-500 ml-1">*</span>
+            <span className="text-status-failed-text ml-1">*</span>
           )}
         </label>
         
@@ -166,7 +167,7 @@ export function AppInstallWizard() {
           <select
             value={value}
             onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
-            className={cn('input w-full', error && 'border-red-500')}
+            className={cn('input w-full', error && 'border-status-failed')}
           >
             <option value="">Select...</option>
             {prop.enum.map(opt => (
@@ -181,7 +182,7 @@ export function AppInstallWizard() {
               onChange={(e) => setFormData({ ...formData, [key]: e.target.checked })}
               className="checkbox"
             />
-            <span className="text-sm text-gray-400">{prop.description}</span>
+            <span className="text-sm text-ink-2">{prop.description}</span>
           </label>
         ) : (
           <div className="relative">
@@ -190,13 +191,13 @@ export function AppInstallWizard() {
               value={value}
               onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
               placeholder={prop.examples?.[0] || ''}
-              className={cn('input w-full', error && 'border-red-500', isPassword && 'pr-10')}
+              className={cn('input w-full', error && 'border-status-failed', isPassword && 'pr-10')}
             />
             {isPassword && (
               <button
                 type="button"
                 onClick={() => setShowPasswords({ ...showPasswords, [key]: !showPassword })}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-2 hover:text-ink"
               >
                 {showPassword ? <HideIcon className="w-4 h-4" /> : <ShowIcon className="w-4 h-4" />}
               </button>
@@ -205,10 +206,10 @@ export function AppInstallWizard() {
         )}
         
         {prop.description && !error && (
-          <p className="text-xs text-gray-400">{prop.description}</p>
+          <p className="text-xs text-ink-2">{prop.description}</p>
         )}
         {error && (
-          <p className="text-xs text-red-500">{error}</p>
+          <p className="text-xs text-status-failed-text">{error}</p>
         )}
       </div>
     );
@@ -218,7 +219,7 @@ export function AppInstallWizard() {
     return (
       <div className="container mx-auto py-6">
         <div className="text-center py-12">
-          <FailedIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <FailedIcon className="w-12 h-12 text-status-failed-text mx-auto mb-4" />
           <p className="text-lg">App not found</p>
           <button
             onClick={() => navigate('/apps')}
@@ -241,10 +242,10 @@ export function AppInstallWizard() {
         >
           <ChevronLeftIcon className="w-4 h-4" />
         </button>
-        <AppIcon className="w-8 h-8 text-blue-500" />
+        <AppIcon className="w-8 h-8 text-ink" />
         <div>
           <h1 className="screen-title">Install {app.name}</h1>
-          <p className="text-sm text-gray-400">{app.description}</p>
+          <p className="text-sm text-ink-2">{app.description}</p>
         </div>
       </div>
 
@@ -253,79 +254,50 @@ export function AppInstallWizard() {
         {steps.map((step, index) => (
           <div
             key={index}
-            className={cn(
-              'flex items-center',
-              index < steps.length - 1 && 'flex-1'
-            )}
+            className="flex items-center"
           >
-            <div
-              className={cn(
-                'flex items-center justify-center w-10 h-10 rounded-full border-2',
-                index === currentStep
-                  ? 'bg-blue-600 border-blue-600 text-white'
-                  : index < currentStep
-                  ? 'bg-green-600 border-green-600 text-white'
-                  : 'bg-gray-800 border-gray-600 text-gray-400'
-              )}
+            <StatusMark
+              state={index < currentStep ? 'ok' : index === currentStep ? 'running' : 'off'}
+              className={cn('text-sm', index === currentStep ? 'font-[560] text-ink' : 'text-ink-2')}
             >
-              {index < currentStep ? (
-                <ChosenIcon className="w-5 h-5" />
-              ) : (
-                <step.icon className="w-5 h-5" />
-              )}
-            </div>
-            <div className="ml-3">
-              <p className={cn(
-                'text-sm font-medium',
-                index === currentStep ? 'text-white' : 'text-gray-400'
-              )}>
-                {step.title}
-              </p>
-            </div>
-            {index < steps.length - 1 && (
-              <div
-                className={cn(
-                  'flex-1 h-0.5 mx-4',
-                  index < currentStep ? 'bg-green-600' : 'bg-gray-700'
-                )}
-              />
-            )}
+              {step.title}
+            </StatusMark>
           </div>
         ))}
       </div>
 
       {/* Content */}
-      <div className="bg-gray-800 rounded-lg p-6 min-h-[400px]">
+      <div className="border border-hairline p-6 min-h-[400px]">
         {currentStep === 0 && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-semibold mb-4">About {app.name}</h2>
-              <p className="text-gray-300 mb-4">{app.description}</p>
+              <h2 className="text-xl font-[560] mb-4">About {app.name}</h2>
+              <p className="text-ink mb-4">{app.description}</p>
               {app.notes && (
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <p className="text-sm text-gray-300">{app.notes}</p>
+                <div className="border border-hairline p-4">
+                  <p className="text-sm text-ink">{app.notes}</p>
                 </div>
               )}
             </div>
             
             <div>
-              <h3 className="text-lg font-semibold mb-3">Requirements</h3>
+              <h3 className="text-lg font-[560] mb-3">Requirements</h3>
               <div className="space-y-2">
                 {app.defaults?.resources?.cpu_limit && (
                   <div className="flex items-center gap-2">
-                    <SecurityIcon className="w-4 h-4 text-gray-400" />
+                    <SecurityIcon className="w-4 h-4 text-ink-2" />
                     <span className="text-sm">CPU: up to {app.defaults.resources.cpu_limit} cores</span>
                   </div>
                 )}
                 {app.defaults?.resources?.memory_limit && (
                   <div className="flex items-center gap-2">
-                    <SecurityIcon className="w-4 h-4 text-gray-400" />
+                    <SecurityIcon className="w-4 h-4 text-ink-2" />
                     <span className="text-sm">Memory: up to {app.defaults.resources.memory_limit}</span>
                   </div>
                 )}
                 {app.defaults?.ports?.length > 0 && (
                   <div className="flex items-center gap-2">
-                    <SecurityIcon className="w-4 h-4 text-gray-400" />
+                    <SecurityIcon className="w-4 h-4 text-ink-2" />
                     <span className="text-sm">
                       Ports: {app.defaults.ports.map((p: PortMapping) => p.host).join(', ')}
                     </span>
@@ -333,8 +305,8 @@ export function AppInstallWizard() {
                 )}
                 {app.needs_privileged && (
                   <div className="flex items-center gap-2">
-                    <WarningIcon className="w-4 h-4 text-yellow-500" />
-                    <span className="text-sm text-yellow-500">
+                    <WarningIcon className="w-4 h-4 text-status-warning-text" />
+                    <span className="text-sm text-status-warning-text">
                       Requires privileged access
                     </span>
                   </div>
@@ -346,7 +318,7 @@ export function AppInstallWizard() {
 
         {currentStep === 1 && (
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Configuration</h2>
+            <h2 className="text-xl font-[560]">Configuration</h2>
             {schema?.properties && Object.keys(schema.properties).length > 0 ? (
               <div className="space-y-4">
                 {Object.entries(schema.properties).map(([key, prop]: [string, any]) =>
@@ -354,19 +326,19 @@ export function AppInstallWizard() {
                 )}
               </div>
             ) : (
-              <p className="text-gray-400">No configuration required</p>
+              <p className="text-ink-2">No configuration required</p>
             )}
           </div>
         )}
 
         {currentStep === 2 && (
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Storage configuration</h2>
+            <h2 className="text-xl font-[560]">Storage configuration</h2>
             
-            <div className="bg-gray-700 rounded-lg p-4">
+            <div className="border border-hairline p-4">
               <h3 className="font-medium mb-2">Data directory</h3>
-              <code className="text-sm text-blue-400">/srv/apps/{app.id}/data</code>
-              <p className="text-sm text-gray-400 mt-2">
+              <code className="text-sm text-ink">/srv/apps/{app.id}/data</code>
+              <p className="text-sm text-ink-2 mt-2">
                 App data will be stored here. This directory will be automatically created
                 and backed by Btrfs snapshots if available.
               </p>
@@ -377,10 +349,10 @@ export function AppInstallWizard() {
                 <h3 className="font-medium mb-3">Volume mounts</h3>
                 <div className="space-y-2">
                   {app.defaults.volumes.map((vol: VolumeMount, idx: number) => (
-                    <div key={idx} className="bg-gray-700 rounded-lg p-3">
+                    <div key={idx} className="border border-hairline p-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-mono">{vol.container}</span>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-ink-2">
                           {vol.read_only ? 'Read-only' : 'Read-write'}
                         </span>
                       </div>
@@ -390,12 +362,12 @@ export function AppInstallWizard() {
               </div>
             )}
             
-            <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-4">
+            <div className="border border-hairline p-4">
               <div className="flex items-start gap-3">
-                <NoticeIcon className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                <NoticeIcon className="w-5 h-5 text-ink flex-shrink-0 mt-0.5" />
                 <div className="text-sm">
-                  <p className="text-blue-300 font-medium mb-1">Automatic snapshots</p>
-                  <p className="text-gray-400">
+                  <p className="text-ink font-medium mb-1">Automatic snapshots</p>
+                  <p className="text-ink-2">
                     Snapshots will be created before any app updates or configuration changes,
                     allowing easy rollback if needed.
                   </p>
@@ -407,15 +379,15 @@ export function AppInstallWizard() {
 
         {currentStep === 3 && (
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Review & install</h2>
+            <h2 className="text-xl font-[560]">Review & install</h2>
             
             <div className="space-y-4">
-              <div className="bg-gray-700 rounded-lg p-4">
+              <div className="border border-hairline p-4">
                 <h3 className="font-medium mb-3">Configuration summary</h3>
                 <div className="space-y-2">
                   {Object.entries(formData).map(([key, value]) => (
                     <div key={key} className="flex items-center justify-between text-sm">
-                      <span className="text-gray-400">{key}:</span>
+                      <span className="text-ink-2">{key}:</span>
                       <span className="font-mono">
                         {typeof value === 'string' && value.length > 20
                           ? value.substring(0, 20) + '...'
@@ -426,12 +398,12 @@ export function AppInstallWizard() {
                 </div>
               </div>
               
-              <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4">
+              <div className="border border-status-warning p-4">
                 <div className="flex items-start gap-3">
-                  <NoticeIcon className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <NoticeIcon className="w-5 h-5 text-status-warning-text flex-shrink-0 mt-0.5" />
                   <div className="text-sm">
-                    <p className="text-yellow-300 font-medium mb-1">Ready to install</p>
-                    <p className="text-gray-400">
+                    <p className="text-status-warning-text font-medium mb-1">Ready to install</p>
+                    <p className="text-ink-2">
                       The app will be installed with the configuration shown above.
                       Docker images will be downloaded and the app will be started automatically.
                     </p>
