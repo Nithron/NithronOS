@@ -236,9 +236,10 @@
     font-family: var(--font-pixel, var(--font-mono));
   }
 
-  /* A lamp for something running: it blinks in steps. */
+  /* A lamp for something running: it dims and comes back in steps, so the
+     square is always there. */
   .pixel-blink {
-    animation: pixel-blink var(--loop-lamp) steps(1, end) infinite;
+    animation: pixel-lamp var(--loop-lamp) steps(1, end) infinite;
   }
 
   /* The block cursor after words that are still loading. */
@@ -256,6 +257,12 @@
   @keyframes pixel-blink {
     50% {
       opacity: 0;
+    }
+  }
+
+  @keyframes pixel-lamp {
+    50% {
+      opacity: 0.3;
     }
   }
 

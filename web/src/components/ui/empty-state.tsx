@@ -48,7 +48,9 @@ export function EmptyState({
   className,
 }: EmptyStateProps) {
   const config = variantConfig[variant]
-  const Icon = icon || config.icon
+  // No picture until the shared pixel pictures arrive: the sentence and its
+  // one action, left-aligned. `icon` is kept for callers and not drawn.
+  void icon
 
   return (
     <div
@@ -57,8 +59,7 @@ export function EmptyState({
         className
       )}
     >
-      <Icon className="mb-4 h-8 w-8 text-ink-2" aria-hidden />
-      <h3 className="mb-2 text-xl font-[560] tracking-[-0.012em]">{title}</h3>
+      <h3 className="mb-2 text-xl font-[560] tracking-[-0.012em]">{title || config.defaultTitle}</h3>
       {description && (
         <p className="mb-6 max-w-sm text-sm text-ink-2">
           {description}

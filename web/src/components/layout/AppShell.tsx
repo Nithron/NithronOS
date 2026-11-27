@@ -145,7 +145,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
           </div>
 
           {/* Sidebar Navigation */}
-          <nav className="flex-1 space-y-1 overflow-y-auto p-4" aria-label="Main">
+          <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-4" aria-label="Main">
             {navItems.map((item) => (
               <SidebarItem key={item.id} item={item} />
             ))}

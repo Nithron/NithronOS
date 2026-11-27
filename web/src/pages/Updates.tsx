@@ -178,12 +178,8 @@ export default function Updates() {
           disabled={isChecking || updateProgress?.state !== 'idle'}
           className="btn btn-primary"
         >
-          {isChecking ? (
-            <WorkingIcon className="w-4 h-4 animate-spin" />
-          ) : (
-            <RefreshIcon className="w-4 h-4" />
-          )}
-          Check for updates
+          {isChecking ? <WorkingIcon className="h-4 w-4" /> : <RefreshIcon className="h-4 w-4" />}
+          {isChecking ? 'Checking' : 'Check for updates'}
         </button>
       </div>
 

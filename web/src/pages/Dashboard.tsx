@@ -1,8 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
-import { ActivityIcon, AppIcon, CpuIcon, FailedIcon, FolderIcon, MaintenanceIcon, MemoryIcon, NoticeIcon, PoolIcon, QuickIcon, RefreshIcon, ShareIcon, StorageIcon, TimeIcon, WarningIcon } from '@/components/icons'
+import { WorkingIcon, ActivityIcon, AppIcon, CpuIcon, FailedIcon, FolderIcon, MaintenanceIcon, MemoryIcon, NoticeIcon, PoolIcon, QuickIcon, RefreshIcon, ShareIcon, StorageIcon, WarningIcon } from '@/components/icons'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -16,34 +16,12 @@ import {
 import { useSystemVitals, formatUptime } from '@/hooks/use-system-vitals'
 import { bytesSafe, toFixedSafe } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { Link } from 'react-router-dom'
 import { Meter, StatusMark, type MarkState } from '@/components/ui/pixel'
 
 // The overall health as a mark: critical is failed, degraded a warning.
 const healthMark = (status?: string): MarkState =>
   status === 'critical' ? 'failed' : status === 'degraded' ? 'warning' : 'ok'
-
-// Animation variants
-const containerVariants: any = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05
-    }
-  }
-}
-
-const itemVariants: any = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      type: "spring",
-      stiffness: 100
-    }
-  }
-}
 
 // Widget components
 function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }: any) {
@@ -428,10 +406,7 @@ function RecentActivityWidget({ data, isLoading }: any) {
               </AnimatePresence>
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <TimeIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No recent activity</p>
-            </div>
+            <p className="py-4 text-sm text-ink-2">Nothing has happened yet.</p>
           )}
         </ScrollArea>
       </CardContent>
@@ -495,9 +470,11 @@ function NetworkSharesWidget({ data, isLoading }: any) {
             )}
           </div>
         ) : (
-          <div className="text-center py-4 text-muted-foreground">
-            <FolderIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No shares configured</p>
+          <div className="space-y-3 py-4">
+            <p className="text-sm text-ink-2">No share yet.</p>
+            <Link to="/shares/new" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+              Create a share
+            </Link>
           </div>
         )}
       </CardContent>
@@ -561,12 +538,11 @@ function InstalledAppsWidget({ data, isLoading }: any) {
             )}
           </div>
         ) : (
-          <div className="text-center py-4 text-muted-foreground">
-            <AppIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No apps installed</p>
-            <Button variant="outline" size="sm" className="mt-2">
-              Browse catalog
-            </Button>
+          <div className="space-y-3 py-4">
+            <p className="text-sm text-ink-2">No app installed.</p>
+            <Link to="/apps" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+              Browse the catalog
+            </Link>
           </div>
         )}
       </CardContent>
@@ -677,53 +653,38 @@ export function Dashboard() {
           onClick={handleRefresh}
           disabled={isRefreshing || isFetching}
         >
-          <RefreshIcon className={cn("h-4 w-4 mr-2", (isRefreshing || isFetching) && "animate-spin")} />
-          {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          {isRefreshing || isFetching ? <WorkingIcon className="h-4 w-4" /> : <RefreshIcon className="h-4 w-4" />}
+          {isRefreshing || isFetching ? 'Refreshing' : 'Refresh'}
         </Button>
       </div>
 
       {/* Main Grid */}
-      <motion.div
-        variants={containerVariants}
-        initial={false}
-        animate="visible"
-        className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
-      >
-        {/* System Health - spans 2 columns on large screens */}
-        <motion.div variants={itemVariants} className="lg:col-span-2">
+      {/* One ruled grid of equal cells: thirds, then the full width. The
+          gaps are the hairline behind the cells; the cards lose their own
+          border inside it. */}
+      <div className="grid gap-px border border-hairline bg-hairline md:grid-cols-2 lg:grid-cols-3 [&>*]:bg-page [&>*>*]:h-full [&>*>*]:border-0">
+        <div>
           <SystemHealthWidget data={data} isLoading={isLoading} />
-        </motion.div>
-
-        {/* Storage */}
-        <motion.div variants={itemVariants}>
+        </div>
+        <div>
           <StorageWidget data={data} isLoading={isLoading} error={error} />
-        </motion.div>
-
-        {/* Disk Health */}
-        <motion.div variants={itemVariants}>
+        </div>
+        <div>
           <DiskHealthWidget data={data} isLoading={isLoading} error={error} />
-        </motion.div>
-
-        {/* Recent Activity - spans 2 columns */}
-        <motion.div variants={itemVariants} className="md:col-span-2">
+        </div>
+        <div>
           <RecentActivityWidget data={data} isLoading={isLoading} error={error} />
-        </motion.div>
-
-        {/* Network Shares */}
-        <motion.div variants={itemVariants}>
+        </div>
+        <div>
           <NetworkSharesWidget data={data} isLoading={isLoading} error={error} />
-        </motion.div>
-
-        {/* Installed Apps */}
-        <motion.div variants={itemVariants}>
+        </div>
+        <div>
           <InstalledAppsWidget data={data} isLoading={isLoading} error={error} />
-        </motion.div>
-
-        {/* Maintenance Operations - spans 2 columns */}
-        <motion.div variants={itemVariants} className="md:col-span-2">
+        </div>
+        <div className="md:col-span-2 lg:col-span-3">
           <MaintenanceWidget data={data} isLoading={isLoading} error={error} />
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     </div>
   )
 }
