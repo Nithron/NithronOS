@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatDateTime } from '@/lib/datetime'
 import { Link } from 'react-router-dom'
 import { AddIcon, PoolIcon, RefreshIcon, WorkingIcon } from '@/components/icons'
 import { ColumnDef } from '@tanstack/react-table'
@@ -314,7 +315,7 @@ export function Storage() {
                         )}
                         {scrub.status === 'finished' && scrub.finishedAt && (
                           <p className="text-xs text-muted-foreground">
-                            Last finished {new Date(scrub.finishedAt).toLocaleString()}
+                            Last finished {formatDateTime(scrub.finishedAt)}
                             {scrub.errors ? `, ${scrub.errors} errors` : ', no errors'}
                           </p>
                         )}

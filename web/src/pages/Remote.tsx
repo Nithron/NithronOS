@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatDateTime } from '@/lib/datetime'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AddIcon, CloseIcon, ConnectionIcon, DeleteIcon, DiskIcon, KeyIcon, SendTestIcon, ServerIcon } from '@/components/icons'
 import { PageHeader } from '@/components/ui/page-header'
@@ -317,7 +318,7 @@ function CopyNowDialog({ dest, onClose }: { dest: Destination | null; onClose: (
             <option value="">Choose a snapshot</option>
             {list.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.subvolume} · {new Date(s.created_at).toLocaleString()}
+                {s.subvolume} · {formatDateTime(s.created_at)}
               </option>
             ))}
           </select>
@@ -400,7 +401,7 @@ function DestinationsCard() {
                 <TableCell className="font-medium">{d.name}</TableCell>
                 <TableCell className="font-mono text-xs">{target(d)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">
-                  {d.last_test ? new Date(d.last_test).toLocaleString() : 'Never'}
+                  {d.last_test ? formatDateTime(d.last_test) : 'Never'}
                 </TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-1">
@@ -500,7 +501,7 @@ function CopiesCard() {
           <TableBody>
             {jobs.map((j) => (
               <TableRow key={j.id}>
-                <TableCell className="font-mono text-sm">{new Date(j.started_at).toLocaleString()}</TableCell>
+                <TableCell className="font-mono text-sm">{formatDateTime(j.started_at)}</TableCell>
                 <TableCell className="text-sm">
                   {names.get(j.destination_id ?? '') ?? j.destination_id}
                 </TableCell>

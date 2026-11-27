@@ -3,6 +3,8 @@
  * Manage end-to-end encryption for NithronSync
  */
 
+import { formatDate } from '@/lib/datetime'
+
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, DownloadIcon, EncryptionIcon, HideIcon, KeyIcon, LockIcon, RefreshIcon, SettingsIcon, ShareIcon, ShowIcon, UnlockIcon, WarningIcon } from '@/components/icons'
@@ -518,7 +520,7 @@ export default function SyncEncryption() {
                           <div>
                             <p className="font-medium capitalize">{key.type} Key</p>
                             <p className="text-xs text-muted-foreground">
-                              Created {new Date(key.created_at).toLocaleDateString()}
+                              Created {formatDate(key.created_at)}
                             </p>
                           </div>
                         </div>

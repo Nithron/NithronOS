@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { formatDateTime } from '@/lib/datetime'
 import { getSchedules, updateSchedules, type Schedules } from '@/api/schedules'
 import { useNavigate } from 'react-router-dom'
 
@@ -109,7 +110,7 @@ export default function SettingsSchedules() {
           {fieldErrors.btrfsScrub && <p id="btrfsScrubErr" className="mt-1 text-xs text-status-failed-text">{fieldErrors.btrfsScrub}</p>}
         </div>
         {error && <div className="border border-status-failed p-2 text-status-failed-text text-xs">{error}</div>}
-        {lastFstrim && <div className="text-xs text-muted-foreground">Last fstrim: {new Date(lastFstrim).toLocaleString()}</div>}
+        {lastFstrim && <div className="text-xs text-muted-foreground">Last fstrim: {formatDateTime(lastFstrim)}</div>}
         <div className="flex gap-2">
           <button className="rounded bg-primary px-3 py-1 text-sm text-background disabled:opacity-50" disabled={saving} onClick={onSave}>Save</button>
           <button className="rounded border border-muted/30 px-3 py-1 text-sm" onClick={onRestoreDefaults}>Restore defaults</button>

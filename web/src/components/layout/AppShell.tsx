@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { formatDateTime } from '@/lib/datetime'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { AlertsIcon, ChevronDownIcon, ChevronRightIcon, CloseIcon, MenuIcon, SignOutIcon, UserIcon } from '@/components/icons'
 import { navItems } from '@/config/nav'
@@ -260,7 +261,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
                     </div>
                     <p className="mt-2 text-sm">{alert.message}</p>
                     <p className="mt-2 font-mono text-xs text-ink-2">
-                      {new Date(alert.fired_at).toLocaleString()}
+                      {formatDateTime(alert.fired_at)}
                     </p>
                   </li>
                 ))}

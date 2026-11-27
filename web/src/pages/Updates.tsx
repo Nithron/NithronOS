@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
+import { formatDate, formatDateTime, formatTime } from '@/lib/datetime'
 import { confirmAction } from '@/components/ui/confirm';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { AppIcon, ChannelIcon, DeleteIcon, DownloadIcon, RefreshIcon, ServerIcon, SnapshotIcon, TimeIcon, WorkingIcon } from '@/components/icons'
-import { format } from 'date-fns';
 import { toast } from '@/components/ui/toast';
 import { Meter, StatusMark } from '@/components/ui/pixel';
 
@@ -213,7 +213,7 @@ export default function Updates() {
                 <p className="text-ink font-medium">{formatVersion(version)}</p>
                 {version.build_date && (
                   <p className="text-xs text-ink-2 mt-1">
-                    Built {format(new Date(version.build_date), 'PP')}
+                    Built {formatDate(version.build_date)}
                   </p>
                 )}
               </div>
@@ -270,7 +270,7 @@ export default function Updates() {
                 <div>
                   <p className="text-sm text-ink-2">Release date</p>
                   <p className="text-ink font-medium">
-                    {format(new Date(updateCheck.latest_version.release_date), 'PP')}
+                    {formatDate(updateCheck.latest_version.release_date)}
                   </p>
                 </div>
                 <div>
@@ -360,7 +360,7 @@ export default function Updates() {
                 {updateProgress.logs.slice(-5).map((log, i) => (
                   <div key={i} className="flex items-start gap-2 text-xs">
                     <span className="text-ink-2">
-                      {format(new Date(log.timestamp), 'HH:mm:ss')}
+                      {formatTime(log.timestamp)}
                     </span>
                     <span className={
                       log.level === 'error' ? 'text-status-failed-text' :
@@ -413,7 +413,7 @@ export default function Updates() {
                       <div>
                         <p className="text-ink font-medium">{snapshot.id}</p>
                         <p className="text-sm text-ink-2">
-                          {format(new Date(snapshot.created_at), 'PPp')} • {formatBytes(snapshot.size)}
+                          {formatDateTime(snapshot.created_at)} • {formatBytes(snapshot.size)}
                         </p>
                         {snapshot.description && (
                           <p className="text-sm text-ink-2 mt-1">{snapshot.description}</p>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatDateTime } from '@/lib/datetime'
 import { AddUserIcon, DeleteIcon, KeyIcon, SecurityOffIcon } from '@/components/icons'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card } from '@/components/ui/card-enhanced'
@@ -41,7 +42,7 @@ function roleOf(u: UserAccount): Role {
 }
 
 function when(iso?: string): string {
-  return iso ? new Date(iso).toLocaleString() : 'Never'
+  return iso ? formatDateTime(iso) : 'Never'
 }
 
 /** PasswordFields is a new password typed twice. */

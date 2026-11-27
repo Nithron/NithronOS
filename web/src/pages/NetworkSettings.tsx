@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatDate, formatDateTime, formatTime } from '@/lib/datetime'
 import { confirmAction } from '@/components/ui/confirm'
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AddIcon, ConnectionIcon, CopyIcon, DeleteIcon, DownloadIcon, FailedIcon, FirewallIcon, InternetIcon, KeyIcon, OkIcon, OpenExternalIcon, SettingsIcon, TimeIcon, WarningIcon, WorkingIcon } from '@/components/icons'
-import { format } from 'date-fns';
 import {
   useNetworkStatus,
   useFirewallState,
@@ -246,7 +246,7 @@ export function NetworkSettings() {
             <span>
               Firewall changes pending confirmation. 
               {firewallState.data.rollback_at && (
-                <> Auto-rollback at {format(new Date(firewallState.data.rollback_at), 'HH:mm:ss')}</>
+                <> Auto-rollback at {formatTime(firewallState.data.rollback_at)}</>
               )}
             </span>
             <div className="flex gap-2">
@@ -282,7 +282,7 @@ export function NetworkSettings() {
               <Label className="text-muted-foreground">Last applied</Label>
               <div className="mt-1 text-sm">
                 {firewallState.data?.last_applied
-                  ? format(new Date(firewallState.data.last_applied), 'PPp')
+                  ? formatDateTime(firewallState.data.last_applied)
                   : 'Never'}
               </div>
             </div>
@@ -381,7 +381,7 @@ export function NetworkSettings() {
                         </div>
                         {peer.last_handshake && (
                           <div className="text-xs text-muted-foreground mt-1">
-                            Last seen: {format(new Date(peer.last_handshake), 'PPp')}
+                            Last seen: {formatDateTime(peer.last_handshake)}
                           </div>
                         )}
                       </div>
@@ -466,10 +466,10 @@ export function NetworkSettings() {
             <div>
               <Label className="text-muted-foreground">Certificate expiry</Label>
               <div className="mt-1">
-                {format(new Date(httpsConfig.data.expiry), 'PPP')}
+                {formatDate(httpsConfig.data.expiry)}
                 {httpsConfig.data.next_renewal && (
                   <span className="text-sm text-muted-foreground ml-2">
-                    (Renewal: {format(new Date(httpsConfig.data.next_renewal), 'PPP')})
+                    (Renewal: {formatDate(httpsConfig.data.next_renewal)})
                   </span>
                 )}
               </div>

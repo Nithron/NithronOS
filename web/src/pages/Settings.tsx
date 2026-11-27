@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { formatDateTime } from '@/lib/datetime'
 import { useNavigate } from 'react-router-dom'
 import { AccountIcon, ChevronRightIcon, DownloadIcon, LockIcon, NetworkIcon, NoticeIcon, ScheduleIcon, ServerIcon, TimeIcon, UsersIcon } from '@/components/icons'
 import { PageHeader } from '@/components/ui/page-header'
@@ -158,7 +159,7 @@ function TimeCard({ canEdit }: { canEdit: boolean }) {
           {tz.data && (
             <p className="text-sm text-muted-foreground">
               <TimeIcon className="mr-1 inline h-3.5 w-3.5" aria-hidden />
-              Time on nOS when loaded: {new Date(tz.data.time).toLocaleString()}
+              Time on nOS when loaded: {formatDateTime(tz.data.time)}
             </p>
           )}
         </div>
