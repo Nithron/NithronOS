@@ -95,6 +95,9 @@ jobs:
       - name: Web lint
         working-directory: web
         run: npm run lint
+      - name: Web interface rules (icons, no raw colours)
+        working-directory: web
+        run: npm run check:ui
       - name: Web typecheck
         working-directory: web
         run: npm run typecheck

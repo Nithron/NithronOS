@@ -13,7 +13,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "verify:contract": "ts-node --transpile-only ../scripts/verify-contract.ts",
-    "extract:contract": "ts-node --transpile-only ./scripts/extract-nos-contract.ts"
+    "extract:contract": "ts-node --transpile-only ./scripts/extract-nos-contract.ts",
+    "check:ui": "node scripts/check-ui.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
