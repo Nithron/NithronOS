@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"io/fs"
 	"net/http"
 	"os"
@@ -130,67 +131,72 @@ func webdavReadOnlyMethod(method string) bool {
 	return false
 }
 
-// shareFileSystem implements webdav.FileSystem for a share
+// shareFileSystem implements webdav.FileSystem for a share. Every name goes
+// through nosync.ResolveInShare: ".." can't climb out, and a symbolic link
+// inside the share that points outside it is refused. (Only a path prefix
+// was checked, so a link in a share to /etc/nos let a user read nosd's user
+// database and secret key through WebDAV.)
 type shareFileSystem struct {
 	basePath string
 }
 
-func (sfs *shareFileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
-	fullPath := filepath.Join(sfs.basePath, name)
-	if !sfs.isValidPath(fullPath) {
-		return os.ErrPermission
+func (sfs *shareFileSystem) resolve(name string) (string, error) {
+	p, err := nosync.ResolveInShare(sfs.basePath, name)
+	switch {
+	case err == nil:
+		return p, nil
+	case errors.Is(err, os.ErrNotExist): // the share's folder is missing
+		return "", os.ErrNotExist
+	default:
+		return "", os.ErrPermission
 	}
-	return os.Mkdir(fullPath, perm)
+}
+
+func (sfs *shareFileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
+	p, err := sfs.resolve(name)
+	if err != nil {
+		return err
+	}
+	return os.Mkdir(p, perm)
 }
 
 func (sfs *shareFileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
-	fullPath := filepath.Join(sfs.basePath, name)
-	if !sfs.isValidPath(fullPath) {
-		return nil, os.ErrPermission
+	p, err := sfs.resolve(name)
+	if err != nil {
+		return nil, err
 	}
-	return os.OpenFile(fullPath, flag, perm)
+	return os.OpenFile(p, flag, perm)
 }
 
 func (sfs *shareFileSystem) RemoveAll(ctx context.Context, name string) error {
-	fullPath := filepath.Join(sfs.basePath, name)
-	if !sfs.isValidPath(fullPath) {
+	p, err := sfs.resolve(name)
+	if err != nil {
+		return err
+	}
+	if p == filepath.Clean(sfs.basePath) { // never the share itself
 		return os.ErrPermission
 	}
-	// Don't allow removing the root
-	if fullPath == sfs.basePath || fullPath == sfs.basePath+"/" {
-		return os.ErrPermission
-	}
-	return os.RemoveAll(fullPath)
+	return os.RemoveAll(p)
 }
 
 func (sfs *shareFileSystem) Rename(ctx context.Context, oldName, newName string) error {
-	oldPath := filepath.Join(sfs.basePath, oldName)
-	newPath := filepath.Join(sfs.basePath, newName)
-	if !sfs.isValidPath(oldPath) || !sfs.isValidPath(newPath) {
-		return os.ErrPermission
+	oldPath, err := sfs.resolve(oldName)
+	if err != nil {
+		return err
+	}
+	newPath, err := sfs.resolve(newName)
+	if err != nil {
+		return err
 	}
 	return os.Rename(oldPath, newPath)
 }
 
 func (sfs *shareFileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
-	fullPath := filepath.Join(sfs.basePath, name)
-	if !sfs.isValidPath(fullPath) {
-		return nil, os.ErrPermission
-	}
-	return os.Stat(fullPath)
-}
-
-func (sfs *shareFileSystem) isValidPath(path string) bool {
-	// Ensure the path doesn't escape the share directory
-	absPath, err := filepath.Abs(path)
+	p, err := sfs.resolve(name)
 	if err != nil {
-		return false
+		return nil, err
 	}
-	absBase, err := filepath.Abs(sfs.basePath)
-	if err != nil {
-		return false
-	}
-	return strings.HasPrefix(absPath, absBase)
+	return os.Stat(p)
 }
 
 // WebDAVInfo provides information about the WebDAV endpoint
