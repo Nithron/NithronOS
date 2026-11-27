@@ -1,10 +1,9 @@
 import { motion } from 'framer-motion'
-import { ConnectionIcon, CpuIcon, DiskIcon, FailedIcon, FallingIcon, HealthIcon, MemoryIcon, NetworkIcon, OkIcon, QuickIcon, RefreshIcon, RisingIcon, TemperatureIcon, TimeIcon, WarningIcon } from '@/components/icons'
+import { ConnectionIcon, CpuIcon, DiskIcon, FailedIcon, FallingIcon, HealthIcon, MemoryIcon, NetworkIcon, QuickIcon, RefreshIcon, RisingIcon, TemperatureIcon, TimeIcon } from '@/components/icons'
 import { useMemo, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
+import { Meter, StatusMark, Working, type MarkState } from '@/components/ui/pixel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useSystemHealth, formatBytes, formatUptime, formatPercent, getHealthStatus } from '@/hooks/use-health'
@@ -72,7 +71,7 @@ function MetricCard({
             key={value}
             initial={false}
             animate={{ opacity: 1, y: 0 }}
-            className={cn("text-2xl font-bold transition-colors", color)}
+            className={cn("text-2xl font-[560] transition-colors", color)}
           >
             {value}
           </motion.span>
@@ -110,13 +109,12 @@ function ProgressMetric({
           {formatPercent(percentage)}{unit === '%' ? '' : ` (${formatBytes(value)} / ${formatBytes(max)})`}
         </motion.span>
       </div>
-      <Progress 
-        value={percentage} 
-        className="h-2"
-        indicatorClassName={cn(
-          "transition-all duration-300",
-          percentage > 90 ? 'bg-red-500' : percentage > 70 ? 'bg-yellow-500' : ''
-        )}
+      <Meter
+        value={percentage}
+        blocks={20}
+        label={label}
+        showValue={false}
+        tone={percentage > 90 ? 'failed' : percentage > 80 ? 'warning' : 'ink'}
       />
     </div>
   )
@@ -169,20 +167,9 @@ export default function SystemHealth() {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">System health</h2>
+          <h2 className="text-xl font-[560]">System health</h2>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(8)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="pb-2">
-                <div className="h-4 bg-muted rounded w-24"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-muted rounded w-16"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Working>Reading the system</Working>
       </div>
     )
   }
@@ -207,11 +194,8 @@ export default function SystemHealth() {
     )
   }
 
-  const StatusIcon = metrics?.overallStatus === 'critical' ? FailedIcon :
-                     metrics?.overallStatus === 'warning' ? WarningIcon : OkIcon
-  
-  const statusColor = metrics?.overallStatus === 'critical' ? 'text-red-500' :
-                      metrics?.overallStatus === 'warning' ? 'text-yellow-500' : 'text-green-500'
+  const overallMark: MarkState =
+    metrics?.overallStatus === 'critical' ? 'failed' : metrics?.overallStatus === 'warning' ? 'warning' : metrics?.overallStatus ? 'ok' : 'off'
 
   return (
     <motion.div
@@ -223,11 +207,8 @@ export default function SystemHealth() {
       {/* Header with status */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold">System health</h2>
-          <Badge variant="outline" className="gap-1">
-            <StatusIcon className={cn("h-3 w-3", statusColor)} />
-            <span className="capitalize">{metrics?.overallStatus || 'Unknown'}</span>
-          </Badge>
+          <h2 className="text-xl font-[560]">System health</h2>
+          <StatusMark state={overallMark} className="text-sm">{metrics?.overallStatus || 'unknown'}</StatusMark>
         </div>
         <Button
           variant="outline"
@@ -251,7 +232,7 @@ export default function SystemHealth() {
             value={pctSafe(metrics?.cpu, 0)}
             icon={CpuIcon}
             trend={metrics?.cpuTrend}
-            color={metrics?.cpu && metrics.cpu > 80 ? 'text-red-500' : 'text-primary'}
+            color={metrics?.cpu && metrics.cpu > 80 ? 'text-status-failed-text' : 'text-primary'}
           />
         </motion.div>
         
@@ -261,7 +242,7 @@ export default function SystemHealth() {
             value={pctSafe(metrics?.memory?.usagePct, 0)}
             icon={MemoryIcon}
             trend={metrics?.memoryTrend}
-            color={metrics?.memory?.usagePct && metrics.memory.usagePct > 80 ? 'text-red-500' : 'text-primary'}
+            color={metrics?.memory?.usagePct && metrics.memory.usagePct > 80 ? 'text-status-failed-text' : 'text-primary'}
           />
         </motion.div>
 
@@ -357,15 +338,15 @@ export default function SystemHealth() {
                 <div className="grid grid-cols-3 gap-4 pt-4 border-t">
                   <div>
                     <p className="text-sm text-muted-foreground">Load (1m)</p>
-                    <p className="text-lg font-semibold">{toFixedSafe(metrics?.load?.load1, 2, '0.00')}</p>
+                    <p className="text-lg font-[560]">{toFixedSafe(metrics?.load?.load1, 2, '0.00')}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Load (5m)</p>
-                    <p className="text-lg font-semibold">{toFixedSafe(metrics?.load?.load5, 2, '0.00')}</p>
+                    <p className="text-lg font-[560]">{toFixedSafe(metrics?.load?.load5, 2, '0.00')}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Load (15m)</p>
-                    <p className="text-lg font-semibold">{toFixedSafe(metrics?.load?.load15, 2, '0.00')}</p>
+                    <p className="text-lg font-[560]">{toFixedSafe(metrics?.load?.load15, 2, '0.00')}</p>
                   </div>
                 </div>
               </CardContent>
@@ -382,14 +363,14 @@ export default function SystemHealth() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">Download speed</p>
-                    <p className="text-2xl font-bold">{formatBytes(metrics?.network?.rxSpeed || 0)}/s</p>
+                    <p className="text-2xl font-[560]">{formatBytes(metrics?.network?.rxSpeed || 0)}/s</p>
                     <p className="text-xs text-muted-foreground">
                       Total: {formatBytes(metrics?.network?.bytesRecv || 0)}
                     </p>
                   </div>
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">Upload speed</p>
-                    <p className="text-2xl font-bold">{formatBytes(metrics?.network?.txSpeed || 0)}/s</p>
+                    <p className="text-2xl font-[560]">{formatBytes(metrics?.network?.txSpeed || 0)}/s</p>
                     <p className="text-xs text-muted-foreground">
                       Total: {formatBytes(metrics?.network?.bytesSent || 0)}
                     </p>
@@ -398,11 +379,11 @@ export default function SystemHealth() {
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                   <div>
                     <p className="text-sm text-muted-foreground">Packets received</p>
-                    <p className="text-lg font-semibold">{metrics?.network?.packetsRecv?.toLocaleString() || '0'}</p>
+                    <p className="text-lg font-[560]">{metrics?.network?.packetsRecv?.toLocaleString() || '0'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Packets sent</p>
-                    <p className="text-lg font-semibold">{metrics?.network?.packetsSent?.toLocaleString() || '0'}</p>
+                    <p className="text-lg font-[560]">{metrics?.network?.packetsSent?.toLocaleString() || '0'}</p>
                   </div>
                 </div>
               </CardContent>
@@ -419,12 +400,12 @@ export default function SystemHealth() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Uptime</p>
-                    <p className="text-lg font-semibold">{formatUptime(metrics?.uptime || 0)}</p>
+                    <p className="text-lg font-[560]">{formatUptime(metrics?.uptime || 0)}</p>
                   </div>
                   {metrics?.tempCpu !== undefined && (
                     <div>
                       <p className="text-sm text-muted-foreground">CPU temperature</p>
-                      <p className="text-lg font-semibold flex items-center gap-1">
+                      <p className="text-lg font-[560] flex items-center gap-1">
                         <TemperatureIcon className="h-4 w-4" />
                         {metrics?.tempCpu !== undefined ? `${toFixedSafe(metrics.tempCpu, 1, '0.0')}°C` : 'N/A'}
                       </p>
@@ -436,14 +417,14 @@ export default function SystemHealth() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Read speed</p>
-                      <p className="text-lg font-semibold">{formatBytes(metrics?.diskIO?.readSpeed || 0)}/s</p>
+                      <p className="text-lg font-[560]">{formatBytes(metrics?.diskIO?.readSpeed || 0)}/s</p>
                       <p className="text-xs text-muted-foreground">
                         Total: {formatBytes(metrics?.diskIO?.readBytes || 0)}
                       </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Write speed</p>
-                      <p className="text-lg font-semibold">{formatBytes(metrics?.diskIO?.writeSpeed || 0)}/s</p>
+                      <p className="text-lg font-[560]">{formatBytes(metrics?.diskIO?.writeSpeed || 0)}/s</p>
                       <p className="text-xs text-muted-foreground">
                         Total: {formatBytes(metrics?.diskIO?.writeBytes || 0)}
                       </p>

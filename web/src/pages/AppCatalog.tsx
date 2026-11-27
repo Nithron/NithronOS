@@ -191,7 +191,7 @@ export function AppCatalog() {
     return (
       <motion.div variants={itemVariants}>
         <Card className="h-full overflow-hidden">
-          <div className="relative">
+          <div className="relative flex h-full flex-col">
             {/* The app's name first; its states in words under it. */}
             {((app as any).verified || isInstalled) && (
               <div className="flex items-center gap-3 px-4 pt-4 text-sm">
@@ -200,8 +200,8 @@ export function AppCatalog() {
               </div>
             )}
 
-            {/* App Info */}
-            <div className="p-4 space-y-3">
+            {/* App Info; the version and the button stand at the bottom of the cell. */}
+            <div className="flex flex-1 flex-col gap-3 p-4">
               <div>
                 <h3 className="font-[560] text-lg line-clamp-1">{app.name}</h3>
                 <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
@@ -219,14 +219,14 @@ export function AppCatalog() {
               </div>
               
               {/* Version and Size */}
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>v{app.version}</span>
+              <div className="mt-auto flex items-center justify-between font-mono text-xs text-ink-2">
+                <span>{/^\d/.test(app.version) ? `v${app.version}` : app.version}</span>
                 {(app as any).repository && (
                   <a
                     href={(app as any).repository}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center hover:text-primary transition-colors"
+                    className="flex items-center underline decoration-ink-2 underline-offset-4 hover:text-ink"
                   >
                     <OpenExternalIcon className="w-3 h-3 mr-1" />
                     Source
@@ -491,7 +491,7 @@ export function AppCatalog() {
                 animate="visible"
                 className={cn(
                   viewMode === 'grid'
-                    ? "grid border-l border-t border-hairline md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>*]:border-b [&>*]:border-r [&>*]:border-hairline [&>*>*]:border-0"
+                    ? "grid border-l border-t border-hairline md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>*]:border-b [&>*]:border-r [&>*]:border-hairline [&>*>*]:h-full [&>*>*]:border-0"
                     : "space-y-4"
                 )}
               >
@@ -534,7 +534,7 @@ export function AppCatalog() {
                 animate="visible"
                 className={cn(
                   viewMode === 'grid'
-                    ? "grid border-l border-t border-hairline md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>*]:border-b [&>*]:border-r [&>*]:border-hairline [&>*>*]:border-0"
+                    ? "grid border-l border-t border-hairline md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>*]:border-b [&>*]:border-r [&>*]:border-hairline [&>*>*]:h-full [&>*>*]:border-0"
                     : "space-y-4"
                 )}
               >

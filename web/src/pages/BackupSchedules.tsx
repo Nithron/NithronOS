@@ -387,14 +387,14 @@ function ScheduleDialog({
             
             {frequencyType === 'hourly' && (
               <div>
-                <label className="text-sm">Minute of hour (0-59):</label>
+                <label className="mb-1 block text-sm">Minute of hour (0-59)</label>
                 <input
                   type="number"
                   min="0"
                   max="59"
                   value={frequency.minute || 0}
                   onChange={(e) => setFrequency({ ...frequency, minute: parseInt(e.target.value) })}
-                  className="field ml-2 h-8 w-20"
+                  className="field h-8 w-20"
                 />
               </div>
             )}
@@ -402,25 +402,25 @@ function ScheduleDialog({
             {(frequencyType === 'daily' || frequencyType === 'weekly' || frequencyType === 'monthly') && (
               <div className="flex items-center space-x-4">
                 <div>
-                  <label className="text-sm">Hour (0-23):</label>
+                  <label className="mb-1 block text-sm">Hour (0-23)</label>
                   <input
                     type="number"
                     min="0"
                     max="23"
                     value={frequency.hour || 0}
                     onChange={(e) => setFrequency({ ...frequency, hour: parseInt(e.target.value) })}
-                    className="field ml-2 h-8 w-20"
+                    className="field h-8 w-20"
                   />
                 </div>
                 <div>
-                  <label className="text-sm">Minute (0-59):</label>
+                  <label className="mb-1 block text-sm">Minute (0-59)</label>
                   <input
                     type="number"
                     min="0"
                     max="59"
                     value={frequency.minute || 0}
                     onChange={(e) => setFrequency({ ...frequency, minute: parseInt(e.target.value) })}
-                    className="field ml-2 h-8 w-20"
+                    className="field h-8 w-20"
                   />
                 </div>
               </div>
@@ -428,11 +428,11 @@ function ScheduleDialog({
             
             {frequencyType === 'weekly' && (
               <div className="mt-2">
-                <label className="text-sm">Day of week:</label>
+                <label className="mb-1 block text-sm">Day of week</label>
                 <select
                   value={frequency.weekday || 0}
                   onChange={(e) => setFrequency({ ...frequency, weekday: parseInt(e.target.value) })}
-                  className="field ml-2 h-8 w-auto"
+                  className="field h-8 w-auto"
                 >
                   <option value="0">Sunday</option>
                   <option value="1">Monday</option>
@@ -447,14 +447,14 @@ function ScheduleDialog({
             
             {frequencyType === 'monthly' && (
               <div className="mt-2">
-                <label className="text-sm">Day of month (1-31):</label>
+                <label className="mb-1 block text-sm">Day of month (1-31)</label>
                 <input
                   type="number"
                   min="1"
                   max="31"
                   value={frequency.day || 1}
                   onChange={(e) => setFrequency({ ...frequency, day: parseInt(e.target.value) })}
-                  className="field ml-2 h-8 w-20"
+                  className="field h-8 w-20"
                 />
               </div>
             )}
@@ -477,58 +477,59 @@ function ScheduleDialog({
           
           {/* Retention */}
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Retention policy (GFS)
-            </label>
+            <p className="text-sm font-[560]">Snapshots to keep</p>
+            <p className="mb-2 text-sm text-ink-2">
+              The newest snapshot of each day, week, month and year is kept, as many as set here, and never fewer than the minimum.
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm">Minimum to keep:</label>
+                <label className="mb-1 block text-sm">At least</label>
                 <input
                   type="number"
                   min="0"
                   value={retention.min_keep}
                   onChange={(e) => setRetention({ ...retention, min_keep: parseInt(e.target.value) })}
-                  className="field ml-2 h-8 w-20"
+                  className="field h-8 w-20"
                 />
               </div>
               <div>
-                <label className="text-sm">Daily:</label>
+                <label className="mb-1 block text-sm">Daily</label>
                 <input
                   type="number"
                   min="0"
                   value={retention.days}
                   onChange={(e) => setRetention({ ...retention, days: parseInt(e.target.value) })}
-                  className="field ml-2 h-8 w-20"
+                  className="field h-8 w-20"
                 />
               </div>
               <div>
-                <label className="text-sm">Weekly:</label>
+                <label className="mb-1 block text-sm">Weekly</label>
                 <input
                   type="number"
                   min="0"
                   value={retention.weeks}
                   onChange={(e) => setRetention({ ...retention, weeks: parseInt(e.target.value) })}
-                  className="field ml-2 h-8 w-20"
+                  className="field h-8 w-20"
                 />
               </div>
               <div>
-                <label className="text-sm">Monthly:</label>
+                <label className="mb-1 block text-sm">Monthly</label>
                 <input
                   type="number"
                   min="0"
                   value={retention.months}
                   onChange={(e) => setRetention({ ...retention, months: parseInt(e.target.value) })}
-                  className="field ml-2 h-8 w-20"
+                  className="field h-8 w-20"
                 />
               </div>
               <div>
-                <label className="text-sm">Yearly:</label>
+                <label className="mb-1 block text-sm">Yearly</label>
                 <input
                   type="number"
                   min="0"
                   value={retention.years}
                   onChange={(e) => setRetention({ ...retention, years: parseInt(e.target.value) })}
-                  className="field ml-2 h-8 w-20"
+                  className="field h-8 w-20"
                 />
               </div>
             </div>

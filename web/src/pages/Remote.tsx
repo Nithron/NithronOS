@@ -548,8 +548,11 @@ export function Remote() {
         title="Off-site copies"
         description="Copies of your snapshots on another machine or disk"
       />
-      <DestinationsCard />
-      <CopiesCard />
+      {/* One ruled group: the two panels share their border. */}
+      <div className="[&>*+*]:-mt-px">
+        <DestinationsCard />
+        <CopiesCard />
+      </div>
     </div>
   )
 }
