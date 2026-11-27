@@ -13,7 +13,7 @@ import {
 } from '@tanstack/react-table'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
-import { ChevronDown, ChevronUp, ChevronsUpDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, SortIcon } from '@/components/icons'
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -96,11 +96,11 @@ export function DataTable<TData, TValue>({
                           {header.column.getCanSort() && (
                             <>
                               {header.column.getIsSorted() === 'asc' ? (
-                                <ChevronUp className="h-4 w-4" />
+                                <ChevronUpIcon className="h-4 w-4" />
                               ) : header.column.getIsSorted() === 'desc' ? (
-                                <ChevronDown className="h-4 w-4" />
+                                <ChevronDownIcon className="h-4 w-4" />
                               ) : (
-                                <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                                <SortIcon className="h-4 w-4 opacity-50" />
                               )}
                             </>
                           )}
@@ -162,7 +162,7 @@ export function DataTable<TData, TValue>({
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeftIcon className="h-4 w-4" />
             Previous
           </Button>
           <div className="text-sm text-muted-foreground">
@@ -176,7 +176,7 @@ export function DataTable<TData, TValue>({
             disabled={!table.getCanNextPage()}
           >
             Next
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRightIcon className="h-4 w-4" />
           </Button>
         </div>
       </div>

@@ -1,9 +1,5 @@
 import { motion } from 'framer-motion'
-import { 
-  Activity, AlertCircle, CheckCircle, Clock, Cpu, HardDrive, 
-  MemoryStick, Network, RefreshCw, Thermometer,
-  TrendingDown, TrendingUp, Wifi, XCircle, Zap
-} from 'lucide-react'
+import { ConnectionIcon, CpuIcon, DiskIcon, FailedIcon, FallingIcon, HealthIcon, MemoryIcon, NetworkIcon, OkIcon, QuickIcon, RefreshIcon, RisingIcon, TemperatureIcon, TimeIcon, WarningIcon } from '@/components/icons'
 import { useMemo, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -57,7 +53,7 @@ function MetricCard({
   color?: string
   className?: string
 }) {
-  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : null
+  const TrendIcon = trend === 'up' ? RisingIcon : trend === 'down' ? FallingIcon : null
 
   return (
     <Card className={cn("relative overflow-hidden", className)}>
@@ -195,7 +191,7 @@ export default function SystemHealth() {
     return (
       <div className="space-y-6">
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <FailedIcon className="h-4 w-4" />
           <AlertDescription>
             Backend unreachable or proxy misconfigured — metrics temporarily unavailable. 
             <Button 
@@ -211,8 +207,8 @@ export default function SystemHealth() {
     )
   }
 
-  const StatusIcon = metrics?.overallStatus === 'critical' ? XCircle :
-                     metrics?.overallStatus === 'warning' ? AlertCircle : CheckCircle
+  const StatusIcon = metrics?.overallStatus === 'critical' ? FailedIcon :
+                     metrics?.overallStatus === 'warning' ? WarningIcon : OkIcon
   
   const statusColor = metrics?.overallStatus === 'critical' ? 'text-red-500' :
                       metrics?.overallStatus === 'warning' ? 'text-yellow-500' : 'text-green-500'
@@ -239,7 +235,7 @@ export default function SystemHealth() {
           onClick={handleManualRefresh}
           disabled={isManualRefreshing}
         >
-          <RefreshCw className={cn("h-4 w-4 mr-2", isManualRefreshing && "animate-spin")} />
+          <RefreshIcon className={cn("h-4 w-4 mr-2", isManualRefreshing && "animate-spin")} />
           Refresh
         </Button>
       </div>
@@ -253,7 +249,7 @@ export default function SystemHealth() {
           <MetricCard
             title="CPU Usage"
             value={pctSafe(metrics?.cpu, 0)}
-            icon={Cpu}
+            icon={CpuIcon}
             trend={metrics?.cpuTrend}
             color={metrics?.cpu && metrics.cpu > 80 ? 'text-red-500' : 'text-primary'}
           />
@@ -263,7 +259,7 @@ export default function SystemHealth() {
           <MetricCard
             title="Memory"
             value={pctSafe(metrics?.memory?.usagePct, 0)}
-            icon={MemoryStick}
+            icon={MemoryIcon}
             trend={metrics?.memoryTrend}
             color={metrics?.memory?.usagePct && metrics.memory.usagePct > 80 ? 'text-red-500' : 'text-primary'}
           />
@@ -273,7 +269,7 @@ export default function SystemHealth() {
           <MetricCard
             title="System Load"
             value={toFixedSafe(metrics?.load?.load1, 2, '0.00')}
-            icon={Activity}
+            icon={HealthIcon}
             trend={metrics?.load?.load1 && metrics.load.load1 > metrics.load.load5 ? 'up' : 'down'}
           />
         </motion.div>
@@ -282,7 +278,7 @@ export default function SystemHealth() {
           <MetricCard
             title="Uptime"
             value={formatUptime(metrics?.uptime || 0)}
-            icon={Clock}
+            icon={TimeIcon}
           />
         </motion.div>
 
@@ -291,7 +287,7 @@ export default function SystemHealth() {
             title="Network RX"
             value={formatBytes(metrics?.network?.rxSpeed || 0)}
             unit="/s"
-            icon={Network}
+            icon={NetworkIcon}
           />
         </motion.div>
 
@@ -300,7 +296,7 @@ export default function SystemHealth() {
             title="Network TX"
             value={formatBytes(metrics?.network?.txSpeed || 0)}
             unit="/s"
-            icon={Wifi}
+            icon={ConnectionIcon}
           />
         </motion.div>
 
@@ -309,7 +305,7 @@ export default function SystemHealth() {
             title="Disk Read"
             value={formatBytes(metrics?.diskIO?.readSpeed || 0)}
             unit="/s"
-            icon={HardDrive}
+            icon={DiskIcon}
           />
         </motion.div>
 
@@ -318,7 +314,7 @@ export default function SystemHealth() {
             title="Disk Write"
             value={formatBytes(metrics?.diskIO?.writeSpeed || 0)}
             unit="/s"
-            icon={Zap}
+            icon={QuickIcon}
           />
         </motion.div>
       </motion.div>
@@ -429,7 +425,7 @@ export default function SystemHealth() {
                     <div>
                       <p className="text-sm text-muted-foreground">CPU Temperature</p>
                       <p className="text-lg font-semibold flex items-center gap-1">
-                        <Thermometer className="h-4 w-4" />
+                        <TemperatureIcon className="h-4 w-4" />
                         {metrics?.tempCpu !== undefined ? `${toFixedSafe(metrics.tempCpu, 1, '0.0')}°C` : 'N/A'}
                       </p>
                     </div>

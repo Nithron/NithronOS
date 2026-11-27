@@ -1,14 +1,5 @@
 import { useState } from 'react'
-import { 
-  HardDrive, 
-  Database,
-  Activity,
-  Plus,
-  RefreshCw,
-  ChevronRight,
-  Thermometer,
-  Clock,
-} from 'lucide-react'
+import { ActivityIcon, AddIcon, ChevronRightIcon, PoolIcon, RefreshIcon, TemperatureIcon, TimeIcon } from '@/components/icons'
 import { ColumnDef } from '@tanstack/react-table'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card } from '@/components/ui/card-enhanced'
@@ -61,7 +52,7 @@ const deviceColumns: ColumnDef<Device>[] = [
     header: 'Device',
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
-        <HardDrive className="h-4 w-4 text-muted-foreground" />
+        <PoolIcon className="h-4 w-4 text-muted-foreground" />
         <span className="font-mono">{row.original.path}</span>
       </div>
     ),
@@ -106,7 +97,7 @@ const deviceColumns: ColumnDef<Device>[] = [
         size="icon"
         disabled={deviceUse(row.original) !== null}
       >
-        <ChevronRight className="h-4 w-4" />
+        <ChevronRightIcon className="h-4 w-4" />
       </Button>
     ),
   },
@@ -119,7 +110,7 @@ const poolColumns: ColumnDef<Pool>[] = [
     header: 'Pool',
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
-        <Database className="h-4 w-4 text-muted-foreground" />
+        <PoolIcon className="h-4 w-4 text-muted-foreground" />
         <div>
           <div className="font-medium">{row.original.label || row.original.id}</div>
           <div className="text-xs text-muted-foreground">{row.original.mount ?? 'Not mounted'}</div>
@@ -188,7 +179,7 @@ const poolColumns: ColumnDef<Pool>[] = [
         size="icon"
         onClick={() => window.location.href = `/storage/${row.original.id}`}
       >
-        <ChevronRight className="h-4 w-4" />
+        <ChevronRightIcon className="h-4 w-4" />
       </Button>
     ),
   },
@@ -247,14 +238,14 @@ export function Storage() {
               onClick={handleRefresh}
               disabled={isRefreshing}
             >
-              <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
+              <RefreshIcon className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
               Refresh
             </Button>
             <Button 
               size="sm"
               onClick={() => window.location.href = '/storage/create'}
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <AddIcon className="h-4 w-4 mr-2" />
               Create Pool
             </Button>
           </>
@@ -279,7 +270,7 @@ export function Storage() {
                       {formatBytes(pools.reduce((acc, p) => acc + p.size, 0))}
                     </p>
                   </div>
-                  <Database className="h-8 w-8 text-muted-foreground" />
+                  <PoolIcon className="h-8 w-8 text-muted-foreground" />
                 </div>
               </Card>
               
@@ -291,7 +282,7 @@ export function Storage() {
                       {formatBytes(pools.reduce((acc, p) => acc + p.used, 0))}
                     </p>
                   </div>
-                  <HardDrive className="h-8 w-8 text-muted-foreground" />
+                  <PoolIcon className="h-8 w-8 text-muted-foreground" />
                 </div>
               </Card>
               
@@ -306,7 +297,7 @@ export function Storage() {
                       <span className="text-sm text-muted-foreground">mounted</span>
                     </div>
                   </div>
-                  <Activity className="h-8 w-8 text-muted-foreground" />
+                  <ActivityIcon className="h-8 w-8 text-muted-foreground" />
                 </div>
               </Card>
             </div>
@@ -329,12 +320,12 @@ export function Storage() {
               />
             ) : (
               <EmptyState
-                icon={Database}
+                icon={PoolIcon}
                 title="No storage pools"
                 description="Create your first storage pool to start storing data"
                 action={
                   <Button onClick={() => window.location.href = '/storage/create'}>
-                    <Plus className="h-4 w-4 mr-2" />
+                    <AddIcon className="h-4 w-4 mr-2" />
                     Create Pool
                   </Button>
                 }
@@ -479,7 +470,7 @@ export function Storage() {
               />
             ) : (
               <EmptyState
-                icon={HardDrive}
+                icon={PoolIcon}
                 title="No devices found"
                 description="No storage devices were detected in the system"
               />
@@ -515,13 +506,13 @@ export function Storage() {
                     <div className="text-right">
                       {smartData.temperature_celsius !== undefined && (
                         <div className="flex items-center gap-2">
-                          <Thermometer className="h-4 w-4 text-muted-foreground" />
+                          <TemperatureIcon className="h-4 w-4 text-muted-foreground" />
                           <span>{smartData.temperature_celsius}°C</span>
                         </div>
                       )}
                       {smartData.power_on_hours !== undefined && (
                         <div className="flex items-center gap-2 mt-1">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <TimeIcon className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm text-muted-foreground">
                             {smartData.power_on_hours} hours
                           </span>

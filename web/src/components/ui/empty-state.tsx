@@ -1,19 +1,13 @@
 import { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
-import {
-  FileX,
-  Search,
-  ServerCrash,
-  Inbox,
-  LucideIcon,
-} from 'lucide-react'
+import { EmptyIcon, NotFoundIcon, SearchIcon, UnreachableIcon, type IconComponent } from '@/components/icons'
 
 type EmptyStateVariant = 'no-data' | 'filtered' | 'error' | 'backend-down'
 
 interface EmptyStateProps {
   variant?: EmptyStateVariant
-  icon?: LucideIcon
+  icon?: IconComponent
   title: string
   description?: string
   action?: ReactNode | {
@@ -25,22 +19,22 @@ interface EmptyStateProps {
 
 const variantConfig: Record<
   EmptyStateVariant,
-  { icon: LucideIcon; defaultTitle: string }
+  { icon: IconComponent; defaultTitle: string }
 > = {
   'no-data': {
-    icon: Inbox,
+    icon: EmptyIcon,
     defaultTitle: 'No data yet',
   },
   'filtered': {
-    icon: Search,
+    icon: SearchIcon,
     defaultTitle: 'No results found',
   },
   'error': {
-    icon: FileX,
+    icon: NotFoundIcon,
     defaultTitle: 'Something went wrong',
   },
   'backend-down': {
-    icon: ServerCrash,
+    icon: UnreachableIcon,
     defaultTitle: 'Backend unreachable',
   },
 }

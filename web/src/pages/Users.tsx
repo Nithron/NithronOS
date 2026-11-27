@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { KeyRound, ShieldOff, Trash2, UserPlus } from 'lucide-react'
+import { AddUserIcon, DeleteIcon, KeyIcon, SecurityOffIcon } from '@/components/icons'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card } from '@/components/ui/card-enhanced'
 import { Button } from '@/components/ui/button'
@@ -337,7 +337,7 @@ function UserRow({
       <TableCell>
         <div className="flex justify-end gap-1">
           <Button variant="ghost" size="sm" onClick={onReset} title="Set a new password">
-            <KeyRound className="h-4 w-4" aria-hidden />
+            <KeyIcon className="h-4 w-4" aria-hidden />
             <span className="sr-only">Set a new password for {user.username}</span>
           </Button>
           {user.two_factor_enabled && !isSelf && (
@@ -348,13 +348,13 @@ function UserRow({
               disabled={disableTwoFactor.isPending}
               title="Turn off two-factor sign-in"
             >
-              <ShieldOff className="h-4 w-4" aria-hidden />
+              <SecurityOffIcon className="h-4 w-4" aria-hidden />
               <span className="sr-only">Turn off two-factor sign-in for {user.username}</span>
             </Button>
           )}
           {!isSelf && (
             <Button variant="ghost" size="sm" onClick={onDelete} title="Delete user">
-              <Trash2 className="h-4 w-4 text-destructive" aria-hidden />
+              <DeleteIcon className="h-4 w-4 text-destructive" aria-hidden />
               <span className="sr-only">Delete {user.username}</span>
             </Button>
           )}
@@ -383,7 +383,7 @@ export function Users() {
         description="People who sign in to nOS and to the file shares"
         actions={
           <Button onClick={() => setAdding(true)}>
-            <UserPlus className="mr-2 h-4 w-4" aria-hidden />
+            <AddUserIcon className="mr-2 h-4 w-4" aria-hidden />
             Add user
           </Button>
         }

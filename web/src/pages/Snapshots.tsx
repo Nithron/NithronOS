@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { HardDrive, Calendar, Plus, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { AddIcon, DeleteIcon, PoolIcon, RefreshIcon, ScheduleIcon, WarningIcon } from '@/components/icons'
 import { backupApi } from '@/api/backup';
 import type { Snapshot } from '@/api/backup.types';
 import { formatBytes } from '@/lib/utils';
@@ -67,7 +67,7 @@ export default function Snapshots() {
           onClick={() => setShowCreateDialog(true)}
           className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
         >
-          <Plus className="w-4 h-4 mr-2" />
+          <AddIcon className="w-4 h-4 mr-2" />
           Create Snapshot
         </button>
       </div>
@@ -77,7 +77,7 @@ export default function Snapshots() {
         <div className="grid gap-4 md:grid-cols-3">
           <div className="bg-card rounded-lg p-4">
             <div className="flex items-center space-x-3">
-              <HardDrive className="w-8 h-8 text-primary" />
+              <PoolIcon className="w-8 h-8 text-primary" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Snapshots</p>
                 <p className="text-2xl font-semibold">{stats.total_count}</p>
@@ -87,7 +87,7 @@ export default function Snapshots() {
           
           <div className="bg-card rounded-lg p-4">
             <div className="flex items-center space-x-3">
-              <HardDrive className="w-8 h-8 text-primary" />
+              <PoolIcon className="w-8 h-8 text-primary" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Size</p>
                 <p className="text-2xl font-semibold">{formatBytes(stats.total_size_bytes)}</p>
@@ -97,7 +97,7 @@ export default function Snapshots() {
           
           <div className="bg-card rounded-lg p-4">
             <div className="flex items-center space-x-3">
-              <Calendar className="w-8 h-8 text-primary" />
+              <ScheduleIcon className="w-8 h-8 text-primary" />
               <div>
                 <p className="text-sm text-muted-foreground">Oldest Snapshot</p>
                 <p className="text-2xl font-semibold">
@@ -136,13 +136,13 @@ export default function Snapshots() {
           </div>
         ) : snapshots.length === 0 ? (
           <div className="p-8 text-center">
-            <HardDrive className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <PoolIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground mb-4">No snapshots found</p>
             <button
               onClick={() => setShowCreateDialog(true)}
               className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <AddIcon className="w-4 h-4 mr-2" />
               Create First Snapshot
             </button>
           </div>
@@ -153,7 +153,7 @@ export default function Snapshots() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
-                      <HardDrive className="w-5 h-5 text-primary" />
+                      <PoolIcon className="w-5 h-5 text-primary" />
                       <div>
                         <p className="font-medium">{snapshot.path}</p>
                         <div className="flex items-center space-x-4 mt-1 text-sm text-muted-foreground">
@@ -197,7 +197,7 @@ export default function Snapshots() {
                       className="btn btn-sm"
                       title="Restore from this snapshot"
                     >
-                      <RefreshCw className="w-4 h-4" />
+                      <RefreshIcon className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(snapshot)}
@@ -205,7 +205,7 @@ export default function Snapshots() {
                       title="Delete snapshot"
                       disabled={deleteMutation.isPending}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <DeleteIcon className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -478,7 +478,7 @@ function RestoreDialog({
           <div className="space-y-4">
             <div className="bg-yellow-500/10 border border-yellow-500/50 rounded p-4">
               <div className="flex items-start space-x-3">
-                <AlertTriangle className="w-5 h-5 text-yellow-500 mt-0.5" />
+                <WarningIcon className="w-5 h-5 text-yellow-500 mt-0.5" />
                 <div>
                   <p className="font-medium text-yellow-500">Restore Plan</p>
                   <p className="text-sm mt-1">

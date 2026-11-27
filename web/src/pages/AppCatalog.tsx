@@ -2,34 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Package, 
-  Download, 
-  Search, 
-  Shield,
-  Play,
-  Square,
-  RotateCw,
-  ExternalLink,
-  CheckCircle,
-  AlertCircle,
-  XCircle,
-  Loader2,
-  Grid3x3,
-  List,
-  ChevronRight,
-  Server,
-  Heart,
-  Zap,
-  Database,
-  Code,
-  Film,
-  Gamepad,
-  Home,
-  Lock,
-  Cloud,
-  Info
-} from 'lucide-react';
+import { AppIcon, AutomationIcon, ChevronRightIcon, CloudIcon, DatabaseIcon, DevelopmentIcon, DownloadIcon, FailedIcon, GamingIcon, GridViewIcon, HealthIcon, ListViewIcon, MediaIcon, NoticeIcon, OkIcon, OpenExternalIcon, RestartIcon, SearchIcon, SecurityIcon, SmartHomeIcon, StartIcon, StopIcon, UtilitiesIcon, WorkingIcon } from '@/components/icons'
 import { appsApi } from '../api/apps';
 import type { CatalogEntry, InstalledApp } from '../api/apps.types';
 import { cn } from '../lib/utils';
@@ -41,26 +14,26 @@ import { Badge } from '@/components/ui/badge';
 // Category icons, by the catalog's (lowercase) category keys. (The keys used
 // to be capitalised, so every app showed the generic icon.)
 const categoryIcons: Record<string, any> = {
-  media: Film,
-  entertainment: Film,
-  gaming: Gamepad,
-  productivity: Zap,
-  development: Code,
-  database: Database,
-  storage: Database,
-  'smart-home': Home,
-  security: Lock,
-  cloud: Cloud,
-  health: Heart,
-  utilities: Server,
-  automation: Zap,
-  integration: Cloud,
-  ai: Zap,
-  testing: Server,
+  media: MediaIcon,
+  entertainment: MediaIcon,
+  gaming: GamingIcon,
+  productivity: AutomationIcon,
+  development: DevelopmentIcon,
+  database: DatabaseIcon,
+  storage: DatabaseIcon,
+  'smart-home': SmartHomeIcon,
+  security: SecurityIcon,
+  cloud: CloudIcon,
+  health: HealthIcon,
+  utilities: UtilitiesIcon,
+  automation: AutomationIcon,
+  integration: CloudIcon,
+  ai: AutomationIcon,
+  testing: UtilitiesIcon,
 };
 
 const iconFor = (category?: string) =>
-  (category && categoryIcons[category.toLowerCase()]) || Package;
+  (category && categoryIcons[category.toLowerCase()]) || AppIcon;
 
 // Animation variants
 const containerVariants: any = {
@@ -195,16 +168,16 @@ export function AppCatalog() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'running':
-        return <CheckCircle className="w-4 h-4" />;
+        return <OkIcon className="w-4 h-4" />;
       case 'stopped':
-        return <XCircle className="w-4 h-4" />;
+        return <FailedIcon className="w-4 h-4" />;
       case 'error':
       case 'unhealthy':
-        return <AlertCircle className="w-4 h-4" />;
+        return <FailedIcon className="w-4 h-4" />;
       case 'starting':
       case 'stopping':
       case 'upgrading':
-        return <Loader2 className="w-4 h-4 animate-spin" />;
+        return <WorkingIcon className="w-4 h-4 animate-spin" />;
       default:
         return null;
     }
@@ -255,7 +228,7 @@ export function AppCatalog() {
               {(app as any).verified && (
                 <div className="absolute top-2 right-2">
                   <Badge className="bg-yellow-500 text-black">
-                    <Shield className="w-3 h-3 mr-1" />
+                    <SecurityIcon className="w-3 h-3 mr-1" />
                     Verified
                   </Badge>
                 </div>
@@ -263,7 +236,7 @@ export function AppCatalog() {
               {isInstalled && (
                 <div className="absolute top-2 left-2">
                   <Badge className="bg-green-500">
-                    <CheckCircle className="w-3 h-3 mr-1" />
+                    <OkIcon className="w-3 h-3 mr-1" />
                     Installed
                   </Badge>
                 </div>
@@ -298,7 +271,7 @@ export function AppCatalog() {
                     rel="noopener noreferrer"
                     className="flex items-center hover:text-primary transition-colors"
                   >
-                    <ExternalLink className="w-3 h-3 mr-1" />
+                    <OpenExternalIcon className="w-3 h-3 mr-1" />
                     Source
                   </a>
                 )}
@@ -312,12 +285,12 @@ export function AppCatalog() {
               >
                 {isInstalled ? (
                   <>
-                    <Info className="w-4 h-4 mr-2" />
+                    <NoticeIcon className="w-4 h-4 mr-2" />
                     Manage
                   </>
                 ) : (
                   <>
-                    <Download className="w-4 h-4 mr-2" />
+                    <DownloadIcon className="w-4 h-4 mr-2" />
                     Install
                   </>
                 )}
@@ -330,7 +303,7 @@ export function AppCatalog() {
   };
 
   const InstalledAppCard = ({ app }: { app: InstalledApp }) => {
-    const CategoryIcon = Package;
+    const CategoryIcon = AppIcon;
     
     return (
       <motion.div variants={itemVariants}>
@@ -387,7 +360,7 @@ export function AppCatalog() {
                     className="flex-1"
                     onClick={() => handleAppAction(app.id, 'start')}
                   >
-                    <Play className="w-4 h-4 mr-1" />
+                    <StartIcon className="w-4 h-4 mr-1" />
                     Start
                   </Button>
                 ) : app.status === 'running' ? (
@@ -398,7 +371,7 @@ export function AppCatalog() {
                       className="flex-1"
                       onClick={() => handleAppAction(app.id, 'stop')}
                     >
-                      <Square className="w-4 h-4 mr-1" />
+                      <StopIcon className="w-4 h-4 mr-1" />
                       Stop
                     </Button>
                     <Button
@@ -407,7 +380,7 @@ export function AppCatalog() {
                       className="flex-1"
                       onClick={() => handleAppAction(app.id, 'restart')}
                     >
-                      <RotateCw className="w-4 h-4 mr-1" />
+                      <RestartIcon className="w-4 h-4 mr-1" />
                       Restart
                     </Button>
                   </>
@@ -417,7 +390,7 @@ export function AppCatalog() {
                   variant="default"
                   onClick={() => navigate(`/apps/${app.id}`)}
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRightIcon className="w-4 h-4" />
                 </Button>
               </div>
             </div>
@@ -433,7 +406,7 @@ export function AppCatalog() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
-            <Package className="w-8 h-8 text-white" />
+            <AppIcon className="w-8 h-8 text-white" />
           </div>
           <div>
             <h1 className="text-3xl font-bold">App Catalog</h1>
@@ -447,7 +420,7 @@ export function AppCatalog() {
           disabled={isRefreshing || syncCatalogsMutation.isPending}
           variant="outline"
         >
-          <RotateCw className={cn(
+          <RestartIcon className={cn(
             "w-4 h-4 mr-2",
             (isRefreshing || syncCatalogsMutation.isPending) && "animate-spin"
           )} />
@@ -467,7 +440,7 @@ export function AppCatalog() {
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <Package className="w-4 h-4 inline-block mr-2" />
+            <AppIcon className="w-4 h-4 inline-block mr-2" />
             Catalog
           </button>
           <button
@@ -479,7 +452,7 @@ export function AppCatalog() {
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <Download className="w-4 h-4 inline-block mr-2" />
+            <DownloadIcon className="w-4 h-4 inline-block mr-2" />
             Installed
             {installedApps.length > 0 && (
               <Badge className="ml-2" variant="secondary">
@@ -500,7 +473,7 @@ export function AppCatalog() {
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <Grid3x3 className="w-4 h-4" />
+            <GridViewIcon className="w-4 h-4" />
           </button>
           <button
             onClick={() => setViewMode('list')}
@@ -511,7 +484,7 @@ export function AppCatalog() {
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <List className="w-4 h-4" />
+            <ListViewIcon className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -522,7 +495,7 @@ export function AppCatalog() {
           {/* Search and toggles */}
           <div className="flex gap-4 items-center">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
                 value={searchQuery}
@@ -537,7 +510,7 @@ export function AppCatalog() {
               size="sm"
               onClick={() => setOfficialOnly(!officialOnly)}
             >
-              <Shield className="w-4 h-4 mr-2" />
+              <SecurityIcon className="w-4 h-4 mr-2" />
               Verified Only
             </Button>
           </div>
@@ -590,11 +563,11 @@ export function AppCatalog() {
           >
             {catalogLoading ? (
               <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                <WorkingIcon className="w-8 h-8 animate-spin text-muted-foreground" />
               </div>
             ) : filteredEntries.length === 0 ? (
               <Card className="p-12 text-center">
-                <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                <AppIcon className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No apps found</h3>
                 <p className="text-muted-foreground">
                   {searchQuery || selectedCategory
@@ -632,11 +605,11 @@ export function AppCatalog() {
           >
             {installedLoading ? (
               <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                <WorkingIcon className="w-8 h-8 animate-spin text-muted-foreground" />
               </div>
             ) : installedApps.length === 0 ? (
               <Card className="p-12 text-center">
-                <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                <AppIcon className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No apps installed</h3>
                 <p className="text-muted-foreground mb-6">
                   Install apps from the catalog to get started

@@ -1,17 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Calendar,
-  ChevronRight,
-  Clock,
-  Download,
-  Info,
-  Lock,
-  Network,
-  Server,
-  UserCog,
-  Users,
-} from 'lucide-react'
+import { AccountIcon, ChevronRightIcon, DownloadIcon, LockIcon, NetworkIcon, NoticeIcon, ScheduleIcon, ServerIcon, TimeIcon, UsersIcon } from '@/components/icons'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card } from '@/components/ui/card-enhanced'
 import { Button } from '@/components/ui/button'
@@ -35,19 +24,19 @@ import {
 
 type Section = 'system' | 'account' | 'about'
 
-const sections: Array<{ id: Section; label: string; icon: typeof Server }> = [
-  { id: 'system', label: 'System', icon: Server },
-  { id: 'account', label: 'My account', icon: UserCog },
-  { id: 'about', label: 'About', icon: Info },
+const sections: Array<{ id: Section; label: string; icon: typeof ServerIcon }> = [
+  { id: 'system', label: 'System', icon: ServerIcon },
+  { id: 'account', label: 'My account', icon: AccountIcon },
+  { id: 'about', label: 'About', icon: NoticeIcon },
 ]
 
 const otherPages = [
-  { label: 'Users', path: '/settings/users', icon: Users, adminOnly: true },
-  { label: 'Groups', path: '/settings/groups', icon: Users, adminOnly: true },
-  { label: 'Network', path: '/settings/network', icon: Network, adminOnly: true },
-  { label: 'Schedules', path: '/settings/schedules', icon: Calendar, adminOnly: true },
-  { label: 'Updates', path: '/settings/updates', icon: Download, adminOnly: true },
-  { label: 'Two-factor sign-in', path: '/settings/2fa', icon: Lock, adminOnly: false },
+  { label: 'Users', path: '/settings/users', icon: UsersIcon, adminOnly: true },
+  { label: 'Groups', path: '/settings/groups', icon: UsersIcon, adminOnly: true },
+  { label: 'Network', path: '/settings/network', icon: NetworkIcon, adminOnly: true },
+  { label: 'Schedules', path: '/settings/schedules', icon: ScheduleIcon, adminOnly: true },
+  { label: 'Updates', path: '/settings/updates', icon: DownloadIcon, adminOnly: true },
+  { label: 'Two-factor sign-in', path: '/settings/2fa', icon: LockIcon, adminOnly: false },
 ]
 
 function useIsAdmin(): boolean {
@@ -166,7 +155,7 @@ function TimeCard({ canEdit }: { canEdit: boolean }) {
           </div>
           {tz.data && (
             <p className="text-sm text-muted-foreground">
-              <Clock className="mr-1 inline h-3.5 w-3.5" aria-hidden />
+              <TimeIcon className="mr-1 inline h-3.5 w-3.5" aria-hidden />
               Time on nOS when loaded: {new Date(tz.data.time).toLocaleString()}
             </p>
           )}
@@ -309,7 +298,7 @@ function AccountSection() {
         description="A code from an authenticator app on top of your password."
       >
         <Button variant="outline" onClick={() => navigate('/settings/2fa')}>
-          <Lock className="mr-2 h-4 w-4" aria-hidden />
+          <LockIcon className="mr-2 h-4 w-4" aria-hidden />
           Manage two-factor sign-in
         </Button>
       </Card>
@@ -415,7 +404,7 @@ export function Settings() {
                       <p.icon className="h-4 w-4 text-muted-foreground" aria-hidden />
                       {p.label}
                     </span>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
+                    <ChevronRightIcon className="h-4 w-4 text-muted-foreground" aria-hidden />
                   </button>
                 ))}
             </nav>

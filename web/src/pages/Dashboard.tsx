@@ -1,10 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
-import { 
-  Activity, AlertCircle, AlertTriangle, CheckCircle, Clock, 
-  Cpu, Database, FolderOpen, HardDrive, Info,
-  MemoryStick, Package, RefreshCw, Share2, Wrench, Zap
-} from 'lucide-react'
+import { ActivityIcon, AppIcon, CpuIcon, FailedIcon, FolderIcon, MaintenanceIcon, MemoryIcon, NoticeIcon, OkIcon, PoolIcon, QuickIcon, RefreshIcon, ShareIcon, StorageIcon, TimeIcon, WarningIcon } from '@/components/icons'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -83,7 +79,7 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
+            <ActivityIcon className="h-5 w-5" />
             System Health
           </CardTitle>
         </CardHeader>
@@ -103,13 +99,13 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
+            <ActivityIcon className="h-5 w-5" />
             System Health
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
+            <FailedIcon className="h-4 w-4" />
             <AlertDescription>Data unavailable</AlertDescription>
           </Alert>
         </CardContent>
@@ -122,13 +118,13 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
+            <ActivityIcon className="h-5 w-5" />
             System Health
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Alert>
-            <Info className="h-4 w-4" />
+            <NoticeIcon className="h-4 w-4" />
             <AlertDescription>Waiting for data...</AlertDescription>
           </Alert>
         </CardContent>
@@ -137,19 +133,19 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
   }
 
   const system = data.system
-  const StatusIcon = system.status === 'critical' ? AlertTriangle :
-                     system.status === 'degraded' ? AlertCircle : CheckCircle
+  const StatusIcon = system.status === 'critical' ? FailedIcon :
+                     system.status === 'degraded' ? WarningIcon : OkIcon
 
   return (
     <Card>
       <CardHeader>
         <div className="flex justify-between items-start">
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
+            <ActivityIcon className="h-5 w-5" />
             System Health
             {isSSE && (
               <Badge variant="outline" className="ml-auto text-xs">
-                <Zap className="h-3 w-3 mr-1" />
+                <QuickIcon className="h-3 w-3 mr-1" />
                 Live
               </Badge>
             )}
@@ -165,7 +161,7 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="flex items-center gap-1">
-              <Cpu className="h-3 w-3" />
+              <CpuIcon className="h-3 w-3" />
               CPU
             </span>
             <motion.span
@@ -196,7 +192,7 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="flex items-center gap-1">
-              <MemoryStick className="h-3 w-3" />
+              <MemoryIcon className="h-3 w-3" />
               Memory
             </span>
             <motion.span
@@ -241,7 +237,7 @@ function StorageWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5" />
+            <PoolIcon className="h-5 w-5" />
             Storage
           </CardTitle>
         </CardHeader>
@@ -264,7 +260,7 @@ function StorageWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Database className="h-5 w-5" />
+          <PoolIcon className="h-5 w-5" />
           Storage
         </CardTitle>
         <CardDescription>
@@ -334,7 +330,7 @@ function DiskHealthWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <HardDrive className="h-5 w-5" />
+            <StorageIcon className="h-5 w-5" />
             Disk Health
           </CardTitle>
         </CardHeader>
@@ -355,7 +351,7 @@ function DiskHealthWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <HardDrive className="h-5 w-5" />
+          <StorageIcon className="h-5 w-5" />
           Disk Health
         </CardTitle>
         <CardDescription>
@@ -372,19 +368,19 @@ function DiskHealthWidget({ data, isLoading }: any) {
           <div className="flex gap-2">
             {disks.healthy > 0 && (
               <Badge variant="default" className="gap-1">
-                <CheckCircle className="h-3 w-3" />
+                <OkIcon className="h-3 w-3" />
                 {disks.healthy} Healthy
               </Badge>
             )}
             {disks.warning > 0 && (
               <Badge variant="secondary" className="gap-1 bg-yellow-100">
-                <AlertCircle className="h-3 w-3" />
+                <WarningIcon className="h-3 w-3" />
                 {disks.warning} Warning
               </Badge>
             )}
             {disks.critical > 0 && (
               <Badge variant="destructive" className="gap-1">
-                <AlertTriangle className="h-3 w-3" />
+                <WarningIcon className="h-3 w-3" />
                 {disks.critical} Critical
               </Badge>
             )}
@@ -409,7 +405,7 @@ function RecentActivityWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
+            <ActivityIcon className="h-5 w-5" />
             Recent Activity
           </CardTitle>
         </CardHeader>
@@ -430,11 +426,11 @@ function RecentActivityWidget({ data, isLoading }: any) {
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'error':
-        return <AlertTriangle className="h-4 w-4 text-red-500" />
+        return <WarningIcon className="h-4 w-4 text-red-500" />
       case 'warning':
-        return <AlertCircle className="h-4 w-4 text-yellow-500" />
+        return <WarningIcon className="h-4 w-4 text-yellow-500" />
       default:
-        return <Info className="h-4 w-4 text-blue-500" />
+        return <NoticeIcon className="h-4 w-4 text-blue-500" />
     }
   }
 
@@ -442,7 +438,7 @@ function RecentActivityWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Activity className="h-5 w-5" />
+          <ActivityIcon className="h-5 w-5" />
           Recent Activity
         </CardTitle>
       </CardHeader>
@@ -473,7 +469,7 @@ function RecentActivityWidget({ data, isLoading }: any) {
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <TimeIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No recent activity</p>
             </div>
           )}
@@ -489,7 +485,7 @@ function NetworkSharesWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Share2 className="h-5 w-5" />
+            <ShareIcon className="h-5 w-5" />
             Network Shares
           </CardTitle>
         </CardHeader>
@@ -508,7 +504,7 @@ function NetworkSharesWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Share2 className="h-5 w-5" />
+          <ShareIcon className="h-5 w-5" />
           Network Shares
         </CardTitle>
         <CardDescription>
@@ -521,7 +517,7 @@ function NetworkSharesWidget({ data, isLoading }: any) {
             {shares.slice(0, 3).map((share: any) => (
               <div key={share.name} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                  <FolderIcon className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">{share.name}</span>
                   <Badge variant="outline" className="text-xs">
                     {share.proto}
@@ -540,7 +536,7 @@ function NetworkSharesWidget({ data, isLoading }: any) {
           </div>
         ) : (
           <div className="text-center py-4 text-muted-foreground">
-            <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <FolderIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">No shares configured</p>
           </div>
         )}
@@ -555,7 +551,7 @@ function InstalledAppsWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
+            <AppIcon className="h-5 w-5" />
             Installed Apps
           </CardTitle>
         </CardHeader>
@@ -574,7 +570,7 @@ function InstalledAppsWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Package className="h-5 w-5" />
+          <AppIcon className="h-5 w-5" />
           Installed Apps
         </CardTitle>
         <CardDescription>
@@ -587,7 +583,7 @@ function InstalledAppsWidget({ data, isLoading }: any) {
             {apps.slice(0, 3).map((app: any) => (
               <div key={app.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <AppIcon className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">{app.name}</p>
                     <p className="text-xs text-muted-foreground">{app.version}</p>
@@ -606,7 +602,7 @@ function InstalledAppsWidget({ data, isLoading }: any) {
           </div>
         ) : (
           <div className="text-center py-4 text-muted-foreground">
-            <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <AppIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">No apps installed</p>
             <Button variant="outline" size="sm" className="mt-2">
               Browse Catalog
@@ -624,7 +620,7 @@ function MaintenanceWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Wrench className="h-5 w-5" />
+            <MaintenanceIcon className="h-5 w-5" />
             Maintenance Operations
           </CardTitle>
         </CardHeader>
@@ -641,7 +637,7 @@ function MaintenanceWidget({ data, isLoading }: any) {
     switch (state) {
       case 'running':
         return <Badge variant="default" className="gap-1">
-          <Zap className="h-3 w-3" />
+          <QuickIcon className="h-3 w-3" />
           Running
         </Badge>
       case 'scheduled':
@@ -655,7 +651,7 @@ function MaintenanceWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Wrench className="h-5 w-5" />
+          <MaintenanceIcon className="h-5 w-5" />
           Maintenance Operations
         </CardTitle>
       </CardHeader>
@@ -702,7 +698,7 @@ export function Dashboard() {
     <div className="space-y-6 p-6">
       {error && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <FailedIcon className="h-4 w-4" />
           <AlertDescription>
             Backend unreachable or proxy misconfigured — metrics temporarily unavailable.{' '}
             <a href="/docs/dev/observability" className="underline">Troubleshooting</a>
@@ -721,7 +717,7 @@ export function Dashboard() {
           onClick={handleRefresh}
           disabled={isRefreshing || isFetching}
         >
-          <RefreshCw className={cn("h-4 w-4 mr-2", (isRefreshing || isFetching) && "animate-spin")} />
+          <RefreshIcon className={cn("h-4 w-4 mr-2", (isRefreshing || isFetching) && "animate-spin")} />
           {isRefreshing ? 'Refreshing...' : 'Refresh'}
         </Button>
       </div>

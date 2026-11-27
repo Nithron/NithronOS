@@ -1,13 +1,5 @@
 import { useState, useMemo } from 'react'
-import {
-	Shield,
-	UserPlus,
-	Users,
-	User,
-	X,
-	AlertCircle,
-	Info
-} from 'lucide-react'
+import { AddUserIcon, CloseIcon, FailedIcon, NoticeIcon, PermissionsIcon, UserIcon, UsersIcon, WarningIcon } from '@/components/icons'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -134,7 +126,7 @@ export function PermissionsEditor({
 			<Card className="p-6">
 				<div className="space-y-4">
 					<div className="flex items-center gap-2">
-						<Shield className="h-5 w-5 text-muted-foreground" />
+						<PermissionsIcon className="h-5 w-5 text-muted-foreground" />
 						<h3 className="font-medium">Permissions Summary</h3>
 					</div>
 					
@@ -155,7 +147,7 @@ export function PermissionsEditor({
 
 					{guestEnabled && (
 						<Alert>
-							<AlertCircle className="h-4 w-4" />
+							<WarningIcon className="h-4 w-4" />
 							<AlertDescription>
 								Guest access is enabled. Anyone on the network can access this share without authentication.
 								Explicit permissions will still apply for authenticated users.
@@ -181,7 +173,7 @@ export function PermissionsEditor({
 								setPickerOpen(true)
 							}}
 						>
-							<UserPlus className="h-4 w-4 mr-2" />
+							<AddUserIcon className="h-4 w-4 mr-2" />
 							Add Owner
 						</Button>
 					</div>
@@ -195,16 +187,16 @@ export function PermissionsEditor({
 									className="pl-2 pr-1 py-1 bg-green-500/10 text-green-700 hover:bg-green-500/20"
 								>
 									{principal.type === 'user' ? (
-										<User className="h-3 w-3 mr-1" />
+										<UserIcon className="h-3 w-3 mr-1" />
 									) : (
-										<Users className="h-3 w-3 mr-1" />
+										<UsersIcon className="h-3 w-3 mr-1" />
 									)}
 									{principal.name}
 									<button
 										className="h-4 w-4 ml-1 hover:bg-green-500/20 rounded"
 										onClick={() => handleRemoveOwner(owners[index])}
 									>
-										<X className="h-3 w-3" />
+										<CloseIcon className="h-3 w-3" />
 									</button>
 								</Badge>
 							))}
@@ -231,7 +223,7 @@ export function PermissionsEditor({
 								setPickerOpen(true)
 							}}
 						>
-							<UserPlus className="h-4 w-4 mr-2" />
+							<AddUserIcon className="h-4 w-4 mr-2" />
 							Add Reader
 						</Button>
 					</div>
@@ -245,16 +237,16 @@ export function PermissionsEditor({
 									className="pl-2 pr-1 py-1 bg-blue-500/10 text-blue-700 hover:bg-blue-500/20"
 								>
 									{principal.type === 'user' ? (
-										<User className="h-3 w-3 mr-1" />
+										<UserIcon className="h-3 w-3 mr-1" />
 									) : (
-										<Users className="h-3 w-3 mr-1" />
+										<UsersIcon className="h-3 w-3 mr-1" />
 									)}
 									{principal.name}
 									<button
 										className="h-4 w-4 ml-1 hover:bg-blue-500/20 rounded"
 										onClick={() => handleRemoveReader(readers[index])}
 									>
-										<X className="h-3 w-3" />
+										<CloseIcon className="h-3 w-3" />
 									</button>
 								</Badge>
 							))}
@@ -268,7 +260,7 @@ export function PermissionsEditor({
 			{/* Warnings */}
 			{owners.length === 0 && readers.length === 0 && !guestEnabled && (
 				<Alert variant="destructive">
-					<AlertCircle className="h-4 w-4" />
+					<FailedIcon className="h-4 w-4" />
 					<AlertDescription>
 						No permissions configured. This share will not be accessible to anyone.
 						Add at least one owner or reader, or enable guest access.
@@ -278,7 +270,7 @@ export function PermissionsEditor({
 
 			{guestEnabled && readers.length > 0 && (
 				<Alert>
-					<Info className="h-4 w-4" />
+					<NoticeIcon className="h-4 w-4" />
 					<AlertDescription>
 						Guest access is enabled along with explicit readers. 
 						Guests will have read-only access, while configured readers will have their specified permissions.
@@ -320,7 +312,7 @@ export function PermissionsEditor({
 													setSearchQuery('')
 												}}
 											>
-												<User className="h-4 w-4 mr-2" />
+												<UserIcon className="h-4 w-4 mr-2" />
 												{principal.display}
 											</CommandItem>
 										))}
@@ -340,7 +332,7 @@ export function PermissionsEditor({
 													setSearchQuery('')
 												}}
 											>
-												<Users className="h-4 w-4 mr-2" />
+												<UsersIcon className="h-4 w-4 mr-2" />
 												{principal.display}
 											</CommandItem>
 										))}

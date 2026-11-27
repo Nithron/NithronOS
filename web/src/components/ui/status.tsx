@@ -1,6 +1,6 @@
 import React from 'react'
 import { cn } from '@/lib/utils'
-import { CheckCircle, AlertCircle, XCircle, Info, Circle } from 'lucide-react'
+import { DotIcon, FailedIcon, NoticeIcon, OkIcon, WarningIcon } from '@/components/icons'
 
 type StatusVariant = 'success' | 'warning' | 'error' | 'info' | 'muted'
 type StatusValue = 'active' | 'inactive' | 'running' | 'stopped' | 'idle'
@@ -16,23 +16,23 @@ interface StatusPillProps {
 const statusConfig = {
   success: {
     className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-    icon: CheckCircle,
+    icon: OkIcon,
   },
   warning: {
     className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-    icon: AlertCircle,
+    icon: WarningIcon,
   },
   error: {
     className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-    icon: XCircle,
+    icon: FailedIcon,
   },
   info: {
     className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-    icon: Info,
+    icon: NoticeIcon,
   },
   muted: {
     className: 'bg-muted text-muted-foreground',
-    icon: Circle,
+    icon: DotIcon,
   },
 }
 

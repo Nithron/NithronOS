@@ -1,16 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card-enhanced'
-import { 
-  Home, 
-  Search, 
-  AlertTriangle, 
-  ArrowLeft,
-  HardDrive,
-  Server,
-  Wifi,
-  Shield
-} from 'lucide-react'
+import { BackIcon, ConnectionIcon, DiskIcon, HomeIcon, SearchIcon, SecurityIcon, ServerIcon, WarningIcon } from '@/components/icons'
 import { motion } from 'framer-motion'
 
 export function NotFound() {
@@ -18,25 +9,25 @@ export function NotFound() {
 
   const quickLinks = [
     { 
-      icon: HardDrive, 
+      icon: DiskIcon, 
       label: 'Storage', 
       path: '/storage',
       description: 'Manage your storage pools'
     },
     { 
-      icon: Server, 
+      icon: ServerIcon, 
       label: 'Apps', 
       path: '/apps',
       description: 'Browse installed applications'
     },
     { 
-      icon: Wifi, 
+      icon: ConnectionIcon, 
       label: 'Network', 
       path: '/settings/network',
       description: 'Configure network settings'
     },
     { 
-      icon: Shield, 
+      icon: SecurityIcon, 
       label: 'Settings', 
       path: '/settings',
       description: 'System configuration'
@@ -116,7 +107,7 @@ export function NotFound() {
               variant="outline"
               className="min-w-[140px]"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <BackIcon className="h-4 w-4 mr-2" />
               Go Back
             </Button>
             <Button
@@ -124,7 +115,7 @@ export function NotFound() {
               onClick={() => navigate('/')}
               className="min-w-[140px]"
             >
-              <Home className="h-4 w-4 mr-2" />
+              <HomeIcon className="h-4 w-4 mr-2" />
               Dashboard
             </Button>
           </motion.div>
@@ -139,7 +130,7 @@ export function NotFound() {
           <Card>
             <div className="p-6">
               <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Search className="h-5 w-5" />
+                <SearchIcon className="h-5 w-5" />
                 Quick Links
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -176,7 +167,7 @@ export function NotFound() {
           className="text-center"
         >
           <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 text-sm text-muted-foreground">
-            <AlertTriangle className="h-4 w-4" />
+            <WarningIcon className="h-4 w-4" />
             <span>Error Code: 404 | Resource Not Found</span>
           </div>
         </motion.div>

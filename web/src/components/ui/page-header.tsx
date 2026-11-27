@@ -1,6 +1,6 @@
 import React from 'react'
 import { cn } from '@/lib/utils'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRightIcon } from '@/components/icons'
 
 interface Breadcrumb {
   label: string
@@ -30,7 +30,7 @@ export function PageHeader({
         <nav className="mb-2 flex items-center space-x-1 text-sm text-muted-foreground">
           {breadcrumbs.map((crumb, index) => (
             <React.Fragment key={index}>
-              {index > 0 && <ChevronRight className="h-4 w-4" />}
+              {index > 0 && <ChevronRightIcon className="h-4 w-4" />}
               {crumb.href ? (
                 <a
                   href={crumb.href}

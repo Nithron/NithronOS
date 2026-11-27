@@ -1,19 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-	 
-	Network, 
-	Users, 
-	Clock, 
-	Trash2, 
-	Edit, 
-	Plus,
-	FolderOpen,
-	Shield,
-	MoreVertical,
-	Server,
-	Share2
-} from 'lucide-react'
+import { AddIcon, DeleteIcon, EditIcon, FolderIcon, MoreIcon, NetworkIcon, PermissionsIcon, ServerIcon, ShareIcon, TimeIcon, UsersIcon } from '@/components/icons'
 import { useShares, useShareMutations, type Share } from '@/api/shares'
 import { getErrorMessage } from '@/lib/nos-client'
 import { toast } from '@/components/ui/toast'
@@ -75,7 +62,7 @@ export function SharesList() {
 				return (
 					<div className="flex items-center gap-3">
 						<div className="p-2 bg-blue-500/10 rounded-lg">
-							<FolderOpen className="h-4 w-4 text-blue-500" />
+							<FolderIcon className="h-4 w-4 text-blue-500" />
 						</div>
 						<div>
 							<div className="font-medium">{share.name}</div>
@@ -96,13 +83,13 @@ export function SharesList() {
 					<div className="flex items-center gap-2">
 						{share.smb?.enabled && (
 							<div className="flex items-center gap-1.5">
-								<Server className="h-4 w-4 text-muted-foreground" />
+								<ServerIcon className="h-4 w-4 text-muted-foreground" />
 								<span className="text-sm">SMB</span>
 							</div>
 						)}
 						{share.nfs?.enabled && (
 							<div className="flex items-center gap-1.5">
-								<Network className="h-4 w-4 text-muted-foreground" />
+								<NetworkIcon className="h-4 w-4 text-muted-foreground" />
 								<span className="text-sm">NFS</span>
 							</div>
 						)}
@@ -122,19 +109,19 @@ export function SharesList() {
 					<div className="flex items-center gap-2">
 						{share.smb?.guest && (
 							<StatusPill status="warning" size="sm">
-								<Users className="h-3 w-3" />
+								<UsersIcon className="h-3 w-3" />
 								Guest
 							</StatusPill>
 						)}
 						{share.smb?.time_machine && (
 							<StatusPill status="success" size="sm">
-								<Clock className="h-3 w-3" />
+								<TimeIcon className="h-3 w-3" />
 								Time Machine
 							</StatusPill>
 						)}
 						{share.smb?.recycle?.enabled && (
 							<StatusPill status="info" size="sm">
-								<Trash2 className="h-3 w-3" />
+								<DeleteIcon className="h-3 w-3" />
 								Recycle
 							</StatusPill>
 						)}
@@ -154,13 +141,13 @@ export function SharesList() {
 					<div className="flex items-center gap-3 text-sm">
 						{ownerCount > 0 && (
 							<div className="flex items-center gap-1.5">
-								<Shield className="h-3.5 w-3.5 text-green-500" />
+								<PermissionsIcon className="h-3.5 w-3.5 text-green-500" />
 								<span>{ownerCount} owner{ownerCount !== 1 ? 's' : ''}</span>
 							</div>
 						)}
 						{readerCount > 0 && (
 							<div className="flex items-center gap-1.5">
-								<Shield className="h-3.5 w-3.5 text-blue-500" />
+								<PermissionsIcon className="h-3.5 w-3.5 text-blue-500" />
 								<span>{readerCount} reader{readerCount !== 1 ? 's' : ''}</span>
 							</div>
 						)}
@@ -181,16 +168,16 @@ export function SharesList() {
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button variant="ghost" size="icon">
-								<MoreVertical className="h-4 w-4" />
+								<MoreIcon className="h-4 w-4" />
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
 							<DropdownMenuItem onClick={() => handleEditShare(share.name)}>
-								<Edit className="h-4 w-4 mr-2" />
+								<EditIcon className="h-4 w-4 mr-2" />
 								Edit Share
 							</DropdownMenuItem>
 							<DropdownMenuItem>
-								<FolderOpen className="h-4 w-4 mr-2" />
+								<FolderIcon className="h-4 w-4 mr-2" />
 								Open in Files
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
@@ -198,7 +185,7 @@ export function SharesList() {
 								onClick={() => setDeleteTarget(share.name)}
 								className="text-destructive"
 							>
-								<Trash2 className="h-4 w-4 mr-2" />
+								<DeleteIcon className="h-4 w-4 mr-2" />
 								Delete Share
 							</DropdownMenuItem>
 						</DropdownMenuContent>
@@ -217,12 +204,12 @@ export function SharesList() {
 				/>
 				<div className="flex-1 flex items-center justify-center p-8">
 					<EmptyState
-						icon={Share2}
+						icon={ShareIcon}
 						title="No shares configured"
 						description="Create your first network share to enable file access over SMB or NFS"
 						action={
 							<Button onClick={handleCreateShare}>
-								<Plus className="h-4 w-4 mr-2" />
+								<AddIcon className="h-4 w-4 mr-2" />
 								Create Share
 							</Button>
 						}
@@ -239,7 +226,7 @@ export function SharesList() {
 				description="Network file shares for SMB and NFS access"
 				action={
 					<Button onClick={handleCreateShare}>
-						<Plus className="h-4 w-4 mr-2" />
+						<AddIcon className="h-4 w-4 mr-2" />
 						Create Share
 					</Button>
 				}

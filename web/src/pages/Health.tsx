@@ -1,11 +1,7 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { PageHeader } from '@/components/ui/page-header'
 import { cn } from '@/lib/utils'
-import {
-  Activity,
-  HardDrive,
-  Server,
-} from 'lucide-react'
+import { DiskIcon, HealthIcon, ServerIcon } from '@/components/icons'
 
 export function Health() {
   const location = useLocation()
@@ -15,13 +11,13 @@ export function Health() {
     { 
       name: 'System', 
       href: '/health/system',
-      icon: Server,
+      icon: ServerIcon,
       description: 'System resource monitoring'
     },
     { 
       name: 'Disk', 
       href: '/health/disk',
-      icon: HardDrive,
+      icon: DiskIcon,
       description: 'Disk health and SMART status'
     },
   ]
@@ -58,7 +54,7 @@ export function Health() {
       {isBaseHealthPath ? (
         // Show system health by default when at /health
         <div className="text-center py-12">
-          <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <HealthIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium mb-2">Select a health category</h3>
           <p className="text-sm text-muted-foreground">
             Choose System or Disk health monitoring from the tabs above

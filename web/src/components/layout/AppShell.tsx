@@ -1,14 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import {
-  Bell,
-  ChevronDown,
-  ChevronRight,
-  LogOut,
-  Menu,
-  User,
-  X,
-} from 'lucide-react'
+import { AlertsIcon, ChevronDownIcon, ChevronRightIcon, CloseIcon, MenuIcon, SignOutIcon, UserIcon } from '@/components/icons'
 import { navItems } from '@/config/nav'
 import { Toasts } from '../ui/toast'
 import { useAuth } from '@/lib/auth'
@@ -58,7 +50,7 @@ function SidebarItem({ item, level = 0 }: SidebarItemProps) {
         {Icon && <Icon className="h-4 w-4" />}
         <span className="flex-1">{item.label}</span>
         {hasChildren && (
-          <ChevronRight
+          <ChevronRightIcon
             className={cn(
               'h-4 w-4 transition-transform',
               expanded && 'rotate-90'
@@ -141,7 +133,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
               className="ml-auto lg:hidden"
               aria-label="Close sidebar"
             >
-              <X className="h-5 w-5" />
+              <CloseIcon className="h-5 w-5" />
             </button>
           </div>
 
@@ -170,7 +162,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
             className="lg:hidden"
             aria-label="Open sidebar"
           >
-            <Menu className="h-5 w-5" />
+            <MenuIcon className="h-5 w-5" />
           </button>
 
           <div className="flex-1" />
@@ -182,7 +174,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
               className="relative rounded-lg p-2 hover:bg-accent/10"
               aria-label="View alerts"
             >
-              <Bell className="h-5 w-5 text-muted-foreground" />
+              <AlertsIcon className="h-5 w-5 text-muted-foreground" />
               {alerts.length > 0 && (
                 <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
                   {alerts.length}
@@ -197,8 +189,8 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
                 className="flex items-center gap-2 rounded-lg p-2 hover:bg-accent/10"
                 aria-label="User menu"
               >
-                <User className="h-5 w-5 text-muted-foreground" />
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <UserIcon className="h-5 w-5 text-muted-foreground" />
+                <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
               </button>
 
               {userMenuOpen && (
@@ -216,7 +208,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
                       onClick={handleLogout}
                       className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent/10"
                     >
-                      <LogOut className="h-4 w-4" />
+                      <SignOutIcon className="h-4 w-4" />
                       Sign Out
                     </button>
                   </div>
@@ -243,7 +235,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
                 onClick={() => setAlertsOpen(false)}
                 aria-label="Close alerts"
               >
-                <X className="h-5 w-5" />
+                <CloseIcon className="h-5 w-5" />
               </button>
             </div>
             {alerts.length === 0 ? (

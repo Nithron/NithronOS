@@ -2,31 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getErrorMessage } from '@/lib/nos-client';
-import { 
-  Package,
-  Play,
-  Square,
-  RotateCw,
-  ExternalLink,
-  Download,
-  Trash2,
-  ChevronLeft,
-  Shield,
-  Activity,
-  Terminal,
-  Settings,
-  History,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Loader2,
-  Copy,
-  Pause,
-  PlayCircle,
-  ArrowUp,
-  Clock,
-  HardDrive
-} from 'lucide-react';
+import { AppIcon, ChevronLeftIcon, CopyIcon, DeleteIcon, DownloadIcon, FailedIcon, HealthIcon, HistoryIcon, OkIcon, OpenExternalIcon, PauseIcon, RestartIcon, SecurityIcon, SettingsIcon, StartIcon, StopIcon, StorageIcon, TerminalIcon, TimeIcon, UpgradeIcon, WorkingIcon } from '@/components/icons'
 import { appsApi } from '../api/apps';
 import type { AppSnapshot, AppEvent, ContainerHealth, PortMapping } from '../api/apps.types';
 import { cn } from '../lib/utils';
@@ -216,7 +192,7 @@ export function AppDetails() {
     return (
       <div className="container mx-auto py-6">
         <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+          <WorkingIcon className="w-8 h-8 animate-spin text-gray-400" />
         </div>
       </div>
     );
@@ -226,7 +202,7 @@ export function AppDetails() {
     return (
       <div className="container mx-auto py-6">
         <div className="text-center py-12">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <FailedIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <p className="text-lg">App not found</p>
           <button
             onClick={() => navigate('/apps')}
@@ -249,25 +225,25 @@ export function AppDetails() {
               onClick={() => navigate('/apps')}
               className="btn btn-secondary btn-sm mt-1"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeftIcon className="w-4 h-4" />
             </button>
             <div className="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center">
-              <Package className="w-8 h-8 text-gray-400" />
+              <AppIcon className="w-8 h-8 text-gray-400" />
             </div>
             <div>
               <h1 className="text-2xl font-bold">{app.name}</h1>
               <div className="flex items-center gap-4 mt-2">
                 <span className="text-sm text-gray-400">v{app.version}</span>
                 <div className={cn('flex items-center gap-1', getStatusColor(app.status))}>
-                  {app.status === 'running' && <CheckCircle className="w-4 h-4" />}
-                  {app.status === 'stopped' && <XCircle className="w-4 h-4" />}
-                  {app.status === 'error' && <AlertCircle className="w-4 h-4" />}
+                  {app.status === 'running' && <OkIcon className="w-4 h-4" />}
+                  {app.status === 'stopped' && <FailedIcon className="w-4 h-4" />}
+                  {app.status === 'error' && <FailedIcon className="w-4 h-4" />}
                   {(app.status === 'starting' || app.status === 'stopping') && 
-                    <Loader2 className="w-4 h-4 animate-spin" />}
+                    <WorkingIcon className="w-4 h-4 animate-spin" />}
                   <span className="capitalize">{app.status}</span>
                 </div>
                 <div className={cn('flex items-center gap-1', getHealthColor(app.health?.status))}>
-                  <Shield className="w-4 h-4" />
+                  <SecurityIcon className="w-4 h-4" />
                   <span className="capitalize">{app.health?.status || 'unknown'}</span>
                 </div>
               </div>
@@ -281,7 +257,7 @@ export function AppDetails() {
                       rel="noopener noreferrer"
                       className="btn btn-secondary btn-sm"
                     >
-                      <ExternalLink className="w-4 h-4 mr-2" />
+                      <OpenExternalIcon className="w-4 h-4 mr-2" />
                       Open App
                     </a>
                   ))}
@@ -297,7 +273,7 @@ export function AppDetails() {
                 disabled={startMutation.isPending}
                 className="btn btn-primary"
               >
-                <Play className="w-4 h-4 mr-2" />
+                <StartIcon className="w-4 h-4 mr-2" />
                 Start
               </button>
             ) : app.status === 'running' ? (
@@ -307,7 +283,7 @@ export function AppDetails() {
                   disabled={restartMutation.isPending}
                   className="btn btn-secondary"
                 >
-                  <RotateCw className="w-4 h-4 mr-2" />
+                  <RestartIcon className="w-4 h-4 mr-2" />
                   Restart
                 </button>
                 <button
@@ -315,7 +291,7 @@ export function AppDetails() {
                   disabled={stopMutation.isPending}
                   className="btn btn-secondary"
                 >
-                  <Square className="w-4 h-4 mr-2" />
+                  <StopIcon className="w-4 h-4 mr-2" />
                   Stop
                 </button>
               </>
@@ -324,7 +300,7 @@ export function AppDetails() {
               onClick={() => navigate(`/apps/install/${app.id}`)}
               className="btn btn-secondary"
             >
-              <ArrowUp className="w-4 h-4 mr-2" />
+              <UpgradeIcon className="w-4 h-4 mr-2" />
               Upgrade
             </button>
           </div>
@@ -334,10 +310,10 @@ export function AppDetails() {
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-gray-800 rounded-lg w-fit">
         {[
-          { key: 'health', label: 'Health', icon: Activity },
-          { key: 'logs', label: 'Logs', icon: Terminal },
-          { key: 'config', label: 'Config', icon: Settings },
-          { key: 'snapshots', label: 'Snapshots', icon: History },
+          { key: 'health', label: 'Health', icon: HealthIcon },
+          { key: 'logs', label: 'Logs', icon: TerminalIcon },
+          { key: 'config', label: 'Config', icon: SettingsIcon },
+          { key: 'snapshots', label: 'Snapshots', icon: HistoryIcon },
         ].map(tab => (
           <button
             key={tab.key}
@@ -366,7 +342,7 @@ export function AppDetails() {
                 disabled={healthCheckMutation.isPending}
                 className="btn btn-secondary btn-sm"
               >
-                <RotateCw className={cn(
+                <RestartIcon className={cn(
                   "w-4 h-4 mr-2",
                   healthCheckMutation.isPending && "animate-spin"
                 )} />
@@ -435,7 +411,7 @@ export function AppDetails() {
                     <div key={event.id} className="bg-gray-700 rounded-lg p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-gray-400" />
+                          <TimeIcon className="w-4 h-4 text-gray-400" />
                           <span className="text-sm">{event.type}</span>
                         </div>
                         <span className="text-xs text-gray-400">
@@ -466,12 +442,12 @@ export function AppDetails() {
                 >
                   {logsPaused ? (
                     <>
-                      <PlayCircle className="w-4 h-4 mr-2" />
+                      <StartIcon className="w-4 h-4 mr-2" />
                       Resume
                     </>
                   ) : (
                     <>
-                      <Pause className="w-4 h-4 mr-2" />
+                      <PauseIcon className="w-4 h-4 mr-2" />
                       Pause
                     </>
                   )}
@@ -488,7 +464,7 @@ export function AppDetails() {
                   }}
                   className="btn btn-secondary btn-sm"
                 >
-                  <Download className="w-4 h-4 mr-2" />
+                  <DownloadIcon className="w-4 h-4 mr-2" />
                   Download
                 </button>
               </div>
@@ -524,7 +500,7 @@ export function AppDetails() {
                   onClick={() => copyToClipboard(JSON.stringify(app.params, null, 2))}
                   className="btn btn-secondary btn-sm"
                 >
-                  <Copy className="w-4 h-4 mr-2" />
+                  <CopyIcon className="w-4 h-4 mr-2" />
                   Copy
                 </button>
               </div>
@@ -565,7 +541,7 @@ export function AppDetails() {
                 onClick={() => snapshotMutation.mutate()}
                 disabled={snapshotMutation.isPending}
               >
-                <HardDrive className="w-4 h-4 mr-2" />
+                <StorageIcon className="w-4 h-4 mr-2" />
                 Create Snapshot
               </button>
             </div>
@@ -605,7 +581,7 @@ export function AppDetails() {
                           onClick={() => setSelectedSnapshot(snapshot.id)}
                           className="btn btn-secondary btn-sm"
                         >
-                          <History className="w-4 h-4 mr-2" />
+                          <HistoryIcon className="w-4 h-4 mr-2" />
                           Rollback
                         </button>
                       )}
@@ -615,7 +591,7 @@ export function AppDetails() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <HardDrive className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                <StorageIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
                 <p className="text-gray-400">No snapshots available</p>
               </div>
             )}
@@ -631,7 +607,7 @@ export function AppDetails() {
             onClick={() => setShowDeleteConfirm(true)}
             className="btn btn-danger"
           >
-            <Trash2 className="w-4 h-4 mr-2" />
+            <DeleteIcon className="w-4 h-4 mr-2" />
             Delete App
           </button>
         ) : (
@@ -656,12 +632,12 @@ export function AppDetails() {
               >
                 {deleteMutation.isPending ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <WorkingIcon className="w-4 h-4 mr-2 animate-spin" />
                     Deleting...
                   </>
                 ) : (
                   <>
-                    <Trash2 className="w-4 h-4 mr-2" />
+                    <DeleteIcon className="w-4 h-4 mr-2" />
                     Confirm Delete
                   </>
                 )}

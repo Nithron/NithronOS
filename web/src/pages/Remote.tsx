@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { HardDrive, KeyRound, Plus, Send, Server, Trash2, Wifi, X } from 'lucide-react'
+import { AddIcon, CloseIcon, ConnectionIcon, DeleteIcon, DiskIcon, KeyIcon, SendTestIcon, ServerIcon } from '@/components/icons'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card } from '@/components/ui/card-enhanced'
 import { Button } from '@/components/ui/button'
@@ -133,9 +133,9 @@ function AddDestinationDialog({
                 className={`flex items-center gap-2 rounded-lg border p-3 text-left text-sm ${type === t ? 'border-primary bg-primary/5' : 'border-input'}`}
               >
                 {t === 'ssh' ? (
-                  <Server className="h-4 w-4" aria-hidden />
+                  <ServerIcon className="h-4 w-4" aria-hidden />
                 ) : (
-                  <HardDrive className="h-4 w-4" aria-hidden />
+                  <DiskIcon className="h-4 w-4" aria-hidden />
                 )}
                 <span>
                   <span className="block font-medium">
@@ -328,7 +328,7 @@ function CopyNowDialog({ dest, onClose }: { dest: Destination | null; onClose: (
             Cancel
           </Button>
           <Button onClick={() => replicate.mutate()} disabled={!snapshotId || replicate.isPending}>
-            <Send className="mr-2 h-4 w-4" aria-hidden />
+            <SendTestIcon className="mr-2 h-4 w-4" aria-hidden />
             Copy
           </Button>
         </DialogFooter>
@@ -375,7 +375,7 @@ function DestinationsCard() {
       onRetry={() => refetch()}
       actions={
         <Button size="sm" onClick={() => setAdding(true)}>
-          <Plus className="mr-2 h-4 w-4" aria-hidden />
+          <AddIcon className="mr-2 h-4 w-4" aria-hidden />
           Add destination
         </Button>
       }
@@ -406,7 +406,7 @@ function DestinationsCard() {
                 <TableCell>
                   <div className="flex justify-end gap-1">
                     <Button variant="outline" size="sm" onClick={() => setCopyTo(d)}>
-                      <Send className="mr-1 h-4 w-4" aria-hidden />
+                      <SendTestIcon className="mr-1 h-4 w-4" aria-hidden />
                       Copy now
                     </Button>
                     <Button
@@ -416,7 +416,7 @@ function DestinationsCard() {
                       disabled={test.isPending}
                       title="Check the connection"
                     >
-                      <Wifi className="h-4 w-4" aria-hidden />
+                      <ConnectionIcon className="h-4 w-4" aria-hidden />
                       <span className="sr-only">Check the connection to {d.name}</span>
                     </Button>
                     {d.type === 'ssh' && (
@@ -426,7 +426,7 @@ function DestinationsCard() {
                         onClick={() => setKeyFor(d)}
                         title="Replace the SSH key"
                       >
-                        <KeyRound className="h-4 w-4" aria-hidden />
+                        <KeyIcon className="h-4 w-4" aria-hidden />
                         <span className="sr-only">Replace the SSH key of {d.name}</span>
                       </Button>
                     )}
@@ -437,7 +437,7 @@ function DestinationsCard() {
                       disabled={remove.isPending}
                       title="Remove"
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" aria-hidden />
+                      <DeleteIcon className="h-4 w-4 text-destructive" aria-hidden />
                       <span className="sr-only">Remove {d.name}</span>
                     </Button>
                   </div>
@@ -520,7 +520,7 @@ function CopiesCard() {
                       onClick={() => cancel.mutate(j.id)}
                       disabled={cancel.isPending}
                     >
-                      <X className="mr-1 h-4 w-4" aria-hidden />
+                      <CloseIcon className="mr-1 h-4 w-4" aria-hidden />
                       Stop
                     </Button>
                   )}

@@ -1,19 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import {
-  Download,
-  RefreshCw,
-  CheckCircle,
-  Clock,
-  HardDrive,
-  Trash2,
-  RotateCcw,
-  Loader2,
-  Package,
-  GitBranch,
-  Server,
-} from 'lucide-react';
+import { AppIcon, ChannelIcon, DeleteIcon, DownloadIcon, OkIcon, RefreshIcon, RollBackIcon, ServerIcon, SnapshotIcon, TimeIcon, WorkingIcon } from '@/components/icons'
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 
@@ -190,9 +178,9 @@ export default function Updates() {
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
         >
           {isChecking ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <WorkingIcon className="w-4 h-4 animate-spin" />
           ) : (
-            <RefreshCw className="w-4 h-4" />
+            <RefreshIcon className="w-4 h-4" />
           )}
           Check for Updates
         </button>
@@ -204,7 +192,7 @@ export default function Updates() {
         {version && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-start gap-3">
-              <Server className="w-5 h-5 text-gray-400 mt-1" />
+              <ServerIcon className="w-5 h-5 text-gray-400 mt-1" />
               <div>
                 <p className="text-sm text-gray-400">OS Version</p>
                 <p className="text-white font-medium">{version.os_version}</p>
@@ -213,7 +201,7 @@ export default function Updates() {
             </div>
             
             <div className="flex items-start gap-3">
-              <Package className="w-5 h-5 text-gray-400 mt-1" />
+              <AppIcon className="w-5 h-5 text-gray-400 mt-1" />
               <div>
                 <p className="text-sm text-gray-400">Components</p>
                 <p className="text-white font-medium">{formatVersion(version)}</p>
@@ -226,7 +214,7 @@ export default function Updates() {
             </div>
             
             <div className="flex items-start gap-3">
-              <GitBranch className="w-5 h-5 text-gray-400 mt-1" />
+              <ChannelIcon className="w-5 h-5 text-gray-400 mt-1" />
               <div>
                 <p className="text-sm text-gray-400">Update Channel</p>
                 <div className="flex items-center gap-2 mt-1">
@@ -259,7 +247,7 @@ export default function Updates() {
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-3">
-                <Download className="w-5 h-5 text-blue-300" />
+                <DownloadIcon className="w-5 h-5 text-blue-300" />
                 <h2 className="text-lg font-semibold text-white">Update Available</h2>
                 {updateCheck.latest_version.critical && (
                   <span className="px-2 py-1 bg-red-600 text-white text-xs rounded">
@@ -306,7 +294,7 @@ export default function Updates() {
               className="px-6 py-3 bg-white text-blue-900 rounded-lg font-medium hover:bg-gray-100 disabled:opacity-50"
             >
               {applyUpdateMutation.isPending ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <WorkingIcon className="w-5 h-5 animate-spin" />
               ) : (
                 'Apply Update'
               )}
@@ -377,7 +365,7 @@ export default function Updates() {
                       phase === 'install' ? 80 :
                       phase === 'postflight' ? 95 : 100
                     ) ? (
-                      <CheckCircle className="w-4 h-4" />
+                      <OkIcon className="w-4 h-4" />
                     ) : (
                       <div className="w-2 h-2 bg-current rounded-full" />
                     )}
@@ -410,7 +398,7 @@ export default function Updates() {
             {/* ETA */}
             {updateProgress.estimated_time_remaining && (
               <div className="flex items-center gap-2 text-sm text-gray-400">
-                <Clock className="w-4 h-4" />
+                <TimeIcon className="w-4 h-4" />
                 <span>Estimated time remaining: {formatDuration(updateProgress.estimated_time_remaining)}</span>
               </div>
             )}
@@ -442,7 +430,7 @@ export default function Updates() {
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
-                      <HardDrive className="w-5 h-5 text-gray-400" />
+                      <SnapshotIcon className="w-5 h-5 text-gray-400" />
                       <div>
                         <p className="text-white font-medium">{snapshot.id}</p>
                         <p className="text-sm text-gray-400">
@@ -462,7 +450,7 @@ export default function Updates() {
                         className="p-2 text-yellow-400 hover:bg-gray-600 rounded"
                         title="Rollback to this snapshot"
                       >
-                        <RotateCcw className="w-4 h-4" />
+                        <RollBackIcon className="w-4 h-4" />
                       </button>
                     )}
                     <button
@@ -470,7 +458,7 @@ export default function Updates() {
                       className="p-2 text-red-400 hover:bg-gray-600 rounded"
                       title="Delete snapshot"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <DeleteIcon className="w-4 h-4" />
                     </button>
                   </div>
                 </div>

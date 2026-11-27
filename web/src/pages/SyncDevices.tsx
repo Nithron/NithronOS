@@ -1,22 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { pairingLink } from '@/lib/pairing';
-import {
-  Smartphone,
-  Monitor,
-  Laptop,
-  Terminal,
-  Trash2,
-  Edit2,
-  RefreshCw,
-  Plus,
-  Copy,
-  Check,
-  AlertCircle,
-  Cloud,
-  CloudOff,
-  Download,
-} from 'lucide-react';
+import { AddIcon, ChosenIcon, CopyIcon, DeleteIcon, DesktopIcon, DownloadIcon, EditIcon, FailedIcon, LaptopIcon, OfflineIcon, PhoneIcon, RefreshIcon, SyncIcon, TerminalIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -88,7 +73,7 @@ function TokenQRCode({
   if (error) {
     return (
       <div className="flex items-center justify-center p-4 bg-red-50 border border-red-200 rounded-lg">
-        <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+        <FailedIcon className="h-5 w-5 text-red-500 mr-2" />
         <span className="text-sm text-red-700">{error}</span>
       </div>
     );
@@ -113,16 +98,16 @@ function TokenQRCode({
 function DeviceIcon({ type, className = 'h-5 w-5' }: { type: DeviceType; className?: string }) {
   switch (type) {
     case 'windows':
-      return <Monitor className={className} />;
+      return <DesktopIcon className={className} />;
     case 'linux':
-      return <Terminal className={className} />;
+      return <TerminalIcon className={className} />;
     case 'macos':
-      return <Laptop className={className} />;
+      return <LaptopIcon className={className} />;
     case 'android':
     case 'ios':
-      return <Smartphone className={className} />;
+      return <PhoneIcon className={className} />;
     default:
-      return <Monitor className={className} />;
+      return <DesktopIcon className={className} />;
   }
 }
 
@@ -200,11 +185,11 @@ function DeviceCard({
         
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => onEdit(device)}>
-            <Edit2 className="h-4 w-4 mr-1" />
+            <EditIcon className="h-4 w-4 mr-1" />
             Rename
           </Button>
           <Button variant="destructive" size="sm" onClick={() => onRevoke(device)}>
-            <Trash2 className="h-4 w-4 mr-1" />
+            <DeleteIcon className="h-4 w-4 mr-1" />
             Revoke
           </Button>
         </div>
@@ -347,11 +332,11 @@ export default function SyncDevices() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={loadDevices} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshIcon className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           <Button onClick={() => setShowAddDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" />
+            <AddIcon className="h-4 w-4 mr-2" />
             Add Device
           </Button>
         </div>
@@ -362,7 +347,7 @@ export default function SyncDevices() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Devices</CardTitle>
-            <Smartphone className="h-4 w-4 text-muted-foreground" />
+            <PhoneIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{devices.length}</div>
@@ -371,7 +356,7 @@ export default function SyncDevices() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Now</CardTitle>
-            <Cloud className="h-4 w-4 text-green-500" />
+            <SyncIcon className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{activeDevices}</div>
@@ -380,7 +365,7 @@ export default function SyncDevices() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Offline</CardTitle>
-            <CloudOff className="h-4 w-4 text-gray-400" />
+            <OfflineIcon className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-500">{devices.length - activeDevices}</div>
@@ -389,7 +374,7 @@ export default function SyncDevices() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Synced</CardTitle>
-            <Download className="h-4 w-4 text-muted-foreground" />
+            <DownloadIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatBytes(totalSynced)}</div>
@@ -401,7 +386,7 @@ export default function SyncDevices() {
       {error && (
         <Card className="border-red-200 bg-red-50">
           <CardContent className="flex items-center gap-2 py-4">
-            <AlertCircle className="h-5 w-5 text-red-500" />
+            <FailedIcon className="h-5 w-5 text-red-500" />
             <span className="text-red-700">{error}</span>
           </CardContent>
         </Card>
@@ -411,14 +396,14 @@ export default function SyncDevices() {
       {!loading && devices.length === 0 && (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Smartphone className="h-12 w-12 text-muted-foreground mb-4" />
+            <PhoneIcon className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No devices connected</h3>
             <p className="text-muted-foreground text-center mb-4 max-w-md">
               Connect your Windows, Linux, or mobile device to sync files with your nOS server.
             </p>
             <div className="flex gap-2">
               <Button onClick={() => setShowAddDialog(true)}>
-                <Plus className="h-4 w-4 mr-2" />
+                <AddIcon className="h-4 w-4 mr-2" />
                 Add Device
               </Button>
             </div>
@@ -551,7 +536,7 @@ export default function SyncDevices() {
               <div className="space-y-4 py-4">
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex items-center gap-2 text-green-700 mb-2">
-                    <Check className="h-5 w-5" />
+                    <ChosenIcon className="h-5 w-5" />
                     <span className="font-medium">Device Registered!</span>
                   </div>
                   <p className="text-sm text-green-600">
@@ -578,7 +563,7 @@ export default function SyncDevices() {
                       data-testid="pairing-link"
                     />
                     <Button variant="outline" size="icon" onClick={copyToken} aria-label="Copy pairing link">
-                      {copiedToken ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      {copiedToken ? <ChosenIcon className="h-4 w-4" /> : <CopyIcon className="h-4 w-4" />}
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">

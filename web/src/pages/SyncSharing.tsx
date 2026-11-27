@@ -5,20 +5,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  FolderOpen,
-  Users,
-  UserPlus,
-  Mail,
-  Trash2,
-  RefreshCw,
-  Plus,
-  Crown,
-  Edit,
-  Eye,
-  Check,
-  X,
-} from 'lucide-react';
+import { AddIcon, AddUserIcon, ChosenIcon, CloseIcon, DeleteIcon, EditIcon, FolderIcon, MailIcon, OwnerIcon, RefreshIcon, ShowIcon, UsersIcon } from '@/components/icons'
 
 import { Button } from '@/components/ui/button';
 import {
@@ -189,11 +176,11 @@ export default function SyncSharing() {
   const getPermissionIcon = (permission: SharePermission) => {
     switch (permission) {
       case 'admin':
-        return <Crown className="h-4 w-4 text-yellow-500" />;
+        return <OwnerIcon className="h-4 w-4 text-yellow-500" />;
       case 'write':
-        return <Edit className="h-4 w-4 text-blue-500" />;
+        return <EditIcon className="h-4 w-4 text-blue-500" />;
       case 'read':
-        return <Eye className="h-4 w-4 text-gray-500" />;
+        return <ShowIcon className="h-4 w-4 text-gray-500" />;
     }
   };
 
@@ -226,11 +213,11 @@ export default function SyncSharing() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => { refetchFolders(); refetchInvites(); }}>
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshIcon className="h-4 w-4 mr-2" />
             Refresh
           </Button>
           <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
+            <AddIcon className="h-4 w-4 mr-2" />
             Share Folder
           </Button>
         </div>
@@ -241,7 +228,7 @@ export default function SyncSharing() {
         <Card className="border-blue-500/50 bg-blue-500/5">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <Mail className="h-5 w-5 text-blue-500" />
+              <MailIcon className="h-5 w-5 text-blue-500" />
               <div className="flex-1">
                 <p className="font-medium">
                   You have {invites.length} pending invitation{invites.length > 1 ? 's' : ''}
@@ -258,11 +245,11 @@ export default function SyncSharing() {
       <Tabs defaultValue="folders">
         <TabsList>
           <TabsTrigger value="folders">
-            <FolderOpen className="h-4 w-4 mr-2" />
+            <FolderIcon className="h-4 w-4 mr-2" />
             My Folders ({folders.length})
           </TabsTrigger>
           <TabsTrigger value="invites">
-            <Mail className="h-4 w-4 mr-2" />
+            <MailIcon className="h-4 w-4 mr-2" />
             Invitations ({invites.length})
           </TabsTrigger>
         </TabsList>
@@ -285,13 +272,13 @@ export default function SyncSharing() {
                 </div>
               ) : folders.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
+                  <FolderIcon className="h-12 w-12 text-muted-foreground mb-4" />
                   <h3 className="font-semibold text-lg mb-1">No Shared Folders</h3>
                   <p className="text-muted-foreground mb-4">
                     Create a shared folder to collaborate with others
                   </p>
                   <Button onClick={() => setCreateDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
+                    <AddIcon className="h-4 w-4 mr-2" />
                     Share Your First Folder
                   </Button>
                 </div>
@@ -311,7 +298,7 @@ export default function SyncSharing() {
                       <TableRow key={folder.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <FolderOpen className="h-5 w-5 text-yellow-500" />
+                            <FolderIcon className="h-5 w-5 text-yellow-500" />
                             <div>
                               <p className="font-medium">{folder.name}</p>
                               <p className="text-xs text-muted-foreground">{folder.path}</p>
@@ -321,7 +308,7 @@ export default function SyncSharing() {
                         <TableCell>{folder.owner_name}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <UsersIcon className="h-4 w-4 text-muted-foreground" />
                             <span>{folder.members.length}</span>
                           </div>
                         </TableCell>
@@ -338,14 +325,14 @@ export default function SyncSharing() {
                                 setManageMembersOpen(true);
                               }}
                             >
-                              <Users className="h-4 w-4" />
+                              <UsersIcon className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => deleteMutation.mutate(folder.id)}
                             >
-                              <Trash2 className="h-4 w-4 text-red-500" />
+                              <DeleteIcon className="h-4 w-4 text-red-500" />
                             </Button>
                           </div>
                         </TableCell>
@@ -376,7 +363,7 @@ export default function SyncSharing() {
                 </div>
               ) : invites.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Mail className="h-12 w-12 text-muted-foreground mb-4" />
+                  <MailIcon className="h-12 w-12 text-muted-foreground mb-4" />
                   <h3 className="font-semibold text-lg mb-1">No Pending Invitations</h3>
                   <p className="text-muted-foreground">
                     You'll see invitations here when someone shares a folder with you
@@ -391,7 +378,7 @@ export default function SyncSharing() {
                     >
                       <div className="flex items-center gap-4">
                         <div className="p-2 rounded-lg bg-blue-500/10">
-                          <FolderOpen className="h-6 w-6 text-blue-500" />
+                          <FolderIcon className="h-6 w-6 text-blue-500" />
                         </div>
                         <div>
                           <p className="font-medium">{invite.folder_name}</p>
@@ -411,7 +398,7 @@ export default function SyncSharing() {
                             onClick={() => acceptMutation.mutate(invite.id)}
                             disabled={acceptMutation.isPending}
                           >
-                            <Check className="h-4 w-4 mr-1" />
+                            <ChosenIcon className="h-4 w-4 mr-1" />
                             Accept
                           </Button>
                           <Button
@@ -420,7 +407,7 @@ export default function SyncSharing() {
                             onClick={() => declineMutation.mutate(invite.id)}
                             disabled={declineMutation.isPending}
                           >
-                            <X className="h-4 w-4 mr-1" />
+                            <CloseIcon className="h-4 w-4 mr-1" />
                             Decline
                           </Button>
                         </div>
@@ -531,7 +518,7 @@ export default function SyncSharing() {
                         })
                       }
                     >
-                      <Trash2 className="h-4 w-4 text-red-500" />
+                      <DeleteIcon className="h-4 w-4 text-red-500" />
                     </Button>
                   )}
                 </div>
@@ -543,7 +530,7 @@ export default function SyncSharing() {
               Close
             </Button>
             <Button onClick={() => setAddMemberOpen(true)}>
-              <UserPlus className="h-4 w-4 mr-2" />
+              <AddUserIcon className="h-4 w-4 mr-2" />
               Add Member
             </Button>
           </DialogFooter>

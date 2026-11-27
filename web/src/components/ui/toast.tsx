@@ -1,5 +1,5 @@
 import { Toaster, toast as hotToast } from 'react-hot-toast';
-import { CheckCircle, XCircle, Info, AlertCircle } from 'lucide-react';
+import { FailedIcon, NoticeIcon, OkIcon, WarningIcon } from '@/components/icons'
 
 export const ToastProvider = () => {
   return (
@@ -37,7 +37,7 @@ export const toast = {
   success: (message: string) => {
     hotToast.custom(() => (
       <div className="flex items-center gap-3 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 shadow-lg">
-        <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+        <OkIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
         <span className="text-sm text-white">{message}</span>
       </div>
     ));
@@ -46,7 +46,7 @@ export const toast = {
   error: (message: string) => {
     hotToast.custom(() => (
       <div className="flex items-center gap-3 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 shadow-lg">
-        <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+        <FailedIcon className="w-5 h-5 text-red-500 flex-shrink-0" />
         <span className="text-sm text-white">{message}</span>
       </div>
     ));
@@ -55,7 +55,7 @@ export const toast = {
   info: (message: string) => {
     hotToast.custom(() => (
       <div className="flex items-center gap-3 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 shadow-lg">
-        <Info className="w-5 h-5 text-blue-500 flex-shrink-0" />
+        <NoticeIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />
         <span className="text-sm text-white">{message}</span>
       </div>
     ));
@@ -64,7 +64,7 @@ export const toast = {
   warning: (message: string) => {
     hotToast.custom(() => (
       <div className="flex items-center gap-3 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 shadow-lg">
-        <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0" />
+        <WarningIcon className="w-5 h-5 text-yellow-500 flex-shrink-0" />
         <span className="text-sm text-white">{message}</span>
       </div>
     ));

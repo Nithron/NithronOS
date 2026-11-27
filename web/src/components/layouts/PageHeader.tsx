@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRightIcon } from '@/components/icons'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 
@@ -30,7 +30,7 @@ export function PageHeader({
           <nav className="flex items-center space-x-1 text-sm text-muted-foreground">
             {breadcrumbs.map((crumb, index) => (
               <div key={index} className="flex items-center">
-                {index > 0 && <ChevronRight className="h-4 w-4 mx-1" />}
+                {index > 0 && <ChevronRightIcon className="h-4 w-4 mx-1" />}
                 {crumb.href ? (
                   <Link 
                     to={crumb.href} 

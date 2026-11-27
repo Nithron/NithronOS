@@ -3,19 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import {
-	Server,
-	Network,
-	Users,
-	Clock,
-	Trash2,
-	AlertCircle,
-	Info,
-	Shield,
-	X,
-	Cloud,
-	FolderSync,
-} from 'lucide-react'
+import { CloseIcon, DeleteIcon, FailedIcon, NetworkIcon, NoticeIcon, PermissionsIcon, ServerIcon, SyncIcon, SyncedFolderIcon, TimeIcon, UsersIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -187,7 +175,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 					<Card className="p-6 space-y-6">
 						<div className="flex items-center justify-between">
 							<div className="flex items-center gap-3">
-								<Server className="h-5 w-5 text-muted-foreground" />
+								<ServerIcon className="h-5 w-5 text-muted-foreground" />
 								<div>
 									<h3 className="font-medium">SMB/CIFS</h3>
 									<p className="text-sm text-muted-foreground">Windows file sharing</p>
@@ -205,7 +193,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 								<div className="space-y-4">
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-3">
-											<Users className="h-4 w-4 text-muted-foreground" />
+											<UsersIcon className="h-4 w-4 text-muted-foreground" />
 											<div>
 												<Label>Guest Access</Label>
 												<p className="text-sm text-muted-foreground">
@@ -222,7 +210,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 
 									{guestAccessForbidden && watchSmbGuest && (
 										<Alert variant="destructive">
-											<AlertCircle className="h-4 w-4" />
+											<FailedIcon className="h-4 w-4" />
 											<AlertDescription>
 												Guest access is forbidden by policy but this share has it enabled.
 												Please disable guest access or contact your administrator.
@@ -232,7 +220,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-3">
-											<Clock className="h-4 w-4 text-muted-foreground" />
+											<TimeIcon className="h-4 w-4 text-muted-foreground" />
 											<div>
 												<Label>Time Machine</Label>
 												<p className="text-sm text-muted-foreground">
@@ -248,7 +236,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-3">
-											<Trash2 className="h-4 w-4 text-muted-foreground" />
+											<DeleteIcon className="h-4 w-4 text-muted-foreground" />
 											<div>
 												<Label>Recycle Bin</Label>
 												<p className="text-sm text-muted-foreground">
@@ -282,7 +270,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 					<Card className="p-6 space-y-6">
 						<div className="flex items-center justify-between">
 							<div className="flex items-center gap-3">
-								<Network className="h-5 w-5 text-muted-foreground" />
+								<NetworkIcon className="h-5 w-5 text-muted-foreground" />
 								<div>
 									<h3 className="font-medium">NFS</h3>
 									<p className="text-sm text-muted-foreground">Unix/Linux network filesystem</p>
@@ -300,7 +288,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 								<div className="space-y-4">
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-3">
-											<Shield className="h-4 w-4 text-muted-foreground" />
+											<PermissionsIcon className="h-4 w-4 text-muted-foreground" />
 											<div>
 												<Label>Read Only</Label>
 												<p className="text-sm text-muted-foreground">
@@ -328,7 +316,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 														}}
 														className="ml-1"
 													>
-														<X className="h-3 w-3" />
+														<CloseIcon className="h-3 w-3" />
 													</button>
 												</Badge>
 											))}
@@ -357,7 +345,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 
 					{!watchSmbEnabled && !watchNfsEnabled && (
 						<Alert>
-							<Info className="h-4 w-4" />
+							<NoticeIcon className="h-4 w-4" />
 							<AlertDescription>
 								At least one protocol (SMB or NFS) must be enabled for the share to be accessible.
 							</AlertDescription>
@@ -370,7 +358,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 					<Card className="p-6 space-y-6">
 						<div className="flex items-center justify-between">
 							<div className="flex items-center gap-3">
-								<Cloud className="h-5 w-5 text-blue-500" />
+								<SyncIcon className="h-5 w-5 text-blue-500" />
 								<div>
 									<h3 className="font-medium">NithronSync</h3>
 									<p className="text-sm text-muted-foreground">Enable file synchronization to devices</p>
@@ -386,7 +374,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 							<>
 								<Separator />
 								<Alert>
-									<FolderSync className="h-4 w-4" />
+									<SyncedFolderIcon className="h-4 w-4" />
 									<AlertDescription>
 										Devices with the NithronSync client can sync this share, as people who may read it (people who may change it can also upload).
 									</AlertDescription>
@@ -397,7 +385,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 
 					{!watchSyncEnabled && (
 						<Alert>
-							<Info className="h-4 w-4" />
+							<NoticeIcon className="h-4 w-4" />
 							<AlertDescription>
 								Enable NithronSync to allow devices to synchronize files from this share.
 								This works alongside SMB/NFS access.

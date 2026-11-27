@@ -5,17 +5,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  AlertTriangle,
-  Check,
-  Copy,
-  FileText,
-  Clock,
-  HardDrive,
-  Cloud,
-  RefreshCw,
-  ChevronRight,
-} from 'lucide-react';
+import { ChevronRightIcon, ChosenIcon, CopyIcon, FileIcon, RefreshIcon, ServerIcon, SyncIcon, TimeIcon, WarningIcon } from '@/components/icons'
 
 import { Button } from '@/components/ui/button';
 import {
@@ -120,7 +110,7 @@ export default function SyncConflicts() {
           </p>
         </div>
         <Button variant="outline" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 mr-2" />
+          <RefreshIcon className="h-4 w-4 mr-2" />
           Refresh
         </Button>
       </div>
@@ -131,7 +121,7 @@ export default function SyncConflicts() {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-yellow-500/10">
-                <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                <WarningIcon className="h-5 w-5 text-yellow-500" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{unresolvedConflicts.length}</p>
@@ -140,7 +130,7 @@ export default function SyncConflicts() {
             </div>
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-green-500/10">
-                <Check className="h-5 w-5 text-green-500" />
+                <ChosenIcon className="h-5 w-5 text-green-500" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{resolvedConflicts.length}</p>
@@ -149,7 +139,7 @@ export default function SyncConflicts() {
             </div>
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-blue-500/10">
-                <FileText className="h-5 w-5 text-blue-500" />
+                <FileIcon className="h-5 w-5 text-blue-500" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{conflicts?.length || 0}</p>
@@ -164,7 +154,7 @@ export default function SyncConflicts() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+            <WarningIcon className="h-5 w-5 text-yellow-500" />
             Unresolved Conflicts
           </CardTitle>
           <CardDescription>
@@ -181,7 +171,7 @@ export default function SyncConflicts() {
           ) : unresolvedConflicts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="p-3 rounded-full bg-green-500/10 mb-4">
-                <Check className="h-8 w-8 text-green-500" />
+                <ChosenIcon className="h-8 w-8 text-green-500" />
               </div>
               <h3 className="font-semibold text-lg mb-1">All Clear!</h3>
               <p className="text-muted-foreground">
@@ -204,7 +194,7 @@ export default function SyncConflicts() {
                   <TableRow key={conflict.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <FileIcon className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <p className="font-medium">
                             {conflict.path.split('/').pop()}
@@ -217,13 +207,13 @@ export default function SyncConflicts() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <HardDrive className="h-4 w-4 text-blue-500" />
+                        <ServerIcon className="h-4 w-4 text-blue-500" />
                         <span>{formatBytes(conflict.local_version.size)}</span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Cloud className="h-4 w-4 text-green-500" />
+                        <SyncIcon className="h-4 w-4 text-green-500" />
                         <span>{formatBytes(conflict.remote_version.size)}</span>
                       </div>
                     </TableCell>
@@ -238,7 +228,7 @@ export default function SyncConflicts() {
                         onClick={() => openResolveDialog(conflict)}
                       >
                         Resolve
-                        <ChevronRight className="h-4 w-4 ml-1" />
+                        <ChevronRightIcon className="h-4 w-4 ml-1" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -254,7 +244,7 @@ export default function SyncConflicts() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
+              <TimeIcon className="h-5 w-5" />
               Resolution History
             </CardTitle>
             <CardDescription>
@@ -275,7 +265,7 @@ export default function SyncConflicts() {
                   <TableRow key={conflict.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <FileIcon className="h-4 w-4 text-muted-foreground" />
                         <span>{conflict.path.split('/').pop()}</span>
                       </div>
                     </TableCell>
@@ -325,7 +315,7 @@ export default function SyncConflicts() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 border rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
-                    <HardDrive className="h-4 w-4 text-blue-500" />
+                    <ServerIcon className="h-4 w-4 text-blue-500" />
                     <span className="font-medium">Local Version</span>
                   </div>
                   <p className="text-sm">
@@ -337,7 +327,7 @@ export default function SyncConflicts() {
                 </div>
                 <div className="p-3 border rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
-                    <Cloud className="h-4 w-4 text-green-500" />
+                    <SyncIcon className="h-4 w-4 text-green-500" />
                     <span className="font-medium">Remote Version</span>
                   </div>
                   <p className="text-sm">
@@ -358,7 +348,7 @@ export default function SyncConflicts() {
               disabled={resolveMutation.isPending}
               className="flex-1"
             >
-              <HardDrive className="h-4 w-4 mr-2" />
+              <ServerIcon className="h-4 w-4 mr-2" />
               Keep Local
             </Button>
             <Button
@@ -367,7 +357,7 @@ export default function SyncConflicts() {
               disabled={resolveMutation.isPending}
               className="flex-1"
             >
-              <Cloud className="h-4 w-4 mr-2" />
+              <SyncIcon className="h-4 w-4 mr-2" />
               Keep Remote
             </Button>
             <Button
@@ -375,7 +365,7 @@ export default function SyncConflicts() {
               disabled={resolveMutation.isPending}
               className="flex-1"
             >
-              <Copy className="h-4 w-4 mr-2" />
+              <CopyIcon className="h-4 w-4 mr-2" />
               Keep Both
             </Button>
           </DialogFooter>

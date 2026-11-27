@@ -6,10 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import {
-  Shield, Smartphone, Key, Copy, Download, RefreshCw,
-  CheckCircle, XCircle, AlertTriangle, Loader2
-} from 'lucide-react';
+import { CopyIcon, DownloadIcon, FailedIcon, KeyIcon, OkIcon, PhoneIcon, RefreshIcon, TwoFactorIcon, WarningIcon, WorkingIcon } from '@/components/icons'
 import {
   useTOTPStatus,
   useEnrollTOTP,
@@ -125,7 +122,7 @@ export function TwoFactorSettings() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-full ${totpStatus.data?.enrolled ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}>
-                  <Shield className={`h-5 w-5 ${totpStatus.data?.enrolled ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`} />
+                  <TwoFactorIcon className={`h-5 w-5 ${totpStatus.data?.enrolled ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`} />
                 </div>
                 <div>
                   <div className="font-medium">Status</div>
@@ -137,12 +134,12 @@ export function TwoFactorSettings() {
               <div>
                 {totpStatus.data?.enrolled ? (
                   <Badge variant="default">
-                    <CheckCircle className="h-3 w-3 mr-1" />
+                    <OkIcon className="h-3 w-3 mr-1" />
                     Enabled
                   </Badge>
                 ) : (
                   <Badge variant="secondary">
-                    <XCircle className="h-3 w-3 mr-1" />
+                    <FailedIcon className="h-3 w-3 mr-1" />
                     Disabled
                   </Badge>
                 )}
@@ -151,7 +148,7 @@ export function TwoFactorSettings() {
 
             {totpStatus.data?.required && !totpStatus.data?.enrolled && (
               <Alert>
-                <AlertTriangle className="h-4 w-4" />
+                <WarningIcon className="h-4 w-4" />
                 <AlertDescription>
                   Two-factor authentication is required for non-LAN access. Please enable it to secure your account.
                 </AlertDescription>
@@ -161,13 +158,13 @@ export function TwoFactorSettings() {
             <div className="flex gap-2">
               {!totpStatus.data?.enrolled ? (
                 <Button onClick={() => setShowEnrollDialog(true)}>
-                  <Smartphone className="h-4 w-4 mr-2" />
+                  <PhoneIcon className="h-4 w-4 mr-2" />
                   Enable 2FA
                 </Button>
               ) : (
                 <>
                   <Button variant="outline" onClick={handleRegenerateBackupCodes}>
-                    <RefreshCw className="h-4 w-4 mr-2" />
+                    <RefreshIcon className="h-4 w-4 mr-2" />
                     Regenerate Backup Codes
                   </Button>
                   <Button variant="destructive" onClick={handleDisable2FA}>
@@ -191,12 +188,12 @@ export function TwoFactorSettings() {
               <div className="flex items-center gap-2">
                 {totpStatus.data?.verified ? (
                   <>
-                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <OkIcon className="h-5 w-5 text-green-600" />
                     <span>Your current session is 2FA verified</span>
                   </>
                 ) : (
                   <>
-                    <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                    <WarningIcon className="h-5 w-5 text-yellow-600" />
                     <span>Your current session is not 2FA verified</span>
                   </>
                 )}
@@ -281,7 +278,7 @@ export function TwoFactorSettings() {
               onClick={handleStartEnrollment} 
               disabled={!password || enrollTOTP.isPending}
             >
-              {enrollTOTP.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {enrollTOTP.isPending && <WorkingIcon className="h-4 w-4 mr-2 animate-spin" />}
               Continue
             </Button>
           </DialogFooter>
@@ -314,7 +311,7 @@ export function TwoFactorSettings() {
                   onClick={() => copyToClipboard(enrollmentData.secret)}
                   className="mt-1"
                 >
-                  <Copy className="h-3 w-3 mr-1" />
+                  <CopyIcon className="h-3 w-3 mr-1" />
                   Copy Secret
                 </Button>
               </div>
@@ -343,7 +340,7 @@ export function TwoFactorSettings() {
               onClick={handleVerifyEnrollment}
               disabled={verificationCode.length !== 6 || verifyTOTP.isPending}
             >
-              {verifyTOTP.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {verifyTOTP.isPending && <WorkingIcon className="h-4 w-4 mr-2 animate-spin" />}
               Verify & Enable
             </Button>
           </DialogFooter>
@@ -361,7 +358,7 @@ export function TwoFactorSettings() {
           </DialogHeader>
           <div className="space-y-4">
             <Alert>
-              <Key className="h-4 w-4" />
+              <KeyIcon className="h-4 w-4" />
               <AlertDescription>
                 These codes are the only way to access your account if you lose your authenticator device.
                 Treat them like passwords!
@@ -385,7 +382,7 @@ export function TwoFactorSettings() {
                 onClick={() => copyToClipboard(backupCodes.join('\n'))}
                 className="flex-1"
               >
-                <Copy className="h-4 w-4 mr-2" />
+                <CopyIcon className="h-4 w-4 mr-2" />
                 Copy All
               </Button>
               <Button
@@ -393,7 +390,7 @@ export function TwoFactorSettings() {
                 onClick={downloadBackupCodes}
                 className="flex-1"
               >
-                <Download className="h-4 w-4 mr-2" />
+                <DownloadIcon className="h-4 w-4 mr-2" />
                 Download
               </Button>
             </div>

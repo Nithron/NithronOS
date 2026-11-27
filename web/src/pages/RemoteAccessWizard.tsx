@@ -8,10 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Wifi, Shield, Globe, Lock, AlertTriangle, CheckCircle2, 
-  ChevronLeft, ChevronRight, Loader2, Router, Key
-} from 'lucide-react';
+import { ChevronLeftIcon, ChevronRightIcon, ConnectionIcon, InternetIcon, KeyIcon, LockIcon, OkIcon, RouterIcon, SecurityIcon, WarningIcon, WorkingIcon } from '@/components/icons'
 import {
   useStartWizard,
   useWizardState,
@@ -21,10 +18,10 @@ import {
 import type { AccessMode, HTTPSMode } from '@/api/net.types';
 
 const WIZARD_STEPS = [
-  { id: 1, title: 'Access Mode', icon: Shield },
-  { id: 2, title: 'Configuration', icon: Router },
-  { id: 3, title: 'Security', icon: Lock },
-  { id: 4, title: 'Review', icon: CheckCircle2 },
+  { id: 1, title: 'Access Mode', icon: SecurityIcon },
+  { id: 2, title: 'Configuration', icon: RouterIcon },
+  { id: 3, title: 'Security', icon: LockIcon },
+  { id: 4, title: 'Review', icon: OkIcon },
 ];
 
 export function RemoteAccessWizard() {
@@ -112,7 +109,7 @@ export function RemoteAccessWizard() {
                 <RadioGroupItem value="lan_only" id="lan_only" />
                 <Label htmlFor="lan_only" className="flex-1 cursor-pointer">
                   <div className="flex items-center gap-2">
-                    <Wifi className="h-5 w-5" />
+                    <ConnectionIcon className="h-5 w-5" />
                     <span className="font-semibold">LAN Only (Recommended)</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -129,7 +126,7 @@ export function RemoteAccessWizard() {
                 <RadioGroupItem value="wireguard" id="wireguard" />
                 <Label htmlFor="wireguard" className="flex-1 cursor-pointer">
                   <div className="flex items-center gap-2">
-                    <Key className="h-5 w-5" />
+                    <KeyIcon className="h-5 w-5" />
                     <span className="font-semibold">WireGuard VPN</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -146,7 +143,7 @@ export function RemoteAccessWizard() {
                 <RadioGroupItem value="public_https" id="public_https" />
                 <Label htmlFor="public_https" className="flex-1 cursor-pointer">
                   <div className="flex items-center gap-2">
-                    <Globe className="h-5 w-5" />
+                    <InternetIcon className="h-5 w-5" />
                     <span className="font-semibold">Public HTTPS</span>
                     <Badge variant="secondary">Advanced</Badge>
                   </div>
@@ -162,7 +159,7 @@ export function RemoteAccessWizard() {
 
       {formData.access_mode === 'public_https' && (
         <Alert>
-          <AlertTriangle className="h-4 w-4" />
+          <WarningIcon className="h-4 w-4" />
           <AlertDescription>
             Public HTTPS requires a domain name pointing to this server and open ports 80/443.
             2FA will be enforced for all non-LAN connections.
@@ -323,7 +320,7 @@ export function RemoteAccessWizard() {
           </CardHeader>
           <CardContent>
             <Alert>
-              <Shield className="h-4 w-4" />
+              <SecurityIcon className="h-4 w-4" />
               <AlertDescription>
                 No additional configuration needed. The firewall will block all external access.
               </AlertDescription>
@@ -344,7 +341,7 @@ export function RemoteAccessWizard() {
         <CardContent className="space-y-4">
           {formData.access_mode === 'public_https' && (
             <Alert>
-              <Lock className="h-4 w-4" />
+              <LockIcon className="h-4 w-4" />
               <AlertDescription>
                 <strong>2FA Enforcement:</strong> All non-LAN admin sessions will require two-factor authentication.
                 Make sure to set up TOTP after completing this wizard.
@@ -377,7 +374,7 @@ export function RemoteAccessWizard() {
           </div>
 
           <Alert>
-            <AlertTriangle className="h-4 w-4" />
+            <WarningIcon className="h-4 w-4" />
             <AlertDescription>
               A 60-second rollback timer will activate after applying firewall changes.
               You must confirm the changes work or they will automatically revert.
@@ -434,7 +431,7 @@ export function RemoteAccessWizard() {
           )}
 
           <Alert>
-            <CheckCircle2 className="h-4 w-4" />
+            <OkIcon className="h-4 w-4" />
             <AlertDescription>
               Ready to apply configuration. The system will configure firewall rules,
               {formData.access_mode === 'wireguard' && ' enable WireGuard VPN,'}
@@ -502,7 +499,7 @@ export function RemoteAccessWizard() {
       <div className="mb-8">
         {wizardState.data?.error && (
           <Alert variant="destructive" className="mb-4">
-            <AlertTriangle className="h-4 w-4" />
+            <WarningIcon className="h-4 w-4" />
             <AlertDescription>{wizardState.data.error}</AlertDescription>
           </Alert>
         )}
@@ -517,7 +514,7 @@ export function RemoteAccessWizard() {
           onClick={handleBack}
           disabled={currentStep === 1}
         >
-          <ChevronLeft className="h-4 w-4 mr-2" />
+          <ChevronLeftIcon className="h-4 w-4 mr-2" />
           Back
         </Button>
 
@@ -526,16 +523,16 @@ export function RemoteAccessWizard() {
             onClick={handleNext}
             disabled={wizardNext.isPending}
           >
-            {wizardNext.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {wizardNext.isPending && <WorkingIcon className="h-4 w-4 mr-2 animate-spin" />}
             Next
-            <ChevronRight className="h-4 w-4 ml-2" />
+            <ChevronRightIcon className="h-4 w-4 ml-2" />
           </Button>
         ) : (
           <Button
             onClick={handleComplete}
             disabled={completeWizard.isPending}
           >
-            {completeWizard.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {completeWizard.isPending && <WorkingIcon className="h-4 w-4 mr-2 animate-spin" />}
             Apply Configuration
           </Button>
         )}

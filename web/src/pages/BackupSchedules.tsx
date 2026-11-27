@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { Calendar, Clock, Plus, Edit2, Trash2, ToggleLeft, ToggleRight, PlayCircle } from 'lucide-react';
+import { AddIcon, DeleteIcon, EditIcon, ScheduleIcon, StartIcon, TimeIcon, TurnedOffIcon, TurnedOnIcon } from '@/components/icons'
 import { backupApi } from '@/api/backup';
 import type { Schedule, ScheduleFrequency, RetentionPolicy } from '@/api/backup.types';
 import { toast } from '@/components/ui/toast';
@@ -111,7 +111,7 @@ export default function BackupSchedules() {
           onClick={() => setShowCreateDialog(true)}
           className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
         >
-          <Plus className="w-4 h-4 mr-2" />
+          <AddIcon className="w-4 h-4 mr-2" />
           Create Schedule
         </button>
       </div>
@@ -124,13 +124,13 @@ export default function BackupSchedules() {
           </div>
         ) : schedules.length === 0 ? (
           <div className="p-8 text-center">
-            <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <ScheduleIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground mb-4">No backup schedules configured</p>
             <button
               onClick={() => setShowCreateDialog(true)}
               className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <AddIcon className="w-4 h-4 mr-2" />
               Create First Schedule
             </button>
           </div>
@@ -147,16 +147,16 @@ export default function BackupSchedules() {
                         disabled={toggleMutation.isPending}
                       >
                         {schedule.enabled ? (
-                          <ToggleRight className="w-6 h-6" />
+                          <TurnedOnIcon className="w-6 h-6" />
                         ) : (
-                          <ToggleLeft className="w-6 h-6 text-muted-foreground" />
+                          <TurnedOffIcon className="w-6 h-6 text-muted-foreground" />
                         )}
                       </button>
                       <div>
                         <p className="font-medium">{schedule.name}</p>
                         <div className="flex items-center space-x-4 mt-1 text-sm text-muted-foreground">
                           <span className="flex items-center">
-                            <Clock className="w-3 h-3 mr-1" />
+                            <TimeIcon className="w-3 h-3 mr-1" />
                             {formatFrequency(schedule.frequency)}
                           </span>
                           <span>•</span>
@@ -187,14 +187,14 @@ export default function BackupSchedules() {
                       className="btn btn-sm"
                       title="Run backup now"
                     >
-                      <PlayCircle className="w-4 h-4" />
+                      <StartIcon className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setEditingSchedule(schedule)}
                       className="btn btn-sm"
                       title="Edit schedule"
                     >
-                      <Edit2 className="w-4 h-4" />
+                      <EditIcon className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(schedule)}
@@ -202,7 +202,7 @@ export default function BackupSchedules() {
                       title="Delete schedule"
                       disabled={deleteMutation.isPending}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <DeleteIcon className="w-4 h-4" />
                     </button>
                   </div>
                 </div>

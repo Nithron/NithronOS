@@ -1,17 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  Cloud,
-  FolderSync,
-  Shield,
-  Download,
-  Upload,
-  Settings,
-  Info,
-  ExternalLink,
-  ChevronRight,
-  Check,
-  AlertTriangle,
-} from 'lucide-react';
+import { ChevronRightIcon, ChosenIcon, DownloadIcon, EncryptionIcon, NoticeIcon, OpenExternalIcon, SettingsIcon, SyncIcon, SyncedFolderIcon, UploadIcon, WarningIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -105,7 +93,7 @@ export default function SettingsSync() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Cloud className="h-6 w-6 text-blue-500" />
+            <SyncIcon className="h-6 w-6 text-blue-500" />
             NithronSync Settings
           </h1>
           <p className="text-muted-foreground">
@@ -116,7 +104,7 @@ export default function SettingsSync() {
           <Link to="/settings/sync/devices">
             <Button variant="outline">
               Manage Devices
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <ChevronRightIcon className="h-4 w-4 ml-1" />
             </Button>
           </Link>
           <Button onClick={handleSave} disabled={saving}>
@@ -131,7 +119,7 @@ export default function SettingsSync() {
           <div className="grid gap-4 md:grid-cols-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 rounded-lg">
-                <FolderSync className="h-5 w-5 text-blue-600" />
+                <SyncedFolderIcon className="h-5 w-5 text-blue-600" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Selected Shares</p>
@@ -140,7 +128,7 @@ export default function SettingsSync() {
             </div>
             <div className="flex items-center gap-3">
               <div className="p-2 bg-green-100 rounded-lg">
-                <Download className="h-5 w-5 text-green-600" />
+                <DownloadIcon className="h-5 w-5 text-green-600" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Files</p>
@@ -149,7 +137,7 @@ export default function SettingsSync() {
             </div>
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-100 rounded-lg">
-                <Upload className="h-5 w-5 text-purple-600" />
+                <UploadIcon className="h-5 w-5 text-purple-600" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Size</p>
@@ -159,9 +147,9 @@ export default function SettingsSync() {
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-lg ${pauseSync ? 'bg-yellow-100' : 'bg-green-100'}`}>
                 {pauseSync ? (
-                  <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                  <WarningIcon className="h-5 w-5 text-yellow-600" />
                 ) : (
-                  <Check className="h-5 w-5 text-green-600" />
+                  <ChosenIcon className="h-5 w-5 text-green-600" />
                 )}
               </div>
               <div>
@@ -196,7 +184,7 @@ export default function SettingsSync() {
                 </div>
               ) : shares.length === 0 ? (
                 <div className="py-8 text-center">
-                  <FolderSync className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <SyncedFolderIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="font-medium mb-2">No shares available</h3>
                   <p className="text-sm text-muted-foreground mb-4">
                     Create network shares to enable file synchronization
@@ -223,7 +211,7 @@ export default function SettingsSync() {
                             ? 'bg-blue-100 text-blue-600'
                             : 'bg-gray-100 text-gray-500'
                         }`}>
-                          <FolderSync className="h-5 w-5" />
+                          <SyncedFolderIcon className="h-5 w-5" />
                         </div>
                         <div>
                           <h4 className="font-medium">{share.share_name}</h4>
@@ -307,7 +295,7 @@ export default function SettingsSync() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg">
-                <Shield className="h-5 w-5 text-green-600" />
+                <EncryptionIcon className="h-5 w-5 text-green-600" />
                 <div>
                   <p className="font-medium text-green-800">End-to-End Encryption</p>
                   <p className="text-sm text-green-600">
@@ -343,14 +331,14 @@ export default function SettingsSync() {
                 {/* Windows */}
                 <div className="flex items-center gap-4 p-4 border rounded-lg">
                   <div className="p-3 bg-blue-100 rounded-lg">
-                    <Settings className="h-6 w-6 text-blue-600" />
+                    <SettingsIcon className="h-6 w-6 text-blue-600" />
                   </div>
                   <div className="flex-1">
                     <h4 className="font-medium">Windows</h4>
                     <p className="text-sm text-muted-foreground">Windows 10/11</p>
                   </div>
                   <Button variant="outline" size="sm" disabled>
-                    <Download className="h-4 w-4 mr-2" />
+                    <DownloadIcon className="h-4 w-4 mr-2" />
                     Coming Soon
                   </Button>
                 </div>
@@ -358,14 +346,14 @@ export default function SettingsSync() {
                 {/* Linux */}
                 <div className="flex items-center gap-4 p-4 border rounded-lg">
                   <div className="p-3 bg-orange-100 rounded-lg">
-                    <Settings className="h-6 w-6 text-orange-600" />
+                    <SettingsIcon className="h-6 w-6 text-orange-600" />
                   </div>
                   <div className="flex-1">
                     <h4 className="font-medium">Linux</h4>
                     <p className="text-sm text-muted-foreground">Debian/Ubuntu, Fedora</p>
                   </div>
                   <Button variant="outline" size="sm" disabled>
-                    <Download className="h-4 w-4 mr-2" />
+                    <DownloadIcon className="h-4 w-4 mr-2" />
                     Coming Soon
                   </Button>
                 </div>
@@ -373,14 +361,14 @@ export default function SettingsSync() {
                 {/* macOS */}
                 <div className="flex items-center gap-4 p-4 border rounded-lg">
                   <div className="p-3 bg-gray-100 rounded-lg">
-                    <Settings className="h-6 w-6 text-gray-600" />
+                    <SettingsIcon className="h-6 w-6 text-gray-600" />
                   </div>
                   <div className="flex-1">
                     <h4 className="font-medium">macOS</h4>
                     <p className="text-sm text-muted-foreground">macOS 12+</p>
                   </div>
                   <Button variant="outline" size="sm" disabled>
-                    <Download className="h-4 w-4 mr-2" />
+                    <DownloadIcon className="h-4 w-4 mr-2" />
                     Coming Soon
                   </Button>
                 </div>
@@ -388,14 +376,14 @@ export default function SettingsSync() {
                 {/* Mobile */}
                 <div className="flex items-center gap-4 p-4 border rounded-lg">
                   <div className="p-3 bg-green-100 rounded-lg">
-                    <Settings className="h-6 w-6 text-green-600" />
+                    <SettingsIcon className="h-6 w-6 text-green-600" />
                   </div>
                   <div className="flex-1">
                     <h4 className="font-medium">Mobile</h4>
                     <p className="text-sm text-muted-foreground">iOS & Android</p>
                   </div>
                   <Button variant="outline" size="sm" disabled>
-                    <Download className="h-4 w-4 mr-2" />
+                    <DownloadIcon className="h-4 w-4 mr-2" />
                     Coming Soon
                   </Button>
                 </div>
@@ -403,7 +391,7 @@ export default function SettingsSync() {
 
               <div className="mt-6 p-4 bg-blue-50 rounded-lg">
                 <div className="flex items-start gap-3">
-                  <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <NoticeIcon className="h-5 w-5 text-blue-600 mt-0.5" />
                   <div>
                     <h4 className="font-medium text-blue-800">WebDAV Access</h4>
                     <p className="text-sm text-blue-700 mt-1">
@@ -427,30 +415,30 @@ export default function SettingsSync() {
                   className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <Info className="h-5 w-5 text-muted-foreground" />
+                    <NoticeIcon className="h-5 w-5 text-muted-foreground" />
                     <span>Getting Started Guide</span>
                   </div>
-                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                  <OpenExternalIcon className="h-4 w-4 text-muted-foreground" />
                 </a>
                 <a
                   href="#"
                   className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <Shield className="h-5 w-5 text-muted-foreground" />
+                    <EncryptionIcon className="h-5 w-5 text-muted-foreground" />
                     <span>Security Best Practices</span>
                   </div>
-                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                  <OpenExternalIcon className="h-4 w-4 text-muted-foreground" />
                 </a>
                 <a
                   href="#"
                   className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <Settings className="h-5 w-5 text-muted-foreground" />
+                    <SettingsIcon className="h-5 w-5 text-muted-foreground" />
                     <span>API Documentation</span>
                   </div>
-                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                  <OpenExternalIcon className="h-4 w-4 text-muted-foreground" />
                 </a>
               </div>
             </CardContent>

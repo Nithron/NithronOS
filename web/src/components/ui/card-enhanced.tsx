@@ -1,6 +1,6 @@
 import React from 'react'
 import { cn } from '@/lib/utils'
-import { AlertCircle, HelpCircle, Loader2 } from 'lucide-react'
+import { FailedIcon, HelpIcon, WorkingIcon } from '@/components/icons'
 import { Button } from './button'
 
 interface CardProps {
@@ -50,7 +50,7 @@ export function Card({
             )}
             {helpTooltip && (
               <div className="group relative">
-                <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                <HelpIcon className="h-4 w-4 text-muted-foreground" />
                 <div className="absolute left-0 top-full z-10 mt-1 hidden w-64 rounded-lg bg-popover p-2 text-sm text-popover-foreground shadow-lg group-hover:block">
                   {helpTooltip}
                 </div>
@@ -64,11 +64,11 @@ export function Card({
       <div className={cn('p-6', contentClassName)}>
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <WorkingIcon className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <AlertCircle className="mb-4 h-12 w-12 text-destructive" />
+            <FailedIcon className="mb-4 h-12 w-12 text-destructive" />
             <p className="mb-4 text-sm text-muted-foreground">{error}</p>
             {onRetry && (
               <Button onClick={onRetry} variant="outline" size="sm">

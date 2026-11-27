@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { BackIcon, WorkingIcon } from '@/components/icons'
 import { PageHeader } from '@/components/layouts/PageHeader'
 import { Button } from '@/components/ui/button'
 import { ShareForm } from '@/components/shares/ShareForm'
@@ -38,7 +38,7 @@ export function ShareDetails() {
 	if (isLoading && !isNew) {
 		return (
 			<div className="flex items-center justify-center h-full">
-				<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+				<WorkingIcon className="h-8 w-8 animate-spin text-muted-foreground" />
 			</div>
 		)
 	}
@@ -56,7 +56,7 @@ export function ShareDetails() {
 							The share "{name}" does not exist or has been deleted.
 						</p>
 						<Button onClick={() => navigate('/shares')}>
-							<ArrowLeft className="h-4 w-4 mr-2" />
+							<BackIcon className="h-4 w-4 mr-2" />
 							Back to Shares
 						</Button>
 					</div>

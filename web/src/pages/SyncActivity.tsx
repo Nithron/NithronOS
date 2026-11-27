@@ -5,22 +5,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Activity,
-  Upload,
-  Download,
-  Trash2,
-  FileEdit,
-  AlertTriangle,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  Clock,
-  ChevronLeft,
-  ChevronRight,
-  BarChart3,
-  FileText,
-} from 'lucide-react';
+import { ActivityIcon, ChevronLeftIcon, ChevronRightIcon, DeleteIcon, DownloadIcon, FailedIcon, FileChangedIcon, FileIcon, OkIcon, RefreshIcon, StatisticsIcon, TimeIcon, UploadIcon, WarningIcon } from '@/components/icons'
 
 import { Button } from '@/components/ui/button';
 import {
@@ -101,17 +86,17 @@ export default function SyncActivityPage() {
   const getActionIcon = (action: ActivityAction) => {
     switch (action) {
       case 'upload':
-        return <Upload className="h-4 w-4 text-blue-500" />;
+        return <UploadIcon className="h-4 w-4 text-blue-500" />;
       case 'download':
-        return <Download className="h-4 w-4 text-green-500" />;
+        return <DownloadIcon className="h-4 w-4 text-green-500" />;
       case 'delete':
-        return <Trash2 className="h-4 w-4 text-red-500" />;
+        return <DeleteIcon className="h-4 w-4 text-red-500" />;
       case 'rename':
-        return <FileEdit className="h-4 w-4 text-yellow-500" />;
+        return <FileChangedIcon className="h-4 w-4 text-yellow-500" />;
       case 'conflict':
-        return <AlertTriangle className="h-4 w-4 text-orange-500" />;
+        return <WarningIcon className="h-4 w-4 text-orange-500" />;
       default:
-        return <FileText className="h-4 w-4" />;
+        return <FileIcon className="h-4 w-4" />;
     }
   };
 
@@ -120,28 +105,28 @@ export default function SyncActivityPage() {
       case 'completed':
         return (
           <Badge variant="secondary" className="bg-green-500/10 text-green-600">
-            <CheckCircle className="h-3 w-3 mr-1" />
+            <OkIcon className="h-3 w-3 mr-1" />
             Completed
           </Badge>
         );
       case 'failed':
         return (
           <Badge variant="secondary" className="bg-red-500/10 text-red-600">
-            <XCircle className="h-3 w-3 mr-1" />
+            <FailedIcon className="h-3 w-3 mr-1" />
             Failed
           </Badge>
         );
       case 'in_progress':
         return (
           <Badge variant="secondary" className="bg-blue-500/10 text-blue-600">
-            <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+            <RefreshIcon className="h-3 w-3 mr-1 animate-spin" />
             In Progress
           </Badge>
         );
       case 'pending':
         return (
           <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600">
-            <Clock className="h-3 w-3 mr-1" />
+            <TimeIcon className="h-3 w-3 mr-1" />
             Pending
           </Badge>
         );
@@ -186,7 +171,7 @@ export default function SyncActivityPage() {
             </SelectContent>
           </Select>
           <Button variant="outline" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshIcon className="h-4 w-4 mr-2" />
             Refresh
           </Button>
         </div>
@@ -198,7 +183,7 @@ export default function SyncActivityPage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-blue-500/10">
-                <Upload className="h-5 w-5 text-blue-500" />
+                <UploadIcon className="h-5 w-5 text-blue-500" />
               </div>
               <div>
                 <p className="text-2xl font-bold">
@@ -213,7 +198,7 @@ export default function SyncActivityPage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-green-500/10">
-                <Download className="h-5 w-5 text-green-500" />
+                <DownloadIcon className="h-5 w-5 text-green-500" />
               </div>
               <div>
                 <p className="text-2xl font-bold">
@@ -228,7 +213,7 @@ export default function SyncActivityPage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-green-500/10">
-                <CheckCircle className="h-5 w-5 text-green-500" />
+                <OkIcon className="h-5 w-5 text-green-500" />
               </div>
               <div>
                 <p className="text-2xl font-bold">
@@ -243,7 +228,7 @@ export default function SyncActivityPage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
-                <BarChart3 className="h-5 w-5 text-primary" />
+                <StatisticsIcon className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <p className="text-2xl font-bold">
@@ -260,7 +245,7 @@ export default function SyncActivityPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
+            <ActivityIcon className="h-5 w-5" />
             Recent Activity
           </CardTitle>
           <CardDescription>
@@ -277,7 +262,7 @@ export default function SyncActivityPage() {
           ) : activities.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="p-3 rounded-full bg-muted mb-4">
-                <Activity className="h-8 w-8 text-muted-foreground" />
+                <ActivityIcon className="h-8 w-8 text-muted-foreground" />
               </div>
               <h3 className="font-semibold text-lg mb-1">No Activity</h3>
               <p className="text-muted-foreground">
@@ -356,7 +341,7 @@ export default function SyncActivityPage() {
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page === 1}
                     >
-                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      <ChevronLeftIcon className="h-4 w-4 mr-1" />
                       Previous
                     </Button>
                     <Button
@@ -366,7 +351,7 @@ export default function SyncActivityPage() {
                       disabled={page === totalPages}
                     >
                       Next
-                      <ChevronRight className="h-4 w-4 ml-1" />
+                      <ChevronRightIcon className="h-4 w-4 ml-1" />
                     </Button>
                   </div>
                 </div>

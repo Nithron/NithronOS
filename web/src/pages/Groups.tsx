@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { AddIcon, DeleteIcon, EditIcon } from '@/components/icons'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card } from '@/components/ui/card-enhanced'
 import { Button } from '@/components/ui/button'
@@ -150,7 +150,7 @@ export function Groups() {
         description="Sets of users that shares can be given to"
         actions={
           <Button onClick={() => setCreating(true)}>
-            <Plus className="mr-2 h-4 w-4" aria-hidden />
+            <AddIcon className="mr-2 h-4 w-4" aria-hidden />
             New group
           </Button>
         }
@@ -190,7 +190,7 @@ export function Groups() {
                   <TableCell>
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="sm" onClick={() => setEditing(g)} title="Edit">
-                        <Pencil className="h-4 w-4" aria-hidden />
+                        <EditIcon className="h-4 w-4" aria-hidden />
                         <span className="sr-only">Edit {g.name}</span>
                       </Button>
                       <Button
@@ -200,7 +200,7 @@ export function Groups() {
                         disabled={remove.isPending}
                         title="Delete"
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" aria-hidden />
+                        <DeleteIcon className="h-4 w-4 text-destructive" aria-hidden />
                         <span className="sr-only">Delete {g.name}</span>
                       </Button>
                     </div>

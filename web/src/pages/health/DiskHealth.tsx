@@ -1,9 +1,5 @@
 import { motion } from 'framer-motion'
-import { 
-  Activity, AlertCircle, CheckCircle, Database,
-  HardDrive, Info, RefreshCw, Thermometer, Play,
-  AlertTriangle
-} from 'lucide-react'
+import { DiskIcon, FailedIcon, NoticeIcon, OkIcon, PoolIcon, RefreshIcon, StartIcon, TemperatureIcon, WarningIcon, WorkingIcon } from '@/components/icons'
 import { useMemo, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -43,8 +39,8 @@ const itemVariants: any = {
 
 // Health status component
 function HealthStatus({ state }: { state: string }) {
-  const Icon = state === 'critical' ? AlertTriangle :
-               state === 'warning' ? AlertCircle : CheckCircle
+  const Icon = state === 'critical' ? FailedIcon :
+               state === 'warning' ? WarningIcon : OkIcon
   
   const color = getDiskHealthColor(state)
   
@@ -82,7 +78,7 @@ function DiskCard({
           <div className="flex justify-between items-start">
             <div className="space-y-1">
               <CardTitle className="text-base flex items-center gap-2">
-                <HardDrive className="h-4 w-4" />
+                <DiskIcon className="h-4 w-4" />
                 {disk.name}
               </CardTitle>
               <CardDescription className="text-xs">
@@ -108,7 +104,7 @@ function DiskCard({
           {disk.tempC !== undefined && (
             <div className="flex justify-between items-center text-sm">
               <span className="text-muted-foreground flex items-center gap-1">
-                <Thermometer className="h-3 w-3" />
+                <TemperatureIcon className="h-3 w-3" />
                 Temperature
               </span>
               <span className={cn(
@@ -239,7 +235,7 @@ export default function DiskHealth() {
     return (
       <div className="space-y-6">
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <FailedIcon className="h-4 w-4" />
           <AlertDescription>
             Failed to load disk health data. 
             <Button 
@@ -266,12 +262,12 @@ export default function DiskHealth() {
             onClick={handleManualRefresh}
             disabled={isManualRefreshing}
           >
-            <RefreshCw className={cn("h-4 w-4 mr-2", isManualRefreshing && "animate-spin")} />
+            <RefreshIcon className={cn("h-4 w-4 mr-2", isManualRefreshing && "animate-spin")} />
             Refresh
           </Button>
         </div>
         <Alert>
-          <Info className="h-4 w-4" />
+          <NoticeIcon className="h-4 w-4" />
           <AlertDescription>
             No disks detected. Make sure disks are properly connected and the system has necessary permissions.
           </AlertDescription>
@@ -293,7 +289,7 @@ export default function DiskHealth() {
           <h2 className="text-2xl font-bold">Disk Health</h2>
           {summary && (
             <Badge variant="outline" className="gap-1">
-              <Database className="h-3 w-3" />
+              <PoolIcon className="h-3 w-3" />
               {summary.totalDisks} {summary.totalDisks === 1 ? 'Disk' : 'Disks'}
             </Badge>
           )}
@@ -304,7 +300,7 @@ export default function DiskHealth() {
           onClick={handleManualRefresh}
           disabled={isManualRefreshing}
         >
-          <RefreshCw className={cn("h-4 w-4 mr-2", isManualRefreshing && "animate-spin")} />
+          <RefreshIcon className={cn("h-4 w-4 mr-2", isManualRefreshing && "animate-spin")} />
           Refresh
         </Button>
       </div>
@@ -351,7 +347,7 @@ export default function DiskHealth() {
                   <div>
                     <p className="text-sm text-muted-foreground">Avg Temperature</p>
                     <p className="text-xl font-bold flex items-center gap-1">
-                      <Thermometer className="h-4 w-4" />
+                      <TemperatureIcon className="h-4 w-4" />
                       {toFixedSafe(summary.avgTemp, 0, '0')}°C
                     </p>
                   </div>
@@ -383,7 +379,7 @@ export default function DiskHealth() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <HardDrive className="h-4 w-4" />
+                <DiskIcon className="h-4 w-4" />
                 {selectedDiskData.name} Details
               </CardTitle>
               <CardDescription>
@@ -463,7 +459,7 @@ export default function DiskHealth() {
                       </Table>
                     ) : (
                       <Alert>
-                        <Info className="h-4 w-4" />
+                        <NoticeIcon className="h-4 w-4" />
                         <AlertDescription>
                           No SMART attributes available for this disk.
                         </AlertDescription>
@@ -484,7 +480,7 @@ export default function DiskHealth() {
                         onClick={() => handleRunTest(selectedDiskData.id, 'short')}
                         disabled={runningTests.has(selectedDiskData.id)}
                       >
-                        <Play className="h-3 w-3 mr-1" />
+                        <StartIcon className="h-3 w-3 mr-1" />
                         Short Test (~2 min)
                       </Button>
                       <Button
@@ -493,7 +489,7 @@ export default function DiskHealth() {
                         onClick={() => handleRunTest(selectedDiskData.id, 'conveyance')}
                         disabled={runningTests.has(selectedDiskData.id)}
                       >
-                        <Play className="h-3 w-3 mr-1" />
+                        <StartIcon className="h-3 w-3 mr-1" />
                         Conveyance Test (~5 min)
                       </Button>
                       <Button
@@ -502,13 +498,13 @@ export default function DiskHealth() {
                         onClick={() => handleRunTest(selectedDiskData.id, 'long')}
                         disabled={runningTests.has(selectedDiskData.id)}
                       >
-                        <Play className="h-3 w-3 mr-1" />
+                        <StartIcon className="h-3 w-3 mr-1" />
                         Extended Test (~30 min)
                       </Button>
                     </div>
                     {runningTests.has(selectedDiskData.id) && (
                       <Alert>
-                        <Activity className="h-4 w-4 animate-spin" />
+                        <WorkingIcon className="h-4 w-4 animate-spin" />
                         <AlertDescription>
                           Test is running... This may take several minutes.
                         </AlertDescription>

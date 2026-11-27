@@ -2,11 +2,7 @@ import { useServices } from '@/api/system'
 import { getErrorMessage } from '@/lib/nos-client'
 import { motion } from 'framer-motion'
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { 
-  Activity, AlertCircle, CheckCircle, 
-  Cpu, HardDrive, Info, MemoryStick, 
-  Network, RefreshCw, TrendingUp, XCircle
-} from 'lucide-react'
+import { CpuIcon, DiskIcon, FailedIcon, LiveIcon, MemoryIcon, NetworkIcon, NoticeIcon, OkIcon, RefreshIcon, RisingIcon } from '@/components/icons'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -95,7 +91,7 @@ function LiveMetric({
       >
         <span className={cn("font-semibold", color)}>{value}</span>
         {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
-        {trend === 'up' && <TrendingUp className="h-3 w-3 text-green-500" />}
+        {trend === 'up' && <RisingIcon className="h-3 w-3 text-green-500" />}
       </motion.div>
     </div>
   )
@@ -112,10 +108,10 @@ function ServiceCard({
   description: string
 }) {
   const statusConfig = {
-    running: { color: 'text-green-500', icon: CheckCircle, label: 'Running' },
-    stopped: { color: 'text-gray-500', icon: XCircle, label: 'Stopped' },
-    error: { color: 'text-red-500', icon: AlertCircle, label: 'Error' },
-    unknown: { color: 'text-yellow-500', icon: Info, label: 'Unknown' }
+    running: { color: 'text-green-500', icon: OkIcon, label: 'Running' },
+    stopped: { color: 'text-gray-500', icon: FailedIcon, label: 'Stopped' },
+    error: { color: 'text-red-500', icon: FailedIcon, label: 'Error' },
+    unknown: { color: 'text-yellow-500', icon: NoticeIcon, label: 'Unknown' }
   }
 
   const config = statusConfig[status] || statusConfig.unknown
@@ -236,7 +232,7 @@ export default function MonitoringDashboard() {
     return (
       <div className="space-y-6">
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <FailedIcon className="h-4 w-4" />
           <AlertDescription>
             Backend unreachable or proxy misconfigured — metrics temporarily unavailable. 
             <Button 
@@ -264,7 +260,7 @@ export default function MonitoringDashboard() {
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold">System Monitoring</h2>
           <Badge variant="outline" className="gap-1">
-            <Activity className="h-3 w-3 text-green-500 animate-pulse" />
+            <LiveIcon className="h-3 w-3 text-green-500 animate-pulse" />
             Live
           </Badge>
         </div>
@@ -278,7 +274,7 @@ export default function MonitoringDashboard() {
             onClick={handleManualRefresh}
             disabled={isManualRefreshing}
           >
-            <RefreshCw className={cn("h-4 w-4 mr-2", isManualRefreshing && "animate-spin")} />
+            <RefreshIcon className={cn("h-4 w-4 mr-2", isManualRefreshing && "animate-spin")} />
             Refresh
           </Button>
         </div>
@@ -296,26 +292,26 @@ export default function MonitoringDashboard() {
               <LiveMetric
                 label="CPU"
                 value={`${Math.round(metrics?.cpu || 0)}%`}
-                icon={Cpu}
+                icon={CpuIcon}
                 color={metrics?.cpu && metrics.cpu > 80 ? 'text-red-500' : ''}
               />
               <LiveMetric
                 label="Memory"
                 value={`${Math.round(metrics?.memory?.usagePct || 0)}%`}
-                icon={MemoryStick}
+                icon={MemoryIcon}
                 color={metrics?.memory?.usagePct && metrics.memory.usagePct > 80 ? 'text-red-500' : ''}
               />
               <LiveMetric
                 label="Network"
                 value={formatBytes((metrics?.network?.rxSpeed || 0) + (metrics?.network?.txSpeed || 0))}
                 unit="/s"
-                icon={Network}
+                icon={NetworkIcon}
               />
               <LiveMetric
                 label="Disk I/O"
                 value={formatBytes((metrics?.diskIO?.readSpeed || 0) + (metrics?.diskIO?.writeSpeed || 0))}
                 unit="/s"
-                icon={HardDrive}
+                icon={DiskIcon}
               />
             </div>
           </CardContent>

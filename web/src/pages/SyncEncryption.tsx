@@ -5,20 +5,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  Shield,
-  Key,
-  Lock,
-  Unlock,
-  RefreshCw,
-  AlertTriangle,
-  Copy,
-  Eye,
-  EyeOff,
-  HardDrive,
-  Settings,
-  Download,
-} from 'lucide-react';
+import { CopyIcon, DownloadIcon, EncryptionIcon, HideIcon, KeyIcon, LockIcon, RefreshIcon, SettingsIcon, ShareIcon, ShowIcon, UnlockIcon, WarningIcon } from '@/components/icons'
 
 import { Button } from '@/components/ui/button';
 import {
@@ -242,7 +229,7 @@ export default function SyncEncryption() {
           </p>
         </div>
         <Button variant="outline" onClick={() => refetchStatus()}>
-          <RefreshCw className="h-4 w-4 mr-2" />
+          <RefreshIcon className="h-4 w-4 mr-2" />
           Refresh
         </Button>
       </div>
@@ -250,7 +237,7 @@ export default function SyncEncryption() {
       {/* Recovery Key Dialog (shown after init) */}
       {showRecoveryKey && (
         <Alert className="border-yellow-500/50 bg-yellow-500/5">
-          <AlertTriangle className="h-5 w-5 text-yellow-500" />
+          <WarningIcon className="h-5 w-5 text-yellow-500" />
           <AlertTitle>Save Your Recovery Key</AlertTitle>
           <AlertDescription className="space-y-3">
             <p>
@@ -262,7 +249,7 @@ export default function SyncEncryption() {
                 {recoveryKey}
               </code>
               <Button variant="outline" size="icon" onClick={copyRecoveryKey}>
-                <Copy className="h-4 w-4" />
+                <CopyIcon className="h-4 w-4" />
               </Button>
             </div>
             <Button variant="outline" onClick={() => setShowRecoveryKey(false)}>
@@ -285,7 +272,7 @@ export default function SyncEncryption() {
             <div className="flex items-center gap-2">
               {status?.enabled ? (
                 <>
-                  <Shield className="h-8 w-8 text-green-500" />
+                  <EncryptionIcon className="h-8 w-8 text-green-500" />
                   <div>
                     <p className="text-2xl font-bold">Enabled</p>
                     <p className="text-xs text-muted-foreground">{status.algorithm}</p>
@@ -293,7 +280,7 @@ export default function SyncEncryption() {
                 </>
               ) : (
                 <>
-                  <Shield className="h-8 w-8 text-muted-foreground" />
+                  <EncryptionIcon className="h-8 w-8 text-muted-foreground" />
                   <div>
                     <p className="text-2xl font-bold">Disabled</p>
                     <p className="text-xs text-muted-foreground">Not configured</p>
@@ -315,7 +302,7 @@ export default function SyncEncryption() {
             <div className="flex items-center gap-2">
               {status?.master_key_initialized ? (
                 <>
-                  <Key className="h-8 w-8 text-green-500" />
+                  <KeyIcon className="h-8 w-8 text-green-500" />
                   <div>
                     <p className="text-2xl font-bold">Ready</p>
                     <p className="text-xs text-muted-foreground">Initialized</p>
@@ -323,7 +310,7 @@ export default function SyncEncryption() {
                 </>
               ) : (
                 <>
-                  <Key className="h-8 w-8 text-yellow-500" />
+                  <KeyIcon className="h-8 w-8 text-yellow-500" />
                   <div>
                     <p className="text-2xl font-bold">Not Set</p>
                     <p className="text-xs text-muted-foreground">Setup required</p>
@@ -343,7 +330,7 @@ export default function SyncEncryption() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <HardDrive className="h-8 w-8 text-blue-500" />
+              <ShareIcon className="h-8 w-8 text-blue-500" />
               <div>
                 <p className="text-2xl font-bold">{status?.shares_encrypted || 0}</p>
                 <p className="text-xs text-muted-foreground">
@@ -363,7 +350,7 @@ export default function SyncEncryption() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <Lock className="h-8 w-8 text-purple-500" />
+              <LockIcon className="h-8 w-8 text-purple-500" />
               <div>
                 <p className="text-2xl font-bold">
                   {formatBytes(status?.total_encrypted_size || 0)}
@@ -391,7 +378,7 @@ export default function SyncEncryption() {
               have the keys to decrypt it.
             </p>
             <Button onClick={() => setInitDialogOpen(true)}>
-              <Shield className="h-4 w-4 mr-2" />
+              <EncryptionIcon className="h-4 w-4 mr-2" />
               Initialize Encryption
             </Button>
           </CardContent>
@@ -400,15 +387,15 @@ export default function SyncEncryption() {
         <Tabs defaultValue="settings">
           <TabsList>
             <TabsTrigger value="settings">
-              <Settings className="h-4 w-4 mr-2" />
+              <SettingsIcon className="h-4 w-4 mr-2" />
               Settings
             </TabsTrigger>
             <TabsTrigger value="keys">
-              <Key className="h-4 w-4 mr-2" />
+              <KeyIcon className="h-4 w-4 mr-2" />
               Keys
             </TabsTrigger>
             <TabsTrigger value="recovery">
-              <Download className="h-4 w-4 mr-2" />
+              <DownloadIcon className="h-4 w-4 mr-2" />
               Recovery
             </TabsTrigger>
           </TabsList>
@@ -527,7 +514,7 @@ export default function SyncEncryption() {
                         className="flex items-center justify-between p-4 border rounded-lg"
                       >
                         <div className="flex items-center gap-3">
-                          <Key className="h-5 w-5 text-muted-foreground" />
+                          <KeyIcon className="h-5 w-5 text-muted-foreground" />
                           <div>
                             <p className="font-medium capitalize">{key.type} Key</p>
                             <p className="text-xs text-muted-foreground">
@@ -546,7 +533,7 @@ export default function SyncEncryption() {
                   Change Password
                 </Button>
                 <Button variant="outline" onClick={() => lockMutation.mutate()}>
-                  <Lock className="h-4 w-4 mr-2" />
+                  <LockIcon className="h-4 w-4 mr-2" />
                   Lock Encryption
                 </Button>
               </CardFooter>
@@ -564,7 +551,7 @@ export default function SyncEncryption() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <Alert>
-                  <AlertTriangle className="h-4 w-4" />
+                  <WarningIcon className="h-4 w-4" />
                   <AlertTitle>Keep your recovery key safe</AlertTitle>
                   <AlertDescription>
                     If you lose your password and recovery key, your encrypted data
@@ -618,7 +605,7 @@ export default function SyncEncryption() {
                   className="absolute right-0 top-0"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <HideIcon className="h-4 w-4" /> : <ShowIcon className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
@@ -683,7 +670,7 @@ export default function SyncEncryption() {
               onClick={() => unlockMutation.mutate()}
               disabled={!password || unlockMutation.isPending}
             >
-              <Unlock className="h-4 w-4 mr-2" />
+              <UnlockIcon className="h-4 w-4 mr-2" />
               Unlock
             </Button>
           </DialogFooter>
