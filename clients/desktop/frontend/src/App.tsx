@@ -93,9 +93,7 @@ interface Activity {
 }
 
 interface SetupRequest {
-  server_url: string;
-  device_token: string;
-  device_name: string;
+  pairing_link: string;
   sync_folder: string;
 }
 
@@ -228,8 +226,7 @@ function App() {
 }
 
 function SetupView({ onComplete }: { onComplete: () => void }) {
-  const [serverUrl, setServerUrl] = useState('');
-  const [deviceToken, setDeviceToken] = useState('');
+  const [pairingLink, setPairingLink] = useState('');
   const [syncFolder, setSyncFolder] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -241,14 +238,13 @@ function SetupView({ onComplete }: { onComplete: () => void }) {
 
     try {
       await window.go.app.App.Setup({
-        server_url: serverUrl,
-        device_token: deviceToken,
-        device_name: '',
+        pairing_link: pairingLink.trim(),
         sync_folder: syncFolder,
       });
       onComplete();
     } catch (err: any) {
-      setError(err.message || 'Setup failed');
+      // Wails rejects with the Go error's text, not an Error.
+      setError(String(err?.message ?? err ?? 'Setup failed'));
     } finally {
       setLoading(false);
     }
@@ -276,25 +272,13 @@ function SetupView({ onComplete }: { onComplete: () => void }) {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Server URL</label>
-          <input
-            type="url"
-            value={serverUrl}
-            onChange={(e) => setServerUrl(e.target.value)}
-            placeholder="https://your-server.local"
-            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Device Token</label>
-          <input
-            type="password"
-            value={deviceToken}
-            onChange={(e) => setDeviceToken(e.target.value)}
-            placeholder="nos_dt_..."
-            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-sm"
+          <label className="block text-sm font-medium text-slate-700 mb-1">Pairing Link</label>
+          <textarea
+            value={pairingLink}
+            onChange={(e) => setPairingLink(e.target.value)}
+            placeholder="nos://sync?server=..."
+            rows={3}
+            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-xs"
             required
           />
           <p className="text-xs text-slate-500 mt-1">
