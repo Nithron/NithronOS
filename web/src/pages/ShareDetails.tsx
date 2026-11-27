@@ -70,14 +70,13 @@ export function ShareDetails() {
 		<div className="flex flex-col h-full">
 			<PageHeader
 				title={isNew ? 'Create share' : `Edit share: ${name}`}
-				description={isNew ? 'Configure a new network file share' : 'Modify share settings and permissions'}
 				breadcrumbs={[
 					{ label: 'Shares', href: '/shares' },
 					{ label: isNew ? 'New' : name || '' }
 				]}
 			/>
 			
-			<div className="flex-1 p-6 max-w-4xl mx-auto w-full">
+			<div className="w-full max-w-4xl flex-1 p-6">
 				<ShareForm
 					share={share || undefined}
 					onSubmit={handleSubmit}

@@ -121,7 +121,7 @@ export function PermissionsEditor({
 
 
 	return (
-		<div className="space-y-6">
+		<div className="[&>*+*]:-mt-px">
 			{/* Permissions Summary */}
 			<Card className="p-6">
 				<div className="space-y-4">

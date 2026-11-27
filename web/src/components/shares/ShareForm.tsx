@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { DeleteIcon, FailedIcon, NetworkIcon, NoticeIcon, PermissionsIcon, ServerIcon, SyncIcon, SyncedFolderIcon, TimeIcon, UsersIcon } from '@/components/icons'
+import { WarningIcon, DeleteIcon, FailedIcon, NetworkIcon, NoticeIcon, PermissionsIcon, ServerIcon, SyncIcon, SyncedFolderIcon, TimeIcon, UsersIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -140,7 +140,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 					<TabsTrigger value="permissions">Permissions</TabsTrigger>
 				</TabsList>
 
-				<TabsContent value="general" className="space-y-6">
+				<TabsContent value="general" className="[&>*+*]:-mt-px">
 					<Card className="p-6 space-y-6">
 						<div className="space-y-4">
 							<div className="space-y-2">
@@ -172,7 +172,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 					</Card>
 				</TabsContent>
 
-				<TabsContent value="protocols" className="space-y-6">
+				<TabsContent value="protocols" className="[&>*+*]:-mt-px">
 					{/* SMB Configuration */}
 					<Card className="p-6 space-y-6">
 						<div className="flex items-center justify-between">
@@ -345,16 +345,16 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 
 					{!watchSmbEnabled && !watchNfsEnabled && (
 						<Alert>
-							<NoticeIcon className="h-4 w-4" />
+							<WarningIcon className="h-4 w-4 text-status-warning" />
 							<AlertDescription>
-								At least one protocol (SMB or NFS) must be enabled for the share to be accessible.
+								Neither SMB nor NFS is on: no computer can reach this share.
 							</AlertDescription>
 						</Alert>
 					)}
 				</TabsContent>
 
 				{/* Sync Configuration (NithronSync) */}
-				<TabsContent value="sync" className="space-y-6">
+				<TabsContent value="sync" className="[&>*+*]:-mt-px">
 					<Card className="p-6 space-y-6">
 						<div className="flex items-center justify-between">
 							<div className="flex items-center gap-3">
@@ -394,7 +394,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 					)}
 				</TabsContent>
 
-				<TabsContent value="permissions" className="space-y-6">
+				<TabsContent value="permissions" className="[&>*+*]:-mt-px">
 					<PermissionsEditor
 						owners={watchOwners}
 						readers={watchReaders}

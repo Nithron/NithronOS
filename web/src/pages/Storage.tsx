@@ -195,7 +195,6 @@ export function Storage() {
     <div className="space-y-6">
       <PageHeader
         title="Storage"
-        description="Manage storage pools and devices"
         actions={
           <>
             <Button

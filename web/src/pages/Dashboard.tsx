@@ -645,7 +645,6 @@ export function Dashboard() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="screen-title">Dashboard</h1>
-          <p className="text-muted-foreground">System overview and status</p>
         </div>
         <Button
           variant="outline"
