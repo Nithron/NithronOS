@@ -34,7 +34,9 @@ func TestNosdServiceUnitContainsSandboxing(t *testing.T) {
 	for _, want := range []string{
 		"ProtectSystem=full",
 		"NoNewPrivileges=yes",
-		"ReadWritePaths=/etc/nos /var/lib/nos /run",
+		"ReadWritePaths=/etc/nos /var/lib/nos",
+		"RuntimeDirectory=nos",
+		"RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK",
 		"StateDirectory=nos",
 		"ConfigurationDirectory=nos",
 		"User=nos",

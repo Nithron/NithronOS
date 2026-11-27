@@ -225,9 +225,26 @@ Also done in phase 5:
 4. Decide on `installer/nos-installer` (a Go installer that isn't built or shipped; its module also has no `go.sum` entries, so it doesn't build) and the live-system `/usr/sbin/nos-installer` shell script (the rename replaced the placeholder with the former `nithronos-installer` script): delete both, or make one a supported alternative to the Debian installer.
 5. Prune `hooks/normal/` (25 hooks, several overlapping: `10-enable-services`, `91-enable-nos-services`, `95-ensure-caddy-enabled`, `041-enable-otp-announce`, `96-setup-otp-generator`) and the preset file.
 5. Caddy: verify the shipped Caddyfile serves the UI and proxies `/api` and WebDAV, with the self-signed TLS path (`nos-tls-gen`).
-6. Secure Boot: track shim signing as a known limitation.
+6. Secure Boot: track shim signing as a known limitation. **Done (documented):** the ISO uses Debian's signed shim, GRUB and kernel; Secure Boot isn't tested in CI (OVMF with enrolled keys could be added to the ISO install test), and ZFS (DKMS, unsigned) needs MOK enrollment or Secure Boot off (`docs/installer.md`).
 8. From phase 4: the ISO keeps its own copies of `nosd.service` and `caddy.service` in `includes.chroot` that differ from `deploy/systemd` (the ISO's nosd has no sandbox at all); use the packaged units. (Phase 4 already removed the ISO's Python stand-in `nos-agent`, which overwrote the Go agent from the deb so every agent endpoint returned 404 on ISO installs, and its unit override.)
 7. From phase 4: give the WireGuard and HTTPS managers agent operations (like `/v1/firewall/*`); make HTTPS edit only its own Caddy site block instead of regenerating the Caddyfile; decide which ACME challenges nOS supports with Debian's caddy; no outside service for the public address without the admin's consent.
+
+
+**Phase 6 status:**
+- (1, 8) One copy of each unit. The ISO's nosd, nos-agent, caddy, TLS and service drop-ins are gone; the packages' units are used, and Caddy gets a `caddy.service.d/nos.conf` drop-in.
+- (2) nos-agent's sandbox was fixed in phase 4: it keeps the hardening that doesn't block its jobs.
+- (3) nosd: AF_NETLINK, a RuntimeDirectory, write access to `/etc/nos` and `/var/lib/nos`. The HTTPS manager's `/tmp` write is gone with its rewrite.
+- (4) The Go installer and the live `nos-installer` script are removed; the Debian installer is the supported path.
+- (5) The live-build hooks are pruned to the build plumbing (kernel, GRUB theme), and the unused presets are gone.
+- (5b) Caddy: one Caddyfile, shipped and installed by the `nos` package. It proxies `/api` and `/dav`, has no HSTS, and has a per-machine TLS key (the ISO baked one into the image).
+- (6) Secure Boot is documented as a known limitation.
+- (7) WireGuard and HTTPS run through the agent (`/v1/wireguard/*`, `/v1/caddy/public-site`). ACME uses HTTP-01 only. No outside service is asked for the public address.
+- The firewall works for the first time. One table (`inet nos`) is loaded at boot by `nos-firewall.service`, leaves Docker alone, and the rendering bugs are fixed (a bare `accept`, UDP rules written as TCP).
+- The ISO install test fails on any unit that fails at boot and checks WebDAV through Caddy.
+
+Carried forward:
+- nosd needs Docker for app logs, status and health checks, but `nos` isn't in the `docker` group, which is root-equivalent anyway. These should become read-only agent operations; until then they don't work on installed systems.
+- Secure Boot isn't tested in CI.
 
 ---
 

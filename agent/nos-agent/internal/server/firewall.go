@@ -102,12 +102,26 @@ func handleFirewallRuleset(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
+	// ?table=nos lists only nOS's table (inet nos); without it, the whole
+	// ruleset.
 	args := []string{"list", "ruleset"}
+	if t := r.URL.Query().Get("table"); t != "" {
+		if t != "nos" {
+			writeErr(w, http.StatusBadRequest, "only table nos")
+			return
+		}
+		args = []string{"list", "table", "inet", "nos"}
+	}
 	if r.URL.Query().Get("json") == "1" {
 		args = append([]string{"-j"}, args...)
 	}
 	out, err := exec.Command("nft", args...).Output()
 	if err != nil {
+		if len(args) > 2 && args[1] == "table" {
+			// No table yet: nothing to list.
+			writeJSON(w, http.StatusOK, map[string]string{"ruleset": ""})
+			return
+		}
 		writeErr(w, http.StatusInternalServerError, "nft list ruleset failed")
 		return
 	}

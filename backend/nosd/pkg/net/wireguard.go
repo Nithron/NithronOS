@@ -1,391 +1,354 @@
 package net
 
 import (
-	"bytes"
+	"context"
 	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/skip2/go-qrcode"
-	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 const (
-	wgConfigPath    = "/etc/wireguard/wg0.conf"
-	wgInterface     = "wg0"
-	defaultWGPort   = 51820
-	defaultWGSubnet = "10.8.0.0/24"
+	wgInterface   = "wg0"
+	defaultWGPort = 51820
 )
 
-// WireGuardManager manages WireGuard VPN configuration
-type WireGuardManager struct {
-	mu         sync.RWMutex
-	config     *WireGuardConfig
-	configPath string
-	client     *wgctrl.Client
+// ErrEndpointRequired: clients need an address to reach this system at,
+// and nOS doesn't ask an outside service for the public one.
+var ErrEndpointRequired = errors.New("enter the address (host name or public IP) devices reach this system at")
+
+// AgentJSON is the part of the nos-agent client the network managers use.
+type AgentJSON interface {
+	GetJSON(ctx context.Context, path string, out any) error
+	PostJSON(ctx context.Context, path string, body any, out any) error
 }
 
-// NewWireGuardManager creates a new WireGuard manager
-func NewWireGuardManager() (*WireGuardManager, error) {
-	client, err := wgctrl.New()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create WireGuard client: %w", err)
-	}
+// WireGuardManager keeps the tunnel's settings and peers (in statePath) and
+// has nos-agent apply them: nosd runs as the nos user, which can neither
+// write /etc/wireguard nor run systemctl or read the tunnel's statistics.
+// The server's private key never leaves the agent. (The settings used to be
+// kept only in memory, so a restart forgot the key and every peer, and an
+// empty endpoint was filled in by asking api.ipify.org.)
+type WireGuardManager struct {
+	mu        sync.RWMutex
+	config    *WireGuardConfig
+	psk       map[string]string // peer id -> preshared key (not in the API)
+	statePath string
+	agent     AgentJSON
+}
 
-	wm := &WireGuardManager{
-		configPath: wgConfigPath,
-		client:     client,
-	}
+// wgState is what statePath holds.
+type wgState struct {
+	Config *WireGuardConfig  `json:"config"`
+	PSK    map[string]string `json:"psk"`
+}
 
-	// Load existing config if available
-	if err := wm.loadConfig(); err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("failed to load config: %w", err)
+// NewWireGuardManager loads the saved tunnel, if any.
+func NewWireGuardManager(statePath string, agent AgentJSON) (*WireGuardManager, error) {
+	wm := &WireGuardManager{statePath: statePath, agent: agent, psk: map[string]string{}}
+	data, err := os.ReadFile(statePath)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("read %s: %w", statePath, err)
 	}
-
+	if err == nil {
+		var st wgState
+		if err := json.Unmarshal(data, &st); err != nil {
+			return nil, fmt.Errorf("parse %s: %w", statePath, err)
+		}
+		wm.config = st.Config
+		if st.PSK != nil {
+			wm.psk = st.PSK
+		}
+	}
 	return wm, nil
 }
 
-// GetState returns the current WireGuard configuration and runtime state
+func (wm *WireGuardManager) save() error {
+	data, err := json.MarshalIndent(wgState{Config: wm.config, PSK: wm.psk}, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(wm.statePath), 0o700); err != nil {
+		return err
+	}
+	tmp := wm.statePath + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, wm.statePath)
+}
+
+// apply sends the tunnel to the agent and records the server's public key.
+func (wm *WireGuardManager) apply(ctx context.Context) error {
+	req := map[string]any{"enabled": wm.config.Enabled}
+	if wm.config.Enabled {
+		peers := []map[string]any{}
+		for _, p := range wm.config.Peers {
+			if !p.Enabled {
+				continue
+			}
+			peers = append(peers, map[string]any{"public_key": p.PublicKey, "preshared_key": wm.psk[p.ID], "allowed_ips": p.AllowedIPs})
+		}
+		req["listen_port"] = wm.config.ListenPort
+		req["address"] = wm.config.ServerCIDR
+		req["peers"] = peers
+	}
+	var out struct {
+		PublicKey string `json:"public_key"`
+	}
+	if err := wm.agent.PostJSON(ctx, "/v1/wireguard/apply", req, &out); err != nil {
+		return err
+	}
+	if out.PublicKey != "" {
+		wm.config.PublicKey = out.PublicKey
+	}
+	return nil
+}
+
+// GetState returns the tunnel with each peer's live statistics.
 func (wm *WireGuardManager) GetState() (*WireGuardConfig, error) {
 	wm.mu.RLock()
 	defer wm.mu.RUnlock()
-
 	if wm.config == nil {
-		return &WireGuardConfig{
-			Enabled: false,
-		}, nil
+		return &WireGuardConfig{Enabled: false, Peers: []WireGuardPeer{}}, nil
 	}
-
-	// Update runtime stats if enabled
-	if wm.config.Enabled {
-		device, err := wm.client.Device(wgInterface)
-		if err == nil {
-			wm.updateRuntimeStats(device)
+	cfg := *wm.config
+	cfg.Peers = append([]WireGuardPeer(nil), wm.config.Peers...)
+	if cfg.Enabled {
+		var st struct {
+			Peers []struct {
+				PublicKey     string `json:"public_key"`
+				Endpoint      string `json:"endpoint"`
+				LastHandshake int64  `json:"last_handshake"`
+				BytesRX       int64  `json:"bytes_rx"`
+				BytesTX       int64  `json:"bytes_tx"`
+			} `json:"peers"`
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := wm.agent.GetJSON(ctx, "/v1/wireguard/status", &st); err == nil {
+			for i := range cfg.Peers {
+				for _, live := range st.Peers {
+					if live.PublicKey != cfg.Peers[i].PublicKey {
+						continue
+					}
+					cfg.Peers[i].Endpoint = live.Endpoint
+					cfg.Peers[i].BytesRX, cfg.Peers[i].BytesTX = live.BytesRX, live.BytesTX
+					if live.LastHandshake > 0 {
+						t := time.Unix(live.LastHandshake, 0)
+						cfg.Peers[i].LastHandshake = &t
+					}
+				}
+			}
 		}
 	}
-
-	return wm.config, nil
+	return &cfg, nil
 }
 
-// Enable enables WireGuard with the specified configuration
+// Enable starts the tunnel. cidr is the server's address in the tunnel
+// (10.8.0.1/24; a network address gets its first host); endpoint is where
+// devices reach this system.
 func (wm *WireGuardManager) Enable(cidr string, port int, endpoint string, dns []string) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
-
-	if wm.config != nil && wm.config.Enabled {
-		return fmt.Errorf("wireguard is already enabled")
+	if strings.TrimSpace(endpoint) == "" {
+		return ErrEndpointRequired
 	}
-
-	// Parse and validate CIDR
-	_, _, err := net.ParseCIDR(cidr)
+	ip, network, err := net.ParseCIDR(cidr)
 	if err != nil {
 		return fmt.Errorf("invalid CIDR: %w", err)
 	}
-
-	// Generate server keys
-	privateKey, publicKey, err := GenerateWireGuardKeys()
-	if err != nil {
-		return fmt.Errorf("failed to generate keys: %w", err)
+	if ip.Equal(network.IP) {
+		ip = append(net.IP(nil), network.IP...)
+		incrementIP(ip)
 	}
-
-	// Set defaults
+	ones, _ := network.Mask.Size()
 	if port == 0 {
 		port = defaultWGPort
 	}
-	if endpoint == "" {
-		endpoint = getPublicIP()
+	peers := []WireGuardPeer{}
+	if wm.config != nil {
+		peers = wm.config.Peers // re-enabling keeps the devices
 	}
-	if len(dns) == 0 {
-		dns = []string{"1.1.1.1", "1.0.0.1"}
-	}
-
-	// Create configuration
+	prev := wm.config
 	wm.config = &WireGuardConfig{
 		Enabled:          true,
 		Interface:        wgInterface,
-		PrivateKey:       privateKey,
-		PublicKey:        publicKey,
 		ListenPort:       port,
-		ServerCIDR:       cidr,
-		EndpointHostname: endpoint,
+		ServerCIDR:       fmt.Sprintf("%s/%d", ip, ones),
+		EndpointHostname: strings.TrimSpace(endpoint),
 		DNS:              dns,
-		Peers:            []WireGuardPeer{},
+		Peers:            peers,
 	}
-
-	// Generate and apply configuration
-	if err := wm.applyConfig(); err != nil {
-		return fmt.Errorf("failed to apply config: %w", err)
+	if prev != nil {
+		wm.config.PublicKey = prev.PublicKey
 	}
-
-	// Enable and start systemd service
-	if err := wm.enableService(); err != nil {
-		return fmt.Errorf("failed to enable service: %w", err)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := wm.apply(ctx); err != nil {
+		wm.config = prev
+		return fmt.Errorf("failed to start WireGuard: %w", err)
 	}
-
-	// Save configuration
-	if err := wm.saveConfig(); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
-	}
-
-	return nil
+	return wm.save()
 }
 
-// Disable disables WireGuard
+// Disable stops the tunnel; its settings and devices are kept.
 func (wm *WireGuardManager) Disable() error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
-
 	if wm.config == nil || !wm.config.Enabled {
 		return fmt.Errorf("wireguard is not enabled")
 	}
-
-	// Stop and disable systemd service
-	if err := wm.disableService(); err != nil {
-		return fmt.Errorf("failed to disable service: %w", err)
-	}
-
-	// Update configuration
 	wm.config.Enabled = false
-
-	// Save configuration
-	if err := wm.saveConfig(); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := wm.apply(ctx); err != nil {
+		wm.config.Enabled = true
+		return fmt.Errorf("failed to stop WireGuard: %w", err)
 	}
-
-	return nil
+	return wm.save()
 }
 
-// AddPeer adds a new WireGuard peer
+// AddPeer adds a device and returns its configuration (with its private
+// key, shown once and not kept) and a QR code of it.
 func (wm *WireGuardManager) AddPeer(name string, allowedIPs []string, pubkey string) (*WireGuardPeerConfig, error) {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
-
 	if wm.config == nil || !wm.config.Enabled {
 		return nil, fmt.Errorf("wireguard is not enabled")
 	}
-
-	// Check for duplicate name
+	name = strings.TrimSpace(name)
+	if name == "" || len(name) > 64 || strings.ContainsAny(name, "\r\n") {
+		return nil, fmt.Errorf("a device name of 1-64 characters on one line")
+	}
 	for _, peer := range wm.config.Peers {
 		if peer.Name == name {
 			return nil, fmt.Errorf("peer with name %s already exists", name)
 		}
 	}
-
-	// Generate peer keys if not provided
-	var peerPrivateKey, peerPublicKey string
+	var priv, pub string
 	if pubkey == "" {
 		var err error
-		peerPrivateKey, peerPublicKey, err = GenerateWireGuardKeys()
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate peer keys: %w", err)
+		if priv, pub, err = GenerateWireGuardKeys(); err != nil {
+			return nil, err
 		}
 	} else {
-		peerPublicKey = pubkey
+		k, err := wgtypes.ParseKey(pubkey)
+		if err != nil {
+			return nil, fmt.Errorf("invalid public key")
+		}
+		pub = k.String()
 	}
-
-	// Generate preshared key for additional security
-	presharedKey, err := generatePresharedKey()
+	psk, err := wgtypes.GenerateKey()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate preshared key: %w", err)
+		return nil, err
 	}
-
-	// Allocate IP address for peer
 	peerIP, err := wm.allocatePeerIP()
 	if err != nil {
 		return nil, fmt.Errorf("failed to allocate IP: %w", err)
 	}
-
-	// Set default allowed IPs if not specified
 	if len(allowedIPs) == 0 {
-		allowedIPs = []string{fmt.Sprintf("%s/32", peerIP)}
+		allowedIPs = []string{peerIP + "/32"}
 	}
-
-	// Create peer
-	peer := WireGuardPeer{
-		ID:           generateID(),
-		Name:         name,
-		PublicKey:    peerPublicKey,
-		PresharedKey: presharedKey,
-		AllowedIPs:   allowedIPs,
-		CreatedAt:    time.Now(),
-		Enabled:      true,
-	}
-
-	// Add to configuration
+	peer := WireGuardPeer{ID: generateID(), Name: name, PublicKey: pub, AllowedIPs: allowedIPs, CreatedAt: time.Now(), Enabled: true}
 	wm.config.Peers = append(wm.config.Peers, peer)
-
-	// Apply configuration
-	if err := wm.applyConfig(); err != nil {
+	wm.psk[peer.ID] = psk.String()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := wm.apply(ctx); err != nil {
+		wm.config.Peers = wm.config.Peers[:len(wm.config.Peers)-1]
+		delete(wm.psk, peer.ID)
 		return nil, fmt.Errorf("failed to apply config: %w", err)
 	}
-
-	// Save configuration
-	if err := wm.saveConfig(); err != nil {
-		return nil, fmt.Errorf("failed to save config: %w", err)
+	if err := wm.save(); err != nil {
+		return nil, err
 	}
-
-	// Generate client configuration
-	clientConfig := wm.generateClientConfig(peer, peerPrivateKey, peerIP)
-
-	// Generate QR code
-	qrCode, err := wm.generateQRCode(clientConfig.Config)
-	if err != nil {
+	cfg := wm.generateClientConfig(peer, priv, peerIP)
+	if cfg.QRCode, err = wm.generateQRCode(cfg.Config); err != nil {
 		return nil, fmt.Errorf("failed to generate QR code: %w", err)
 	}
-	clientConfig.QRCode = qrCode
-
-	return clientConfig, nil
+	return cfg, nil
 }
 
-// RemovePeer removes a WireGuard peer
+// RemovePeer removes a device.
 func (wm *WireGuardManager) RemovePeer(peerID string) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
-
-	if wm.config == nil || !wm.config.Enabled {
-		return fmt.Errorf("wireguard is not enabled")
+	if wm.config == nil {
+		return fmt.Errorf("wireguard is not configured")
 	}
-
-	// Find and remove peer
-	found := false
-	var updatedPeers []WireGuardPeer
-	for _, peer := range wm.config.Peers {
-		if peer.ID != peerID {
-			updatedPeers = append(updatedPeers, peer)
-		} else {
-			found = true
-		}
-	}
-
-	if !found {
-		return fmt.Errorf("peer not found")
-	}
-
-	// Update configuration
-	wm.config.Peers = updatedPeers
-
-	// Apply configuration
-	if err := wm.applyConfig(); err != nil {
-		return fmt.Errorf("failed to apply config: %w", err)
-	}
-
-	// Save configuration
-	if err := wm.saveConfig(); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
-	}
-
-	return nil
-}
-
-// Private methods
-
-func (wm *WireGuardManager) loadConfig() error {
-	// Load configuration from disk
-	// This would parse the saved JSON config
-	return nil
-}
-
-func (wm *WireGuardManager) saveConfig() error {
-	// Save configuration to disk as JSON
-	// Store in /var/lib/nos/net/wireguard.json
-	return nil
-}
-
-func (wm *WireGuardManager) applyConfig() error {
-	// Generate wg0.conf from configuration
-	configContent := wm.generateWireGuardConfig()
-
-	// Ensure directory exists
-	configDir := filepath.Dir(wm.configPath)
-	if err := os.MkdirAll(configDir, 0700); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
-	}
-
-	// Write configuration file
-	if err := os.WriteFile(wm.configPath, []byte(configContent), 0600); err != nil {
-		return fmt.Errorf("failed to write config: %w", err)
-	}
-
-	// Reload WireGuard if running
-	if wm.isServiceRunning() {
-		cmd := exec.Command("systemctl", "reload", "wg-quick@wg0")
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to reload WireGuard: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func (wm *WireGuardManager) generateWireGuardConfig() string {
-	var buf bytes.Buffer
-
-	// Interface section
-	buf.WriteString("[Interface]\n")
-	fmt.Fprintf(&buf, "PrivateKey = %s\n", wm.config.PrivateKey)
-	fmt.Fprintf(&buf, "Address = %s\n", wm.config.ServerCIDR)
-	fmt.Fprintf(&buf, "ListenPort = %d\n", wm.config.ListenPort)
-	buf.WriteString("PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE\n")
-	buf.WriteString("PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE\n")
-	buf.WriteString("\n")
-
-	// Peer sections
-	for _, peer := range wm.config.Peers {
-		if !peer.Enabled {
+	kept := []WireGuardPeer{}
+	var removed *WireGuardPeer
+	for i, p := range wm.config.Peers {
+		if p.ID == peerID {
+			removed = &wm.config.Peers[i]
 			continue
 		}
-
-		fmt.Fprintf(&buf, "# %s\n", peer.Name)
-		buf.WriteString("[Peer]\n")
-		fmt.Fprintf(&buf, "PublicKey = %s\n", peer.PublicKey)
-		if peer.PresharedKey != "" {
-			fmt.Fprintf(&buf, "PresharedKey = %s\n", peer.PresharedKey)
-		}
-		fmt.Fprintf(&buf, "AllowedIPs = %s\n", strings.Join(peer.AllowedIPs, ", "))
-		buf.WriteString("\n")
+		kept = append(kept, p)
 	}
-
-	return buf.String()
+	if removed == nil {
+		return fmt.Errorf("peer not found")
+	}
+	prev := wm.config.Peers
+	wm.config.Peers = kept
+	if wm.config.Enabled {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := wm.apply(ctx); err != nil {
+			wm.config.Peers = prev
+			return fmt.Errorf("failed to apply config: %w", err)
+		}
+	}
+	delete(wm.psk, peerID)
+	return wm.save()
 }
 
+// generateClientConfig is the device's wg-quick file. It routes only the
+// tunnel's network: the device reaches this system (web interface,
+// shares) at its tunnel address, and its other traffic stays local. (It
+// used to send all traffic through the tunnel and rely on iptables rules
+// masquerading on a hard-coded eth0.)
 func (wm *WireGuardManager) generateClientConfig(peer WireGuardPeer, privateKey, clientIP string) *WireGuardPeerConfig {
-	config := &WireGuardPeerConfig{}
+	_, network, _ := net.ParseCIDR(wm.config.ServerCIDR)
+	tunnel := network.String()
+	endpoint := net.JoinHostPort(wm.config.EndpointHostname, strconv.Itoa(wm.config.ListenPort))
+	cfg := &WireGuardPeerConfig{}
+	cfg.Interface.PrivateKey = privateKey
+	cfg.Interface.Address = clientIP + "/32"
+	cfg.Interface.DNS = wm.config.DNS
+	cfg.Peer.PublicKey = wm.config.PublicKey
+	cfg.Peer.PresharedKey = wm.psk[peer.ID]
+	cfg.Peer.Endpoint = endpoint
+	cfg.Peer.AllowedIPs = []string{tunnel}
+	cfg.Peer.PersistentKeepalive = 25
 
-	// Set interface configuration
-	config.Interface.PrivateKey = privateKey
-	config.Interface.Address = fmt.Sprintf("%s/32", clientIP)
-	config.Interface.DNS = wm.config.DNS
-
-	// Set peer (server) configuration
-	config.Peer.PublicKey = wm.config.PublicKey
-	config.Peer.PresharedKey = peer.PresharedKey
-	config.Peer.Endpoint = fmt.Sprintf("%s:%d", wm.config.EndpointHostname, wm.config.ListenPort)
-	config.Peer.AllowedIPs = []string{"0.0.0.0/0", "::/0"} // Route all traffic through VPN
-	config.Peer.PersistentKeepalive = 25
-
-	// Generate config file content
-	var buf bytes.Buffer
-	buf.WriteString("[Interface]\n")
-	fmt.Fprintf(&buf, "PrivateKey = %s\n", privateKey)
-	fmt.Fprintf(&buf, "Address = %s/32\n", clientIP)
-	fmt.Fprintf(&buf, "DNS = %s\n", strings.Join(wm.config.DNS, ", "))
-	buf.WriteString("\n[Peer]\n")
-	fmt.Fprintf(&buf, "PublicKey = %s\n", wm.config.PublicKey)
-	fmt.Fprintf(&buf, "PresharedKey = %s\n", peer.PresharedKey)
-	fmt.Fprintf(&buf, "Endpoint = %s:%d\n", wm.config.EndpointHostname, wm.config.ListenPort)
-	buf.WriteString("AllowedIPs = 0.0.0.0/0, ::/0\n")
-	buf.WriteString("PersistentKeepalive = 25\n")
-
-	config.Config = buf.String()
-
-	return config
+	var b strings.Builder
+	b.WriteString("[Interface]\n")
+	if privateKey != "" {
+		fmt.Fprintf(&b, "PrivateKey = %s\n", privateKey)
+	}
+	fmt.Fprintf(&b, "Address = %s/32\n", clientIP)
+	if len(wm.config.DNS) > 0 {
+		fmt.Fprintf(&b, "DNS = %s\n", strings.Join(wm.config.DNS, ", "))
+	}
+	b.WriteString("\n[Peer]\n")
+	fmt.Fprintf(&b, "PublicKey = %s\n", wm.config.PublicKey)
+	fmt.Fprintf(&b, "PresharedKey = %s\n", wm.psk[peer.ID])
+	fmt.Fprintf(&b, "Endpoint = %s\n", endpoint)
+	fmt.Fprintf(&b, "AllowedIPs = %s\n", tunnel)
+	b.WriteString("PersistentKeepalive = 25\n")
+	cfg.Config = b.String()
+	return cfg
 }
 
 func (wm *WireGuardManager) generateQRCode(content string) (string, error) {
@@ -433,65 +396,6 @@ func (wm *WireGuardManager) allocatePeerIP() (string, error) {
 	}
 
 	return "", fmt.Errorf("no available IPs in subnet")
-}
-
-func (wm *WireGuardManager) updateRuntimeStats(device *wgtypes.Device) {
-	// Update peer statistics
-	for i, peer := range wm.config.Peers {
-		for _, devicePeer := range device.Peers {
-			if peer.PublicKey == devicePeer.PublicKey.String() {
-				if !devicePeer.LastHandshakeTime.IsZero() {
-					handshake := devicePeer.LastHandshakeTime
-					wm.config.Peers[i].LastHandshake = &handshake
-				}
-				wm.config.Peers[i].BytesRX = devicePeer.ReceiveBytes
-				wm.config.Peers[i].BytesTX = devicePeer.TransmitBytes
-				break
-			}
-		}
-	}
-}
-
-func (wm *WireGuardManager) enableService() error {
-	// Enable and start wg-quick@wg0 service
-	cmd := exec.Command("systemctl", "enable", "--now", "wg-quick@wg0")
-	return cmd.Run()
-}
-
-func (wm *WireGuardManager) disableService() error {
-	// Stop and disable wg-quick@wg0 service
-	cmd := exec.Command("systemctl", "disable", "--now", "wg-quick@wg0")
-	return cmd.Run()
-}
-
-func (wm *WireGuardManager) isServiceRunning() bool {
-	cmd := exec.Command("systemctl", "is-active", "wg-quick@wg0")
-	output, _ := cmd.Output()
-	return strings.TrimSpace(string(output)) == "active"
-}
-
-// Helper functions
-
-func generatePresharedKey() (string, error) {
-	cmd := exec.Command("wg", "genpsk")
-	output, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("failed to generate preshared key: %w", err)
-	}
-	return strings.TrimSpace(string(output)), nil
-}
-
-func getPublicIP() string {
-	// Try to get public IP from external service
-	cmd := exec.Command("curl", "-s", "https://api.ipify.org")
-	output, err := cmd.Output()
-	if err == nil {
-		return strings.TrimSpace(string(output))
-	}
-
-	// Fallback to hostname
-	hostname, _ := os.Hostname()
-	return hostname
 }
 
 func incrementIP(ip net.IP) {

@@ -39,7 +39,8 @@ export function RemoteAccessWizard() {
       dns: ['1.1.1.1', '1.0.0.1'],
     },
     https: {
-      mode: 'self_signed' as HTTPSMode,
+      // The HTTPS step is only for public HTTPS: Let's Encrypt, HTTP challenge.
+      mode: 'http_01' as HTTPSMode,
       domain: '',
       email: '',
       dns_provider: '',
@@ -297,54 +298,14 @@ export function RemoteAccessWizard() {
 
               <div>
                 <Label>Certificate Method</Label>
-                <RadioGroup
-                  value={formData.https.mode}
-                  onValueChange={(value: string) => setFormData({
-                    ...formData,
-                    https: { ...formData.https, mode: value as HTTPSMode }
-                  })}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="http_01" id="http_01" />
-                    <Label htmlFor="http_01">HTTP-01 Challenge (Ports 80/443)</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="dns_01" id="dns_01" />
-                    <Label htmlFor="dns_01">DNS-01 Challenge (No ports required)</Label>
-                  </div>
-                </RadioGroup>
+                <p className="text-sm text-muted-foreground">
+                  A free Let's Encrypt certificate, obtained with the HTTP challenge: ports 80 and 443 must be
+                  reachable from the internet, and the domain must point to this system. (The DNS challenge
+                  needs Caddy plugins Debian's Caddy doesn't include.)
+                </p>
               </div>
 
-              {formData.https.mode === 'dns_01' && (
-                <>
-                  <div>
-                    <Label htmlFor="dns-provider">DNS Provider</Label>
-                    <Input
-                      id="dns-provider"
-                      value={formData.https.dns_provider}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        https: { ...formData.https, dns_provider: e.target.value }
-                      })}
-                      placeholder="cloudflare"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="dns-api-key">API Key</Label>
-                    <Input
-                      id="dns-api-key"
-                      type="password"
-                      value={formData.https.dns_api_key}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        https: { ...formData.https, dns_api_key: e.target.value }
-                      })}
-                      placeholder="Your DNS provider API key"
-                    />
-                  </div>
-                </>
-              )}
+              
             </CardContent>
           </Card>
         </div>
@@ -467,7 +428,7 @@ export function RemoteAccessWizard() {
                 <dt className="text-muted-foreground">Email:</dt>
                 <dd>{formData.https.email}</dd>
                 <dt className="text-muted-foreground">Method:</dt>
-                <dd>{formData.https.mode === 'http_01' ? 'HTTP-01' : 'DNS-01'}</dd>
+                <dd>Let's Encrypt (HTTP challenge)</dd>
               </dl>
             </div>
           )}

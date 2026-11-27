@@ -38,13 +38,18 @@ type FirewallState struct {
 
 // FirewallRule represents a single nftables rule
 type FirewallRule struct {
-	ID          string `json:"id"`
-	Table       string `json:"table"`
-	Chain       string `json:"chain"`
-	Priority    int    `json:"priority"`
-	Type        string `json:"type"` // allow, deny, nat
-	Protocol    string `json:"protocol,omitempty"`
-	SourceCIDR  string `json:"source_cidr,omitempty"`
+	ID       string `json:"id"`
+	Table    string `json:"table"`
+	Chain    string `json:"chain"`
+	Priority int    `json:"priority"`
+	Type     string `json:"type"` // allow, deny, nat
+	Protocol string `json:"protocol,omitempty"`
+	// SourceCIDR: comma-separated networks or addresses (IPv4 and IPv6).
+	SourceCIDR string `json:"source_cidr,omitempty"`
+	// Interface the traffic arrives on (lo, wg0).
+	Interface string `json:"interface,omitempty"`
+	// CTState "established,related": replies to this system's connections.
+	CTState     string `json:"ct_state,omitempty"`
 	DestPort    string `json:"dest_port,omitempty"`
 	Action      string `json:"action"`
 	Description string `json:"description"`

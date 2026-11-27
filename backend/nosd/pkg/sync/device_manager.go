@@ -188,10 +188,11 @@ func (dm *DeviceManager) ValidateDeviceToken(tokenValue, ip, userAgent string) (
 				return nil, fmt.Errorf("device revoked")
 			}
 
-			// Update activity asynchronously
-			go func() {
-				_ = dm.store.UpdateDeviceActivity(cachedDevice.ID, ip, userAgent)
-			}()
+			// Record the activity before answering. (It was a goroutine per
+			// request that wrote the store after the request had returned:
+			// unbounded under load, and racing anything that removed the
+			// store, such as a test's cleanup.)
+			_ = dm.store.UpdateDeviceActivity(cachedDevice.ID, ip, userAgent)
 
 			return cachedDevice, nil
 		}
@@ -218,10 +219,7 @@ func (dm *DeviceManager) ValidateDeviceToken(tokenValue, ip, userAgent string) (
 			dm.tokenCache[dm.fastHash(tokenValue)] = device
 			dm.tokenCacheMu.Unlock()
 
-			// Update activity asynchronously
-			go func() {
-				_ = dm.store.UpdateDeviceActivity(device.ID, ip, userAgent)
-			}()
+			_ = dm.store.UpdateDeviceActivity(device.ID, ip, userAgent)
 
 			return device, nil
 		}

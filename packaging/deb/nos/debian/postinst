@@ -24,28 +24,16 @@ case "$1" in
         chmod 0755 /usr/lib/nos/report-deps.sh || true
         systemctl enable nos-deps-report.service || true
         # Ensure permissions for installed helpers
-        chmod 0755 /usr/lib/nos/gen-local-cert.sh || true
-        # Enable TLS generator and core services
-        systemctl enable nos-certgen.service || true
-        # Ensure Caddy is definitely enabled and will start on boot
-        systemctl enable caddy.service || true
+        chmod 0755 /usr/lib/nos/gen-local-cert.sh /usr/lib/nos/install-caddyfile.sh || true
+        /usr/lib/nos/install-caddyfile.sh || true
+        # (A hand-written caddy override used to be created here; the
+        # package ships caddy.service.d/nos.conf instead.)
+        rm -f /etc/systemd/system/caddy.service.d/override.conf
         systemctl daemon-reload || true
-        # Create startup override to ensure Caddy always starts
-        mkdir -p /etc/systemd/system/caddy.service.d
-        cat > /etc/systemd/system/caddy.service.d/override.conf <<EOF
-[Unit]
-# Ensure Caddy starts after network and nosd
-After=network-online.target nosd.service
-Wants=network-online.target
-
-[Install]
-# Make sure it's wanted by multi-user.target
-WantedBy=multi-user.target
-EOF
-        systemctl daemon-reload || true
-        systemctl enable nosd.service || true
-        systemctl enable nos-agent.service || true
-        # OTP announcer moved to nosd package
+        systemctl enable nos-certgen.service caddy.service || true
+        if systemctl is-active --quiet caddy 2>/dev/null; then
+            systemctl reload caddy || true
+        fi
         chmod 0755 /usr/lib/nos/smart-scan.sh || true
         systemctl enable --now nos-smart-scan.timer || true
         systemctl enable --now nos-fstrim.timer || true

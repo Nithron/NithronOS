@@ -1,28 +1,15 @@
 #!/bin/sh
 set -e
-
 case "$1" in
     configure)
-        # Ensure group exists for socket access
         if command -v systemd-sysusers >/dev/null 2>&1; then
             systemd-sysusers || true
         fi
+        systemctl daemon-reload || true
+        systemctl enable nos-agent.service nos-firewall.service || true
+        # In the ISO's chroot there is no running systemd; that's fine.
+        systemctl restart nos-agent.service || true
+        systemctl start nos-firewall.service || true
         ;;
 esac
-
-systemctl daemon-reload || true
-systemctl enable nos-agent.service || true
-systemctl restart nos-agent.service || true
-
 exit 0
-
-#!/bin/sh
-set -e
-
-systemctl daemon-reload || true
-systemctl enable nos-agent.service || true
-systemctl restart nos-agent.service || true
-
-exit 0
-
-

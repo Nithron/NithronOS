@@ -1,199 +1,78 @@
 package net
 
 import (
-	"net"
+	"context"
+	"encoding/json"
+	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
-func TestWireGuardManager_AllocatePeerIP(t *testing.T) {
-	wm := &WireGuardManager{
-		config: &WireGuardConfig{
-			ServerCIDR: "10.8.0.1/24",
-			Peers: []WireGuardPeer{
-				{
-					ID:         "peer1",
-					AllowedIPs: []string{"10.8.0.2/32"},
-				},
-				{
-					ID:         "peer2",
-					AllowedIPs: []string{"10.8.0.3/32"},
-				},
-			},
-		},
-	}
+type fakeWGAgent struct{ applies []map[string]any }
 
-	// Allocate new IP
-	ip, err := wm.allocatePeerIP()
+func (f *fakeWGAgent) GetJSON(_ context.Context, _ string, out any) error {
+	return json.Unmarshal([]byte(`{"running":true,"peers":[]}`), out)
+}
+
+func (f *fakeWGAgent) PostJSON(_ context.Context, path string, body any, out any) error {
+	if path != "/v1/wireguard/apply" {
+		return errors.New("unexpected " + path)
+	}
+	b, _ := json.Marshal(body)
+	var m map[string]any
+	_ = json.Unmarshal(b, &m)
+	f.applies = append(f.applies, m)
+	return json.Unmarshal([]byte(`{"ok":true,"public_key":"xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg="}`), out)
+}
+
+func TestWireGuardThroughTheAgent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "wireguard.json")
+	agent := &fakeWGAgent{}
+	wm, err := NewWireGuardManager(path, agent)
 	if err != nil {
-		t.Fatalf("Failed to allocate IP: %v", err)
+		t.Fatal(err)
+	}
+	if err := wm.Enable("10.8.0.0/24", 51820, "", nil); !errors.Is(err, ErrEndpointRequired) {
+		t.Fatalf("no endpoint: %v", err)
+	}
+	if err := wm.Enable("10.8.0.0/24", 51821, "nas.example.org", nil); err != nil {
+		t.Fatal(err)
+	}
+	if a := agent.applies[0]; a["address"] != "10.8.0.1/24" || a["listen_port"].(float64) != 51821 {
+		t.Fatalf("apply: %+v", a)
+	}
+	peer, err := wm.AddPeer("phone", nil, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Address = 10.8.0.2/32", "Endpoint = nas.example.org:51821", "AllowedIPs = 10.8.0.0/24", "PresharedKey = ", "PublicKey = xTIBA5"} {
+		if !strings.Contains(peer.Config, want) {
+			t.Errorf("client config lacks %q:\n%s", want, peer.Config)
+		}
+	}
+	if strings.Contains(peer.Config, "0.0.0.0/0") {
+		t.Error("the client must not route all its traffic through the tunnel")
+	}
+	last := agent.applies[len(agent.applies)-1]
+	peers := last["peers"].([]any)
+	if len(peers) != 1 || peers[0].(map[string]any)["preshared_key"] == "" {
+		t.Fatalf("peer sent to the agent: %+v", last)
 	}
 
-	// Should not be server IP or existing peer IPs
-	if ip == "10.8.0.1" || ip == "10.8.0.2" || ip == "10.8.0.3" {
-		t.Errorf("Allocated IP %s conflicts with existing IPs", ip)
+	// A restart keeps the tunnel and its devices.
+	wm2, err := NewWireGuardManager(path, agent)
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	// Should be in the correct subnet
-	_, network, _ := net.ParseCIDR("10.8.0.0/24")
-	allocatedIP := net.ParseIP(ip)
-	if !network.Contains(allocatedIP) {
-		t.Errorf("Allocated IP %s is not in subnet %s", ip, "10.8.0.0/24")
+	st, _ := wm2.GetState()
+	if !st.Enabled || len(st.Peers) != 1 || st.PublicKey == "" || wm2.psk[st.Peers[0].ID] == "" {
+		t.Fatalf("after restart: %+v", st)
 	}
-}
-
-func TestWireGuardManager_GenerateWireGuardConfig(t *testing.T) {
-	wm := &WireGuardManager{
-		config: &WireGuardConfig{
-			PrivateKey: "test-private-key",
-			ServerCIDR: "10.8.0.1/24",
-			ListenPort: 51820,
-			Peers: []WireGuardPeer{
-				{
-					Name:         "TestPeer",
-					PublicKey:    "peer-public-key",
-					PresharedKey: "peer-preshared-key",
-					AllowedIPs:   []string{"10.8.0.2/32"},
-					Enabled:      true,
-				},
-				{
-					Name:       "DisabledPeer",
-					PublicKey:  "disabled-public-key",
-					AllowedIPs: []string{"10.8.0.3/32"},
-					Enabled:    false,
-				},
-			},
-		},
+	if err := wm2.RemovePeer(st.Peers[0].ID); err != nil {
+		t.Fatal(err)
 	}
-
-	config := wm.generateWireGuardConfig()
-
-	// Check Interface section
-	if !strings.Contains(config, "[Interface]") {
-		t.Error("Config missing [Interface] section")
-	}
-	if !strings.Contains(config, "PrivateKey = test-private-key") {
-		t.Error("Config missing PrivateKey")
-	}
-	if !strings.Contains(config, "Address = 10.8.0.1/24") {
-		t.Error("Config missing Address")
-	}
-	if !strings.Contains(config, "ListenPort = 51820") {
-		t.Error("Config missing ListenPort")
-	}
-
-	// Check enabled peer is included
-	if !strings.Contains(config, "# TestPeer") {
-		t.Error("Config missing enabled peer comment")
-	}
-	if !strings.Contains(config, "PublicKey = peer-public-key") {
-		t.Error("Config missing enabled peer public key")
-	}
-	if !strings.Contains(config, "PresharedKey = peer-preshared-key") {
-		t.Error("Config missing enabled peer preshared key")
-	}
-	if !strings.Contains(config, "AllowedIPs = 10.8.0.2/32") {
-		t.Error("Config missing enabled peer allowed IPs")
-	}
-
-	// Check disabled peer is not included
-	if strings.Contains(config, "DisabledPeer") {
-		t.Error("Config should not include disabled peer")
-	}
-	if strings.Contains(config, "disabled-public-key") {
-		t.Error("Config should not include disabled peer public key")
-	}
-}
-
-func TestWireGuardManager_GenerateClientConfig(t *testing.T) {
-	wm := &WireGuardManager{
-		config: &WireGuardConfig{
-			PublicKey:        "server-public-key",
-			ListenPort:       51820,
-			EndpointHostname: "vpn.example.com",
-			DNS:              []string{"1.1.1.1", "1.0.0.1"},
-		},
-	}
-
-	peer := WireGuardPeer{
-		ID:           "test-peer",
-		Name:         "TestPeer",
-		PublicKey:    "peer-public-key",
-		PresharedKey: "peer-preshared-key",
-		AllowedIPs:   []string{"10.8.0.2/32"},
-	}
-
-	clientConfig := wm.generateClientConfig(peer, "peer-private-key", "10.8.0.2")
-
-	// Check Interface configuration
-	if clientConfig.Interface.PrivateKey != "peer-private-key" {
-		t.Error("Client config missing private key")
-	}
-	if clientConfig.Interface.Address != "10.8.0.2/32" {
-		t.Error("Client config has wrong address")
-	}
-	if len(clientConfig.Interface.DNS) != 2 {
-		t.Error("Client config missing DNS servers")
-	}
-
-	// Check Peer (server) configuration
-	if clientConfig.Peer.PublicKey != "server-public-key" {
-		t.Error("Client config missing server public key")
-	}
-	if clientConfig.Peer.PresharedKey != "peer-preshared-key" {
-		t.Error("Client config missing preshared key")
-	}
-	if clientConfig.Peer.Endpoint != "vpn.example.com:51820" {
-		t.Error("Client config has wrong endpoint")
-	}
-	if len(clientConfig.Peer.AllowedIPs) != 2 ||
-		clientConfig.Peer.AllowedIPs[0] != "0.0.0.0/0" ||
-		clientConfig.Peer.AllowedIPs[1] != "::/0" {
-		t.Error("Client config has wrong allowed IPs")
-	}
-	if clientConfig.Peer.PersistentKeepalive != 25 {
-		t.Error("Client config missing persistent keepalive")
-	}
-
-	// Check generated config text
-	if !strings.Contains(clientConfig.Config, "[Interface]") {
-		t.Error("Config text missing [Interface] section")
-	}
-	if !strings.Contains(clientConfig.Config, "[Peer]") {
-		t.Error("Config text missing [Peer] section")
-	}
-	if !strings.Contains(clientConfig.Config, "DNS = 1.1.1.1, 1.0.0.1") {
-		t.Error("Config text missing DNS servers")
-	}
-}
-
-func TestIncrementIP(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"10.0.0.1", "10.0.0.2"},
-		{"10.0.0.255", "10.0.1.0"},
-		{"10.0.255.255", "10.1.0.0"},
-		{"192.168.1.99", "192.168.1.100"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			ip := net.ParseIP(tt.input)
-			if ip == nil {
-				t.Fatalf("Failed to parse IP: %s", tt.input)
-			}
-
-			// Make a copy since incrementIP modifies in place
-			ipCopy := make(net.IP, len(ip))
-			copy(ipCopy, ip)
-
-			incrementIP(ipCopy)
-
-			if ipCopy.String() != tt.expected {
-				t.Errorf("incrementIP(%s) = %s, want %s", tt.input, ipCopy.String(), tt.expected)
-			}
-		})
+	if last := agent.applies[len(agent.applies)-1]; len(last["peers"].([]any)) != 0 {
+		t.Fatalf("removed peer still sent: %+v", last)
 	}
 }
