@@ -10,7 +10,6 @@ import {
   Edit2,
   RefreshCw,
   Plus,
-  QrCode,
   Copy,
   Check,
   AlertCircle,
@@ -109,56 +108,6 @@ function TokenQRCode({
   );
 }
 
-// Server URL QR Code for initial setup
-function ServerQRCode({ size = 200 }: { size?: number }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [error, setError] = useState<string | null>(null);
-  const serverUrl = window.location.origin;
-
-  useEffect(() => {
-    if (!canvasRef.current) return;
-
-    // Create a discovery URL for the mobile app
-    const discoveryUrl = `nos://discover?server=${encodeURIComponent(serverUrl)}`;
-
-    QRCode.toCanvas(canvasRef.current, discoveryUrl, {
-      width: size,
-      margin: 2,
-      color: {
-        dark: '#1f2937',
-        light: '#ffffff',
-      },
-      errorCorrectionLevel: 'M',
-    }, (err) => {
-      if (err) {
-        console.error('QR code generation error:', err);
-        setError('Failed to generate QR code');
-      }
-    });
-  }, [serverUrl, size]);
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center p-4 bg-red-50 border border-red-200 rounded-lg">
-        <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-        <span className="text-sm text-red-700">{error}</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col items-center">
-      <canvas 
-        ref={canvasRef}
-        data-testid="qr-code" 
-        className="rounded-lg border border-gray-200"
-      />
-      <p className="text-xs text-muted-foreground mt-2 text-center">
-        Server: {serverUrl}
-      </p>
-    </div>
-  );
-}
 
 // Device icon component
 function DeviceIcon({ type, className = 'h-5 w-5' }: { type: DeviceType; className?: string }) {
@@ -275,7 +224,6 @@ export default function SyncDevices() {
   const [editName, setEditName] = useState('');
   const [revokeDeviceTarget, setRevokeDeviceTarget] = useState<SyncDevice | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [showQRDialog, setShowQRDialog] = useState(false);
   
   // New device form
   const [newDeviceName, setNewDeviceName] = useState('');
@@ -473,10 +421,6 @@ export default function SyncDevices() {
                 <Plus className="h-4 w-4 mr-2" />
                 Add Device
               </Button>
-              <Button variant="outline" onClick={() => setShowQRDialog(true)}>
-                <QrCode className="h-4 w-4 mr-2" />
-                Scan QR Code
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -659,75 +603,6 @@ export default function SyncDevices() {
         </DialogContent>
       </Dialog>
 
-      {/* QR Code Dialog for mobile app discovery */}
-      <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Connect with QR Code</DialogTitle>
-            <DialogDescription>
-              Scan this QR code with the NithronSync mobile app to connect to this server.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center py-6">
-            <ServerQRCode size={220} />
-            
-            <div className="mt-6 w-full">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-muted-foreground">Or enter manually</span>
-                </div>
-              </div>
-              
-              <div className="mt-4">
-                <Label>Server URL</Label>
-                <div className="flex gap-2 mt-2">
-                  <Input
-                    value={window.location.origin}
-                    readOnly
-                    className="font-mono text-sm"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={() => {
-                      navigator.clipboard.writeText(window.location.origin);
-                      toast.success('Server URL copied!');
-                    }}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-            
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg w-full">
-              <h4 className="font-medium text-blue-900 mb-2">Get the NithronSync App</h4>
-              <div className="flex gap-3">
-                <a 
-                  href="#" 
-                  className="flex-1 flex items-center justify-center gap-2 p-2 bg-black text-white rounded-lg text-sm hover:bg-gray-800 transition-colors"
-                >
-                  <Smartphone className="h-4 w-4" />
-                  App Store
-                </a>
-                <a 
-                  href="#" 
-                  className="flex-1 flex items-center justify-center gap-2 p-2 bg-black text-white rounded-lg text-sm hover:bg-gray-800 transition-colors"
-                >
-                  <Smartphone className="h-4 w-4" />
-                  Play Store
-                </a>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setShowQRDialog(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

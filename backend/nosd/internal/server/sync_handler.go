@@ -807,6 +807,9 @@ func (h *SyncHandler) GetRecentActivity(w http.ResponseWriter, r *http.Request) 
 
 	limit := parseIntWithDefault(r.URL.Query().Get("limit"), 20)
 	activities := h.activityStore.GetRecentActivities(devices, limit)
+	if activities == nil {
+		activities = []*nosync.SyncActivity{} // [] in JSON, not null
+	}
 	writeJSON(w, activities)
 }
 
