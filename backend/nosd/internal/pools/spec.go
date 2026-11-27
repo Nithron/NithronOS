@@ -32,14 +32,13 @@ var (
 	ErrBadName         = errors.New("name: lowercase letters, digits, - and _ (at most 32)")
 	ErrBadMountpoint   = errors.New("mountpoint: a path below /srv or /mnt")
 
-	poolNameRe = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,31}$`)
+	poolNameRe   = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,31}$`)
+	mountpointRe = regexp.MustCompile(`^/(srv|mnt)(/[A-Za-z0-9._-]+)+$`)
 )
 
+// validMountpoint: as nos-agent checks it (it goes into /etc/fstab as is).
 func validMountpoint(p string) bool {
-	if p != filepath.Clean(p) || strings.ContainsAny(p, " \t\n") {
-		return false
-	}
-	return strings.HasPrefix(p, "/srv/") || strings.HasPrefix(p, "/mnt/")
+	return p == filepath.Clean(p) && mountpointRe.MatchString(p)
 }
 
 // ValidateSpec normalizes, applies defaults and validates the spec.

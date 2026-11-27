@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -72,7 +73,12 @@ const (
 	maxPoolDevices          = 16
 )
 
+// poolOpMu serialises pool operations: they read, check and rewrite
+// /etc/fstab and /etc/crypttab.
+var poolOpMu sync.Mutex
+
 var (
+	poolMountRe    = regexp.MustCompile(`^/(srv|mnt)(/[A-Za-z0-9._-]+)+$`)
 	poolNameRe     = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,31}$`)
 	mountOptionsRe = regexp.MustCompile(`^[A-Za-z0-9=:,_.+-]{1,256}$`)
 	// minimum devices per btrfs profile
@@ -93,7 +99,7 @@ var poolDeviceCheck = isBlockDevice
 // mountsPath is /proc/self/mountinfo; tests point it at a file.
 var mountsPath = "/proc/self/mountinfo"
 
-type mountEntry struct{ target, fstype, source string }
+type mountEntry struct{ root, target, fstype, source string }
 
 func readMounts() ([]mountEntry, error) {
 	f, err := os.Open(mountsPath)
@@ -113,7 +119,7 @@ func readMounts() ([]mountEntry, error) {
 		if len(l) < 5 || len(r) < 2 {
 			continue
 		}
-		out = append(out, mountEntry{target: unescapeMount(l[4]), fstype: r[0], source: unescapeMount(r[1])})
+		out = append(out, mountEntry{root: unescapeMount(l[3]), target: unescapeMount(l[4]), fstype: r[0], source: unescapeMount(r[1])})
 	}
 	return out, sc.Err()
 }
@@ -122,9 +128,10 @@ func unescapeMount(s string) string {
 	return strings.NewReplacer(`\040`, " ", `\011`, "\t", `\012`, "\n", `\134`, `\`).Replace(s)
 }
 
-// validPoolMountpoint: a clean path one or more levels below /srv or /mnt.
+// validPoolMountpoint: a clean path one or more levels below /srv or /mnt,
+// of letters, digits and . _ - (it goes into /etc/fstab as is).
 func validPoolMountpoint(p string) bool {
-	return p != "" && filepath.Clean(p) == p && isAllowedMountPath(p) && p != "/srv" && p != "/mnt"
+	return poolMountRe.MatchString(p) && filepath.Clean(p) == p && isAllowedMountPath(p)
 }
 
 func (req *poolCreateRequest) validate() error {
@@ -134,15 +141,21 @@ func (req *poolCreateRequest) validate() error {
 	if len(req.Devices) == 0 || len(req.Devices) > maxPoolDevices {
 		return fmt.Errorf("between 1 and %d devices", maxPoolDevices)
 	}
+	// The kernel's names: /dev/disk/by-id/... becomes /dev/sdb.
 	seen := map[string]bool{}
-	for _, d := range req.Devices {
-		if !validDevice(d) || filepath.Clean(d) != d || !poolDeviceCheck(d) {
+	for i, d := range req.Devices {
+		if !validDevice(d) || !poolDeviceCheck(d) {
 			return fmt.Errorf("%s is not a block device", d)
 		}
-		if seen[d] {
-			return fmt.Errorf("%s listed twice", d)
+		real, err := resolveDevice(d)
+		if err != nil || !validDevice(real) {
+			return fmt.Errorf("%s: cannot resolve the device", d)
 		}
-		seen[d] = true
+		if seen[real] {
+			return fmt.Errorf("%s listed twice", real)
+		}
+		seen[real] = true
+		req.Devices[i] = real
 	}
 	if req.RaidData == "" {
 		req.RaidData = defaultProfile(len(req.Devices))
@@ -168,6 +181,12 @@ func (req *poolCreateRequest) validate() error {
 	if !mountOptionsRe.MatchString(req.MountOptions) {
 		return errors.New("mount options: letters, digits and = : , _ . + -")
 	}
+	// Data pools never need device files or setuid programs.
+	for _, o := range []string{"nosuid", "nodev"} {
+		if !strings.Contains(","+req.MountOptions+",", ","+o+",") {
+			req.MountOptions += "," + o
+		}
+	}
 	if req.Keyfile != "" && (filepath.Dir(req.Keyfile) != poolKeyDir || filepath.Clean(req.Keyfile) != req.Keyfile ||
 		!poolNameRe.MatchString(strings.TrimSuffix(filepath.Base(req.Keyfile), ".key")) || !strings.HasSuffix(req.Keyfile, ".key")) {
 		return fmt.Errorf("keyfile: %s/<name>.key", poolKeyDir)
@@ -182,7 +201,8 @@ func defaultProfile(devices int) string {
 	return "single"
 }
 
-// checkCreateTargets refuses devices in use and a mountpoint in use.
+// checkCreateTargets refuses devices in use, a mountpoint in use, and a
+// name or mountpoint /etc/fstab or /etc/crypttab already has.
 func checkCreateTargets(req poolCreateRequest) error {
 	mounts, err := readMounts()
 	if err != nil {
@@ -192,17 +212,37 @@ func checkCreateTargets(req poolCreateRequest) error {
 		if m.target == req.Mountpoint {
 			return fmt.Errorf("%s is already mounted", req.Mountpoint)
 		}
-		for _, d := range req.Devices {
-			// the device or one of its partitions (sda1, nvme0n1p1)
-			if m.source == d || (strings.HasPrefix(m.source, d) && strings.Trim(strings.TrimPrefix(m.source, d), "p0123456789") == "") {
-				return fmt.Errorf("%s is in use (mounted at %s)", d, m.target)
-			}
+	}
+	for _, d := range req.Devices {
+		if why := deviceInUse(d, mounts); why != "" {
+			return fmt.Errorf("%s is in use: %s", d, why)
 		}
 	}
 	if ents, err := os.ReadDir(req.Mountpoint); err == nil && len(ents) > 0 {
 		return fmt.Errorf("%s is not empty", req.Mountpoint)
 	}
+	if tabHas("fstab", 1, func(v string) bool { return v == req.Mountpoint }) {
+		return fmt.Errorf("/etc/fstab already has a line for %s", req.Mountpoint)
+	}
+	if req.Keyfile != "" && tabHas("crypttab", 0, func(v string) bool { return strings.HasPrefix(v, "luks-"+req.Name+"-") }) {
+		return fmt.Errorf("/etc/crypttab already has devices of a pool named %s", req.Name)
+	}
 	return nil
+}
+
+// tabHas says whether /etc/<name> has a line whose n-th field matches.
+func tabHas(name string, n int, match func(string) bool) bool {
+	data, err := os.ReadFile(filepath.Join(etcDir, name))
+	if err != nil {
+		return false
+	}
+	for _, ln := range strings.Split(string(data), "\n") {
+		f := strings.Fields(ln)
+		if len(f) > n && !strings.HasPrefix(f[0], "#") && match(f[n]) {
+			return true
+		}
+	}
+	return false
 }
 
 // stepRunner runs and records the steps of one operation.
@@ -259,6 +299,8 @@ func handlePoolCreate(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	poolOpMu.Lock()
+	defer poolOpMu.Unlock()
 	if err := checkCreateTargets(req); err != nil {
 		writeErr(w, http.StatusConflict, err.Error())
 		return
@@ -333,7 +375,16 @@ func createPool(ctx context.Context, req poolCreateRequest) poolOpResponse {
 		cleanup()
 		return fail(resp, s, err)
 	}
-	if err := s.note("mkdir", "mkdir -p "+req.Mountpoint, func() error { return makeMountpoint(req.Mountpoint) }); err != nil {
+	if err := s.note("mkdir", "mkdir -p "+req.Mountpoint, func() error {
+		if err := makeMountpoint(req.Mountpoint); err != nil {
+			return err
+		}
+		// not through a symbolic link to somewhere else
+		if real, err := resolvePath(req.Mountpoint); err != nil || real != req.Mountpoint {
+			return fmt.Errorf("%s resolves to %q", req.Mountpoint, real)
+		}
+		return nil
+	}); err != nil {
 		cleanup()
 		return fail(resp, s, err)
 	}
@@ -342,7 +393,9 @@ func createPool(ctx context.Context, req poolCreateRequest) poolOpResponse {
 		return fail(resp, s, err)
 	}
 	unmount := func() {
-		_, _ = poolCommand(ctx, "umount", req.Mountpoint)
+		if out, err := poolCommand(ctx, "umount", req.Mountpoint); err != nil {
+			resp.Warnings = append(resp.Warnings, fmt.Sprintf("could not unmount %s again: %v: %s", req.Mountpoint, err, out))
+		}
 		cleanup()
 	}
 	for _, sv := range []string{"data", "snaps", "apps"} {
@@ -360,6 +413,10 @@ func createPool(ctx context.Context, req poolCreateRequest) poolOpResponse {
 		uuid = "<uuid>"
 	}
 	resp.UUID = strings.TrimSpace(uuid)
+	if resp.UUID == "" || strings.ContainsAny(resp.UUID, " \t") {
+		unmount()
+		return fail(resp, s, fmt.Errorf("uuid: blkid gave %q", uuid))
+	}
 	// nofail: a missing disk must not stop the system from booting.
 	resp.Fstab = fmt.Sprintf("UUID=%s %s btrfs %s,nofail 0 0", resp.UUID, req.Mountpoint, req.MountOptions)
 	var crypttab []string
@@ -368,6 +425,9 @@ func createPool(ctx context.Context, req poolCreateRequest) poolOpResponse {
 			break
 		}
 		luksUUID, err := poolCommand(ctx, "blkid", "-s", "UUID", "-o", "value", req.Devices[i])
+		if err == nil && strings.TrimSpace(luksUUID) == "" {
+			err = errors.New("no UUID")
+		}
 		if err != nil {
 			unmount()
 			return fail(resp, s, fmt.Errorf("luks uuid of %s: %w", req.Devices[i], err))
@@ -389,7 +449,9 @@ func createPool(ctx context.Context, req poolCreateRequest) poolOpResponse {
 				return append(lines, crypttab...)
 			})
 		}); err != nil {
-			_ = editTab("fstab", func(lines []string) []string { return dropField(lines, 1, req.Mountpoint) })
+			if rerr := editTab("fstab", func(lines []string) []string { return dropField(lines, 1, req.Mountpoint) }); rerr != nil {
+				resp.Warnings = append(resp.Warnings, "could not take "+req.Mountpoint+" out of /etc/fstab again: "+rerr.Error())
+			}
 			unmount()
 			return fail(resp, s, err)
 		}
@@ -413,8 +475,12 @@ func closeLUKS(ctx context.Context, names []string) {
 	}
 }
 
-// makeMountpoint makes the pool's folder; tests replace it.
-var makeMountpoint = func(p string) error { return os.MkdirAll(p, 0o755) }
+// makeMountpoint makes the pool's folder and resolvePath resolves symbolic
+// links; tests replace them.
+var (
+	makeMountpoint = func(p string) error { return os.MkdirAll(p, 0o755) }
+	resolvePath    = filepath.EvalSymlinks
+)
 
 // makePoolKey is ensurePoolKey; tests replace it.
 var makePoolKey = ensurePoolKey
@@ -430,7 +496,28 @@ func ensurePoolKey(path string) error {
 	if _, err := rand.Read(key); err != nil {
 		return err
 	}
-	return os.WriteFile(path, key, 0o400)
+	// Written whole or not at all: a cut-off key would be taken as the key.
+	tmp := path + ".nos-tmp"
+	_ = os.Remove(tmp)
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o400)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(key); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		return err
+	}
+	return fsyncDir(filepath.Dir(path))
 }
 
 func handlePoolDestroy(w http.ResponseWriter, r *http.Request) {
@@ -447,6 +534,8 @@ func handlePoolDestroy(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "mountpoint: a clean path below /srv or /mnt")
 		return
 	}
+	poolOpMu.Lock()
+	defer poolOpMu.Unlock()
 	mounts, err := readMounts()
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
@@ -455,8 +544,10 @@ func handlePoolDestroy(w http.ResponseWriter, r *http.Request) {
 	mounted := false
 	for _, m := range mounts {
 		if m.target == req.Mountpoint {
-			if m.fstype != "btrfs" {
-				writeErr(w, http.StatusBadRequest, req.Mountpoint+" is not a btrfs pool")
+			// a whole btrfs filesystem, not a subvolume or a bind mount of
+			// something else (its devices would be another filesystem's)
+			if m.fstype != "btrfs" || m.root != "/" {
+				writeErr(w, http.StatusBadRequest, req.Mountpoint+" is not a pool (a whole btrfs filesystem)")
 				return
 			}
 			mounted = true
@@ -490,12 +581,16 @@ func destroyPool(ctx context.Context, req poolDestroyRequest) poolOpResponse {
 			disks = append(disks, m)
 			continue
 		}
-		st, _ := poolCommand(ctx, "cryptsetup", "status", name)
+		st, err := poolCommand(ctx, "cryptsetup", "status", name)
 		backing := ""
 		for _, ln := range strings.Split(st, "\n") {
 			if v, ok := strings.CutPrefix(strings.TrimSpace(ln), "device:"); ok {
 				backing = strings.TrimSpace(v)
 			}
+		}
+		if req.Wipe && (err != nil || !validDevice(backing)) {
+			resp.Error = fmt.Sprintf("cannot find the disk under %s (%v); nothing was changed", m, err)
+			return resp
 		}
 		luks = append(luks, luksMember{name, backing})
 		if backing != "" {
@@ -503,6 +598,16 @@ func destroyPool(ctx context.Context, req poolDestroyRequest) poolOpResponse {
 		}
 	}
 	resp.Devices = disks
+	// Only disks are wiped: a member that is another kind of mapping (LVM)
+	// stops a wipe before anything changes.
+	if req.Wipe {
+		for _, d := range disks {
+			if strings.HasPrefix(d, "/dev/mapper/") || strings.HasPrefix(d, "/dev/dm-") {
+				resp.Error = d + " is not a disk; not wiping (nothing was changed)"
+				return resp
+			}
+		}
+	}
 
 	if _, err := s.run("umount", false, "umount", req.Mountpoint); err != nil {
 		return fail(resp, s, err)
@@ -585,7 +690,21 @@ func editTab(name string, edit func([]string) []string) error {
 		mode = 0o600
 	}
 	tmp := path + ".nos-tmp"
-	if err := os.WriteFile(tmp, []byte(out), mode); err != nil {
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
+	if err != nil {
+		return err
+	}
+	if _, err := f.WriteString(out); err != nil {
+		_ = f.Close()
+		return err
+	}
+	// on disk before it replaces the old file: a half-written fstab after a
+	// power cut would stop the system from booting
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
 		return err
 	}
 	if err := os.Rename(tmp, path); err != nil {

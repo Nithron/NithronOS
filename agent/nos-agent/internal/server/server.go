@@ -272,13 +272,13 @@ func handleBtrfsMount(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "missing fields")
 		return
 	}
-	if !validPoolMountpoint(req.Target) || (!strings.HasPrefix(req.UUIDOrDevice, "UUID=") && !validDevice(req.UUIDOrDevice)) ||
+	if !validPoolMountpoint(req.Target) || (!strings.HasPrefix(req.UUIDOrDevice, "UUID=") && !(validDevice(req.UUIDOrDevice) && isBlockDevice(req.UUIDOrDevice))) ||
 		strings.ContainsAny(req.UUIDOrDevice, " \t\n,") {
 		writeErr(w, http.StatusBadRequest, "target: a path below /srv or /mnt; source: UUID=… or /dev/…")
 		return
 	}
 	_ = os.MkdirAll(req.Target, 0o755)
-	args := []string{"-t", "btrfs", "-o", "noatime,compress=zstd:3", req.UUIDOrDevice, req.Target}
+	args := []string{"-t", "btrfs", "-o", "noatime,compress=zstd:3,nosuid,nodev", req.UUIDOrDevice, req.Target}
 	cmd := exec.Command("mount", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {

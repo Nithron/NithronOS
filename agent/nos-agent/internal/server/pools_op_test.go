@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,21 +24,31 @@ func newFakeHost(t *testing.T, mounts string) *fakeHost {
 	t.Helper()
 	h := &fakeHost{outputs: map[string]string{}, etc: t.TempDir()}
 	oldCmd, oldDev, oldMounts, oldEtc, oldMkdir := poolCommand, poolDeviceCheck, mountsPath, etcDir, makeMountpoint
+	oldResolve, oldPath, oldSys, oldSwaps := resolveDevice, resolvePath, sysBlock, swapsPath
 	makeMountpoint = func(string) error { return nil }
+	resolveDevice = func(p string) (string, error) { return p, nil }
+	resolvePath = func(p string) (string, error) { return p, nil }
+	sysBlock = filepath.Join(h.etc, "sys")
+	swapsPath = filepath.Join(h.etc, "swaps")
 	poolCommand = func(_ context.Context, name string, args ...string) (string, error) {
 		line := strings.Join(append([]string{name}, args...), " ")
 		h.ran = append(h.ran, line)
 		if h.fail != "" && strings.HasPrefix(line, h.fail) {
 			return "boom", errors.New("exit status 1")
 		}
-		for p, out := range h.outputs {
-			if strings.HasPrefix(line, p) {
-				return out, nil
+		// the longest matching prefix
+		best, out := -1, ""
+		for p, o := range h.outputs {
+			if strings.HasPrefix(line, p) && len(p) > best {
+				best, out = len(p), o
 			}
 		}
-		return "", nil
+		return out, nil
 	}
-	poolDeviceCheck = func(p string) bool { return strings.HasPrefix(p, "/dev/sd") || strings.HasPrefix(p, "/dev/loop") }
+	poolDeviceCheck = func(p string) bool {
+		return strings.HasPrefix(p, "/dev/sd") || strings.HasPrefix(p, "/dev/loop") || strings.HasPrefix(p, "/dev/disk/")
+	}
+	h.outputs["blkid "] = "uuid-of-the-device"
 	mountsPath = filepath.Join(h.etc, "mountinfo")
 	if err := os.WriteFile(mountsPath, []byte(mounts), 0o644); err != nil {
 		t.Fatal(err)
@@ -44,6 +56,7 @@ func newFakeHost(t *testing.T, mounts string) *fakeHost {
 	etcDir = h.etc
 	t.Cleanup(func() {
 		poolCommand, poolDeviceCheck, mountsPath, etcDir, makeMountpoint = oldCmd, oldDev, oldMounts, oldEtc, oldMkdir
+		resolveDevice, resolvePath, sysBlock, swapsPath = oldResolve, oldPath, oldSys, oldSwaps
 	})
 	return h
 }
@@ -62,7 +75,7 @@ func (h *fakeHost) ranPrefix(p string) bool {
 func TestPoolCreateValidates(t *testing.T) {
 	newFakeHost(t, rootMount)
 	ok := poolCreateRequest{Name: "p1", Devices: []string{"/dev/sdb", "/dev/sdc"}, Mountpoint: "/srv/pool/p1"}
-	if err := ok.validate(); err != nil || ok.RaidData != "raid1" || ok.MountOptions != defaultPoolMountOptions {
+	if err := ok.validate(); err != nil || ok.RaidData != "raid1" || ok.MountOptions != defaultPoolMountOptions+",nosuid,nodev" {
 		t.Fatalf("valid request: %v %+v", err, ok)
 	}
 	for name, req := range map[string]poolCreateRequest{
@@ -74,6 +87,8 @@ func TestPoolCreateValidates(t *testing.T) {
 		"system folder":  {Name: "p", Devices: []string{"/dev/sdb"}, Mountpoint: "/etc"},
 		"unclean":        {Name: "p", Devices: []string{"/dev/sdb"}, Mountpoint: "/srv/../etc"},
 		"srv itself":     {Name: "p", Devices: []string{"/dev/sdb"}, Mountpoint: "/srv"},
+		"backslash":      {Name: "p", Devices: []string{"/dev/sdb"}, Mountpoint: "/srv/a\\040b"},
+		"dotdot device":  {Name: "p", Devices: []string{"/dev/../srv/x.img"}, Mountpoint: "/srv/pool/p"},
 		"options":        {Name: "p", Devices: []string{"/dev/sdb"}, Mountpoint: "/srv/pool/p", MountOptions: "noatime /etc"},
 		"keyfile":        {Name: "p", Devices: []string{"/dev/sdb"}, Mountpoint: "/srv/pool/p", Keyfile: "/root/k.key"},
 	} {
@@ -83,15 +98,62 @@ func TestPoolCreateValidates(t *testing.T) {
 	}
 }
 
-func TestPoolCreateRefusesDevicesInUse(t *testing.T) {
-	newFakeHost(t, rootMount)
-	req := poolCreateRequest{Name: "p", Devices: []string{"/dev/sda"}, Mountpoint: "/srv/pool/p"}
-	if err := checkCreateTargets(req); err == nil || !strings.Contains(err.Error(), "in use") {
-		t.Fatalf("the root disk: %v", err)
+// mkSys makes /sys/class/block entries: a disk, its partitions, holders.
+func mkSys(t *testing.T, h *fakeHost, disk string, parts []string, holders map[string]string) {
+	t.Helper()
+	for _, p := range parts {
+		if err := os.MkdirAll(filepath.Join(sysBlock, disk, p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		_ = os.WriteFile(filepath.Join(sysBlock, disk, p, "partition"), []byte("1"), 0o644)
 	}
-	req.Devices = []string{"/dev/sdb"}
+	_ = os.MkdirAll(filepath.Join(sysBlock, disk), 0o755)
+	for dev, holder := range holders {
+		_ = os.MkdirAll(filepath.Join(sysBlock, dev, "holders", holder), 0o755)
+	}
+}
+
+func TestPoolCreateRefusesDevicesInUse(t *testing.T) {
+	h := newFakeHost(t, rootMount)
+	mkSys(t, h, "sda", []string{"sda1", "sda2"}, nil)
+	mkSys(t, h, "sdc", nil, map[string]string{"sdc": "dm-0"})
+	mkSys(t, h, "sdd", []string{"sdd1"}, nil)
+	_ = os.WriteFile(swapsPath, []byte("Filename Type Size Used Priority\n/dev/sdd1 partition 1 0 -2\n"), 0o644)
+	// a by-id link to the system disk is the system disk
+	resolveDevice = func(p string) (string, error) {
+		if p == "/dev/disk/by-id/ata-system" {
+			return "/dev/sda", nil
+		}
+		return p, nil
+	}
+	for dev, want := range map[string]string{
+		"/dev/sda":                   "mounted at /",
+		"/dev/disk/by-id/ata-system": "mounted at /",
+		"/dev/sdc":                   "held by dm-0",
+		"/dev/sdd":                   "swap",
+	} {
+		req := poolCreateRequest{Name: "p", Devices: []string{dev}, Mountpoint: "/srv/pool/p"}
+		if err := req.validate(); err != nil {
+			t.Fatalf("%s: %v", dev, err)
+		}
+		if err := checkCreateTargets(req); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: %v, want %q", dev, err, want)
+		}
+	}
+	req := poolCreateRequest{Name: "p", Devices: []string{"/dev/sdb"}, Mountpoint: "/srv/pool/p"}
+	_ = req.validate()
 	if err := checkCreateTargets(req); err != nil {
 		t.Fatalf("a free disk: %v", err)
+	}
+	// the same disk twice under two names
+	dup := poolCreateRequest{Name: "p", Devices: []string{"/dev/sda", "/dev/disk/by-id/ata-system"}, Mountpoint: "/srv/pool/p"}
+	if err := dup.validate(); err == nil || !strings.Contains(err.Error(), "twice") {
+		t.Fatalf("one disk under two names: %v", err)
+	}
+	// a mountpoint fstab already has
+	_ = os.WriteFile(filepath.Join(h.etc, "fstab"), []byte("/dev/sdx /srv/pool/p ext4 noauto 0 0\n"), 0o644)
+	if err := checkCreateTargets(req); err == nil || !strings.Contains(err.Error(), "fstab") {
+		t.Fatalf("a mountpoint in fstab: %v", err)
 	}
 }
 
@@ -109,14 +171,14 @@ func TestPoolCreateRunsTheStepsAndWritesARealFstabLine(t *testing.T) {
 	}
 	for _, want := range []string{
 		"wipefs -n /dev/sdb", "mkfs.btrfs -L p1 -d raid1 -m raid1 /dev/sdb /dev/sdc", "btrfs device scan",
-		"mount -t btrfs -o noatime,compress=zstd:3 /dev/sdb " + mp, "btrfs subvolume create " + mp + "/data",
+		"mount -t btrfs -o noatime,compress=zstd:3,nosuid,nodev /dev/sdb " + mp, "btrfs subvolume create " + mp + "/data",
 	} {
 		if !h.ranPrefix(want) {
 			t.Errorf("did not run %q; ran %q", want, h.ran)
 		}
 	}
 	fstab, _ := os.ReadFile(filepath.Join(h.etc, "fstab"))
-	if want := "UUID=1111-2222 " + mp + " btrfs noatime,compress=zstd:3,nofail 0 0\n"; string(fstab) != want {
+	if want := "UUID=1111-2222 " + mp + " btrfs noatime,compress=zstd:3,nosuid,nodev,nofail 0 0\n"; string(fstab) != want {
 		t.Fatalf("fstab %q, want %q", fstab, want)
 	}
 }
@@ -219,5 +281,44 @@ func TestPoolDestroy(t *testing.T) {
 	fstab, _ := os.ReadFile(filepath.Join(h.etc, "fstab"))
 	if string(fstab) != "# keep\nUUID=root / ext4 defaults 0 1\nUUID=2222 /srv/pool/p10 btrfs noatime 0 0\n" {
 		t.Fatalf("fstab %q", fstab)
+	}
+}
+
+func TestPoolCreateRefusesAnEmptyUUID(t *testing.T) {
+	h := newFakeHost(t, rootMount)
+	h.outputs["blkid "] = ""
+	req := poolCreateRequest{Name: "p1", Devices: []string{"/dev/sdb"}, Mountpoint: "/srv/pool/p1"}
+	if err := req.validate(); err != nil {
+		t.Fatal(err)
+	}
+	res := createPool(context.Background(), req)
+	if res.OK || !h.ranPrefix("umount /srv/pool/p1") {
+		t.Fatalf("%+v", res)
+	}
+	if _, err := os.Stat(filepath.Join(h.etc, "fstab")); err == nil {
+		t.Fatal("an fstab line without a UUID")
+	}
+}
+
+func TestPoolDestroyRefusesWhatIsNotAPool(t *testing.T) {
+	newFakeHost(t, rootMount+
+		"40 22 0:40 /@data /srv/pool/sub rw - btrfs /dev/sda2 rw\n"+
+		"41 22 0:41 / /srv/pool/ext rw - ext4 /dev/sdb1 rw\n")
+	for _, mp := range []string{"/srv/pool/sub", "/srv/pool/ext", "/srv", "/"} {
+		body := strings.NewReader(`{"mountpoint":"` + mp + `","wipe":true}`)
+		res := httptest.NewRecorder()
+		handlePoolDestroy(res, httptest.NewRequest(http.MethodPost, "/v1/pools/destroy", body))
+		if res.Code != http.StatusBadRequest {
+			t.Errorf("%s: %d %s", mp, res.Code, res.Body.String())
+		}
+	}
+}
+
+func TestPoolDestroyWontWipeWhatItCantName(t *testing.T) {
+	h := newFakeHost(t, rootMount)
+	h.outputs["btrfs filesystem show"] = "\tdevid    1 size 1GiB used 0 path /dev/mapper/vg-data\n"
+	res := destroyPool(context.Background(), poolDestroyRequest{Mountpoint: "/srv/pool/p1", Wipe: true})
+	if res.OK || h.ranPrefix("umount") || h.ranPrefix("wipefs") {
+		t.Fatalf("%+v ran %q", res, h.ran)
 	}
 }
