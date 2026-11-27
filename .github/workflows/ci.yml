@@ -177,6 +177,47 @@ jobs:
           path: clients/desktop/build/bin/${{ matrix.out }}
           retention-days: 14
 
+  mobile-android:
+    # The NithronSync mobile app (React Native), Android only for now: a
+    # debug APK with its JavaScript bundled in, for 64-bit ARM phones and
+    # x86_64 emulators. Uses the runner's Android SDK.
+    name: Mobile (Android)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: clients/mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            clients/mobile/android/*.gradle*
+            clients/mobile/android/app/build.gradle
+            clients/mobile/android/gradle/wrapper/gradle-wrapper.properties
+      - name: Install
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck, lint, test
+        run: |
+          npm run typecheck
+          npm run lint
+          npm test -- --ci
+      - name: Build the debug APK, JVM tests
+        working-directory: clients/mobile/android
+        run: ./gradlew assembleDebug testDebugUnitTest -PreactNativeArchitectures=arm64-v8a,x86_64 --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nithronsync-android-debug-${{ github.sha }}
+          path: clients/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
   build:
     name: Build (backend, agent, web)
     needs: [lint, contract]
