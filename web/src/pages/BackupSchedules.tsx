@@ -311,7 +311,7 @@ function ScheduleDialog({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-background rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
         <h2 className="text-lg font-semibold mb-4">
-          {schedule ? 'Edit Schedule' : 'Create Backup Schedule'}
+          {schedule ? 'Edit schedule' : 'Create backup schedule'}
         </h2>
         
         <div className="space-y-4">
@@ -550,7 +550,7 @@ function ScheduleDialog({
             className="btn btn-primary"
             disabled={isSaving}
           >
-            {isSaving ? 'Saving...' : (schedule ? 'Update Schedule' : 'Create Schedule')}
+            {isSaving ? 'Saving...' : (schedule ? 'Update schedule' : 'Create schedule')}
           </button>
         </div>
       </div>

@@ -414,7 +414,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 					Cancel
 				</Button>
 				<Button type="submit" disabled={isSubmitting}>
-					{isSubmitting ? 'Saving...' : mode === 'create' ? 'Create Share' : 'Save Changes'}
+					{isSubmitting ? 'Saving...' : mode === 'create' ? 'Create share' : 'Save changes'}
 				</Button>
 			</div>
 		</form>

@@ -68,7 +68,7 @@ export function ShareDetails() {
 	return (
 		<div className="flex flex-col h-full">
 			<PageHeader
-				title={isNew ? 'Create Share' : `Edit Share: ${name}`}
+				title={isNew ? 'Create share' : `Edit share: ${name}`}
 				description={isNew ? 'Configure a new network file share' : 'Modify share settings and permissions'}
 				breadcrumbs={[
 					{ label: 'Shares', href: '/shares' },

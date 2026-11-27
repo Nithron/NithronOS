@@ -272,10 +272,10 @@ export default function SyncConflicts() {
                     <TableCell>
                       <Badge variant="secondary">
                         {conflict.resolution === 'keep_local'
-                          ? 'Kept Local'
+                          ? 'Kept local'
                           : conflict.resolution === 'keep_remote'
-                          ? 'Kept Remote'
-                          : 'Kept Both'}
+                          ? 'Kept remote'
+                          : 'Kept both'}
                       </Badge>
                     </TableCell>
                     <TableCell>

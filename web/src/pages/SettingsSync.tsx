@@ -108,7 +108,7 @@ export default function SettingsSync() {
             </Button>
           </Link>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? 'Saving...' : 'Save changes'}
           </Button>
         </div>
       </div>

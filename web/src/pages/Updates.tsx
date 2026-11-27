@@ -183,7 +183,7 @@ export default function Updates() {
           ) : (
             <RefreshIcon className="w-4 h-4" />
           )}
-          Check for Updates
+          Check for updates
         </button>
       </div>
 
@@ -297,7 +297,7 @@ export default function Updates() {
               {applyUpdateMutation.isPending ? (
                 <WorkingIcon className="w-5 h-5 animate-spin" />
               ) : (
-                'Apply Update'
+                'Apply update'
               )}
             </button>
           </div>
@@ -388,7 +388,7 @@ export default function Updates() {
             onClick={() => setShowSnapshots(!showSnapshots)}
             className="text-sm text-ink underline decoration-ink-2 underline-offset-4 hover:decoration-ink"
           >
-            {showSnapshots ? 'Hide' : 'Show'} Snapshots
+            {showSnapshots ? 'Hide' : 'Show'} snapshots
           </button>
         </div>
         

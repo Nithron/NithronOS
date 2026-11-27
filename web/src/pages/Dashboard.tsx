@@ -266,7 +266,7 @@ function StorageWidget({ data, isLoading }: any) {
             <Meter
               value={storage.usedBytes || 0}
               max={storage.totalBytes || 0}
-              blocks={16}
+              blocks={12}
               label="Storage used"
               valueText={`${toFixedSafe(usagePercent, 1, '0.0')}%`}
               tone={usagePercent > 90 ? 'failed' : usagePercent > 80 ? 'warning' : 'ink'}

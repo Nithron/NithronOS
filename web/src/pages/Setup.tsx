@@ -676,7 +676,7 @@ function StepCreateAdmin({
         className="btn btn-primary w-full py-3"
         disabled={loading}
       >
-        {loading ? 'Creating Admin...' : 'Create Admin Account'}
+        {loading ? 'Creating the administrator…' : 'Create administrator account'}
       </button>
     </form>
   )

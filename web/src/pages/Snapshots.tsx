@@ -334,7 +334,7 @@ function CreateSnapshotDialog({
             className="btn btn-primary"
             disabled={isCreating}
           >
-            {isCreating ? 'Creating...' : 'Create Snapshot'}
+            {isCreating ? 'Creating...' : 'Create snapshot'}
           </button>
         </div>
       </div>
@@ -470,7 +470,7 @@ function RestoreDialog({
                 className="btn btn-primary"
                 disabled={isCreatingPlan}
               >
-                {isCreatingPlan ? 'Creating Plan...' : 'Create Restore Plan'}
+                {isCreatingPlan ? 'Creating the plan…' : 'Create restore plan'}
               </button>
             </div>
           </div>
