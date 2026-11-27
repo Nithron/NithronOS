@@ -156,9 +156,10 @@ func allowedCommand(name string, args []string) bool {
 		if !strings.HasPrefix(src, "UUID=") && !validDevice(src) {
 			return false
 		}
-		return filepath.IsAbs(dst)
+		// pools only: never over a system folder
+		return isAllowedMountPath(dst)
 	case "umount":
-		return len(args) == 1 && filepath.IsAbs(args[0])
+		return len(args) == 1 && isAllowedMountPath(args[0])
 	case "blkid":
 		// blkid -s UUID -o value <device>
 		if len(args) != 5 {

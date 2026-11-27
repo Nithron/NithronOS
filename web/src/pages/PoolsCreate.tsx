@@ -40,7 +40,9 @@ export function PoolsCreate() {
   async function doCreate() {
     setError(null)
     try {
-      await storageApi.applyCreate({ plan: plan?.plan, fstab: plan?.fstab, confirm: 'CREATE' })
+      // The pool itself, as planned; nosd has the agent build and run the
+      // commands (the plan's command lines are only shown).
+      await storageApi.applyCreate({ name: label, mountpoint, devices, raidData, raidMeta, encrypt, mountOptions: plan?.mountOptions, confirm: 'CREATE' })
       const id = label
       nav(`/storage/${encodeURIComponent(id)}?mount=${encodeURIComponent(mountpoint)}`)
     } catch (e: any) {

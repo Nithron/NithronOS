@@ -3,6 +3,7 @@ package pools
 import (
 	"errors"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -28,7 +29,18 @@ var (
 	ErrNoDevices       = errors.New("at least one device required")
 	ErrUnsupportedRAID = errors.New("unsupported raid profile")
 	ErrForbiddenRAID   = errors.New("raid5/raid6 are forbidden by default")
+	ErrBadName         = errors.New("name: lowercase letters, digits, - and _ (at most 32)")
+	ErrBadMountpoint   = errors.New("mountpoint: a path below /srv or /mnt")
+
+	poolNameRe = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,31}$`)
 )
+
+func validMountpoint(p string) bool {
+	if p != filepath.Clean(p) || strings.ContainsAny(p, " \t\n") {
+		return false
+	}
+	return strings.HasPrefix(p, "/srv/") || strings.HasPrefix(p, "/mnt/")
+}
 
 // ValidateSpec normalizes, applies defaults and validates the spec.
 // It returns a copy with defaults applied.
@@ -37,6 +49,15 @@ func ValidateSpec(in PoolSpec) (PoolSpec, error) {
 	sp := in
 	sp.Name = strings.TrimSpace(sp.Name)
 	sp.Mountpoint = strings.TrimSpace(sp.Mountpoint)
+	if !poolNameRe.MatchString(sp.Name) {
+		return sp, ErrBadName
+	}
+	if sp.Mountpoint == "" {
+		sp.Mountpoint = "/srv/pool/" + sp.Name
+	}
+	if !validMountpoint(sp.Mountpoint) {
+		return sp, ErrBadMountpoint
+	}
 	// dedupe devices and keep stable order
 	if len(sp.Devices) == 0 {
 		return sp, ErrNoDevices
@@ -105,14 +126,9 @@ func ValidateSpec(in PoolSpec) (PoolSpec, error) {
 	}
 
 	// Defaults for encryption
+	// The key lives where the agent accepts it, named after the pool.
 	if sp.Encrypt.Enabled {
-		if strings.TrimSpace(sp.Encrypt.Keyfile) == "" {
-			name := sp.Name
-			if name == "" {
-				name = "pool"
-			}
-			sp.Encrypt.Keyfile = filepath.Join("/etc/nos/keys", name+".key")
-		}
+		sp.Encrypt.Keyfile = filepath.Join("/etc/nos/keys", sp.Name+".key")
 	}
 
 	return sp, nil

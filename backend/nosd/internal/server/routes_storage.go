@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"net/http"
 	"runtime"
 
@@ -9,7 +8,6 @@ import (
 
 	"nos/backend/nosd/internal/disks"
 	"nos/backend/nosd/internal/pools"
-	"nos/backend/nosd/pkg/agentclient"
 
 	// "nos/backend/nosd/pkg/firewall"
 	"nos/backend/nosd/pkg/httpx"
@@ -146,32 +144,6 @@ func (d *routeDeps) registerStorage(pr chi.Router) {
 		writeJSON(w, map[string]any{"lines": lines, "nextCursor": next})
 	})
 	pr.Get("/api/v1/pools/tx/{id}/stream", handleTxStream)
-
-	pr.With(adminRequired).Post("/api/v1/pools/create", func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Confirm") != "yes" {
-			httpx.WriteError(w, http.StatusPreconditionRequired, "confirm header required")
-			return
-		}
-		var req pools.PlanRequest
-		_ = json.NewDecoder(r.Body).Decode(&req)
-		if err := pools.EnsureDevicesFree(r.Context(), req.Devices); err != nil {
-			httpx.WriteError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		client := agentclient.New("/run/nos-agent.sock")
-		var resp map[string]any
-		err := client.PostJSON(r.Context(), "/v1/btrfs/create", map[string]any{
-			"devices": req.Devices,
-			"raid":    req.Raid,
-			"label":   req.Label,
-			"dry_run": false,
-		}, &resp)
-		if err != nil {
-			httpx.WriteError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		writeJSON(w, resp)
-	})
 
 	// Pools: candidates for import
 	pr.With(adminRequired).Get("/api/v1/pools/candidates", func(w http.ResponseWriter, r *http.Request) {
