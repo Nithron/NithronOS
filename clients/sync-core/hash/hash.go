@@ -239,7 +239,23 @@ func ComputeDeltaPlanFromReader(r io.Reader, localSize int64, remoteBlocks *Bloc
 		haveWin = true
 	}
 
+	// The remote file's last block is usually shorter than blockSize and
+	// can only match at one place: where it would end the new file.
+	var tail *BlockHash
+	if n := len(remoteBlocks.Blocks); n > 0 && remoteBlocks.Blocks[n-1].Size < blockSize {
+		tail = &remoteBlocks.Blocks[n-1]
+	}
+
 	for pos < len(data) {
+		if tail != nil && len(data)-pos == tail.Size && BytesHash(data[pos:]) == tail.StrongHash {
+			if len(pendingData) > 0 {
+				plan.Operations = append(plan.Operations, DeltaOp{Type: "data", Size: len(pendingData), Data: pendingData})
+				pendingData = nil
+			}
+			plan.Operations = append(plan.Operations, DeltaOp{Type: "copy", Offset: tail.Offset, Size: tail.Size, BlockIndex: tail.Index})
+			plan.SavedBytes += int64(tail.Size)
+			break
+		}
 		if haveWin {
 			if indices, ok := weakMap[win.sum()]; ok {
 				blockData := data[pos : pos+blockSize]
