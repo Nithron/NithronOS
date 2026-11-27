@@ -2,13 +2,15 @@
 # The live UI pass: builds nosd, nos-agent and the web UI, runs the daemons in
 # a throwaway Debian container, completes first-boot setup through the API,
 # runs NithronSync end to end (sync-e2e.sh: the real sync daemon against the
-# container), serves the built UI with `vite preview` (proxying /api to the
+# container) and storage end to end (storage-e2e.sh: a RAID1 pool created,
+# checked and destroyed through the API on loop devices), serves the built UI with `vite preview` (proxying /api to the
 # container) and walks every page with Playwright
 # (tests/e2e/ui/tests/live-walk.spec.ts).
 #
 #   scripts/live-ui/run.sh              build, start, sync, walk, stop
 #   KEEP=1 scripts/live-ui/run.sh       leave it running for a manual look
-#   SYNC_ONLY=1 scripts/live-ui/run.sh  only the sync pass (no UI build or walk)
+#   ONLY=sync scripts/live-ui/run.sh    only the sync pass (no UI build or walk)
+#   ONLY=storage scripts/live-ui/run.sh only the storage pass
 #
 # Needs docker (privileged containers, for the loop-device Btrfs pool), Go
 # and Node. The report lands in tests/e2e/ui/live-report.json.
@@ -27,7 +29,7 @@ log() { echo "[live-ui] $*"; }
 # Removes the container, first unmounting and detaching its loop device: a
 # privileged container's loop devices belong to the host and outlive it.
 remove_container() {
-	docker exec "$NAME" sh -c 'umount /mnt/pool1 2>/dev/null; [ -s /run/live-ui-loop ] && losetup -d "$(cat /run/live-ui-loop)"' >/dev/null 2>&1 || true
+	docker exec "$NAME" sh -c 'umount /mnt/pool1 /srv/pool/* 2>/dev/null; [ -s /run/live-ui-loop ] && xargs -r -n1 losetup -d </run/live-ui-loop' >/dev/null 2>&1 || true
 	docker rm -f "$NAME" >/dev/null 2>&1 || true
 }
 cleanup() {
@@ -50,7 +52,8 @@ log "building nosd, nos-agent and the web UI"
 (cd "$ROOT/agent/nos-agent" && CGO_ENABLED=0 go build -o "$WORK/nos-agent" .)
 cp "$ROOT/scripts/live-ui/Dockerfile" "$ROOT/scripts/live-ui/entrypoint.sh" "$WORK/"
 cp -r "$ROOT/usr/share/nos/apps" "$WORK/apps"
-[ "${SYNC_ONLY:-0}" = 1 ] || (cd "$ROOT/web" && npm run build --silent >/dev/null)
+ONLY="${ONLY:-}"
+[ -n "$ONLY" ] || (cd "$ROOT/web" && npm run build --silent >/dev/null)
 
 log "starting $NAME"
 remove_container
@@ -70,9 +73,15 @@ curl -fsS -H 'Content-Type: application/json' -H "Authorization: Bearer $token" 
 curl -fsS -H 'Content-Type: application/json' -H "Authorization: Bearer $token" -d "{\"token\":\"$token\"}" "$api/setup/complete" >/dev/null
 
 status=0
-log "NithronSync end to end"
-bash "$ROOT/scripts/live-ui/sync-e2e.sh" "http://127.0.0.1:$API_PORT" "$NAME" "$ADMIN_USER" "$ADMIN_PASS" || status=$?
-[ "${SYNC_ONLY:-0}" = 1 ] && exit "$status"
+if [ -z "$ONLY" ] || [ "$ONLY" = sync ]; then
+	log "NithronSync end to end"
+	bash "$ROOT/scripts/live-ui/sync-e2e.sh" "http://127.0.0.1:$API_PORT" "$NAME" "$ADMIN_USER" "$ADMIN_PASS" || status=$?
+fi
+if [ -z "$ONLY" ] || [ "$ONLY" = storage ]; then
+	log "storage end to end"
+	bash "$ROOT/scripts/live-ui/storage-e2e.sh" "http://127.0.0.1:$API_PORT" "$NAME" "$ADMIN_USER" "$ADMIN_PASS" || status=$?
+fi
+[ -n "$ONLY" ] && exit "$status"
 
 log "serving the UI on http://127.0.0.1:$UI_PORT"
 (cd "$ROOT/web" && NOS_API_TARGET="http://127.0.0.1:$API_PORT" exec setsid npx vite preview --host 127.0.0.1 --port "$UI_PORT" --strictPort >"$WORK/preview.log" 2>&1) &

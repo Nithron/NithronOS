@@ -59,17 +59,8 @@ log "building the sync daemon"
 (cd "$ROOT/clients/sync-core" && CGO_ENABLED=1 go build -o "$WORK/nithron-sync-daemon" ./cmd/daemon)
 
 log "signing in as $USER_NAME"
-# The session cookies are Secure; curl won't send those over http, so they
-# are passed by hand.
-headers="$(curl -fsS -D - -o /dev/null -H 'Content-Type: application/json' \
-	-d "$(jq -nc --arg u "$USER_NAME" --arg p "$USER_PASS" '{username:$u,password:$p}')" "$BASE/api/v1/auth/login")"
-cookies="$(printf '%s\n' "$headers" | tr -d '\r' | sed -n 's/^[Ss]et-[Cc]ookie: *\([^;]*\).*/\1/p' | paste -sd ';' -)"
-csrf="$(printf '%s\n' "$cookies" | tr ';' '\n' | sed -n 's/^ *nos_csrf=//p')"
-[ -n "$csrf" ] || fail "no session from the login"
-api() { # api <method> <path> [json body]
-	curl -fsS -X "$1" -H "Cookie: $cookies" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
-		${3:+-d "$3"} "$BASE$2"
-}
+# shellcheck source=session.sh
+. "$ROOT/scripts/live-ui/session.sh" || fail "sign-in"
 
 log "creating share $SHARE"
 share="$(api POST /api/v1/shares "{\"name\":\"$SHARE\",\"owners\":[\"user:$USER_NAME\"]}")" || fail "share create"
