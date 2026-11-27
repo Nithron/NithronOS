@@ -3767,6 +3767,29 @@
         ]
       }
     },
+    "/api/v1/sync/files/{share_id}/delta": {
+      "post": {
+        "operationId": "postSyncFilesShareIdDelta",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "share_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "sync"
+        ]
+      }
+    },
     "/api/v1/sync/files/{share_id}/hash": {
       "post": {
         "operationId": "postSyncFilesShareIdHash",

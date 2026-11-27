@@ -143,6 +143,7 @@ func (h *SyncHandler) Routes() chi.Router {
 		pr.Get("/files/{share_id}/metadata", h.GetFileMetadata)
 		pr.Post("/files/{share_id}/metadata", h.GetFilesMetadata)
 		pr.Post("/files/{share_id}/hash", h.GetBlockHashes)
+		pr.Post("/files/{share_id}/delta", h.UploadDelta)
 
 		// Sync state
 		pr.Get("/state/{share_id}", h.GetSyncState)
