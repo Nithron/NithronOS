@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { confirmAction } from '@/components/ui/confirm'
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -73,7 +74,7 @@ export function NetworkSettings() {
   };
 
   const handleRemovePeer = async (peerId: string) => {
-    if (!confirm('Are you sure you want to remove this peer?')) return;
+    if (!(await confirmAction({ title: 'Remove this WireGuard peer?', description: 'The device can no longer connect until it is added again.', action: 'Remove peer' }))) return;
 
     try {
       await removePeer.mutateAsync(peerId);

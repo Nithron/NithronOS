@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { confirmAction } from '@/components/ui/confirm';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { AddIcon, DeleteIcon, EditIcon, ScheduleIcon, StartIcon, TimeIcon, TurnedOffIcon, TurnedOnIcon } from '@/components/icons'
@@ -48,8 +49,8 @@ export default function BackupSchedules() {
     toggleMutation.mutate({ id: schedule.id, enabled: !schedule.enabled });
   };
   
-  const handleDelete = (schedule: Schedule) => {
-    if (window.confirm(`Delete schedule "${schedule.name}"? This will not delete existing snapshots.`)) {
+  const handleDelete = async (schedule: Schedule) => {
+    if (await confirmAction({ title: `Delete the schedule ${schedule.name}?`, description: 'Snapshots it already made are kept.', action: 'Delete schedule' })) {
       deleteMutation.mutate(schedule.id);
     }
   };
@@ -117,7 +118,7 @@ export default function BackupSchedules() {
       </div>
       
       {/* Schedules List */}
-      <div className="bg-card rounded-lg">
+      <div className="border border-hairline">
         {isLoading ? (
           <div className="p-8 text-center text-muted-foreground">
             Loading schedules...
@@ -172,7 +173,7 @@ export default function BackupSchedules() {
                             </span>
                           )}
                           {schedule.next_run && schedule.enabled && (
-                            <span className="text-green-500">
+                            <span className="text-status-ok-text">
                               Next run: {formatDistanceToNow(new Date(schedule.next_run), { addSuffix: true })}
                             </span>
                           )}
@@ -184,21 +185,21 @@ export default function BackupSchedules() {
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleRunNow(schedule)}
-                      className="btn btn-sm"
+                      className="btn btn-line min-h-8 px-3"
                       title="Run backup now"
                     >
                       <StartIcon className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setEditingSchedule(schedule)}
-                      className="btn btn-sm"
+                      className="btn btn-line min-h-8 px-3"
                       title="Edit schedule"
                     >
                       <EditIcon className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(schedule)}
-                      className="btn btn-sm text-red-500 hover:bg-red-500/10"
+                      className="btn btn-line min-h-8 px-3 hover:bg-ink/[.09]"
                       title="Delete schedule"
                       disabled={deleteMutation.isPending}
                     >
@@ -308,9 +309,9 @@ function ScheduleDialog({
   const availableSubvolumes = ['@', '@home', '@var', '@log'];
   
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <h2 className="text-lg font-semibold mb-4">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-page/70">
+      <div className="border border-edge bg-page p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        <h2 className="text-lg font-[560] mb-4">
           {schedule ? 'Edit schedule' : 'Create backup schedule'}
         </h2>
         
@@ -326,7 +327,7 @@ function ScheduleDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Daily System Backup"
-              className="w-full bg-card rounded px-3 py-2"
+              className="field"
             />
           </div>
           
@@ -375,7 +376,7 @@ function ScheduleDialog({
                 setFrequencyType(type);
                 setFrequency({ ...frequency, type });
               }}
-              className="w-full bg-card rounded px-3 py-2 mb-2"
+              className="field mb-2"
             >
               <option value="hourly">Hourly</option>
               <option value="daily">Daily</option>
@@ -393,7 +394,7 @@ function ScheduleDialog({
                   max="59"
                   value={frequency.minute || 0}
                   onChange={(e) => setFrequency({ ...frequency, minute: parseInt(e.target.value) })}
-                  className="ml-2 w-20 bg-card rounded px-2 py-1"
+                  className="field ml-2 h-8 w-20"
                 />
               </div>
             )}
@@ -408,7 +409,7 @@ function ScheduleDialog({
                     max="23"
                     value={frequency.hour || 0}
                     onChange={(e) => setFrequency({ ...frequency, hour: parseInt(e.target.value) })}
-                    className="ml-2 w-20 bg-card rounded px-2 py-1"
+                    className="field ml-2 h-8 w-20"
                   />
                 </div>
                 <div>
@@ -419,7 +420,7 @@ function ScheduleDialog({
                     max="59"
                     value={frequency.minute || 0}
                     onChange={(e) => setFrequency({ ...frequency, minute: parseInt(e.target.value) })}
-                    className="ml-2 w-20 bg-card rounded px-2 py-1"
+                    className="field ml-2 h-8 w-20"
                   />
                 </div>
               </div>
@@ -431,7 +432,7 @@ function ScheduleDialog({
                 <select
                   value={frequency.weekday || 0}
                   onChange={(e) => setFrequency({ ...frequency, weekday: parseInt(e.target.value) })}
-                  className="ml-2 bg-card rounded px-2 py-1"
+                  className="field ml-2 h-8 w-auto"
                 >
                   <option value="0">Sunday</option>
                   <option value="1">Monday</option>
@@ -453,7 +454,7 @@ function ScheduleDialog({
                   max="31"
                   value={frequency.day || 1}
                   onChange={(e) => setFrequency({ ...frequency, day: parseInt(e.target.value) })}
-                  className="ml-2 w-20 bg-card rounded px-2 py-1"
+                  className="field ml-2 h-8 w-20"
                 />
               </div>
             )}
@@ -465,7 +466,7 @@ function ScheduleDialog({
                   value={frequency.cron || ''}
                   onChange={(e) => setFrequency({ ...frequency, cron: e.target.value })}
                   placeholder="0 2 * * *"
-                  className="w-full bg-card rounded px-3 py-2"
+                  className="field"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Standard cron expression (minute hour day month weekday)
@@ -487,7 +488,7 @@ function ScheduleDialog({
                   min="0"
                   value={retention.min_keep}
                   onChange={(e) => setRetention({ ...retention, min_keep: parseInt(e.target.value) })}
-                  className="ml-2 w-20 bg-card rounded px-2 py-1"
+                  className="field ml-2 h-8 w-20"
                 />
               </div>
               <div>
@@ -497,7 +498,7 @@ function ScheduleDialog({
                   min="0"
                   value={retention.days}
                   onChange={(e) => setRetention({ ...retention, days: parseInt(e.target.value) })}
-                  className="ml-2 w-20 bg-card rounded px-2 py-1"
+                  className="field ml-2 h-8 w-20"
                 />
               </div>
               <div>
@@ -507,7 +508,7 @@ function ScheduleDialog({
                   min="0"
                   value={retention.weeks}
                   onChange={(e) => setRetention({ ...retention, weeks: parseInt(e.target.value) })}
-                  className="ml-2 w-20 bg-card rounded px-2 py-1"
+                  className="field ml-2 h-8 w-20"
                 />
               </div>
               <div>
@@ -517,7 +518,7 @@ function ScheduleDialog({
                   min="0"
                   value={retention.months}
                   onChange={(e) => setRetention({ ...retention, months: parseInt(e.target.value) })}
-                  className="ml-2 w-20 bg-card rounded px-2 py-1"
+                  className="field ml-2 h-8 w-20"
                 />
               </div>
               <div>
@@ -527,7 +528,7 @@ function ScheduleDialog({
                   min="0"
                   value={retention.years}
                   onChange={(e) => setRetention({ ...retention, years: parseInt(e.target.value) })}
-                  className="ml-2 w-20 bg-card rounded px-2 py-1"
+                  className="field ml-2 h-8 w-20"
                 />
               </div>
             </div>

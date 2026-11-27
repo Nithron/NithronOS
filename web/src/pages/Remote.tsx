@@ -4,7 +4,7 @@ import { AddIcon, CloseIcon, ConnectionIcon, DeleteIcon, DiskIcon, KeyIcon, Send
 import { PageHeader } from '@/components/ui/page-header'
 import { Card } from '@/components/ui/card-enhanced'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Meter, StatusMark, type MarkState } from '@/components/ui/pixel'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -45,15 +45,14 @@ function target(d: Destination): string {
   return d.path ?? ''
 }
 
-const stateBadge: Record<
-  JobState,
-  'default' | 'secondary' | 'success' | 'destructive' | 'outline'
-> = {
-  pending: 'secondary',
-  running: 'default',
-  succeeded: 'success',
-  failed: 'destructive',
-  canceled: 'outline',
+// A job's state as a mark: pending is a warning (it waits), running a
+// lamp, succeeded in order, failed a cross, canceled off.
+const stateMark: Record<JobState, MarkState> = {
+  pending: 'warning',
+  running: 'running',
+  succeeded: 'ok',
+  failed: 'failed',
+  canceled: 'off',
 }
 
 function AddDestinationDialog({
@@ -501,16 +500,18 @@ function CopiesCard() {
           <TableBody>
             {jobs.map((j) => (
               <TableRow key={j.id}>
-                <TableCell className="text-sm">{new Date(j.started_at).toLocaleString()}</TableCell>
+                <TableCell className="font-mono text-sm">{new Date(j.started_at).toLocaleString()}</TableCell>
                 <TableCell className="text-sm">
                   {names.get(j.destination_id ?? '') ?? j.destination_id}
                 </TableCell>
                 <TableCell>
-                  <Badge variant={stateBadge[j.state]}>
+                  <StatusMark state={stateMark[j.state]} className="text-sm">
                     {j.state}
-                    {j.state === 'running' ? ` ${Math.round(j.progress)}%` : ''}
-                  </Badge>
-                  {j.error && <p className="mt-1 text-xs text-destructive">{j.error}</p>}
+                  </StatusMark>
+                  {j.state === 'running' && (
+                    <Meter className="mt-1" value={j.progress} kind="progress" blocks={10} label="Copy progress" />
+                  )}
+                  {j.error && <p className="mt-1 text-xs text-status-failed-text">{j.error}</p>}
                 </TableCell>
                 <TableCell className="text-right">
                   {(j.state === 'running' || j.state === 'pending') && (

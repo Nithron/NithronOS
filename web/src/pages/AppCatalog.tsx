@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AppIcon, AutomationIcon, ChevronRightIcon, CloudIcon, DatabaseIcon, DevelopmentIcon, DownloadIcon, FailedIcon, GamingIcon, HealthIcon, MediaIcon, NoticeIcon, OkIcon, OpenExternalIcon, RestartIcon, SearchIcon, SecurityIcon, SmartHomeIcon, StartIcon, StopIcon, UtilitiesIcon, WorkingIcon } from '@/components/icons'
+import { AppIcon, ChevronRightIcon, DownloadIcon, FailedIcon, NoticeIcon, OkIcon, OpenExternalIcon, RestartIcon, SearchIcon, SecurityIcon, StartIcon, StopIcon, WorkingIcon } from '@/components/icons'
 import { appsApi } from '../api/apps';
 import type { CatalogEntry, InstalledApp } from '../api/apps.types';
 import { cn } from '../lib/utils';
@@ -12,30 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card-enhanced';
 import { toast } from '@/components/ui/toast';
 import { Badge } from '@/components/ui/badge';
-
-// Category icons, by the catalog's (lowercase) category keys. (The keys used
-// to be capitalised, so every app showed the generic icon.)
-const categoryIcons: Record<string, any> = {
-  media: MediaIcon,
-  entertainment: MediaIcon,
-  gaming: GamingIcon,
-  productivity: AutomationIcon,
-  development: DevelopmentIcon,
-  database: DatabaseIcon,
-  storage: DatabaseIcon,
-  'smart-home': SmartHomeIcon,
-  security: SecurityIcon,
-  cloud: CloudIcon,
-  health: HealthIcon,
-  utilities: UtilitiesIcon,
-  automation: AutomationIcon,
-  integration: CloudIcon,
-  ai: AutomationIcon,
-  testing: UtilitiesIcon,
-};
-
-const iconFor = (category?: string) =>
-  (category && categoryIcons[category.toLowerCase()]) || AppIcon;
 
 // Animation variants
 const containerVariants: any = {
@@ -211,23 +187,18 @@ export function AppCatalog() {
   };
 
   const AppCard = ({ app, isInstalled }: { app: CatalogEntry; isInstalled: boolean }) => {
-    const CategoryIcon = iconFor(app.categories?.[0]);
     
     return (
       <motion.div variants={itemVariants}>
         <Card className="h-full overflow-hidden">
           <div className="relative">
-            {/* The category in the mono face and the app's states in words. */}
-            <div className="flex items-center justify-between gap-3 border-b border-hairline px-4 py-3">
-              <span className="flex items-center gap-2 font-mono text-[0.8125rem] text-ink-2">
-                <CategoryIcon className="h-4 w-4" />
-                {app.categories?.[0] ?? 'app'}
-              </span>
-              <span className="flex items-center gap-3 text-sm">
-                {(app as any).verified && <span>Verified</span>}
+            {/* The app's name first; its states in words under it. */}
+            {((app as any).verified || isInstalled) && (
+              <div className="flex items-center gap-3 px-4 pt-4 text-sm">
                 {isInstalled && <StatusMark state="ok">Installed</StatusMark>}
-              </span>
-            </div>
+                {(app as any).verified && <span className="text-ink-2">Verified</span>}
+              </div>
+            )}
 
             {/* App Info */}
             <div className="p-4 space-y-3">
@@ -266,7 +237,7 @@ export function AppCatalog() {
               {/* Action Button */}
               <Button
                 className="w-full"
-                variant={isInstalled ? "secondary" : "default"}
+                variant="outline"
                 onClick={() => isInstalled ? navigate(`/apps/${app.id}`) : handleInstall(app.id)}
               >
                 {isInstalled ? (
@@ -289,7 +260,6 @@ export function AppCatalog() {
   };
 
   const InstalledAppCard = ({ app }: { app: InstalledApp }) => {
-    const CategoryIcon = AppIcon;
     
     return (
       <motion.div variants={itemVariants}>
@@ -308,9 +278,6 @@ export function AppCatalog() {
             <div className="p-4 space-y-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <CategoryIcon className="w-8 h-8 text-primary" />
-                  </div>
                   <div>
                     <h3 className="font-[560] text-lg">{app.name}</h3>
                     <div className={cn("flex items-center gap-1 text-sm", getStatusColor(app.status))}>
@@ -393,9 +360,6 @@ export function AppCatalog() {
         <div className="flex items-center gap-3">
           <div>
             <h1 className="screen-title">App catalog</h1>
-            <p className="text-muted-foreground">
-              Discover and install applications for your nOS
-            </p>
           </div>
         </div>
         <Button
@@ -478,7 +442,6 @@ export function AppCatalog() {
                 All categories
               </button>
               {categories.map((cat) => {
-                const Icon = iconFor(cat);
                 return (
                   <button
                     key={cat}
@@ -489,7 +452,6 @@ export function AppCatalog() {
                       selectedCategory === cat ? 'border-ink bg-ink text-page' : 'border-rule hover:border-ink'
                     )}
                   >
-                    <Icon className="w-4 h-4" />
                     {cat}
                   </button>
                 );

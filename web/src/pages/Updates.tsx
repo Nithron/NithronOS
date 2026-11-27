@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { confirmAction } from '@/components/ui/confirm';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { AppIcon, ChannelIcon, DeleteIcon, DownloadIcon, RefreshIcon, RollBackIcon, ServerIcon, SnapshotIcon, TimeIcon, WorkingIcon } from '@/components/icons'
@@ -151,14 +152,22 @@ export default function Updates() {
     }
   };
 
-  const handleRollback = (snapshotId: string) => {
-    if (confirm('Are you sure you want to rollback to this snapshot? This will restart the system.')) {
+  // A rollback restores the configuration saved before an update
+  // (/etc/nos) and restarts nosd; packages stay as they are.
+  const handleRollback = async (snapshotId: string) => {
+    if (
+      await confirmAction({
+        title: 'Restore the configuration from this snapshot?',
+        description: 'nOS puts back its configuration as it was before that update and restarts nosd. Installed packages are not downgraded.',
+        action: 'Restore configuration',
+      })
+    ) {
       rollbackMutation.mutate({ snapshot_id: snapshotId });
     }
   };
 
-  const handleDeleteSnapshot = (snapshotId: string) => {
-    if (confirm('Are you sure you want to delete this snapshot? This action cannot be undone.')) {
+  const handleDeleteSnapshot = async (snapshotId: string) => {
+    if (await confirmAction({ title: 'Delete this snapshot?', description: 'It cannot be restored afterwards.', action: 'Delete snapshot' })) {
       deleteSnapshotMutation.mutate(snapshotId);
     }
   };

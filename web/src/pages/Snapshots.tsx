@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { confirmAction } from '@/components/ui/confirm';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { AddIcon, DeleteIcon, PoolIcon, RefreshIcon, ScheduleIcon, WarningIcon } from '@/components/icons'
+import { AddIcon, DeleteIcon, PoolIcon, RefreshIcon, WarningIcon } from '@/components/icons'
 import { backupApi } from '@/api/backup';
 import type { Snapshot } from '@/api/backup.types';
 import { formatBytes } from '@/lib/utils';
@@ -42,8 +43,8 @@ export default function Snapshots() {
   const snapshots = snapshotsData?.snapshots || [];
   const subvolumes = stats ? Object.keys(stats.by_subvolume) : [];
   
-  const handleDelete = (snapshot: Snapshot) => {
-    if (window.confirm(`Delete snapshot ${snapshot.path}? This cannot be undone.`)) {
+  const handleDelete = async (snapshot: Snapshot) => {
+    if (await confirmAction({ title: 'Delete this snapshot?', description: <span className="font-mono">{snapshot.path}</span>, action: 'Delete snapshot' })) {
       deleteMutation.mutate(snapshot.id);
     }
   };
@@ -74,39 +75,20 @@ export default function Snapshots() {
       
       {/* Stats Cards */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="bg-card rounded-lg p-4">
-            <div className="flex items-center space-x-3">
-              <PoolIcon className="w-8 h-8 text-primary" />
-              <div>
-                <p className="text-sm text-muted-foreground">Total snapshots</p>
-                <p className="text-2xl font-semibold">{stats.total_count}</p>
-              </div>
-            </div>
+        <div className="grid gap-px border border-hairline bg-hairline md:grid-cols-3 [&>*]:bg-page [&>*]:p-4">
+          <div>
+            <p className="font-mono text-[0.8125rem] text-ink-2">Snapshots</p>
+            <p className="mt-2 font-mono text-2xl tabular-nums">{stats.total_count}</p>
           </div>
-          
-          <div className="bg-card rounded-lg p-4">
-            <div className="flex items-center space-x-3">
-              <PoolIcon className="w-8 h-8 text-primary" />
-              <div>
-                <p className="text-sm text-muted-foreground">Total size</p>
-                <p className="text-2xl font-semibold">{formatBytes(stats.total_size_bytes)}</p>
-              </div>
-            </div>
+          <div>
+            <p className="font-mono text-[0.8125rem] text-ink-2">Total size</p>
+            <p className="mt-2 font-mono text-2xl tabular-nums">{formatBytes(stats.total_size_bytes)}</p>
           </div>
-          
-          <div className="bg-card rounded-lg p-4">
-            <div className="flex items-center space-x-3">
-              <ScheduleIcon className="w-8 h-8 text-primary" />
-              <div>
-                <p className="text-sm text-muted-foreground">Oldest snapshot</p>
-                <p className="text-2xl font-semibold">
-                  {stats.oldest_snapshot 
-                    ? formatDistanceToNow(new Date(stats.oldest_snapshot), { addSuffix: true })
-                    : 'N/A'}
-                </p>
-              </div>
-            </div>
+          <div>
+            <p className="font-mono text-[0.8125rem] text-ink-2">Oldest</p>
+            <p className="mt-2 text-2xl">
+              {stats.oldest_snapshot ? formatDistanceToNow(new Date(stats.oldest_snapshot), { addSuffix: true }) : 'None yet'}
+            </p>
           </div>
         </div>
       )}
@@ -118,7 +100,7 @@ export default function Snapshots() {
           <select
             value={selectedSubvolume}
             onChange={(e) => setSelectedSubvolume(e.target.value)}
-            className="bg-card rounded px-3 py-1"
+            className="field h-8 w-auto"
           >
             <option value="">All subvolumes</option>
             {subvolumes.map((subvol) => (
@@ -129,7 +111,7 @@ export default function Snapshots() {
       )}
       
       {/* Snapshots List */}
-      <div className="bg-card rounded-lg">
+      <div className="border border-hairline">
         {isLoading ? (
           <div className="p-8 text-center text-muted-foreground">
             Loading snapshots...
@@ -149,7 +131,7 @@ export default function Snapshots() {
         ) : (
           <div className="divide-y">
             {snapshots.map((snapshot) => (
-              <div key={snapshot.id} className="p-4 hover:bg-muted/50 transition-colors">
+              <div key={snapshot.id} className="p-4 hover:bg-ink/[.09] transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
@@ -171,7 +153,7 @@ export default function Snapshots() {
                           {snapshot.schedule_id && (
                             <>
                               <span>•</span>
-                              <span className="text-green-500">Scheduled</span>
+                              <span className="text-status-ok-text">Scheduled</span>
                             </>
                           )}
                         </div>
@@ -194,14 +176,14 @@ export default function Snapshots() {
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleRestore(snapshot)}
-                      className="btn btn-sm"
+                      className="btn btn-line min-h-8 px-3"
                       title="Restore from this snapshot"
                     >
                       <RefreshIcon className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(snapshot)}
-                      className="btn btn-sm text-red-500 hover:bg-red-500/10"
+                      className="btn btn-line min-h-8 px-3 hover:bg-ink/[.09]"
                       title="Delete snapshot"
                       disabled={deleteMutation.isPending}
                     >
@@ -282,9 +264,9 @@ function CreateSnapshotDialog({
   const availableSubvolumes = ['@', '@home', '@var', '@log'];
   
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background rounded-lg p-6 max-w-md w-full">
-        <h2 className="text-lg font-semibold mb-4">Create snapshot</h2>
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-page/70">
+      <div className="border border-edge bg-page p-6 max-w-md w-full">
+        <h2 className="text-lg font-[560] mb-4">Create snapshot</h2>
         
         <div className="space-y-4">
           <div>
@@ -316,7 +298,7 @@ function CreateSnapshotDialog({
               value={tag}
               onChange={(e) => setTag(e.target.value)}
               placeholder="e.g., before-upgrade"
-              className="w-full bg-card rounded px-3 py-2"
+              className="field"
             />
           </div>
         </div>
@@ -395,11 +377,11 @@ function RestoreDialog({
   };
   
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <h2 className="text-lg font-semibold mb-4">Restore from snapshot</h2>
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-page/70">
+      <div className="border border-edge bg-page p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        <h2 className="text-lg font-[560] mb-4">Restore from snapshot</h2>
         
-        <div className="bg-card rounded p-4 mb-4">
+        <div className="border border-hairline p-4 mb-4">
           <p className="text-sm text-muted-foreground">Restoring from:</p>
           <p className="font-medium">{snapshot.path}</p>
           <p className="text-sm text-muted-foreground mt-1">
@@ -457,7 +439,7 @@ function RestoreDialog({
                 value={targetPath}
                 onChange={(e) => setTargetPath(e.target.value)}
                 placeholder={restoreType === 'full' ? '/' : '/home/user/restored-files'}
-                className="w-full bg-card rounded px-3 py-2"
+                className="field"
               />
             </div>
             
@@ -476,11 +458,11 @@ function RestoreDialog({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-yellow-500/10 border border-yellow-500/50 rounded p-4">
+            <div className="border border-status-warning p-4">
               <div className="flex items-start space-x-3">
-                <WarningIcon className="w-5 h-5 text-yellow-500 mt-0.5" />
+                <WarningIcon className="w-5 h-5 text-status-warning-text mt-0.5" />
                 <div>
-                  <p className="font-medium text-yellow-500">Restore plan</p>
+                  <p className="font-medium text-status-warning-text">Restore plan</p>
                   <p className="text-sm mt-1">
                     Estimated time: {Math.round(plan.estimated_time_seconds / 60)} minutes
                   </p>

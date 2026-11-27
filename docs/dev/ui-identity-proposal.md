@@ -55,6 +55,10 @@ and the shared components, sentence case, no motion, one toast.
 storage, create pool (a plan of readable steps, the pool's name typed to
 confirm), pool details and disk health on marks, meters and words.
 
+**Not seen in a capture:** an installed app's page (`/apps/:id`): the live
+container has no Docker to install an app, so it is reworked from its
+code only.
+
 **Questions held for Thiago** (the safe default is taken until he answers):
 
 1. **Draft PR #15.** Phase 1 is a public draft pull request; phases 2 and

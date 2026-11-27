@@ -95,20 +95,20 @@ export default function SettingsSchedules() {
         <h1 className="screen-title">Schedules</h1>
         <p className="text-sm text-muted-foreground">System maintenance cadences (systemd OnCalendar).</p>
       </div>
-      <div className="rounded-lg bg-card p-4 space-y-3">
+      <div className="border border-hairline p-4 space-y-3">
         <div>
           <label className="block text-sm mb-1">Smart scan (SMART)</label>
           <input ref={smartRef} name="smartScan" placeholder="Sun 03:00" className="w-full rounded border border-muted/30 bg-background px-2 py-1" value={draft.smartScan} onChange={(e) => onChange('smartScan', e.target.value)} aria-invalid={!!fieldErrors.smartScan} aria-describedby="smartScanHelp smartScanErr" />
           <p id="smartScanHelp" className="mt-1 text-xs text-muted-foreground">{helper.smartScan}</p>
-          {fieldErrors.smartScan && <p id="smartScanErr" className="mt-1 text-xs text-red-400">{fieldErrors.smartScan}</p>}
+          {fieldErrors.smartScan && <p id="smartScanErr" className="mt-1 text-xs text-status-failed-text">{fieldErrors.smartScan}</p>}
         </div>
         <div>
           <label className="block text-sm mb-1">Btrfs scrub</label>
           <input ref={scrubRef} name="btrfsScrub" placeholder="Sun *-*-01..07 03:00" className="w-full rounded border border-muted/30 bg-background px-2 py-1" value={draft.btrfsScrub} onChange={(e) => onChange('btrfsScrub', e.target.value)} aria-invalid={!!fieldErrors.btrfsScrub} aria-describedby="btrfsScrubHelp btrfsScrubErr" />
           <p id="btrfsScrubHelp" className="mt-1 text-xs text-muted-foreground">{helper.btrfsScrub}</p>
-          {fieldErrors.btrfsScrub && <p id="btrfsScrubErr" className="mt-1 text-xs text-red-400">{fieldErrors.btrfsScrub}</p>}
+          {fieldErrors.btrfsScrub && <p id="btrfsScrubErr" className="mt-1 text-xs text-status-failed-text">{fieldErrors.btrfsScrub}</p>}
         </div>
-        {error && <div className="rounded border border-red-500/30 bg-red-500/10 p-2 text-red-400 text-xs">{error}</div>}
+        {error && <div className="border border-status-failed p-2 text-status-failed-text text-xs">{error}</div>}
         {lastFstrim && <div className="text-xs text-muted-foreground">Last fstrim: {new Date(lastFstrim).toLocaleString()}</div>}
         <div className="flex gap-2">
           <button className="rounded bg-primary px-3 py-1 text-sm text-background disabled:opacity-50" disabled={saving} onClick={onSave}>Save</button>

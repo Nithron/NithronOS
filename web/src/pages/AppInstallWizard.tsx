@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { AppIcon, ChevronLeftIcon, ChevronRightIcon, ChosenIcon, FailedIcon, HideIcon, NoticeIcon, SecurityIcon, SettingsIcon, ShowIcon, StorageIcon, WarningIcon, WorkingIcon } from '@/components/icons'
+import { ChevronLeftIcon, ChevronRightIcon, ChosenIcon, FailedIcon, HideIcon, NoticeIcon, SettingsIcon, ShowIcon, StorageIcon, WarningIcon, WorkingIcon } from '@/components/icons'
 import { appsApi } from '../api/apps';
 import type { CatalogEntry, JsonSchemaProperty, PortMapping, VolumeMount } from '../api/apps.types';
 import { cn } from '../lib/utils';
@@ -235,36 +235,26 @@ export function AppInstallWizard() {
   return (
     <div className="container mx-auto py-6 max-w-4xl">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => navigate('/apps')}
-          className="btn btn-secondary btn-sm"
-        >
-          <ChevronLeftIcon className="w-4 h-4" />
-        </button>
-        <AppIcon className="w-8 h-8 text-ink" />
+      <div className="mb-6">
         <div>
           <h1 className="screen-title">Install {app.name}</h1>
           <p className="text-sm text-ink-2">{app.description}</p>
         </div>
       </div>
 
-      {/* Steps */}
-      <div className="flex items-center justify-between mb-8">
+      {/* The steps packed from the left, as in create pool. */}
+      <ol className="mb-8 flex flex-wrap gap-x-6 gap-y-2 border-b border-hairline pb-3">
         {steps.map((step, index) => (
-          <div
-            key={index}
-            className="flex items-center"
-          >
+          <li key={index} aria-current={index === currentStep ? 'step' : undefined}>
             <StatusMark
               state={index < currentStep ? 'ok' : index === currentStep ? 'running' : 'off'}
               className={cn('text-sm', index === currentStep ? 'font-[560] text-ink' : 'text-ink-2')}
             >
               {step.title}
             </StatusMark>
-          </div>
+          </li>
         ))}
-      </div>
+      </ol>
 
       {/* Content */}
       <div className="border border-hairline p-6 min-h-[400px]">
@@ -282,36 +272,32 @@ export function AppInstallWizard() {
             
             <div>
               <h3 className="text-lg font-[560] mb-3">Requirements</h3>
-              <div className="space-y-2">
+              <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 border-y border-hairline py-3 font-mono text-sm">
                 {app.defaults?.resources?.cpu_limit && (
-                  <div className="flex items-center gap-2">
-                    <SecurityIcon className="w-4 h-4 text-ink-2" />
-                    <span className="text-sm">CPU: up to {app.defaults.resources.cpu_limit} cores</span>
-                  </div>
+                  <>
+                    <dt className="text-ink-2">CPU</dt>
+                    <dd>up to {app.defaults.resources.cpu_limit} cores</dd>
+                  </>
                 )}
                 {app.defaults?.resources?.memory_limit && (
-                  <div className="flex items-center gap-2">
-                    <SecurityIcon className="w-4 h-4 text-ink-2" />
-                    <span className="text-sm">Memory: up to {app.defaults.resources.memory_limit}</span>
-                  </div>
+                  <>
+                    <dt className="text-ink-2">Memory</dt>
+                    <dd>up to {app.defaults.resources.memory_limit}</dd>
+                  </>
                 )}
                 {app.defaults?.ports?.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <SecurityIcon className="w-4 h-4 text-ink-2" />
-                    <span className="text-sm">
-                      Ports: {app.defaults.ports.map((p: PortMapping) => p.host).join(', ')}
-                    </span>
-                  </div>
+                  <>
+                    <dt className="text-ink-2">Ports</dt>
+                    <dd>{app.defaults.ports.map((p: PortMapping) => p.host).join(', ')}</dd>
+                  </>
                 )}
-                {app.needs_privileged && (
-                  <div className="flex items-center gap-2">
-                    <WarningIcon className="w-4 h-4 text-status-warning-text" />
-                    <span className="text-sm text-status-warning-text">
-                      Requires privileged access
-                    </span>
-                  </div>
-                )}
-              </div>
+              </dl>
+              {app.needs_privileged && (
+                <p className="mt-3 flex items-center gap-2 text-sm">
+                  <WarningIcon className="h-4 w-4 text-status-warning" />
+                  Runs with privileged access to this system.
+                </p>
+              )}
             </div>
           </div>
         )}

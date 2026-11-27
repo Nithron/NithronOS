@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { confirmAction } from '@/components/ui/confirm'
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -61,7 +62,7 @@ export function TwoFactorSettings() {
   };
 
   const handleDisable2FA = async () => {
-    if (!confirm('Are you sure you want to disable two-factor authentication? This will make your account less secure.')) {
+    if (!(await confirmAction({ title: 'Turn off two-factor sign-in?', description: 'Signing in will need only your password.', action: 'Turn off two-factor sign-in' }))) {
       return;
     }
 
@@ -73,7 +74,7 @@ export function TwoFactorSettings() {
   };
 
   const handleRegenerateBackupCodes = async () => {
-    if (!confirm('Are you sure you want to regenerate backup codes? Your old codes will no longer work.')) {
+    if (!(await confirmAction({ title: 'Make new backup codes?', description: 'Your current backup codes stop working.', action: 'Make new backup codes' }))) {
       return;
     }
 
