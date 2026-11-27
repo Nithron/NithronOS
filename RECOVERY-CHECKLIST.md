@@ -49,9 +49,8 @@ Do scenario **1** (removes `users.json`).
 ### 4) Remote access / firewall blocks UI
 Reset to LAN-only and allow local web:
 
-    sudo nft flush ruleset
-    sudo bash deploy/firewall/apply.sh --mode lan-only || true
-    sudo systemctl restart nftables nosd
+    sudo rm -f /etc/nftables.d/nos.nft
+    sudo systemctl restart nos-firewall nosd
 
 ### 5) Update failed — rollback snapshot
 From UI: **Settings → Updates → Rollback**  

@@ -1,0 +1,27 @@
+#!/usr/sbin/nft -f
+# nOS default firewall: generated from BaseRules (backend/nosd/pkg/net).
+table inet nos
+delete table inet nos
+table inet nos {
+	chain input {
+		type filter hook input priority 0; policy drop;
+		ct state invalid drop
+		iifname "lo" accept comment "Loopback"
+		ct state established,related accept comment "Replies to connections this system opened"
+		meta l4proto { icmp, ipv6-icmp } accept comment "Ping and ICMP errors"
+		ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } tcp dport 22 accept comment "SSH from the LAN"
+		ip6 saddr { fc00::/7, fe80::/10 } tcp dport 22 accept comment "SSH from the LAN"
+		ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } tcp dport { 80, 443 } accept comment "Web interface from the LAN"
+		ip6 saddr { fc00::/7, fe80::/10 } tcp dport { 80, 443 } accept comment "Web interface from the LAN"
+		ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } tcp dport { 139, 445 } accept comment "SMB file sharing from the LAN"
+		ip6 saddr { fc00::/7, fe80::/10 } tcp dport { 139, 445 } accept comment "SMB file sharing from the LAN"
+		ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } udp dport 137-138 accept comment "NetBIOS name service from the LAN"
+		ip6 saddr { fc00::/7, fe80::/10 } udp dport 137-138 accept comment "NetBIOS name service from the LAN"
+		ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } tcp dport { 111, 2049 } accept comment "NFS from the LAN"
+		ip6 saddr { fc00::/7, fe80::/10 } tcp dport { 111, 2049 } accept comment "NFS from the LAN"
+		ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } udp dport { 111, 2049 } accept comment "NFS from the LAN"
+		ip6 saddr { fc00::/7, fe80::/10 } udp dport { 111, 2049 } accept comment "NFS from the LAN"
+		ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } udp dport 5353 accept comment "mDNS discovery from the LAN"
+		ip6 saddr { fc00::/7, fe80::/10 } udp dport 5353 accept comment "mDNS discovery from the LAN"
+	}
+}

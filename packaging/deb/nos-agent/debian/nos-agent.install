@@ -1,1 +1,4 @@
 ../../../deploy/systemd/nos-agent.service  lib/systemd/system/
+../../../deploy/systemd/nos-firewall.service  lib/systemd/system/
+../../../deploy/firewall/nos-firewall-load  usr/lib/nos/
+../../../deploy/firewall/nos-default.nft  usr/share/nos/firewall/

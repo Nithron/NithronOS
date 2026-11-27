@@ -1,0 +1,14 @@
+#!/bin/sh
+# Loads nOS's firewall (table inet nos) at boot: the rules last confirmed in
+# the web interface (/etc/nftables.d/nos.nft, written by nos-agent), or the
+# defaults (LAN services from the LAN only). Only table inet nos is replaced;
+# Docker's and any other tables are left alone.
+set -u
+SAVED=/etc/nftables.d/nos.nft
+DEFAULT=/usr/share/nos/firewall/nos-default.nft
+
+if [ -s "$SAVED" ] && nft -c -f "$SAVED"; then
+	exec nft -f "$SAVED"
+fi
+[ -s "$SAVED" ] && echo "nos-firewall: $SAVED doesn't load; using the defaults" >&2
+exec nft -f "$DEFAULT"

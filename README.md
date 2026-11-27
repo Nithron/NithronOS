@@ -173,27 +173,14 @@ The Debian Installer is fully functional with preseed automation and service aut
 ---
 
 ## Firewall (LAN-only by default)
-nOS ships an **nftables** policy exposing the web UI (443) to LAN (RFC1918) only.
+nOS keeps its own nftables table, `inet nos` (input policy drop), loaded at boot by `nos-firewall.service` (package `nos-agent`) before the network comes up. It never flushes the whole ruleset, so Docker's tables are left alone.
 
-    sudo bash deploy/firewall/apply.sh
-    sudo systemctl enable --now nftables.service
+By default it allows, **from the LAN only** (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`, `fe80::/10`): SSH (22), the web interface (80, 443), SMB (139, 445; NetBIOS 137-138/udp), NFS (111, 2049) and mDNS (5353/udp); plus loopback, replies and ICMP. The remote-access settings add WireGuard's port or public HTTPS, after you confirm the change within its time limit; confirmed rules are kept in `/etc/nftables.d/nos.nft`.
 
-This:
-- Loads `deploy/firewall/nos.nft`
-- Sets **default-deny** on input
-- Allows loopback + established/related
-- Allows TCP **443** (web UI) and **22** (SSH) **from LAN only**  
-  (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`)
+Back to the defaults:
 
-> **Remote access is opt-in.** For Internet access (VPN/Tunnel/Direct), use the **Remote** wizard: enforce 2FA, add rate limits, update firewall atomically, keep rollback backups.
-
-Revert manually:
-
-    sudo nft flush ruleset
-    sudo systemctl restart nftables.service
-
-**Optional brute-force protection (fail2ban)**  
-Filters/jails under `deploy/fail2ban/`; see comments inside for enabling.
+    sudo rm /etc/nftables.d/nos.nft
+    sudo systemctl restart nos-firewall
 
 ---
 

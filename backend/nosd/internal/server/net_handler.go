@@ -566,9 +566,9 @@ func (h *NetHandler) getWizardState(sessionID string) *net.RemoteAccessWizardSta
 type agentNFTables struct{ agent AgentClient }
 
 func (a agentNFTables) List(json bool) ([]byte, error) {
-	path := "/v1/firewall/ruleset"
+	path := "/v1/firewall/ruleset?table=nos"
 	if json {
-		path += "?json=1"
+		path += "&json=1"
 	}
 	var out struct {
 		Ruleset string `json:"ruleset"`

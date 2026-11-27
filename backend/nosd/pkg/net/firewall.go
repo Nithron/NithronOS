@@ -4,16 +4,18 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"sync"
 	"time"
 )
 
 const (
-	nftablesConfigPath = "/etc/nos/firewall.nft"
+	// firewallStatePath is the confirmed rule set (mode and rules); the
+	// agent keeps the loaded script in /etc/nftables.d/nos.nft for boot.
+	firewallStatePath  = "/etc/nos/firewall-state.json"
 	nftablesBackupPath = "/etc/nos/firewall.backup.nft"
 	rollbackTimeout    = 60 * time.Second
 )
@@ -28,6 +30,8 @@ type FirewallManager struct {
 	configPath     string
 	backupPath     string
 	nft            NFTables
+	wgPort         int
+	pendingScript  string // applied, not yet confirmed
 }
 
 // NFTables reads and replaces the kernel's ruleset. nosd runs as the nos
@@ -69,7 +73,7 @@ func (execNFTables) Apply(script string, _ bool) error {
 // NewFirewallManager creates a new firewall manager
 func NewFirewallManager() *FirewallManager {
 	return &FirewallManager{
-		configPath: nftablesConfigPath,
+		configPath: firewallStatePath,
 		backupPath: nftablesBackupPath,
 		nft:        execNFTables{},
 	}
@@ -204,16 +208,22 @@ func (fm *FirewallManager) ConfirmPlan() error {
 		fm.rollbackCancel = nil
 	}
 
-	// Update state
+	// Keep the confirmed rules for the next boot, and remember them.
+	if fm.pendingScript != "" {
+		if err := fm.nft.Apply(fm.pendingScript, true); err != nil {
+			return fmt.Errorf("failed to keep the rules: %w", err)
+		}
+	}
 	fm.currentState.Status = "active"
 	fm.currentState.RollbackAt = nil
-
-	// Clear pending plan
+	if data, err := json.MarshalIndent(fm.currentState, "", "  "); err == nil {
+		if err := os.WriteFile(fm.configPath, data, 0o600); err != nil {
+			return fmt.Errorf("failed to save the firewall state: %w", err)
+		}
+	}
 	fm.pendingPlan = nil
-
-	// Remove backup as configuration is confirmed
+	fm.pendingScript = ""
 	os.Remove(fm.backupPath)
-
 	return nil
 }
 
@@ -227,194 +237,51 @@ func (fm *FirewallManager) Rollback() error {
 
 // Private methods
 
+// loadCurrentState is the last confirmed rule set, or the LAN defaults.
+// (It used to claim to parse the live ruleset and return the defaults.)
 func (fm *FirewallManager) loadCurrentState() (*FirewallState, error) {
-	// Parse current nftables rules
-	output, err := fm.nft.List(true)
-	if err != nil {
-		// If nftables is empty, return default state
-		return &FirewallState{
-			Mode:        AccessModeLANOnly,
-			Rules:       fm.getDefaultRules(),
-			LastApplied: time.Now(),
-			Status:      "active",
-		}, nil
+	var st FirewallState
+	data, err := os.ReadFile(fm.configPath)
+	if err == nil && json.Unmarshal(data, &st) == nil && len(st.Rules) > 0 {
+		return &st, nil
 	}
-
-	// Parse JSON output and convert to FirewallState
-	// For now, return a simplified state
+	rules := BaseRules()
 	return &FirewallState{
-		Mode:        fm.detectCurrentMode(output),
-		Rules:       fm.parseNFTablesRules(output),
-		LastApplied: time.Now(),
-		Checksum:    fm.calculateChecksum(output),
-		Status:      "active",
+		Mode:     AccessModeLANOnly,
+		Rules:    rules,
+		Checksum: fm.calculateRulesChecksum(rules),
+		Status:   "default",
 	}, nil
 }
 
-func (fm *FirewallManager) generateDesiredState(mode AccessMode, enableWG, enableHTTPS bool, customRules []FirewallRule) *FirewallState {
-	rules := fm.getDefaultRules()
+// SetWireGuardPort is the UDP port WireGuard listens on (51820 by default).
+func (fm *FirewallManager) SetWireGuardPort(port int) {
+	fm.mu.Lock()
+	defer fm.mu.Unlock()
+	fm.wgPort = port
+}
 
-	// Add mode-specific rules
+// generateDesiredState is the LAN base plus what the mode opens. (WireGuard
+// and public HTTPS used to replace the LAN rules, which would have locked
+// the LAN out of the web interface, and no mode allowed SMB or NFS.)
+func (fm *FirewallManager) generateDesiredState(mode AccessMode, enableWG, enableHTTPS bool, customRules []FirewallRule) *FirewallState {
+	rules := BaseRules()
 	switch mode {
-	case AccessModeLANOnly:
-		rules = append(rules, fm.getLANOnlyRules()...)
 	case AccessModeWireGuard:
 		if enableWG {
-			rules = append(rules, fm.getWireGuardRules()...)
+			rules = append(rules, WireGuardRules(fm.wgPort, "wg0")...)
 		}
 	case AccessModePublicHTTPS:
 		if enableHTTPS {
-			rules = append(rules, fm.getPublicHTTPSRules()...)
+			rules = append(rules, PublicHTTPSRules()...)
 		}
 	}
-
-	// Add custom rules
 	rules = append(rules, customRules...)
-
 	return &FirewallState{
 		Mode:     mode,
 		Rules:    rules,
 		Checksum: fm.calculateRulesChecksum(rules),
 		Status:   "planned",
-	}
-}
-
-func (fm *FirewallManager) getDefaultRules() []FirewallRule {
-	return []FirewallRule{
-		{
-			ID:          "allow-loopback",
-			Table:       "filter",
-			Chain:       "input",
-			Priority:    10,
-			Type:        "allow",
-			SourceCIDR:  "127.0.0.0/8",
-			Action:      "accept",
-			Description: "Allow loopback traffic",
-			Enabled:     true,
-		},
-		{
-			ID:          "allow-established",
-			Table:       "filter",
-			Chain:       "input",
-			Priority:    20,
-			Type:        "allow",
-			Action:      "accept",
-			Description: "Allow established connections",
-			Enabled:     true,
-		},
-		{
-			ID:          "allow-icmp",
-			Table:       "filter",
-			Chain:       "input",
-			Priority:    30,
-			Type:        "allow",
-			Protocol:    "icmp",
-			Action:      "accept",
-			Description: "Allow ICMP",
-			Enabled:     true,
-		},
-	}
-}
-
-func (fm *FirewallManager) getLANOnlyRules() []FirewallRule {
-	return []FirewallRule{
-		{
-			ID:          "allow-lan-ssh",
-			Table:       "filter",
-			Chain:       "input",
-			Priority:    100,
-			Type:        "allow",
-			Protocol:    "tcp",
-			SourceCIDR:  "192.168.0.0/16",
-			DestPort:    "22",
-			Action:      "accept",
-			Description: "Allow SSH from LAN",
-			Enabled:     true,
-		},
-		{
-			ID:          "allow-lan-http",
-			Table:       "filter",
-			Chain:       "input",
-			Priority:    101,
-			Type:        "allow",
-			Protocol:    "tcp",
-			SourceCIDR:  "192.168.0.0/16",
-			DestPort:    "80",
-			Action:      "accept",
-			Description: "Allow HTTP from LAN",
-			Enabled:     true,
-		},
-		{
-			ID:          "allow-lan-https",
-			Table:       "filter",
-			Chain:       "input",
-			Priority:    102,
-			Type:        "allow",
-			Protocol:    "tcp",
-			SourceCIDR:  "192.168.0.0/16",
-			DestPort:    "443",
-			Action:      "accept",
-			Description: "Allow HTTPS from LAN",
-			Enabled:     true,
-		},
-		{
-			ID:          "block-wan-http",
-			Table:       "filter",
-			Chain:       "input",
-			Priority:    200,
-			Type:        "deny",
-			Protocol:    "tcp",
-			DestPort:    "80,443",
-			Action:      "drop",
-			Description: "Block HTTP/HTTPS from WAN",
-			Enabled:     true,
-		},
-	}
-}
-
-func (fm *FirewallManager) getWireGuardRules() []FirewallRule {
-	return []FirewallRule{
-		{
-			ID:          "allow-wireguard",
-			Table:       "filter",
-			Chain:       "input",
-			Priority:    50,
-			Type:        "allow",
-			Protocol:    "udp",
-			DestPort:    "51820",
-			Action:      "accept",
-			Description: "Allow WireGuard VPN",
-			Enabled:     true,
-		},
-	}
-}
-
-func (fm *FirewallManager) getPublicHTTPSRules() []FirewallRule {
-	return []FirewallRule{
-		{
-			ID:          "allow-http-acme",
-			Table:       "filter",
-			Chain:       "input",
-			Priority:    40,
-			Type:        "allow",
-			Protocol:    "tcp",
-			DestPort:    "80",
-			Action:      "accept",
-			Description: "Allow HTTP for ACME challenges",
-			Enabled:     true,
-		},
-		{
-			ID:          "allow-https-public",
-			Table:       "filter",
-			Chain:       "input",
-			Priority:    41,
-			Type:        "allow",
-			Protocol:    "tcp",
-			DestPort:    "443",
-			Action:      "accept",
-			Description: "Allow HTTPS from public",
-			Enabled:     true,
-		},
 	}
 }
 
@@ -468,107 +335,51 @@ func (fm *FirewallManager) calculateDiff(current, desired *FirewallState) []Fire
 	return diffs
 }
 
-func (fm *FirewallManager) generateNFTablesScript(state *FirewallState, dryRun bool) (string, error) {
-	var buf bytes.Buffer
-
-	// Start with flush
-	if !dryRun {
-		buf.WriteString("#!/usr/sbin/nft -f\n")
-		buf.WriteString("flush ruleset\n\n")
-	}
-
-	// Create base table and chains
-	buf.WriteString("table inet filter {\n")
-	buf.WriteString("    chain input {\n")
-	buf.WriteString("        type filter hook input priority 0; policy drop;\n")
-
-	// Add rules sorted by priority
-	for _, rule := range state.Rules {
-		if !rule.Enabled || rule.Chain != "input" {
-			continue
-		}
-
-		buf.WriteString("        ")
-
-		// Build rule string
-		if rule.Protocol != "" {
-			fmt.Fprintf(&buf, "ip protocol %s ", rule.Protocol)
-		}
-		if rule.SourceCIDR != "" && rule.SourceCIDR != "127.0.0.0/8" {
-			fmt.Fprintf(&buf, "ip saddr %s ", rule.SourceCIDR)
-		}
-		if rule.DestPort != "" {
-			fmt.Fprintf(&buf, "tcp dport { %s } ", rule.DestPort)
-		}
-
-		// Special handling for established connections
-		if rule.ID == "allow-established" {
-			buf.WriteString("ct state established,related ")
-		}
-
-		fmt.Fprintf(&buf, "%s comment \"%s\"\n", rule.Action, rule.Description)
-	}
-
-	buf.WriteString("    }\n")
-	buf.WriteString("    chain forward {\n")
-	buf.WriteString("        type filter hook forward priority 0; policy drop;\n")
-	buf.WriteString("    }\n")
-	buf.WriteString("    chain output {\n")
-	buf.WriteString("        type filter hook output priority 0; policy accept;\n")
-	buf.WriteString("    }\n")
-	buf.WriteString("}\n")
-
-	return buf.String(), nil
+func (fm *FirewallManager) generateNFTablesScript(state *FirewallState, _ bool) (string, error) {
+	return RenderScript(state.Rules)
 }
 
+// applyNFTablesScript loads script now but doesn't keep it for the next
+// boot: that happens when the plan is confirmed, so a reboot inside the
+// confirm window comes back with the previous rules.
 func (fm *FirewallManager) applyNFTablesScript(script string) error {
-	if err := fm.nft.Apply(script, true); err != nil {
+	if err := fm.nft.Apply(script, false); err != nil {
 		return err
 	}
-	// Save to config path for persistence
-	if err := os.WriteFile(fm.configPath, []byte(script), 0600); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
-	}
+	fm.pendingScript = script
 	return nil
 }
 
+// backupCurrentConfig saves table inet nos as it is now (empty when there
+// is none yet).
 func (fm *FirewallManager) backupCurrentConfig() error {
-	// Get current ruleset
 	output, err := fm.nft.List(false)
 	if err != nil {
-		return fmt.Errorf("failed to get current ruleset: %w", err)
+		output = nil // no nos table yet
 	}
-
-	// Save to backup file
 	if err := os.WriteFile(fm.backupPath, output, 0600); err != nil {
 		return fmt.Errorf("failed to write backup: %w", err)
 	}
-
 	return nil
 }
 
+// rollbackToBackup puts table inet nos back as it was before the apply;
+// nothing else is touched (it used to flush the whole ruleset, Docker's
+// included). What boot loads was never changed, so it isn't either.
 func (fm *FirewallManager) rollbackToBackup() error {
-	// Check if backup exists
-	if _, err := os.Stat(fm.backupPath); os.IsNotExist(err) {
-		return fmt.Errorf("no backup found")
-	}
-
-	// Apply backup (a full ruleset listing: flush first)
 	backup, err := os.ReadFile(fm.backupPath)
 	if err != nil {
-		return fmt.Errorf("read backup: %w", err)
+		return fmt.Errorf("no backup found")
 	}
-	if err := fm.nft.Apply("flush ruleset\n"+string(backup), true); err != nil {
+	script := fmt.Sprintf("table inet %s\ndelete table inet %s\n%s", NFTTable, NFTTable, backup)
+	if err := fm.nft.Apply(script, false); err != nil {
 		return fmt.Errorf("rollback failed: %w", err)
 	}
-
-	// Update state
+	fm.pendingScript = ""
 	if fm.currentState != nil {
 		fm.currentState.Status = "active"
 		fm.currentState.RollbackAt = nil
 	}
-
-	// Cancel rollback timer if exists
 	if fm.rollbackTimer != nil {
 		fm.rollbackTimer.Stop()
 		if fm.rollbackCancel != nil {
@@ -577,7 +388,6 @@ func (fm *FirewallManager) rollbackToBackup() error {
 		fm.rollbackTimer = nil
 		fm.rollbackCancel = nil
 	}
-
 	return nil
 }
 
@@ -594,31 +404,6 @@ func (fm *FirewallManager) autoRollback() {
 }
 
 // Helper functions
-
-func (fm *FirewallManager) detectCurrentMode(nftOutput []byte) AccessMode {
-	output := string(nftOutput)
-
-	// Simple heuristic based on rules present
-	if strings.Contains(output, "51820") {
-		return AccessModeWireGuard
-	}
-	if strings.Contains(output, "dport 443") && !strings.Contains(output, "192.168") {
-		return AccessModePublicHTTPS
-	}
-
-	return AccessModeLANOnly
-}
-
-func (fm *FirewallManager) parseNFTablesRules(output []byte) []FirewallRule {
-	// This would parse the JSON output from nft
-	// For now, return current rules based on detected mode
-	return fm.getDefaultRules()
-}
-
-func (fm *FirewallManager) calculateChecksum(data []byte) string {
-	hash := sha256.Sum256(data)
-	return hex.EncodeToString(hash[:])
-}
 
 func (fm *FirewallManager) calculateRulesChecksum(rules []FirewallRule) string {
 	var data bytes.Buffer
