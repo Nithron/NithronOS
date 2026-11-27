@@ -9,7 +9,9 @@ nos-fstrim.service lib/systemd/system/
 nos-fstrim.timer lib/systemd/system/
 ../../../deploy/scripts/gen-local-cert.sh usr/lib/nos/
 nos-certgen.service lib/systemd/system/
-# no longer install Caddyfile to avoid dpkg conflict with distro caddy
+../../../deploy/caddy/Caddyfile usr/share/nos/caddy/
+../../../deploy/scripts/install-caddyfile.sh usr/lib/nos/
+../../../deploy/systemd/caddy.service.d/nos.conf lib/systemd/system/caddy.service.d/
 # OTP announcement moved to nosd package
 
 

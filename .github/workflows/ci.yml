@@ -346,8 +346,8 @@ jobs:
           set -euo pipefail
           which caddy || true
           caddy version || true
-          echo "[ci] ISO Caddyfile validation:"
-          cat packaging/iso/debian/config/includes.chroot/etc/caddy/Caddyfile || true
+          echo "[ci] Caddyfile validation (deploy/caddy/Caddyfile, shipped by the nos package):"
+          cat deploy/caddy/Caddyfile || true
           
           # Create temporary TLS certificates for validation
           echo "[ci] Creating temporary TLS certificates for validation..."
@@ -358,11 +358,11 @@ jobs:
             -subj "/CN=localhost" 2>/dev/null || true
           
           echo "[ci] Validating Caddy config (with temporary certs)"
-          caddy validate --config packaging/iso/debian/config/includes.chroot/etc/caddy/Caddyfile || {
+          caddy validate --config deploy/caddy/Caddyfile || {
             echo "[ci] Validation failed, trying with adapted config..."
             # If validation fails, try with internal TLS for CI
             sed 's|tls /etc/ssl/nos/cert.pem /etc/ssl/nos/key.pem|tls internal|' \
-              packaging/iso/debian/config/includes.chroot/etc/caddy/Caddyfile > /tmp/ci-caddyfile
+              deploy/caddy/Caddyfile > /tmp/ci-caddyfile
             caddy validate --config /tmp/ci-caddyfile
           }
           

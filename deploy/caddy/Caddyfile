@@ -1,3 +1,8 @@
+# Managed by nOS (package nos). The web interface on 443 with this machine's
+# self-signed certificate (nos-certgen), nosd behind /api and /dav, and the
+# installed apps under /apps/<id>/ (snippets written by nos-agent).
+# Replaced on package upgrades while this first line is here; remove it to
+# keep your own version.
 {
   # Admin API on a socket only root and caddy can reach (reloads need it).
   admin unix//var/lib/caddy/admin.sock
@@ -12,21 +17,21 @@
   # Apps installed by nOS (written by nos-agent)
   import /etc/caddy/Caddyfile.d/app-*.caddy
 
-  # If you have certs on disk (recommended for IP SAN):
   tls /etc/ssl/nos/cert.pem /etc/ssl/nos/key.pem
-
   encode gzip zstd
 
+  # No Strict-Transport-Security: with a self-signed certificate it makes
+  # browsers refuse the "continue anyway" a first visit needs.
   header {
     X-Content-Type-Options "nosniff"
     Referrer-Policy "no-referrer"
     Cross-Origin-Opener-Policy "same-origin"
     Cross-Origin-Embedder-Policy "require-corp"
-    Strict-Transport-Security "max-age=31536000"
   }
 
-  @api path /api/*
-  handle @api {
+  # nosd: the API and WebDAV (NithronSync clients and file managers).
+  @nosd path /api/* /dav /dav/*
+  handle @nosd {
     reverse_proxy 127.0.0.1:9000
   }
 

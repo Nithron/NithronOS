@@ -25,7 +25,6 @@ KillMode=mixed
 ExecStopPost=/bin/sh -c 'sleep 0.1'
 AmbientCapabilities=
 NoNewPrivileges=yes
-IPAddressAllow=127.0.0.1
 ProtectSystem=full
 ProtectHome=true
 PrivateTmp=yes
@@ -36,12 +35,15 @@ ProtectControlGroups=yes
 CapabilityBoundingSet=
 LockPersonality=yes
 MemoryDenyWriteExecute=yes
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# AF_NETLINK: listing the network interfaces (network status).
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
 RestrictRealtime=yes
 RestrictSUIDSGID=yes
 RestrictNamespaces=yes
 SystemCallFilter=@system-service
-ReadWritePaths=/etc/nos /var/lib/nos /run
+# /srv (app compose files) isn't protected by ProtectSystem=full; /run/nos
+# is the RuntimeDirectory.
+ReadWritePaths=/etc/nos /var/lib/nos
 
 [Install]
 WantedBy=multi-user.target
