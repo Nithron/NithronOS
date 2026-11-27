@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { confirmAction } from '@/components/ui/confirm';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { HardDrive, Calendar, Plus, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { AddIcon, DeleteIcon, PoolIcon, RefreshIcon, WarningIcon } from '@/components/icons'
 import { backupApi } from '@/api/backup';
 import type { Snapshot } from '@/api/backup.types';
 import { formatBytes } from '@/lib/utils';
@@ -42,8 +43,8 @@ export default function Snapshots() {
   const snapshots = snapshotsData?.snapshots || [];
   const subvolumes = stats ? Object.keys(stats.by_subvolume) : [];
   
-  const handleDelete = (snapshot: Snapshot) => {
-    if (window.confirm(`Delete snapshot ${snapshot.path}? This cannot be undone.`)) {
+  const handleDelete = async (snapshot: Snapshot) => {
+    if (await confirmAction({ title: 'Delete this snapshot?', description: <span className="font-mono">{snapshot.path}</span>, action: 'Delete snapshot' })) {
       deleteMutation.mutate(snapshot.id);
     }
   };
@@ -58,7 +59,7 @@ export default function Snapshots() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Snapshots</h1>
+          <h1 className="screen-title">Snapshots</h1>
           <p className="text-muted-foreground">
             Manage system snapshots and restore points
           </p>
@@ -67,46 +68,27 @@ export default function Snapshots() {
           onClick={() => setShowCreateDialog(true)}
           className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
         >
-          <Plus className="w-4 h-4 mr-2" />
-          Create Snapshot
+          <AddIcon className="w-4 h-4 mr-2" />
+          Create snapshot
         </button>
       </div>
       
       {/* Stats Cards */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="bg-card rounded-lg p-4">
-            <div className="flex items-center space-x-3">
-              <HardDrive className="w-8 h-8 text-primary" />
-              <div>
-                <p className="text-sm text-muted-foreground">Total Snapshots</p>
-                <p className="text-2xl font-semibold">{stats.total_count}</p>
-              </div>
-            </div>
+        <div className="grid gap-px border border-hairline bg-hairline md:grid-cols-3 [&>*]:bg-page [&>*]:p-4">
+          <div>
+            <p className="font-mono text-[0.8125rem] text-ink-2">Snapshots</p>
+            <p className="pixel-display pixel-24 mt-2">{stats.total_count}</p>
           </div>
-          
-          <div className="bg-card rounded-lg p-4">
-            <div className="flex items-center space-x-3">
-              <HardDrive className="w-8 h-8 text-primary" />
-              <div>
-                <p className="text-sm text-muted-foreground">Total Size</p>
-                <p className="text-2xl font-semibold">{formatBytes(stats.total_size_bytes)}</p>
-              </div>
-            </div>
+          <div>
+            <p className="font-mono text-[0.8125rem] text-ink-2">Total size</p>
+            <p className="pixel-display pixel-24 mt-2">{formatBytes(stats.total_size_bytes)}</p>
           </div>
-          
-          <div className="bg-card rounded-lg p-4">
-            <div className="flex items-center space-x-3">
-              <Calendar className="w-8 h-8 text-primary" />
-              <div>
-                <p className="text-sm text-muted-foreground">Oldest Snapshot</p>
-                <p className="text-2xl font-semibold">
-                  {stats.oldest_snapshot 
-                    ? formatDistanceToNow(new Date(stats.oldest_snapshot), { addSuffix: true })
-                    : 'N/A'}
-                </p>
-              </div>
-            </div>
+          <div>
+            <p className="font-mono text-[0.8125rem] text-ink-2">Oldest</p>
+            <p className="mt-2 text-2xl">
+              {stats.oldest_snapshot ? formatDistanceToNow(new Date(stats.oldest_snapshot), { addSuffix: true }) : 'None yet'}
+            </p>
           </div>
         </div>
       )}
@@ -118,7 +100,7 @@ export default function Snapshots() {
           <select
             value={selectedSubvolume}
             onChange={(e) => setSelectedSubvolume(e.target.value)}
-            className="bg-card rounded px-3 py-1"
+            className="field h-8 w-auto"
           >
             <option value="">All subvolumes</option>
             {subvolumes.map((subvol) => (
@@ -129,31 +111,31 @@ export default function Snapshots() {
       )}
       
       {/* Snapshots List */}
-      <div className="bg-card rounded-lg">
+      <div className="border border-hairline">
         {isLoading ? (
           <div className="p-8 text-center text-muted-foreground">
             Loading snapshots...
           </div>
         ) : snapshots.length === 0 ? (
           <div className="p-8 text-center">
-            <HardDrive className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <PoolIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground mb-4">No snapshots found</p>
             <button
               onClick={() => setShowCreateDialog(true)}
               className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Create First Snapshot
+              <AddIcon className="w-4 h-4 mr-2" />
+              Create first snapshot
             </button>
           </div>
         ) : (
           <div className="divide-y">
             {snapshots.map((snapshot) => (
-              <div key={snapshot.id} className="p-4 hover:bg-muted/50 transition-colors">
+              <div key={snapshot.id} className="p-4 hover:bg-ink/[.09] transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
-                      <HardDrive className="w-5 h-5 text-primary" />
+                      <PoolIcon className="w-5 h-5 text-primary" />
                       <div>
                         <p className="font-medium">{snapshot.path}</p>
                         <div className="flex items-center space-x-4 mt-1 text-sm text-muted-foreground">
@@ -162,16 +144,16 @@ export default function Snapshots() {
                           <span>
                             Created {formatDistanceToNow(new Date(snapshot.created_at), { addSuffix: true })}
                           </span>
-                          {snapshot.size_bytes && (
+                          {(snapshot.size_bytes ?? 0) > 0 && (
                             <>
                               <span>•</span>
-                              <span>{formatBytes(snapshot.size_bytes)}</span>
+                              <span>{formatBytes(snapshot.size_bytes ?? 0)}</span>
                             </>
                           )}
                           {snapshot.schedule_id && (
                             <>
                               <span>•</span>
-                              <span className="text-green-500">Scheduled</span>
+                              <span className="text-status-ok-text">Scheduled</span>
                             </>
                           )}
                         </div>
@@ -180,7 +162,7 @@ export default function Snapshots() {
                             {snapshot.tags.map((tag: any) => (
                               <span
                                 key={tag}
-                                className="px-2 py-1 bg-primary/10 text-primary rounded text-xs"
+                                className="rounded-sm border border-rule px-2 py-0.5 text-xs text-ink"
                               >
                                 {tag}
                               </span>
@@ -194,18 +176,18 @@ export default function Snapshots() {
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleRestore(snapshot)}
-                      className="btn btn-sm"
+                      className="btn btn-line min-h-8 px-3"
                       title="Restore from this snapshot"
                     >
-                      <RefreshCw className="w-4 h-4" />
+                      <RefreshIcon className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(snapshot)}
-                      className="btn btn-sm text-red-500 hover:bg-red-500/10"
+                      className="btn btn-line min-h-8 px-3 hover:bg-ink/[.09]"
                       title="Delete snapshot"
                       disabled={deleteMutation.isPending}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <DeleteIcon className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -282,14 +264,14 @@ function CreateSnapshotDialog({
   const availableSubvolumes = ['@', '@home', '@var', '@log'];
   
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background rounded-lg p-6 max-w-md w-full">
-        <h2 className="text-lg font-semibold mb-4">Create Snapshot</h2>
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-page/70">
+      <div className="border border-edge bg-page p-6 max-w-md w-full">
+        <h2 className="text-lg font-[560] mb-4">Create snapshot</h2>
         
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">
-              Select Subvolumes
+              Select subvolumes
             </label>
             <div className="space-y-2">
               {availableSubvolumes.map((subvol) => (
@@ -316,7 +298,7 @@ function CreateSnapshotDialog({
               value={tag}
               onChange={(e) => setTag(e.target.value)}
               placeholder="e.g., before-upgrade"
-              className="w-full bg-card rounded px-3 py-2"
+              className="field"
             />
           </div>
         </div>
@@ -331,10 +313,10 @@ function CreateSnapshotDialog({
           </button>
           <button
             onClick={handleCreate}
-            className="btn bg-primary text-primary-foreground"
+            className="btn btn-primary"
             disabled={isCreating}
           >
-            {isCreating ? 'Creating...' : 'Create Snapshot'}
+            {isCreating ? 'Creating...' : 'Create snapshot'}
           </button>
         </div>
       </div>
@@ -395,11 +377,11 @@ function RestoreDialog({
   };
   
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <h2 className="text-lg font-semibold mb-4">Restore from Snapshot</h2>
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-page/70">
+      <div className="border border-edge bg-page p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        <h2 className="text-lg font-[560] mb-4">Restore from snapshot</h2>
         
-        <div className="bg-card rounded p-4 mb-4">
+        <div className="border border-hairline p-4 mb-4">
           <p className="text-sm text-muted-foreground">Restoring from:</p>
           <p className="font-medium">{snapshot.path}</p>
           <p className="text-sm text-muted-foreground mt-1">
@@ -411,7 +393,7 @@ function RestoreDialog({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-2">
-                Restore Type
+                Restore type
               </label>
               <div className="space-y-2">
                 <label className="flex items-center">
@@ -449,7 +431,7 @@ function RestoreDialog({
             
             <div>
               <label htmlFor="targetPath" className="block text-sm font-medium mb-2">
-                Target Path
+                Target path
               </label>
               <input
                 id="targetPath"
@@ -457,7 +439,7 @@ function RestoreDialog({
                 value={targetPath}
                 onChange={(e) => setTargetPath(e.target.value)}
                 placeholder={restoreType === 'full' ? '/' : '/home/user/restored-files'}
-                className="w-full bg-card rounded px-3 py-2"
+                className="field"
               />
             </div>
             
@@ -467,20 +449,20 @@ function RestoreDialog({
               </button>
               <button
                 onClick={handleCreatePlan}
-                className="btn bg-primary text-primary-foreground"
+                className="btn btn-primary"
                 disabled={isCreatingPlan}
               >
-                {isCreatingPlan ? 'Creating Plan...' : 'Create Restore Plan'}
+                {isCreatingPlan ? 'Creating the plan…' : 'Create restore plan'}
               </button>
             </div>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-yellow-500/10 border border-yellow-500/50 rounded p-4">
+            <div className="border border-status-warning p-4">
               <div className="flex items-start space-x-3">
-                <AlertTriangle className="w-5 h-5 text-yellow-500 mt-0.5" />
+                <WarningIcon className="w-5 h-5 text-status-warning-text mt-0.5" />
                 <div>
-                  <p className="font-medium text-yellow-500">Restore Plan</p>
+                  <p className="font-medium text-status-warning-text">Restore plan</p>
                   <p className="text-sm mt-1">
                     Estimated time: {Math.round(plan.estimated_time_seconds / 60)} minutes
                   </p>
@@ -514,9 +496,9 @@ function RestoreDialog({
               </button>
               <button
                 onClick={handleApplyRestore}
-                className="btn bg-primary text-primary-foreground"
+                className="btn btn-primary"
               >
-                Apply Restore
+                Apply restore
               </button>
             </div>
           </div>

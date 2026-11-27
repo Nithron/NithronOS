@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { Switch } from '@/components/ui/switch';
+import { confirmAction } from '@/components/ui/confirm';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { Calendar, Clock, Plus, Edit2, Trash2, ToggleLeft, ToggleRight, PlayCircle } from 'lucide-react';
+import { AddIcon, DeleteIcon, EditIcon, ScheduleIcon, StartIcon, TimeIcon } from '@/components/icons'
 import { backupApi } from '@/api/backup';
 import type { Schedule, ScheduleFrequency, RetentionPolicy } from '@/api/backup.types';
 import { toast } from '@/components/ui/toast';
@@ -48,8 +50,8 @@ export default function BackupSchedules() {
     toggleMutation.mutate({ id: schedule.id, enabled: !schedule.enabled });
   };
   
-  const handleDelete = (schedule: Schedule) => {
-    if (window.confirm(`Delete schedule "${schedule.name}"? This will not delete existing snapshots.`)) {
+  const handleDelete = async (schedule: Schedule) => {
+    if (await confirmAction({ title: `Delete the schedule ${schedule.name}?`, description: 'Snapshots it already made are kept.', action: 'Delete schedule' })) {
       deleteMutation.mutate(schedule.id);
     }
   };
@@ -102,7 +104,7 @@ export default function BackupSchedules() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Backup Schedules</h1>
+          <h1 className="screen-title">Backup schedules</h1>
           <p className="text-muted-foreground">
             Configure automatic backup schedules with retention policies
           </p>
@@ -111,27 +113,27 @@ export default function BackupSchedules() {
           onClick={() => setShowCreateDialog(true)}
           className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
         >
-          <Plus className="w-4 h-4 mr-2" />
-          Create Schedule
+          <AddIcon className="w-4 h-4 mr-2" />
+          Create schedule
         </button>
       </div>
       
       {/* Schedules List */}
-      <div className="bg-card rounded-lg">
+      <div className="border border-hairline">
         {isLoading ? (
           <div className="p-8 text-center text-muted-foreground">
             Loading schedules...
           </div>
         ) : schedules.length === 0 ? (
           <div className="p-8 text-center">
-            <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <ScheduleIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground mb-4">No backup schedules configured</p>
             <button
               onClick={() => setShowCreateDialog(true)}
               className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Create First Schedule
+              <AddIcon className="w-4 h-4 mr-2" />
+              Create first schedule
             </button>
           </div>
         ) : (
@@ -141,22 +143,17 @@ export default function BackupSchedules() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
-                      <button
-                        onClick={() => handleToggle(schedule)}
-                        className="text-primary"
+                      <Switch
+                        aria-label={`Schedule ${schedule.name}`}
+                        checked={schedule.enabled}
+                        onCheckedChange={() => handleToggle(schedule)}
                         disabled={toggleMutation.isPending}
-                      >
-                        {schedule.enabled ? (
-                          <ToggleRight className="w-6 h-6" />
-                        ) : (
-                          <ToggleLeft className="w-6 h-6 text-muted-foreground" />
-                        )}
-                      </button>
+                      />
                       <div>
                         <p className="font-medium">{schedule.name}</p>
                         <div className="flex items-center space-x-4 mt-1 text-sm text-muted-foreground">
                           <span className="flex items-center">
-                            <Clock className="w-3 h-3 mr-1" />
+                            <TimeIcon className="w-3 h-3 mr-1" />
                             {formatFrequency(schedule.frequency)}
                           </span>
                           <span>•</span>
@@ -172,7 +169,7 @@ export default function BackupSchedules() {
                             </span>
                           )}
                           {schedule.next_run && schedule.enabled && (
-                            <span className="text-green-500">
+                            <span className="text-status-ok-text">
                               Next run: {formatDistanceToNow(new Date(schedule.next_run), { addSuffix: true })}
                             </span>
                           )}
@@ -184,25 +181,25 @@ export default function BackupSchedules() {
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleRunNow(schedule)}
-                      className="btn btn-sm"
-                      title="Run backup now"
+                      className="btn btn-line min-h-8 px-3"
                     >
-                      <PlayCircle className="w-4 h-4" />
+                      <StartIcon className="h-4 w-4" />
+                      Run now
                     </button>
                     <button
                       onClick={() => setEditingSchedule(schedule)}
-                      className="btn btn-sm"
+                      className="btn btn-line min-h-8 px-3"
                       title="Edit schedule"
                     >
-                      <Edit2 className="w-4 h-4" />
+                      <EditIcon className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(schedule)}
-                      className="btn btn-sm text-red-500 hover:bg-red-500/10"
+                      className="btn btn-line min-h-8 px-3 hover:bg-ink/[.09]"
                       title="Delete schedule"
                       disabled={deleteMutation.isPending}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <DeleteIcon className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -308,17 +305,17 @@ function ScheduleDialog({
   const availableSubvolumes = ['@', '@home', '@var', '@log'];
   
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <h2 className="text-lg font-semibold mb-4">
-          {schedule ? 'Edit Schedule' : 'Create Backup Schedule'}
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-page/70">
+      <div className="border border-edge bg-page p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        <h2 className="text-lg font-[560] mb-4">
+          {schedule ? 'Edit schedule' : 'Create backup schedule'}
         </h2>
         
         <div className="space-y-4">
           {/* Basic Settings */}
           <div>
             <label htmlFor="name" className="block text-sm font-medium mb-2">
-              Schedule Name
+              Schedule name
             </label>
             <input
               id="name"
@@ -326,7 +323,7 @@ function ScheduleDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Daily System Backup"
-              className="w-full bg-card rounded px-3 py-2"
+              className="field"
             />
           </div>
           
@@ -346,7 +343,7 @@ function ScheduleDialog({
           {/* Subvolumes */}
           <div>
             <label className="block text-sm font-medium mb-2">
-              Subvolumes to Backup
+              Subvolumes to backup
             </label>
             <div className="grid grid-cols-2 gap-2">
               {availableSubvolumes.map((subvol) => (
@@ -375,7 +372,7 @@ function ScheduleDialog({
                 setFrequencyType(type);
                 setFrequency({ ...frequency, type });
               }}
-              className="w-full bg-card rounded px-3 py-2 mb-2"
+              className="field mb-2"
             >
               <option value="hourly">Hourly</option>
               <option value="daily">Daily</option>
@@ -386,14 +383,14 @@ function ScheduleDialog({
             
             {frequencyType === 'hourly' && (
               <div>
-                <label className="text-sm">Minute of hour (0-59):</label>
+                <label className="mb-1 block text-sm">Minute of hour (0-59)</label>
                 <input
                   type="number"
                   min="0"
                   max="59"
                   value={frequency.minute || 0}
                   onChange={(e) => setFrequency({ ...frequency, minute: parseInt(e.target.value) })}
-                  className="ml-2 w-20 bg-card rounded px-2 py-1"
+                  className="field h-8 w-20"
                 />
               </div>
             )}
@@ -401,25 +398,25 @@ function ScheduleDialog({
             {(frequencyType === 'daily' || frequencyType === 'weekly' || frequencyType === 'monthly') && (
               <div className="flex items-center space-x-4">
                 <div>
-                  <label className="text-sm">Hour (0-23):</label>
+                  <label className="mb-1 block text-sm">Hour (0-23)</label>
                   <input
                     type="number"
                     min="0"
                     max="23"
                     value={frequency.hour || 0}
                     onChange={(e) => setFrequency({ ...frequency, hour: parseInt(e.target.value) })}
-                    className="ml-2 w-20 bg-card rounded px-2 py-1"
+                    className="field h-8 w-20"
                   />
                 </div>
                 <div>
-                  <label className="text-sm">Minute (0-59):</label>
+                  <label className="mb-1 block text-sm">Minute (0-59)</label>
                   <input
                     type="number"
                     min="0"
                     max="59"
                     value={frequency.minute || 0}
                     onChange={(e) => setFrequency({ ...frequency, minute: parseInt(e.target.value) })}
-                    className="ml-2 w-20 bg-card rounded px-2 py-1"
+                    className="field h-8 w-20"
                   />
                 </div>
               </div>
@@ -427,11 +424,11 @@ function ScheduleDialog({
             
             {frequencyType === 'weekly' && (
               <div className="mt-2">
-                <label className="text-sm">Day of week:</label>
+                <label className="mb-1 block text-sm">Day of week</label>
                 <select
                   value={frequency.weekday || 0}
                   onChange={(e) => setFrequency({ ...frequency, weekday: parseInt(e.target.value) })}
-                  className="ml-2 bg-card rounded px-2 py-1"
+                  className="field h-8 w-auto"
                 >
                   <option value="0">Sunday</option>
                   <option value="1">Monday</option>
@@ -446,14 +443,14 @@ function ScheduleDialog({
             
             {frequencyType === 'monthly' && (
               <div className="mt-2">
-                <label className="text-sm">Day of month (1-31):</label>
+                <label className="mb-1 block text-sm">Day of month (1-31)</label>
                 <input
                   type="number"
                   min="1"
                   max="31"
                   value={frequency.day || 1}
                   onChange={(e) => setFrequency({ ...frequency, day: parseInt(e.target.value) })}
-                  className="ml-2 w-20 bg-card rounded px-2 py-1"
+                  className="field h-8 w-20"
                 />
               </div>
             )}
@@ -465,7 +462,7 @@ function ScheduleDialog({
                   value={frequency.cron || ''}
                   onChange={(e) => setFrequency({ ...frequency, cron: e.target.value })}
                   placeholder="0 2 * * *"
-                  className="w-full bg-card rounded px-3 py-2"
+                  className="field"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Standard cron expression (minute hour day month weekday)
@@ -476,58 +473,59 @@ function ScheduleDialog({
           
           {/* Retention */}
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Retention Policy (GFS)
-            </label>
+            <p className="text-sm font-[560]">Snapshots to keep</p>
+            <p className="mb-2 text-sm text-ink-2">
+              The newest snapshot of each day, week, month and year is kept, as many as set here, and never fewer than the minimum.
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm">Minimum to keep:</label>
+                <label className="mb-1 block text-sm">At least</label>
                 <input
                   type="number"
                   min="0"
                   value={retention.min_keep}
                   onChange={(e) => setRetention({ ...retention, min_keep: parseInt(e.target.value) })}
-                  className="ml-2 w-20 bg-card rounded px-2 py-1"
+                  className="field h-8 w-20"
                 />
               </div>
               <div>
-                <label className="text-sm">Daily:</label>
+                <label className="mb-1 block text-sm">Daily</label>
                 <input
                   type="number"
                   min="0"
                   value={retention.days}
                   onChange={(e) => setRetention({ ...retention, days: parseInt(e.target.value) })}
-                  className="ml-2 w-20 bg-card rounded px-2 py-1"
+                  className="field h-8 w-20"
                 />
               </div>
               <div>
-                <label className="text-sm">Weekly:</label>
+                <label className="mb-1 block text-sm">Weekly</label>
                 <input
                   type="number"
                   min="0"
                   value={retention.weeks}
                   onChange={(e) => setRetention({ ...retention, weeks: parseInt(e.target.value) })}
-                  className="ml-2 w-20 bg-card rounded px-2 py-1"
+                  className="field h-8 w-20"
                 />
               </div>
               <div>
-                <label className="text-sm">Monthly:</label>
+                <label className="mb-1 block text-sm">Monthly</label>
                 <input
                   type="number"
                   min="0"
                   value={retention.months}
                   onChange={(e) => setRetention({ ...retention, months: parseInt(e.target.value) })}
-                  className="ml-2 w-20 bg-card rounded px-2 py-1"
+                  className="field h-8 w-20"
                 />
               </div>
               <div>
-                <label className="text-sm">Yearly:</label>
+                <label className="mb-1 block text-sm">Yearly</label>
                 <input
                   type="number"
                   min="0"
                   value={retention.years}
                   onChange={(e) => setRetention({ ...retention, years: parseInt(e.target.value) })}
-                  className="ml-2 w-20 bg-card rounded px-2 py-1"
+                  className="field h-8 w-20"
                 />
               </div>
             </div>
@@ -547,10 +545,10 @@ function ScheduleDialog({
           </button>
           <button
             onClick={handleSave}
-            className="btn bg-primary text-primary-foreground"
+            className="btn btn-primary"
             disabled={isSaving}
           >
-            {isSaving ? 'Saving...' : (schedule ? 'Update Schedule' : 'Create Schedule')}
+            {isSaving ? 'Saving...' : (schedule ? 'Update schedule' : 'Create schedule')}
           </button>
         </div>
       </div>

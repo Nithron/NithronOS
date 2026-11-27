@@ -1,21 +1,11 @@
 import { useState, useEffect } from 'react';
+import { formatDate, formatDateTime, formatTime } from '@/lib/datetime'
+import { confirmAction } from '@/components/ui/confirm';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import {
-  Download,
-  RefreshCw,
-  CheckCircle,
-  Clock,
-  HardDrive,
-  Trash2,
-  RotateCcw,
-  Loader2,
-  Package,
-  GitBranch,
-  Server,
-} from 'lucide-react';
-import { format } from 'date-fns';
-import { toast } from 'react-hot-toast';
+import { AppIcon, ChannelIcon, DeleteIcon, DownloadIcon, RefreshIcon, ServerIcon, SnapshotIcon, TimeIcon, WorkingIcon } from '@/components/icons'
+import { toast } from '@/components/ui/toast';
+import { Meter, StatusMark } from '@/components/ui/pixel';
 
 import { updatesApi, formatVersion, getUpdateStateColor, formatBytes, formatDuration } from '@/api/updates';
 import type { UpdateProgress, UpdateSnapshot, UpdateChannel } from '@/api/updates.types';
@@ -162,14 +152,22 @@ export default function Updates() {
     }
   };
 
-  const handleRollback = (snapshotId: string) => {
-    if (confirm('Are you sure you want to rollback to this snapshot? This will restart the system.')) {
+  // A rollback restores the configuration saved before an update
+  // (/etc/nos) and restarts nosd; packages stay as they are.
+  const handleRollback = async (snapshotId: string) => {
+    if (
+      await confirmAction({
+        title: 'Restore the configuration from this snapshot?',
+        description: 'nOS puts back its configuration as it was before that update and restarts nosd. Installed packages are not downgraded.',
+        action: 'Restore configuration',
+      })
+    ) {
       rollbackMutation.mutate({ snapshot_id: snapshotId });
     }
   };
 
-  const handleDeleteSnapshot = (snapshotId: string) => {
-    if (confirm('Are you sure you want to delete this snapshot? This action cannot be undone.')) {
+  const handleDeleteSnapshot = async (snapshotId: string) => {
+    if (await confirmAction({ title: 'Delete this snapshot?', description: 'It cannot be restored afterwards.', action: 'Delete snapshot' })) {
       deleteSnapshotMutation.mutate(snapshotId);
     }
   };
@@ -179,68 +177,64 @@ export default function Updates() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">System Updates</h1>
-          <p className="text-gray-400 mt-1">
+          <h1 className="screen-title">System updates</h1>
+          <p className="text-ink-2 mt-1">
             Manage system updates and snapshots
           </p>
         </div>
         <button
           onClick={() => checkForUpdates()}
           disabled={isChecking || updateProgress?.state !== 'idle'}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="btn btn-primary"
         >
-          {isChecking ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <RefreshCw className="w-4 h-4" />
-          )}
-          Check for Updates
+          {isChecking ? <WorkingIcon className="h-4 w-4" /> : <RefreshIcon className="h-4 w-4" />}
+          {isChecking ? 'Checking' : 'Check for updates'}
         </button>
       </div>
 
       {/* Current Version Card */}
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Current Version</h2>
+      <div className="border border-hairline p-6">
+        <h2 className="mb-4 text-xl font-[560]">Current version</h2>
         {version && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-start gap-3">
-              <Server className="w-5 h-5 text-gray-400 mt-1" />
+              <ServerIcon className="w-5 h-5 text-ink-2 mt-1" />
               <div>
-                <p className="text-sm text-gray-400">OS Version</p>
-                <p className="text-white font-medium">{version.os_version}</p>
-                <p className="text-xs text-gray-500 mt-1">{version.kernel}</p>
+                <p className="text-sm text-ink-2">OS version</p>
+                <p className="text-ink font-medium">{version.os_version}</p>
+                <p className="text-xs text-ink-2 mt-1">{version.kernel}</p>
               </div>
             </div>
             
             <div className="flex items-start gap-3">
-              <Package className="w-5 h-5 text-gray-400 mt-1" />
+              <AppIcon className="w-5 h-5 text-ink-2 mt-1" />
               <div>
-                <p className="text-sm text-gray-400">Components</p>
-                <p className="text-white font-medium">{formatVersion(version)}</p>
+                <p className="text-sm text-ink-2">Components</p>
+                <p className="text-ink font-medium">{formatVersion(version)}</p>
                 {version.build_date && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Built {format(new Date(version.build_date), 'PP')}
+                  <p className="text-xs text-ink-2 mt-1">
+                    Built {formatDate(version.build_date)}
                   </p>
                 )}
               </div>
             </div>
             
             <div className="flex items-start gap-3">
-              <GitBranch className="w-5 h-5 text-gray-400 mt-1" />
+              <ChannelIcon className="w-5 h-5 text-ink-2 mt-1" />
               <div>
-                <p className="text-sm text-gray-400">Update Channel</p>
+                <p className="text-sm text-ink-2">Update channel</p>
                 <div className="flex items-center gap-2 mt-1">
                   <select
                     value={selectedChannel}
                     onChange={(e) => handleChannelChange(e.target.value as UpdateChannel)}
-                    className="bg-gray-700 text-white rounded px-2 py-1 text-sm"
+                    className="field h-8 w-auto"
                     disabled={updateProgress?.state !== 'idle'}
                   >
                     <option value="stable">Stable</option>
                     <option value="beta">Beta</option>
                   </select>
                   {selectedChannel === 'beta' && (
-                    <span className="text-xs text-yellow-500">⚠️ May be unstable</span>
+                    <span className="text-xs text-status-warning-text">⚠️ May be unstable</span>
                   )}
                 </div>
               </div>
@@ -252,17 +246,17 @@ export default function Updates() {
       {/* Available Update Card */}
       {updateCheck?.update_available && updateCheck.latest_version && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-blue-900 to-blue-800 rounded-lg p-6"
+          className="border border-ink p-6"
         >
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-3">
-                <Download className="w-5 h-5 text-blue-300" />
-                <h2 className="text-lg font-semibold text-white">Update Available</h2>
+                <DownloadIcon className="h-4 w-4 text-ink" />
+                <h2 className="text-xl font-[560]">Update available</h2>
                 {updateCheck.latest_version.critical && (
-                  <span className="px-2 py-1 bg-red-600 text-white text-xs rounded">
+                  <span className="rounded-sm border border-rule px-2 py-0.5 text-xs text-ink">
                     Critical
                   </span>
                 )}
@@ -270,31 +264,31 @@ export default function Updates() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <p className="text-sm text-blue-200">Version</p>
-                  <p className="text-white font-medium">{updateCheck.latest_version.version}</p>
+                  <p className="text-sm text-ink-2">Version</p>
+                  <p className="text-ink font-medium">{updateCheck.latest_version.version}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-blue-200">Release Date</p>
-                  <p className="text-white font-medium">
-                    {format(new Date(updateCheck.latest_version.release_date), 'PP')}
+                  <p className="text-sm text-ink-2">Release date</p>
+                  <p className="text-ink font-medium">
+                    {formatDate(updateCheck.latest_version.release_date)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-blue-200">Size</p>
-                  <p className="text-white font-medium">
+                  <p className="text-sm text-ink-2">Size</p>
+                  <p className="text-ink font-medium">
                     {formatBytes(updateCheck.latest_version.size)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-blue-200">Packages</p>
-                  <p className="text-white font-medium">
+                  <p className="text-sm text-ink-2">Packages</p>
+                  <p className="text-ink font-medium">
                     {updateCheck.latest_version.packages.length} packages
                   </p>
                 </div>
               </div>
               
               {updateCheck.latest_version.requires_reboot && (
-                <p className="text-yellow-300 text-sm mb-4">
+                <p className="text-status-warning-text text-sm mb-4">
                   ⚠️ This update requires a system reboot
                 </p>
               )}
@@ -303,12 +297,12 @@ export default function Updates() {
             <button
               onClick={handleApplyUpdate}
               disabled={updateProgress?.state !== 'idle' || applyUpdateMutation.isPending}
-              className="px-6 py-3 bg-white text-blue-900 rounded-lg font-medium hover:bg-gray-100 disabled:opacity-50"
+              className="btn btn-primary"
             >
               {applyUpdateMutation.isPending ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <WorkingIcon className="w-5 h-5 animate-spin" />
               ) : (
-                'Apply Update'
+                'Apply update'
               )}
             </button>
           </div>
@@ -318,7 +312,7 @@ export default function Updates() {
               href={updateCheck.latest_version.changelog_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-300 hover:text-blue-200 text-sm underline"
+              className="text-sm text-ink underline decoration-ink-2 underline-offset-4 hover:decoration-ink"
             >
               View Changelog →
             </a>
@@ -329,76 +323,49 @@ export default function Updates() {
       {/* Update Progress */}
       {updateProgress && updateProgress.state !== 'idle' && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gray-800 rounded-lg p-6"
+          className="border border-hairline p-6"
         >
-          <h2 className="text-lg font-semibold text-white mb-4">Update Progress</h2>
+          <h2 className="mb-4 text-xl font-[560]">Update progress</h2>
           
           <div className="space-y-4">
             {/* Progress Bar */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className={`text-sm ${getUpdateStateColor(updateProgress.state)}`}>
-                  {updateProgress.message}
-                </span>
-                <span className="text-sm text-gray-400">{updateProgress.progress}%</span>
-              </div>
-              <div className="w-full bg-gray-700 rounded-full h-2">
-                <motion.div
-                  className="bg-blue-600 h-2 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${updateProgress.progress}%` }}
-                  transition={{ duration: 0.5 }}
-                />
-              </div>
+              <p className={`mb-2 text-sm ${getUpdateStateColor(updateProgress.state)}`}>
+                {updateProgress.message}
+              </p>
+              <Meter value={updateProgress.progress} max={100} kind="progress" label="Update progress" />
             </div>
             
             {/* Phase Indicators */}
-            <div className="flex items-center justify-between text-xs">
-              {['preflight', 'snapshot', 'download', 'install', 'postflight', 'cleanup'].map((phase) => (
-                <div
-                  key={phase}
-                  className={`flex flex-col items-center ${
-                    updateProgress.phase === phase ? 'text-blue-400' : 'text-gray-500'
-                  }`}
-                >
-                  <div
-                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${
-                      updateProgress.phase === phase
-                        ? 'border-blue-400 bg-blue-400/20'
-                        : 'border-gray-600'
-                    }`}
-                  >
-                    {updateProgress.progress >= (
-                      phase === 'preflight' ? 20 :
-                      phase === 'snapshot' ? 40 :
-                      phase === 'download' ? 60 :
-                      phase === 'install' ? 80 :
-                      phase === 'postflight' ? 95 : 100
-                    ) ? (
-                      <CheckCircle className="w-4 h-4" />
-                    ) : (
-                      <div className="w-2 h-2 bg-current rounded-full" />
-                    )}
-                  </div>
-                  <span className="mt-1 capitalize">{phase}</span>
-                </div>
-              ))}
-            </div>
+            {/* The phases: done, the current one (a lamp), still to come. */}
+            <ol className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              {(['preflight', 'snapshot', 'download', 'install', 'postflight', 'cleanup'] as const).map((phase) => {
+                const doneAt = { preflight: 20, snapshot: 40, download: 60, install: 80, postflight: 95, cleanup: 100 }[phase]
+                const state = updateProgress.phase === phase ? 'running' : updateProgress.progress >= doneAt ? 'ok' : 'off'
+                return (
+                  <li key={phase} aria-current={state === 'running' ? 'step' : undefined}>
+                    <StatusMark state={state} className={state === 'running' ? 'font-[560] text-ink' : 'text-ink-2'}>
+                      {phase}
+                    </StatusMark>
+                  </li>
+                )
+              })}
+            </ol>
             
             {/* Logs */}
             {updateProgress.logs.length > 0 && (
-              <div className="bg-gray-900 rounded p-3 max-h-40 overflow-y-auto">
+              <div className="max-h-40 overflow-y-auto border border-hairline p-3 font-mono text-xs">
                 {updateProgress.logs.slice(-5).map((log, i) => (
                   <div key={i} className="flex items-start gap-2 text-xs">
-                    <span className="text-gray-500">
-                      {format(new Date(log.timestamp), 'HH:mm:ss')}
+                    <span className="text-ink-2">
+                      {formatTime(log.timestamp)}
                     </span>
                     <span className={
-                      log.level === 'error' ? 'text-red-400' :
-                      log.level === 'warn' ? 'text-yellow-400' :
-                      'text-gray-300'
+                      log.level === 'error' ? 'text-status-failed-text' :
+                      log.level === 'warn' ? 'text-status-warning-text' :
+                      'text-ink-2'
                     }>
                       {log.message}
                     </span>
@@ -409,8 +376,8 @@ export default function Updates() {
             
             {/* ETA */}
             {updateProgress.estimated_time_remaining && (
-              <div className="flex items-center gap-2 text-sm text-gray-400">
-                <Clock className="w-4 h-4" />
+              <div className="flex items-center gap-2 text-sm text-ink-2">
+                <TimeIcon className="w-4 h-4" />
                 <span>Estimated time remaining: {formatDuration(updateProgress.estimated_time_remaining)}</span>
               </div>
             )}
@@ -419,37 +386,37 @@ export default function Updates() {
       )}
 
       {/* Snapshots Section */}
-      <div className="bg-gray-800 rounded-lg p-6">
+      <div className="border border-hairline p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">System Snapshots</h2>
+          <h2 className="text-xl font-[560]">System snapshots</h2>
           <button
             onClick={() => setShowSnapshots(!showSnapshots)}
-            className="text-blue-400 hover:text-blue-300 text-sm"
+            className="text-sm text-ink underline decoration-ink-2 underline-offset-4 hover:decoration-ink"
           >
-            {showSnapshots ? 'Hide' : 'Show'} Snapshots
+            {showSnapshots ? 'Hide' : 'Show'} snapshots
           </button>
         </div>
         
         {showSnapshots && snapshots && (
           <div className="space-y-3">
             {snapshots.snapshots.length === 0 ? (
-              <p className="text-gray-400 text-center py-8">No snapshots available</p>
+              <p className="py-8 text-ink-2">No snapshots available</p>
             ) : (
               snapshots.snapshots.map((snapshot: UpdateSnapshot) => (
                 <div
                   key={snapshot.id}
-                  className="bg-gray-700 rounded-lg p-4 flex items-center justify-between"
+                  className="flex items-center justify-between border-b border-hairline py-4"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
-                      <HardDrive className="w-5 h-5 text-gray-400" />
+                      <SnapshotIcon className="w-5 h-5 text-ink-2" />
                       <div>
-                        <p className="text-white font-medium">{snapshot.id}</p>
-                        <p className="text-sm text-gray-400">
-                          {format(new Date(snapshot.created_at), 'PPp')} • {formatBytes(snapshot.size)}
+                        <p className="text-ink font-medium">{snapshot.id}</p>
+                        <p className="text-sm text-ink-2">
+                          {formatDateTime(snapshot.created_at)} • {formatBytes(snapshot.size)}
                         </p>
                         {snapshot.description && (
-                          <p className="text-sm text-gray-500 mt-1">{snapshot.description}</p>
+                          <p className="text-sm text-ink-2 mt-1">{snapshot.description}</p>
                         )}
                       </div>
                     </div>
@@ -459,18 +426,17 @@ export default function Updates() {
                     {snapshot.can_rollback && (
                       <button
                         onClick={() => handleRollback(snapshot.id)}
-                        className="p-2 text-yellow-400 hover:bg-gray-600 rounded"
-                        title="Rollback to this snapshot"
+                        className="p-2 text-ink-2 hover:bg-ink/[.09] hover:text-ink"
                       >
-                        <RotateCcw className="w-4 h-4" />
+                        Restore
                       </button>
                     )}
                     <button
                       onClick={() => handleDeleteSnapshot(snapshot.id)}
-                      className="p-2 text-red-400 hover:bg-gray-600 rounded"
+                      className="p-2 text-ink-2 hover:bg-ink/[.09] hover:text-ink"
                       title="Delete snapshot"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <DeleteIcon className="w-4 h-4" />
                     </button>
                   </div>
                 </div>

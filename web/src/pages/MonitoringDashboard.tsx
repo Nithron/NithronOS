@@ -2,14 +2,10 @@ import { useServices } from '@/api/system'
 import { getErrorMessage } from '@/lib/nos-client'
 import { motion } from 'framer-motion'
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { 
-  Activity, AlertCircle, CheckCircle, 
-  Cpu, HardDrive, Info, MemoryStick, 
-  Network, RefreshCw, TrendingUp, XCircle
-} from 'lucide-react'
+import { CpuIcon, DiskIcon, FailedIcon, MemoryIcon, NetworkIcon, RefreshIcon, RisingIcon } from '@/components/icons'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { StatusMark, Working, type MarkState } from '@/components/ui/pixel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useMonitoringData, formatBytes, formatUptime } from '@/hooks/use-health'
@@ -19,15 +15,13 @@ import { cn } from '@/lib/utils'
 import {
   LineChart,
   Line,
-  AreaChart,
-  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend
 } from 'recharts'
+import { chartAxis, chartGrid, chartMargin, chartTooltip, seriesLine, SeriesKey } from '@/components/ui/chart'
 
 // Animation variants
 const containerVariants: any = {
@@ -70,7 +64,7 @@ function LiveMetric({
   label, 
   value, 
   unit = '', 
-  icon: Icon,
+  icon: _icon,
   trend,
   color = 'text-primary'
 }: {
@@ -82,20 +76,18 @@ function LiveMetric({
   color?: string
 }) {
   return (
-    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-      <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">{label}</span>
-      </div>
+    // A cell of the ruled row: its word, then its number, no icon.
+    <div className="flex items-center justify-between p-3">
+      <span className="text-sm text-ink-2">{label}</span>
       <motion.div
         key={value}
-        initial={{ opacity: 0, y: -5 }}
+        initial={false}
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-1"
       >
-        <span className={cn("font-semibold", color)}>{value}</span>
+        <span className={cn("font-mono tabular-nums", color)}>{value}</span>
         {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
-        {trend === 'up' && <TrendingUp className="h-3 w-3 text-green-500" />}
+        {trend === 'up' && <RisingIcon className="h-3 w-3 text-ink-2" />}
       </motion.div>
     </div>
   )
@@ -111,15 +103,14 @@ function ServiceCard({
   status: 'running' | 'stopped' | 'error' | 'unknown'
   description: string
 }) {
-  const statusConfig = {
-    running: { color: 'text-green-500', icon: CheckCircle, label: 'Running' },
-    stopped: { color: 'text-gray-500', icon: XCircle, label: 'Stopped' },
-    error: { color: 'text-red-500', icon: AlertCircle, label: 'Error' },
-    unknown: { color: 'text-yellow-500', icon: Info, label: 'Unknown' }
+  const statusConfig: Record<string, { mark: MarkState; label: string }> = {
+    running: { mark: 'ok', label: 'Running' },
+    stopped: { mark: 'off', label: 'Stopped' },
+    error: { mark: 'failed', label: 'Error' },
+    unknown: { mark: 'off', label: 'Unknown' },
   }
 
   const config = statusConfig[status] || statusConfig.unknown
-  const Icon = config.icon
 
   return (
     <Card>
@@ -129,10 +120,7 @@ function ServiceCard({
             <CardTitle className="text-sm font-medium">{name}</CardTitle>
             <CardDescription className="text-xs mt-1">{description}</CardDescription>
           </div>
-          <Badge variant="outline" className={cn("gap-1", config.color)}>
-            <Icon className="h-3 w-3" />
-            {config.label}
-          </Badge>
+          <StatusMark state={config.mark} className="text-sm">{config.label}</StatusMark>
         </div>
       </CardHeader>
     </Card>
@@ -154,6 +142,7 @@ export default function MonitoringDashboard() {
   const queryClient = useQueryClient()
   const { data: metrics, isLoading, error, refetch } = useMonitoringData()
   const [chartData, setChartData] = useState<ChartData[]>([])
+  const latest = chartData[chartData.length - 1]
   const [isManualRefreshing, setIsManualRefreshing] = useState(false)
   const chartDataRef = useRef<ChartData[]>([])
 
@@ -214,20 +203,9 @@ export default function MonitoringDashboard() {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">System Monitoring</h2>
+          <h2 className="text-xl font-[560]">System monitoring</h2>
         </div>
-        <div className="grid gap-4">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <div className="h-4 bg-muted rounded w-32"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-32 bg-muted rounded"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Working>Reading the metrics</Working>
       </div>
     )
   }
@@ -236,7 +214,7 @@ export default function MonitoringDashboard() {
     return (
       <div className="space-y-6">
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <FailedIcon className="h-4 w-4" />
           <AlertDescription>
             Backend unreachable or proxy misconfigured — metrics temporarily unavailable. 
             <Button 
@@ -255,18 +233,15 @@ export default function MonitoringDashboard() {
   return (
     <motion.div
       variants={containerVariants}
-      initial="hidden"
+      initial={false}
       animate="visible"
       className="space-y-6"
     >
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold">System Monitoring</h2>
-          <Badge variant="outline" className="gap-1">
-            <Activity className="h-3 w-3 text-green-500 animate-pulse" />
-            Live
-          </Badge>
+          <h2 className="text-xl font-[560]">System monitoring</h2>
+          <StatusMark state="running" className="text-sm">Live</StatusMark>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">
@@ -278,7 +253,7 @@ export default function MonitoringDashboard() {
             onClick={handleManualRefresh}
             disabled={isManualRefreshing}
           >
-            <RefreshCw className={cn("h-4 w-4 mr-2", isManualRefreshing && "animate-spin")} />
+            <RefreshIcon className={cn("h-4 w-4 mr-2", isManualRefreshing && "animate-spin")} />
             Refresh
           </Button>
         </div>
@@ -288,34 +263,34 @@ export default function MonitoringDashboard() {
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Live Metrics</CardTitle>
-            <CardDescription>Real-time system performance (1Hz refresh)</CardDescription>
+            <CardTitle className="text-base">Live metrics</CardTitle>
+            <CardDescription>Updated every second</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid gap-px border border-hairline bg-hairline grid-cols-2 md:grid-cols-4 [&>*]:bg-page">
               <LiveMetric
                 label="CPU"
                 value={`${Math.round(metrics?.cpu || 0)}%`}
-                icon={Cpu}
-                color={metrics?.cpu && metrics.cpu > 80 ? 'text-red-500' : ''}
+                icon={CpuIcon}
+                color={metrics?.cpu && metrics.cpu > 80 ? 'text-status-failed-text' : ''}
               />
               <LiveMetric
                 label="Memory"
                 value={`${Math.round(metrics?.memory?.usagePct || 0)}%`}
-                icon={MemoryStick}
-                color={metrics?.memory?.usagePct && metrics.memory.usagePct > 80 ? 'text-red-500' : ''}
+                icon={MemoryIcon}
+                color={metrics?.memory?.usagePct && metrics.memory.usagePct > 80 ? 'text-status-failed-text' : ''}
               />
               <LiveMetric
                 label="Network"
                 value={formatBytes((metrics?.network?.rxSpeed || 0) + (metrics?.network?.txSpeed || 0))}
                 unit="/s"
-                icon={Network}
+                icon={NetworkIcon}
               />
               <LiveMetric
                 label="Disk I/O"
                 value={formatBytes((metrics?.diskIO?.readSpeed || 0) + (metrics?.diskIO?.writeSpeed || 0))}
                 unit="/s"
-                icon={HardDrive}
+                icon={DiskIcon}
               />
             </div>
           </CardContent>
@@ -326,7 +301,7 @@ export default function MonitoringDashboard() {
       <motion.div variants={itemVariants}>
         <Tabs defaultValue="cpu" className="space-y-4">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="cpu">CPU & Memory</TabsTrigger>
+            <TabsTrigger value="cpu">CPU & memory</TabsTrigger>
             <TabsTrigger value="network">Network</TabsTrigger>
             <TabsTrigger value="disk">Disk I/O</TabsTrigger>
             <TabsTrigger value="services">Services</TabsTrigger>
@@ -335,49 +310,26 @@ export default function MonitoringDashboard() {
           <TabsContent value="cpu" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">CPU & Memory Usage</CardTitle>
+                <CardTitle className="text-base">CPU & memory usage</CardTitle>
                 <CardDescription>Last 60 seconds</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis 
-                      dataKey="time" 
-                      className="text-xs"
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis 
-                      domain={[0, 100]}
-                      className="text-xs"
-                      tickFormatter={(value) => `${toFixedSafe(value, 0, '0')}%`}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        border: '1px solid hsl(var(--border))'
-                      }}
-                      formatter={(value) => `${toFixedSafe(Number(value), 1, '0.0')}%`}
-                    />
-                    <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="cpu" 
-                      stroke="hsl(var(--primary))" 
-                      strokeWidth={2}
-                      dot={false}
-                      name="CPU"
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="memory" 
-                      stroke="hsl(var(--chart-2))" 
-                      strokeWidth={2}
-                      dot={false}
-                      name="Memory"
-                    />
+                  <LineChart data={chartData} margin={chartMargin}>
+                    <CartesianGrid {...chartGrid} />
+                    <XAxis dataKey="time" interval="preserveStartEnd" {...chartAxis} />
+                    <YAxis domain={[0, 100]} tickFormatter={(value) => `${toFixedSafe(value, 0, '0')}%`} {...chartAxis} />
+                    <Tooltip {...chartTooltip} formatter={(value) => `${toFixedSafe(Number(value), 1, '0.0')}%`} />
+                    <Line dataKey="cpu" name="CPU" {...seriesLine(1)} />
+                    <Line dataKey="memory" name="Memory" {...seriesLine(2)} />
                   </LineChart>
                 </ResponsiveContainer>
+                <SeriesKey
+                  items={[
+                    { n: 1, name: 'CPU', value: latest ? `${toFixedSafe(latest.cpu, 1, '0.0')}%` : '-' },
+                    { n: 2, name: 'Memory', value: latest ? `${toFixedSafe(latest.memory, 1, '0.0')}%` : '-' },
+                  ]}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -385,59 +337,35 @@ export default function MonitoringDashboard() {
           <TabsContent value="network" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Network Traffic</CardTitle>
+                <CardTitle className="text-base">Network traffic</CardTitle>
                 <CardDescription>Upload and download speeds</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis 
-                      dataKey="time" 
-                      className="text-xs"
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis 
-                      className="text-xs"
-                      tickFormatter={(value) => formatBytes(value) + '/s'}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        border: '1px solid hsl(var(--border))'
-                      }}
-                      formatter={(value) => formatBytes(Number(value)) + '/s'}
-                    />
-                    <Legend />
-                    <Area 
-                      type="monotone" 
-                      dataKey="network_rx" 
-                      stackId="1"
-                      stroke="hsl(var(--chart-3))" 
-                      fill="hsl(var(--chart-3))"
-                      fillOpacity={0.6}
-                      name="Download"
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="network_tx" 
-                      stackId="1"
-                      stroke="hsl(var(--chart-4))" 
-                      fill="hsl(var(--chart-4))"
-                      fillOpacity={0.6}
-                      name="Upload"
-                    />
-                  </AreaChart>
+                  <LineChart data={chartData} margin={chartMargin}>
+                    <CartesianGrid {...chartGrid} />
+                    <XAxis dataKey="time" interval="preserveStartEnd" {...chartAxis} />
+                    <YAxis tickFormatter={(value) => formatBytes(value) + '/s'} {...chartAxis} />
+                    <Tooltip {...chartTooltip} formatter={(value) => formatBytes(Number(value)) + '/s'} />
+                    <Line dataKey="network_rx" name="Download" {...seriesLine(1)} />
+                    <Line dataKey="network_tx" name="Upload" {...seriesLine(2)} />
+                  </LineChart>
                 </ResponsiveContainer>
+                <SeriesKey
+                  items={[
+                    { n: 1, name: 'Download', value: latest ? `${formatBytes(latest.network_rx)}/s` : '-' },
+                    { n: 2, name: 'Upload', value: latest ? `${formatBytes(latest.network_tx)}/s` : '-' },
+                  ]}
+                />
                 
-                <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
+                <div className="mt-4 grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Downloaded</p>
-                    <p className="text-lg font-semibold">{formatBytes(stats?.totalNetworkRx || 0)}</p>
+                    <p className="text-sm text-muted-foreground">Total downloaded</p>
+                    <p className="font-mono text-lg tabular-nums">{formatBytes(stats?.totalNetworkRx || 0)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Uploaded</p>
-                    <p className="text-lg font-semibold">{formatBytes(stats?.totalNetworkTx || 0)}</p>
+                    <p className="text-sm text-muted-foreground">Total uploaded</p>
+                    <p className="font-mono text-lg tabular-nums">{formatBytes(stats?.totalNetworkTx || 0)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -452,54 +380,30 @@ export default function MonitoringDashboard() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis 
-                      dataKey="time" 
-                      className="text-xs"
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis 
-                      className="text-xs"
-                      tickFormatter={(value) => formatBytes(value) + '/s'}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))',
-                        border: '1px solid hsl(var(--border))'
-                      }}
-                      formatter={(value) => formatBytes(Number(value)) + '/s'}
-                    />
-                    <Legend />
-                    <Area 
-                      type="monotone" 
-                      dataKey="disk_read" 
-                      stackId="1"
-                      stroke="hsl(var(--chart-1))" 
-                      fill="hsl(var(--chart-1))"
-                      fillOpacity={0.6}
-                      name="Read"
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="disk_write" 
-                      stackId="1"
-                      stroke="hsl(var(--chart-2))" 
-                      fill="hsl(var(--chart-2))"
-                      fillOpacity={0.6}
-                      name="Write"
-                    />
-                  </AreaChart>
+                  <LineChart data={chartData} margin={chartMargin}>
+                    <CartesianGrid {...chartGrid} />
+                    <XAxis dataKey="time" interval="preserveStartEnd" {...chartAxis} />
+                    <YAxis tickFormatter={(value) => formatBytes(value) + '/s'} {...chartAxis} />
+                    <Tooltip {...chartTooltip} formatter={(value) => formatBytes(Number(value)) + '/s'} />
+                    <Line dataKey="disk_read" name="Read" {...seriesLine(1)} />
+                    <Line dataKey="disk_write" name="Write" {...seriesLine(2)} />
+                  </LineChart>
                 </ResponsiveContainer>
+                <SeriesKey
+                  items={[
+                    { n: 1, name: 'Read', value: latest ? `${formatBytes(latest.disk_read)}/s` : '-' },
+                    { n: 2, name: 'Write', value: latest ? `${formatBytes(latest.disk_write)}/s` : '-' },
+                  ]}
+                />
                 
-                <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
+                <div className="mt-4 grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Read</p>
-                    <p className="text-lg font-semibold">{formatBytes(stats?.totalDiskRead || 0)}</p>
+                    <p className="text-sm text-muted-foreground">Total read</p>
+                    <p className="font-mono text-lg tabular-nums">{formatBytes(stats?.totalDiskRead || 0)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Written</p>
-                    <p className="text-lg font-semibold">{formatBytes(stats?.totalDiskWrite || 0)}</p>
+                    <p className="text-sm text-muted-foreground">Total written</p>
+                    <p className="font-mono text-lg tabular-nums">{formatBytes(stats?.totalDiskWrite || 0)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -509,12 +413,12 @@ export default function MonitoringDashboard() {
           <TabsContent value="services" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">System Services</CardTitle>
+                <CardTitle className="text-base">System services</CardTitle>
                 <CardDescription>Status of core services</CardDescription>
               </CardHeader>
               <CardContent>
                 {servicesError && (
-                  <p className="text-sm text-destructive">The service states could not be read: {getErrorMessage(servicesError)}</p>
+                  <p className="text-sm text-status-failed-text">The service states could not be read: {getErrorMessage(servicesError)}</p>
                 )}
                 <div className="grid gap-3 md:grid-cols-2">
                   {services.map((service) => (
@@ -536,25 +440,25 @@ export default function MonitoringDashboard() {
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">System Information</CardTitle>
+            <CardTitle className="text-base">System information</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <p className="text-sm text-muted-foreground">Load Average (1m)</p>
-                <p className="font-semibold">{toFixedSafe(metrics?.load1, 2, '0.00')}</p>
+                <p className="text-sm text-muted-foreground">Load average (1m)</p>
+                <p className="font-[560]">{toFixedSafe(metrics?.load1, 2, '0.00')}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Load Average (5m)</p>
-                <p className="font-semibold">{toFixedSafe(metrics?.load5, 2, '0.00')}</p>
+                <p className="text-sm text-muted-foreground">Load average (5m)</p>
+                <p className="font-[560]">{toFixedSafe(metrics?.load5, 2, '0.00')}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Load Average (15m)</p>
-                <p className="font-semibold">{toFixedSafe(metrics?.load15, 2, '0.00')}</p>
+                <p className="text-sm text-muted-foreground">Load average (15m)</p>
+                <p className="font-[560]">{toFixedSafe(metrics?.load15, 2, '0.00')}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">CPU Temperature</p>
-                <p className="font-semibold">
+                <p className="text-sm text-muted-foreground">CPU temperature</p>
+                <p className="font-[560]">
                   {metrics?.tempCpu !== undefined ? `${toFixedSafe(metrics.tempCpu, 1, '0.0')}°C` : 'N/A'}
                 </p>
               </div>

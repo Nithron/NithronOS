@@ -1,19 +1,13 @@
 import { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
-import {
-  FileX,
-  Search,
-  ServerCrash,
-  Inbox,
-  LucideIcon,
-} from 'lucide-react'
+import { EmptyIcon, NotFoundIcon, SearchIcon, UnreachableIcon, type IconComponent } from '@/components/icons'
 
 type EmptyStateVariant = 'no-data' | 'filtered' | 'error' | 'backend-down'
 
 interface EmptyStateProps {
   variant?: EmptyStateVariant
-  icon?: LucideIcon
+  icon?: IconComponent
   title: string
   description?: string
   action?: ReactNode | {
@@ -21,26 +15,28 @@ interface EmptyStateProps {
     onClick: () => void
   }
   className?: string
+  /** 16 px inside a group, 24 px when it is the whole screen. */
+  size?: 'group' | 'screen'
 }
 
 const variantConfig: Record<
   EmptyStateVariant,
-  { icon: LucideIcon; defaultTitle: string }
+  { icon: IconComponent; defaultTitle: string }
 > = {
   'no-data': {
-    icon: Inbox,
+    icon: EmptyIcon,
     defaultTitle: 'No data yet',
   },
   'filtered': {
-    icon: Search,
+    icon: SearchIcon,
     defaultTitle: 'No results found',
   },
   'error': {
-    icon: FileX,
+    icon: NotFoundIcon,
     defaultTitle: 'Something went wrong',
   },
   'backend-down': {
-    icon: ServerCrash,
+    icon: UnreachableIcon,
     defaultTitle: 'Backend unreachable',
   },
 }
@@ -52,23 +48,23 @@ export function EmptyState({
   description,
   action,
   className,
+  size = 'group',
 }: EmptyStateProps) {
   const config = variantConfig[variant]
-  const Icon = icon || config.icon
+  // No picture until the shared pixel pictures arrive: the sentence and its
+  // one action, left-aligned. `icon` is kept for callers and not drawn.
+  void icon
 
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center py-12 text-center',
+        'flex flex-col items-start py-12',
         className
       )}
     >
-      <div className="mb-4 rounded-full bg-muted/30 p-3">
-        <Icon className="h-12 w-12 text-muted-foreground" />
-      </div>
-      <h3 className="mb-2 text-lg font-semibold">{title}</h3>
+      <h3 className={cn('pixel-display mb-2', size === 'screen' && 'pixel-24')}>{title || config.defaultTitle}</h3>
       {description && (
-        <p className="mb-6 max-w-sm text-sm text-muted-foreground">
+        <p className="mb-6 max-w-sm text-sm text-ink-2">
           {description}
         </p>
       )}

@@ -1,12 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
-import { 
-  Activity, AlertCircle, AlertTriangle, CheckCircle, Clock, 
-  Cpu, Database, FolderOpen, HardDrive, Info,
-  MemoryStick, Package, RefreshCw, Share2, Wrench, Zap
-} from 'lucide-react'
+import { WorkingIcon, AppIcon, CpuIcon, FailedIcon, FolderIcon, MemoryIcon, NoticeIcon, QuickIcon, RefreshIcon, WarningIcon } from '@/components/icons'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -16,37 +12,15 @@ import {
   useDashboard,
   useRefreshDashboard,
   formatTimestamp,
-  getHealthBadgeVariant
 } from '@/hooks/use-dashboard'
 import { useSystemVitals, formatUptime } from '@/hooks/use-system-vitals'
 import { bytesSafe, toFixedSafe } from '@/lib/format'
-import { cn } from '@/lib/utils'
-import { 
-  PieChart, Pie, Cell, ResponsiveContainer, Tooltip
-} from 'recharts'
+import { Link } from 'react-router-dom'
+import { Meter, StatusMark, type MarkState } from '@/components/ui/pixel'
 
-// Animation variants
-const containerVariants: any = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05
-    }
-  }
-}
-
-const itemVariants: any = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      type: "spring",
-      stiffness: 100
-    }
-  }
-}
+// The overall health as a mark: critical is failed, degraded a warning.
+const healthMark = (status?: string): MarkState =>
+  status === 'critical' ? 'failed' : status === 'degraded' ? 'warning' : 'ok'
 
 // Widget components
 function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }: any) {
@@ -83,8 +57,7 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            System Health
+            System health
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -103,13 +76,12 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            System Health
+            System health
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
+            <FailedIcon className="h-4 w-4" />
             <AlertDescription>Data unavailable</AlertDescription>
           </Alert>
         </CardContent>
@@ -122,13 +94,12 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            System Health
+            System health
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Alert>
-            <Info className="h-4 w-4" />
+            <NoticeIcon className="h-4 w-4" />
             <AlertDescription>Waiting for data...</AlertDescription>
           </Alert>
         </CardContent>
@@ -137,27 +108,22 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
   }
 
   const system = data.system
-  const StatusIcon = system.status === 'critical' ? AlertTriangle :
-                     system.status === 'degraded' ? AlertCircle : CheckCircle
 
   return (
     <Card>
       <CardHeader>
         <div className="flex justify-between items-start">
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            System Health
+            System health
             {isSSE && (
-              <Badge variant="outline" className="ml-auto text-xs">
-                <Zap className="h-3 w-3 mr-1" />
+              <StatusMark state="running" className="ml-auto text-xs font-normal">
                 Live
-              </Badge>
+              </StatusMark>
             )}
           </CardTitle>
-          <Badge variant={getHealthBadgeVariant(system.status as any)}>
-            <StatusIcon className="h-3 w-3 mr-1" />
-            {system.status || 'OK'}
-          </Badge>
+          <StatusMark state={healthMark(system.status)} className="text-sm">
+            {system.status || 'ok'}
+          </StatusMark>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -165,18 +131,14 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="flex items-center gap-1">
-              <Cpu className="h-3 w-3" />
+              <CpuIcon className="h-3 w-3" />
               CPU
             </span>
             <motion.span
               key={system.cpuPct}
-              initial={{ opacity: 0 }}
+              initial={false}
               animate={{ opacity: 1 }}
-              className={cn(
-                "font-medium",
-                system.cpuPct > 80 ? 'text-red-500' : 
-                system.cpuPct > 60 ? 'text-yellow-500' : ''
-              )}
+              className="font-mono tabular-nums"
             >
               {Math.round(system.cpuPct || 0)}%
             </motion.span>
@@ -184,11 +146,8 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
           <Progress 
             value={system.cpuPct || 0} 
             className="h-2"
-            indicatorClassName={cn(
-              "transition-all duration-300",
-              system.cpuPct > 80 ? 'bg-red-500' : 
-              system.cpuPct > 60 ? 'bg-yellow-500' : ''
-            )}
+            label="CPU in use"
+            tone={system.cpuPct > 90 ? 'failed' : system.cpuPct > 80 ? 'warning' : 'ink'}
           />
         </div>
 
@@ -196,12 +155,12 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="flex items-center gap-1">
-              <MemoryStick className="h-3 w-3" />
+              <MemoryIcon className="h-3 w-3" />
               Memory
             </span>
             <motion.span
               key={system.mem?.used}
-              initial={{ opacity: 0 }}
+              initial={false}
               animate={{ opacity: 1 }}
               className="font-medium"
             >
@@ -211,11 +170,8 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
           <Progress 
             value={system.mem?.total ? (system.mem.used / system.mem.total) * 100 : 0} 
             className="h-2"
-            indicatorClassName={cn(
-              "transition-all duration-300",
-              system.mem?.total && (system.mem.used / system.mem.total) > 0.8 ? 'bg-red-500' : 
-              system.mem?.total && (system.mem.used / system.mem.total) > 0.6 ? 'bg-yellow-500' : ''
-            )}
+            label="Memory in use"
+            tone={system.mem?.total && system.mem.used / system.mem.total > 0.9 ? 'failed' : system.mem?.total && system.mem.used / system.mem.total > 0.8 ? 'warning' : 'ink'}
           />
         </div>
 
@@ -241,7 +197,6 @@ function StorageWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5" />
             Storage
           </CardTitle>
         </CardHeader>
@@ -255,16 +210,11 @@ function StorageWidget({ data, isLoading }: any) {
   const storage = data?.storage || {}
   const usagePercent = storage.totalBytes ? (storage.usedBytes / storage.totalBytes) * 100 : 0
   
-  const chartData = [
-    { name: 'Used', value: storage.usedBytes || 0, fill: 'hsl(var(--primary))' },
-    { name: 'Free', value: (storage.totalBytes || 0) - (storage.usedBytes || 0), fill: 'hsl(var(--muted))' }
-  ]
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Database className="h-5 w-5" />
           Storage
         </CardTitle>
         <CardDescription>
@@ -272,56 +222,25 @@ function StorageWidget({ data, isLoading }: any) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <ResponsiveContainer width="100%" height={120}>
-              <PieChart>
-                <Pie
-                  data={chartData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={35}
-                  outerRadius={50}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: any) => bytesSafe(value)} />
-              </PieChart>
-            </ResponsiveContainer>
+        <div className="space-y-4">
+          <div>
+            <Meter
+              value={storage.usedBytes || 0}
+              max={storage.totalBytes || 0}
+              blocks={12}
+              label="Storage used"
+              valueText={`${toFixedSafe(usagePercent, 1, '0.0')}%`}
+              tone={usagePercent > 90 ? 'failed' : usagePercent > 80 ? 'warning' : 'ink'}
+            />
           </div>
-          <div className="space-y-2">
-            <div>
-              <p className="text-sm text-muted-foreground">Used</p>
-              <motion.p
-                key={storage.usedBytes}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-lg font-semibold"
-              >
-                {bytesSafe(storage.usedBytes)}
-              </motion.p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total</p>
-              <p className="text-lg font-semibold">
-                {bytesSafe(storage.totalBytes)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Usage</p>
-              <p className={cn(
-                "text-lg font-semibold",
-                usagePercent > 90 ? 'text-red-500' :
-                usagePercent > 80 ? 'text-yellow-500' : ''
-              )}>
-                {toFixedSafe(usagePercent, 1, '0.0')}%
-              </p>
-            </div>
-          </div>
+          {/* The two large numbers in the pixel face; the usage is the
+              meter's own number above. */}
+          <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2">
+            <dt className="text-sm text-ink-2">Used</dt>
+            <dd className="pixel-display pixel-24">{bytesSafe(storage.usedBytes)}</dd>
+            <dt className="text-sm text-ink-2">Total</dt>
+            <dd className="pixel-display pixel-24">{bytesSafe(storage.totalBytes)}</dd>
+          </dl>
         </div>
       </CardContent>
     </Card>
@@ -334,8 +253,7 @@ function DiskHealthWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <HardDrive className="h-5 w-5" />
-            Disk Health
+            Disk health
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -355,8 +273,7 @@ function DiskHealthWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <HardDrive className="h-5 w-5" />
-          Disk Health
+          Disk health
         </CardTitle>
         <CardDescription>
           {disks.lastScanISO ? `SMART checked ${formatTimestamp(disks.lastScanISO)}` : 'Checking SMART…'}
@@ -365,34 +282,15 @@ function DiskHealthWidget({ data, isLoading }: any) {
       <CardContent>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Total Disks</span>
+            <span className="text-sm text-muted-foreground">Total disks</span>
             <span className="font-medium">{disks.total || 0}</span>
           </div>
           
           <div className="flex gap-2">
-            {disks.healthy > 0 && (
-              <Badge variant="default" className="gap-1">
-                <CheckCircle className="h-3 w-3" />
-                {disks.healthy} Healthy
-              </Badge>
-            )}
-            {disks.warning > 0 && (
-              <Badge variant="secondary" className="gap-1 bg-yellow-100">
-                <AlertCircle className="h-3 w-3" />
-                {disks.warning} Warning
-              </Badge>
-            )}
-            {disks.critical > 0 && (
-              <Badge variant="destructive" className="gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                {disks.critical} Critical
-              </Badge>
-            )}
-            {disks.unknown > 0 && (
-              <Badge variant="outline" className="gap-1">
-                {disks.unknown} No SMART data
-              </Badge>
-            )}
+            {disks.healthy > 0 && <StatusMark state="ok" className="text-sm">{disks.healthy} healthy</StatusMark>}
+            {disks.warning > 0 && <StatusMark state="warning" className="text-sm">{disks.warning} warning</StatusMark>}
+            {disks.critical > 0 && <StatusMark state="failed" className="text-sm">{disks.critical} failing</StatusMark>}
+            {disks.unknown > 0 && <StatusMark state="off" className="text-sm">{disks.unknown} without SMART data</StatusMark>}
             {disks.lastScanISO && disks.total === 0 && (
               <span className="text-sm text-muted-foreground">No disks detected</span>
             )}
@@ -409,8 +307,7 @@ function RecentActivityWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            Recent Activity
+            Recent activity
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -430,11 +327,11 @@ function RecentActivityWidget({ data, isLoading }: any) {
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'error':
-        return <AlertTriangle className="h-4 w-4 text-red-500" />
+        return <FailedIcon className="h-4 w-4 text-status-failed" />
       case 'warning':
-        return <AlertCircle className="h-4 w-4 text-yellow-500" />
+        return <WarningIcon className="h-4 w-4 text-status-warning" />
       default:
-        return <Info className="h-4 w-4 text-blue-500" />
+        return <NoticeIcon className="h-4 w-4 text-ink" />
     }
   }
 
@@ -442,8 +339,7 @@ function RecentActivityWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Activity className="h-5 w-5" />
-          Recent Activity
+          Recent activity
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -455,7 +351,7 @@ function RecentActivityWidget({ data, isLoading }: any) {
                   <motion.div
                     key={event.id}
                     layout
-                    initial={{ opacity: 0, x: -20 }}
+                    initial={false}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
                     className="flex items-start gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors"
@@ -472,10 +368,7 @@ function RecentActivityWidget({ data, isLoading }: any) {
               </AnimatePresence>
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No recent activity</p>
-            </div>
+            <p className="py-4 pixel-display text-ink-2">Nothing has happened yet.</p>
           )}
         </ScrollArea>
       </CardContent>
@@ -489,8 +382,7 @@ function NetworkSharesWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Share2 className="h-5 w-5" />
-            Network Shares
+            Network shares
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -508,8 +400,7 @@ function NetworkSharesWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Share2 className="h-5 w-5" />
-          Network Shares
+          Network shares
         </CardTitle>
         <CardDescription>
           {activeShares.length} of {shares.length} active
@@ -521,15 +412,13 @@ function NetworkSharesWidget({ data, isLoading }: any) {
             {shares.slice(0, 3).map((share: any) => (
               <div key={share.name} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                  <FolderIcon className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">{share.name}</span>
-                  <Badge variant="outline" className="text-xs">
-                    {share.proto}
-                  </Badge>
+                  {share.proto && <span className="font-mono text-xs text-ink-2">{share.proto}</span>}
                 </div>
-                <Badge variant={share.state === 'active' ? 'default' : 'secondary'}>
+                <StatusMark state={share.state === 'active' ? 'ok' : 'off'} className="text-sm">
                   {share.state}
-                </Badge>
+                </StatusMark>
               </div>
             ))}
             {shares.length > 3 && (
@@ -539,9 +428,11 @@ function NetworkSharesWidget({ data, isLoading }: any) {
             )}
           </div>
         ) : (
-          <div className="text-center py-4 text-muted-foreground">
-            <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No shares configured</p>
+          <div className="space-y-3 py-4">
+            <p className="pixel-display text-ink-2">No share yet.</p>
+            <Link to="/shares/new" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+              Create a share
+            </Link>
           </div>
         )}
       </CardContent>
@@ -555,8 +446,7 @@ function InstalledAppsWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Installed Apps
+            Installed apps
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -574,8 +464,7 @@ function InstalledAppsWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Package className="h-5 w-5" />
-          Installed Apps
+          Installed apps
         </CardTitle>
         <CardDescription>
           {runningApps.length} of {apps.length} running
@@ -587,7 +476,7 @@ function InstalledAppsWidget({ data, isLoading }: any) {
             {apps.slice(0, 3).map((app: any) => (
               <div key={app.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <AppIcon className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">{app.name}</p>
                     <p className="text-xs text-muted-foreground">{app.version}</p>
@@ -605,12 +494,11 @@ function InstalledAppsWidget({ data, isLoading }: any) {
             )}
           </div>
         ) : (
-          <div className="text-center py-4 text-muted-foreground">
-            <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No apps installed</p>
-            <Button variant="outline" size="sm" className="mt-2">
-              Browse Catalog
-            </Button>
+          <div className="space-y-3 py-4">
+            <p className="pixel-display text-ink-2">No app installed.</p>
+            <Link to="/apps" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+              Browse the catalog
+            </Link>
           </div>
         )}
       </CardContent>
@@ -624,8 +512,7 @@ function MaintenanceWidget({ data, isLoading }: any) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Wrench className="h-5 w-5" />
-            Maintenance Operations
+            Maintenance operations
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -641,7 +528,7 @@ function MaintenanceWidget({ data, isLoading }: any) {
     switch (state) {
       case 'running':
         return <Badge variant="default" className="gap-1">
-          <Zap className="h-3 w-3" />
+          <QuickIcon className="h-3 w-3" />
           Running
         </Badge>
       case 'scheduled':
@@ -655,14 +542,13 @@ function MaintenanceWidget({ data, isLoading }: any) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Wrench className="h-5 w-5" />
-          Maintenance Operations
+          Maintenance operations
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Pool Scrub</span>
+            <span className="text-sm font-medium">Pool scrub</span>
             {getStatusBadge(maintenance.scrub?.state || 'idle')}
           </div>
           {maintenance.scrub?.nextISO && maintenance.scrub.state !== 'running' && (
@@ -702,7 +588,7 @@ export function Dashboard() {
     <div className="space-y-6 p-6">
       {error && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <FailedIcon className="h-4 w-4" />
           <AlertDescription>
             Backend unreachable or proxy misconfigured — metrics temporarily unavailable.{' '}
             <a href="/docs/dev/observability" className="underline">Troubleshooting</a>
@@ -712,8 +598,7 @@ export function Dashboard() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">System overview and status</p>
+          <h1 className="screen-title">Dashboard</h1>
         </div>
         <Button
           variant="outline"
@@ -721,53 +606,38 @@ export function Dashboard() {
           onClick={handleRefresh}
           disabled={isRefreshing || isFetching}
         >
-          <RefreshCw className={cn("h-4 w-4 mr-2", (isRefreshing || isFetching) && "animate-spin")} />
-          {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          {isRefreshing || isFetching ? <WorkingIcon className="h-4 w-4" /> : <RefreshIcon className="h-4 w-4" />}
+          {isRefreshing || isFetching ? 'Refreshing' : 'Refresh'}
         </Button>
       </div>
 
       {/* Main Grid */}
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
-      >
-        {/* System Health - spans 2 columns on large screens */}
-        <motion.div variants={itemVariants} className="lg:col-span-2">
+      {/* One ruled grid of equal cells: thirds, then the full width. The
+          gaps are the hairline behind the cells; the cards lose their own
+          border inside it. */}
+      <div className="grid gap-px border border-hairline bg-hairline md:grid-cols-2 lg:grid-cols-3 [&>*]:bg-page [&>*>*]:h-full [&>*>*]:border-0">
+        <div>
           <SystemHealthWidget data={data} isLoading={isLoading} />
-        </motion.div>
-
-        {/* Storage */}
-        <motion.div variants={itemVariants}>
+        </div>
+        <div>
           <StorageWidget data={data} isLoading={isLoading} error={error} />
-        </motion.div>
-
-        {/* Disk Health */}
-        <motion.div variants={itemVariants}>
+        </div>
+        <div>
           <DiskHealthWidget data={data} isLoading={isLoading} error={error} />
-        </motion.div>
-
-        {/* Recent Activity - spans 2 columns */}
-        <motion.div variants={itemVariants} className="md:col-span-2">
+        </div>
+        <div>
           <RecentActivityWidget data={data} isLoading={isLoading} error={error} />
-        </motion.div>
-
-        {/* Network Shares */}
-        <motion.div variants={itemVariants}>
+        </div>
+        <div>
           <NetworkSharesWidget data={data} isLoading={isLoading} error={error} />
-        </motion.div>
-
-        {/* Installed Apps */}
-        <motion.div variants={itemVariants}>
+        </div>
+        <div>
           <InstalledAppsWidget data={data} isLoading={isLoading} error={error} />
-        </motion.div>
-
-        {/* Maintenance Operations - spans 2 columns */}
-        <motion.div variants={itemVariants} className="md:col-span-2">
+        </div>
+        <div className="md:col-span-2 lg:col-span-3">
           <MaintenanceWidget data={data} isLoading={isLoading} error={error} />
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     </div>
   )
 }

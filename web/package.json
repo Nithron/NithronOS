@@ -13,7 +13,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "verify:contract": "ts-node --transpile-only ../scripts/verify-contract.ts",
-    "extract:contract": "ts-node --transpile-only ./scripts/extract-nos-contract.ts"
+    "extract:contract": "ts-node --transpile-only ./scripts/extract-nos-contract.ts",
+    "check:ui": "node scripts/check-ui.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -33,7 +34,6 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.23.12",
-    "lucide-react": "^0.441.0",
     "qrcode": "^1.5.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -41,7 +41,6 @@
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.18.7",
     "recharts": "^3.1.2",
-    "sonner": "^1.7.0",
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^4.6.7"

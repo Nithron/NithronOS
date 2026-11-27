@@ -1,14 +1,9 @@
 import { motion } from 'framer-motion'
-import { 
-  Activity, AlertCircle, CheckCircle, Clock, Cpu, HardDrive, 
-  MemoryStick, Network, RefreshCw, Thermometer,
-  TrendingDown, TrendingUp, Wifi, XCircle, Zap
-} from 'lucide-react'
+import { ConnectionIcon, CpuIcon, DiskIcon, FailedIcon, FallingIcon, HealthIcon, MemoryIcon, NetworkIcon, QuickIcon, RefreshIcon, RisingIcon, TemperatureIcon, TimeIcon } from '@/components/icons'
 import { useMemo, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
+import { Meter, StatusMark, Working, type MarkState } from '@/components/ui/pixel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useSystemHealth, formatBytes, formatUptime, formatPercent, getHealthStatus } from '@/hooks/use-health'
@@ -44,7 +39,7 @@ function MetricCard({
   title, 
   value, 
   unit, 
-  icon: Icon, 
+  icon: _icon,
   trend, 
   color = 'text-primary',
   className 
@@ -57,31 +52,32 @@ function MetricCard({
   color?: string
   className?: string
 }) {
-  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : null
+  const TrendIcon = trend === 'up' ? RisingIcon : trend === 'down' ? FallingIcon : null
 
   return (
-    <Card className={cn("relative overflow-hidden", className)}>
+    <Card className={cn("relative h-full overflow-hidden", className)}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <Icon className="h-4 w-4" />
-            {title}
-          </span>
-          {TrendIcon && <TrendIcon className="h-4 w-4 text-muted-foreground" />}
-        </CardTitle>
+        {/* A label is words only; the trend is an icon with its word. */}
+        <CardTitle className="text-sm font-normal text-ink-2">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex items-baseline gap-1">
           <motion.span 
             key={value}
-            initial={{ opacity: 0, y: -10 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
-            className={cn("text-2xl font-bold transition-colors", color)}
+            className={cn('pixel-display pixel-24', color)}
           >
             {value}
           </motion.span>
-          {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
+          {unit && <span className="text-sm text-ink-2">{unit}</span>}
         </div>
+        {TrendIcon && (
+          <p className="mt-2 flex items-center gap-1 text-sm text-ink-2">
+            <TrendIcon className="h-4 w-4" />
+            {trend === 'up' ? 'rising' : 'falling'}
+          </p>
+        )}
       </CardContent>
     </Card>
   )
@@ -107,20 +103,19 @@ function ProgressMetric({
         <span className="text-muted-foreground">{label}</span>
         <motion.span 
           key={value}
-          initial={{ opacity: 0 }}
+          initial={false}
           animate={{ opacity: 1 }}
           className="font-medium"
         >
           {formatPercent(percentage)}{unit === '%' ? '' : ` (${formatBytes(value)} / ${formatBytes(max)})`}
         </motion.span>
       </div>
-      <Progress 
-        value={percentage} 
-        className="h-2"
-        indicatorClassName={cn(
-          "transition-all duration-300",
-          percentage > 90 ? 'bg-red-500' : percentage > 70 ? 'bg-yellow-500' : ''
-        )}
+      <Meter
+        value={percentage}
+        blocks={20}
+        label={label}
+        showValue={false}
+        tone={percentage > 90 ? 'failed' : percentage > 80 ? 'warning' : 'ink'}
       />
     </div>
   )
@@ -173,20 +168,9 @@ export default function SystemHealth() {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">System Health</h2>
+          <h2 className="text-xl font-[560]">System health</h2>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(8)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="pb-2">
-                <div className="h-4 bg-muted rounded w-24"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-muted rounded w-16"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Working>Reading the system</Working>
       </div>
     )
   }
@@ -195,7 +179,7 @@ export default function SystemHealth() {
     return (
       <div className="space-y-6">
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <FailedIcon className="h-4 w-4" />
           <AlertDescription>
             Backend unreachable or proxy misconfigured — metrics temporarily unavailable. 
             <Button 
@@ -211,27 +195,21 @@ export default function SystemHealth() {
     )
   }
 
-  const StatusIcon = metrics?.overallStatus === 'critical' ? XCircle :
-                     metrics?.overallStatus === 'warning' ? AlertCircle : CheckCircle
-  
-  const statusColor = metrics?.overallStatus === 'critical' ? 'text-red-500' :
-                      metrics?.overallStatus === 'warning' ? 'text-yellow-500' : 'text-green-500'
+  const overallMark: MarkState =
+    metrics?.overallStatus === 'critical' ? 'failed' : metrics?.overallStatus === 'warning' ? 'warning' : metrics?.overallStatus ? 'ok' : 'off'
 
   return (
     <motion.div
       variants={containerVariants}
-      initial="hidden"
+      initial={false}
       animate="visible"
       className="space-y-6"
     >
       {/* Header with status */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold">System Health</h2>
-          <Badge variant="outline" className="gap-1">
-            <StatusIcon className={cn("h-3 w-3", statusColor)} />
-            <span className="capitalize">{metrics?.overallStatus || 'Unknown'}</span>
-          </Badge>
+          <h2 className="text-xl font-[560]">System health</h2>
+          <StatusMark state={overallMark} className="text-sm">{metrics?.overallStatus || 'unknown'}</StatusMark>
         </div>
         <Button
           variant="outline"
@@ -239,7 +217,7 @@ export default function SystemHealth() {
           onClick={handleManualRefresh}
           disabled={isManualRefreshing}
         >
-          <RefreshCw className={cn("h-4 w-4 mr-2", isManualRefreshing && "animate-spin")} />
+          <RefreshIcon className={cn("h-4 w-4 mr-2", isManualRefreshing && "animate-spin")} />
           Refresh
         </Button>
       </div>
@@ -247,15 +225,15 @@ export default function SystemHealth() {
       {/* Quick metrics grid */}
       <motion.div 
         variants={containerVariants}
-        className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+        className="grid border-l border-t border-hairline md:grid-cols-2 lg:grid-cols-4 [&>*]:border-b [&>*]:border-r [&>*]:border-hairline [&>*>*]:h-full [&>*>*]:border-0"
       >
         <motion.div variants={itemVariants}>
           <MetricCard
-            title="CPU Usage"
+            title="CPU usage"
             value={pctSafe(metrics?.cpu, 0)}
-            icon={Cpu}
+            icon={CpuIcon}
             trend={metrics?.cpuTrend}
-            color={metrics?.cpu && metrics.cpu > 80 ? 'text-red-500' : 'text-primary'}
+            color={metrics?.cpu && metrics.cpu > 80 ? 'text-status-failed-text' : 'text-primary'}
           />
         </motion.div>
         
@@ -263,17 +241,17 @@ export default function SystemHealth() {
           <MetricCard
             title="Memory"
             value={pctSafe(metrics?.memory?.usagePct, 0)}
-            icon={MemoryStick}
+            icon={MemoryIcon}
             trend={metrics?.memoryTrend}
-            color={metrics?.memory?.usagePct && metrics.memory.usagePct > 80 ? 'text-red-500' : 'text-primary'}
+            color={metrics?.memory?.usagePct && metrics.memory.usagePct > 80 ? 'text-status-failed-text' : 'text-primary'}
           />
         </motion.div>
 
         <motion.div variants={itemVariants}>
           <MetricCard
-            title="System Load"
+            title="System load"
             value={toFixedSafe(metrics?.load?.load1, 2, '0.00')}
-            icon={Activity}
+            icon={HealthIcon}
             trend={metrics?.load?.load1 && metrics.load.load1 > metrics.load.load5 ? 'up' : 'down'}
           />
         </motion.div>
@@ -282,7 +260,7 @@ export default function SystemHealth() {
           <MetricCard
             title="Uptime"
             value={formatUptime(metrics?.uptime || 0)}
-            icon={Clock}
+            icon={TimeIcon}
           />
         </motion.div>
 
@@ -291,7 +269,7 @@ export default function SystemHealth() {
             title="Network RX"
             value={formatBytes(metrics?.network?.rxSpeed || 0)}
             unit="/s"
-            icon={Network}
+            icon={NetworkIcon}
           />
         </motion.div>
 
@@ -300,25 +278,25 @@ export default function SystemHealth() {
             title="Network TX"
             value={formatBytes(metrics?.network?.txSpeed || 0)}
             unit="/s"
-            icon={Wifi}
+            icon={ConnectionIcon}
           />
         </motion.div>
 
         <motion.div variants={itemVariants}>
           <MetricCard
-            title="Disk Read"
+            title="Disk read"
             value={formatBytes(metrics?.diskIO?.readSpeed || 0)}
             unit="/s"
-            icon={HardDrive}
+            icon={DiskIcon}
           />
         </motion.div>
 
         <motion.div variants={itemVariants}>
           <MetricCard
-            title="Disk Write"
+            title="Disk write"
             value={formatBytes(metrics?.diskIO?.writeSpeed || 0)}
             unit="/s"
-            icon={Zap}
+            icon={QuickIcon}
           />
         </motion.div>
       </motion.div>
@@ -335,7 +313,7 @@ export default function SystemHealth() {
           <TabsContent value="resources" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Resource Usage</CardTitle>
+                <CardTitle className="text-base">Resource usage</CardTitle>
                 <CardDescription>CPU, Memory, and Swap utilization</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -361,15 +339,15 @@ export default function SystemHealth() {
                 <div className="grid grid-cols-3 gap-4 pt-4 border-t">
                   <div>
                     <p className="text-sm text-muted-foreground">Load (1m)</p>
-                    <p className="text-lg font-semibold">{toFixedSafe(metrics?.load?.load1, 2, '0.00')}</p>
+                    <p className="text-lg font-[560]">{toFixedSafe(metrics?.load?.load1, 2, '0.00')}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Load (5m)</p>
-                    <p className="text-lg font-semibold">{toFixedSafe(metrics?.load?.load5, 2, '0.00')}</p>
+                    <p className="text-lg font-[560]">{toFixedSafe(metrics?.load?.load5, 2, '0.00')}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Load (15m)</p>
-                    <p className="text-lg font-semibold">{toFixedSafe(metrics?.load?.load15, 2, '0.00')}</p>
+                    <p className="text-lg font-[560]">{toFixedSafe(metrics?.load?.load15, 2, '0.00')}</p>
                   </div>
                 </div>
               </CardContent>
@@ -379,21 +357,21 @@ export default function SystemHealth() {
           <TabsContent value="network" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Network Statistics</CardTitle>
+                <CardTitle className="text-base">Network statistics</CardTitle>
                 <CardDescription>Network interface traffic and speeds</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Download Speed</p>
-                    <p className="text-2xl font-bold">{formatBytes(metrics?.network?.rxSpeed || 0)}/s</p>
+                    <p className="text-sm text-muted-foreground">Download speed</p>
+                    <p className="text-2xl font-[560]">{formatBytes(metrics?.network?.rxSpeed || 0)}/s</p>
                     <p className="text-xs text-muted-foreground">
                       Total: {formatBytes(metrics?.network?.bytesRecv || 0)}
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Upload Speed</p>
-                    <p className="text-2xl font-bold">{formatBytes(metrics?.network?.txSpeed || 0)}/s</p>
+                    <p className="text-sm text-muted-foreground">Upload speed</p>
+                    <p className="text-2xl font-[560]">{formatBytes(metrics?.network?.txSpeed || 0)}/s</p>
                     <p className="text-xs text-muted-foreground">
                       Total: {formatBytes(metrics?.network?.bytesSent || 0)}
                     </p>
@@ -401,12 +379,12 @@ export default function SystemHealth() {
                 </div>
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                   <div>
-                    <p className="text-sm text-muted-foreground">Packets Received</p>
-                    <p className="text-lg font-semibold">{metrics?.network?.packetsRecv?.toLocaleString() || '0'}</p>
+                    <p className="text-sm text-muted-foreground">Packets received</p>
+                    <p className="text-lg font-[560]">{metrics?.network?.packetsRecv?.toLocaleString() || '0'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Packets Sent</p>
-                    <p className="text-lg font-semibold">{metrics?.network?.packetsSent?.toLocaleString() || '0'}</p>
+                    <p className="text-sm text-muted-foreground">Packets sent</p>
+                    <p className="text-lg font-[560]">{metrics?.network?.packetsSent?.toLocaleString() || '0'}</p>
                   </div>
                 </div>
               </CardContent>
@@ -416,20 +394,20 @@ export default function SystemHealth() {
           <TabsContent value="system" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">System Information</CardTitle>
+                <CardTitle className="text-base">System information</CardTitle>
                 <CardDescription>Temperature, uptime, and system details</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Uptime</p>
-                    <p className="text-lg font-semibold">{formatUptime(metrics?.uptime || 0)}</p>
+                    <p className="text-lg font-[560]">{formatUptime(metrics?.uptime || 0)}</p>
                   </div>
                   {metrics?.tempCpu !== undefined && (
                     <div>
-                      <p className="text-sm text-muted-foreground">CPU Temperature</p>
-                      <p className="text-lg font-semibold flex items-center gap-1">
-                        <Thermometer className="h-4 w-4" />
+                      <p className="text-sm text-muted-foreground">CPU temperature</p>
+                      <p className="text-lg font-[560] flex items-center gap-1">
+                        <TemperatureIcon className="h-4 w-4" />
                         {metrics?.tempCpu !== undefined ? `${toFixedSafe(metrics.tempCpu, 1, '0.0')}°C` : 'N/A'}
                       </p>
                     </div>
@@ -439,15 +417,15 @@ export default function SystemHealth() {
                   <h4 className="text-sm font-medium">Disk I/O</h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">Read Speed</p>
-                      <p className="text-lg font-semibold">{formatBytes(metrics?.diskIO?.readSpeed || 0)}/s</p>
+                      <p className="text-sm text-muted-foreground">Read speed</p>
+                      <p className="text-lg font-[560]">{formatBytes(metrics?.diskIO?.readSpeed || 0)}/s</p>
                       <p className="text-xs text-muted-foreground">
                         Total: {formatBytes(metrics?.diskIO?.readBytes || 0)}
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">Write Speed</p>
-                      <p className="text-lg font-semibold">{formatBytes(metrics?.diskIO?.writeSpeed || 0)}/s</p>
+                      <p className="text-sm text-muted-foreground">Write speed</p>
+                      <p className="text-lg font-[560]">{formatBytes(metrics?.diskIO?.writeSpeed || 0)}/s</p>
                       <p className="text-xs text-muted-foreground">
                         Total: {formatBytes(metrics?.diskIO?.writeBytes || 0)}
                       </p>

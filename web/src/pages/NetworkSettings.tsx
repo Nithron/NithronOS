@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { formatDate, formatDateTime, formatTime } from '@/lib/datetime'
+import { confirmAction } from '@/components/ui/confirm'
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,12 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Globe, Shield, Wifi, Key, AlertTriangle,
-  CheckCircle, XCircle, Settings, Plus, Copy, Download,
-  Trash2, Loader2, ExternalLink, Clock
-} from 'lucide-react';
-import { format } from 'date-fns';
+import { AddIcon, ConnectionIcon, CopyIcon, DeleteIcon, DownloadIcon, FailedIcon, FirewallIcon, InternetIcon, KeyIcon, OkIcon, OpenExternalIcon, SettingsIcon, TimeIcon, WarningIcon, WorkingIcon } from '@/components/icons'
 import {
   useNetworkStatus,
   useFirewallState,
@@ -77,7 +74,7 @@ export function NetworkSettings() {
   };
 
   const handleRemovePeer = async (peerId: string) => {
-    if (!confirm('Are you sure you want to remove this peer?')) return;
+    if (!(await confirmAction({ title: 'Remove this WireGuard peer?', description: 'The device can no longer connect until it is added again.', action: 'Remove peer' }))) return;
 
     try {
       await removePeer.mutateAsync(peerId);
@@ -113,29 +110,29 @@ export function NetworkSettings() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Network Status</CardTitle>
+          <CardTitle>Network status</CardTitle>
           <CardDescription>Current network configuration and access settings</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label className="text-muted-foreground">Access Mode</Label>
+              <Label className="text-muted-foreground">Access mode</Label>
               <div className="flex items-center gap-2 mt-1">
                 {networkStatus.data?.access_mode === 'lan_only' && (
                   <>
-                    <Wifi className="h-4 w-4" />
-                    <span>LAN Only</span>
+                    <ConnectionIcon className="h-4 w-4" />
+                    <span>LAN only</span>
                   </>
                 )}
                 {networkStatus.data?.access_mode === 'wireguard' && (
                   <>
-                    <Key className="h-4 w-4" />
+                    <KeyIcon className="h-4 w-4" />
                     <span>WireGuard VPN</span>
                   </>
                 )}
                 {networkStatus.data?.access_mode === 'public_https' && (
                   <>
-                    <Globe className="h-4 w-4" />
+                    <InternetIcon className="h-4 w-4" />
                     <span>Public HTTPS</span>
                   </>
                 )}
@@ -150,16 +147,16 @@ export function NetworkSettings() {
             </div>
 
             <div>
-              <Label className="text-muted-foreground">LAN Access</Label>
+              <Label className="text-muted-foreground">LAN access</Label>
               <div className="mt-1">
                 {networkStatus.data?.lan_access ? (
                   <Badge variant="default">
-                    <CheckCircle className="h-3 w-3 mr-1" />
+                    <OkIcon className="h-3 w-3 mr-1" />
                     Enabled
                   </Badge>
                 ) : (
                   <Badge variant="secondary">
-                    <XCircle className="h-3 w-3 mr-1" />
+                    <FailedIcon className="h-3 w-3 mr-1" />
                     Disabled
                   </Badge>
                 )}
@@ -167,16 +164,16 @@ export function NetworkSettings() {
             </div>
 
             <div>
-              <Label className="text-muted-foreground">WAN Blocked</Label>
+              <Label className="text-muted-foreground">WAN blocked</Label>
               <div className="mt-1">
                 {networkStatus.data?.wan_blocked ? (
                   <Badge variant="default">
-                    <Shield className="h-3 w-3 mr-1" />
+                    <FirewallIcon className="h-3 w-3 mr-1" />
                     Yes
                   </Badge>
                 ) : (
                   <Badge variant="secondary">
-                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    <WarningIcon className="h-3 w-3 mr-1" />
                     No
                   </Badge>
                 )}
@@ -196,7 +193,7 @@ export function NetworkSettings() {
           </div>
 
           <div>
-            <Label className="text-muted-foreground">Open Ports</Label>
+            <Label className="text-muted-foreground">Open ports</Label>
             <div className="mt-1 flex flex-wrap gap-2">
               {networkStatus.data?.open_ports?.map((port) => (
                 <Badge key={port} variant="outline">
@@ -210,15 +207,15 @@ export function NetworkSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
+          <CardTitle>Quick actions</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             onClick={() => navigate('/settings/network/wizard')}
           >
-            <Settings className="h-4 w-4 mr-2" />
-            Run Setup Wizard
+            <SettingsIcon className="h-4 w-4 mr-2" />
+            Run setup wizard
           </Button>
           
           {networkStatus.data?.access_mode === 'public_https' && (
@@ -228,9 +225,9 @@ export function NetworkSettings() {
               disabled={testHTTPS.isPending}
             >
               {testHTTPS.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <WorkingIcon className="h-4 w-4 mr-2 animate-spin" />
               ) : (
-                <CheckCircle className="h-4 w-4 mr-2" />
+                <OkIcon className="h-4 w-4 mr-2" />
               )}
               Test HTTPS
             </Button>
@@ -244,12 +241,12 @@ export function NetworkSettings() {
     <div className="space-y-6">
       {firewallState.data?.status === 'pending_confirm' && (
         <Alert variant="destructive">
-          <Clock className="h-4 w-4" />
+          <TimeIcon className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
             <span>
               Firewall changes pending confirmation. 
               {firewallState.data.rollback_at && (
-                <> Auto-rollback at {format(new Date(firewallState.data.rollback_at), 'HH:mm:ss')}</>
+                <> Auto-rollback at {formatTime(firewallState.data.rollback_at)}</>
               )}
             </span>
             <div className="flex gap-2">
@@ -257,7 +254,7 @@ export function NetworkSettings() {
                 Confirm
               </Button>
               <Button size="sm" variant="outline" onClick={handleRollbackFirewall}>
-                Rollback Now
+                Rollback now
               </Button>
             </div>
           </AlertDescription>
@@ -266,7 +263,7 @@ export function NetworkSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Firewall Status</CardTitle>
+          <CardTitle>Firewall status</CardTitle>
           <CardDescription>
             Current firewall rules and configuration
           </CardDescription>
@@ -282,17 +279,17 @@ export function NetworkSettings() {
               </div>
             </div>
             <div>
-              <Label className="text-muted-foreground">Last Applied</Label>
+              <Label className="text-muted-foreground">Last applied</Label>
               <div className="mt-1 text-sm">
                 {firewallState.data?.last_applied
-                  ? format(new Date(firewallState.data.last_applied), 'PPp')
+                  ? formatDateTime(firewallState.data.last_applied)
                   : 'Never'}
               </div>
             </div>
           </div>
 
           <div>
-            <Label className="text-muted-foreground mb-2">Active Rules</Label>
+            <Label className="text-muted-foreground mb-2">Active rules</Label>
             <div className="space-y-1">
               {firewallState.data?.rules
                 ?.filter((rule) => rule.enabled)
@@ -303,9 +300,9 @@ export function NetworkSettings() {
                   >
                     <div className="flex items-center gap-2">
                       {rule.type === 'allow' ? (
-                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <OkIcon className="h-4 w-4 text-status-ok-text" />
                       ) : (
-                        <XCircle className="h-4 w-4 text-red-600" />
+                        <FailedIcon className="h-4 w-4 text-status-failed-text" />
                       )}
                       <span className="text-sm">{rule.description}</span>
                     </div>
@@ -335,7 +332,7 @@ export function NetworkSettings() {
         <CardContent className="space-y-4">
           {!wgState.data?.enabled ? (
             <Alert>
-              <AlertTriangle className="h-4 w-4" />
+              <WarningIcon className="h-4 w-4" />
               <AlertDescription>
                 WireGuard is not enabled. Run the Remote Access Wizard to set it up.
               </AlertDescription>
@@ -348,11 +345,11 @@ export function NetworkSettings() {
                   <div className="mt-1">{wgState.data.interface}</div>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Listen Port</Label>
+                  <Label className="text-muted-foreground">Listen port</Label>
                   <div className="mt-1">{wgState.data.listen_port}</div>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Server Subnet</Label>
+                  <Label className="text-muted-foreground">Server subnet</Label>
                   <div className="mt-1 font-mono text-sm">{wgState.data.server_cidr}</div>
                 </div>
                 <div>
@@ -367,8 +364,8 @@ export function NetworkSettings() {
                 <div className="flex items-center justify-between mb-2">
                   <Label>Peers ({wgState.data.peers?.length || 0})</Label>
                   <Button size="sm" onClick={() => setShowAddPeerDialog(true)}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Peer
+                    <AddIcon className="h-4 w-4 mr-1" />
+                    Add peer
                   </Button>
                 </div>
                 <div className="space-y-2">
@@ -384,7 +381,7 @@ export function NetworkSettings() {
                         </div>
                         {peer.last_handshake && (
                           <div className="text-xs text-muted-foreground mt-1">
-                            Last seen: {format(new Date(peer.last_handshake), 'PPp')}
+                            Last seen: {formatDateTime(peer.last_handshake)}
                           </div>
                         )}
                       </div>
@@ -397,7 +394,7 @@ export function NetworkSettings() {
                           variant="ghost"
                           onClick={() => handleRemovePeer(peer.id)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <DeleteIcon className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -415,7 +412,7 @@ export function NetworkSettings() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>HTTPS Configuration</CardTitle>
+          <CardTitle>HTTPS configuration</CardTitle>
           <CardDescription>
             SSL/TLS certificate and domain settings
           </CardDescription>
@@ -459,7 +456,7 @@ export function NetworkSettings() {
                   variant="ghost"
                   onClick={() => window.open(`https://${httpsConfig.data.domain}`, '_blank')}
                 >
-                  <ExternalLink className="h-4 w-4" />
+                  <OpenExternalIcon className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -467,12 +464,12 @@ export function NetworkSettings() {
 
           {httpsConfig.data?.expiry && (
             <div>
-              <Label className="text-muted-foreground">Certificate Expiry</Label>
+              <Label className="text-muted-foreground">Certificate expiry</Label>
               <div className="mt-1">
-                {format(new Date(httpsConfig.data.expiry), 'PPP')}
+                {formatDate(httpsConfig.data.expiry)}
                 {httpsConfig.data.next_renewal && (
                   <span className="text-sm text-muted-foreground ml-2">
-                    (Renewal: {format(new Date(httpsConfig.data.next_renewal), 'PPP')})
+                    (Renewal: {formatDate(httpsConfig.data.next_renewal)})
                   </span>
                 )}
               </div>
@@ -481,7 +478,7 @@ export function NetworkSettings() {
 
           {httpsConfig.data?.error_message && (
             <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
+              <WarningIcon className="h-4 w-4" />
               <AlertDescription>{httpsConfig.data.error_message}</AlertDescription>
             </Alert>
           )}
@@ -493,7 +490,7 @@ export function NetworkSettings() {
   return (
     <div className="container mx-auto p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Network & Remote Access</h1>
+        <h1 className="screen-title">Network & remote access</h1>
         <p className="text-muted-foreground">
           Configure network settings, firewall rules, and remote access options
         </p>
@@ -517,14 +514,14 @@ export function NetworkSettings() {
       <Dialog open={showAddPeerDialog} onOpenChange={setShowAddPeerDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add WireGuard Peer</DialogTitle>
+            <DialogTitle>Add WireGuard peer</DialogTitle>
             <DialogDescription>
               Create a new VPN client configuration
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="peer-name">Peer Name</Label>
+              <Label htmlFor="peer-name">Peer name</Label>
               <Input
                 id="peer-name"
                 value={newPeerName}
@@ -538,7 +535,7 @@ export function NetworkSettings() {
               Cancel
             </Button>
             <Button onClick={handleAddPeer} disabled={!newPeerName || addPeer.isPending}>
-              {addPeer.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {addPeer.isPending && <WorkingIcon className="h-4 w-4 mr-2 animate-spin" />}
               Add Peer
             </Button>
           </DialogFooter>
@@ -549,7 +546,7 @@ export function NetworkSettings() {
       <Dialog open={showPeerConfigDialog} onOpenChange={setShowPeerConfigDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>WireGuard Client Configuration</DialogTitle>
+            <DialogTitle>WireGuard client configuration</DialogTitle>
             <DialogDescription>
               Save this configuration or scan the QR code with your WireGuard app
             </DialogDescription>
@@ -560,7 +557,7 @@ export function NetworkSettings() {
                 <img src={selectedPeerConfig.qr_code} alt="WireGuard QR Code" className="w-64 h-64" />
               </div>
               <div>
-                <Label>Configuration File</Label>
+                <Label>Configuration file</Label>
                 <pre className="mt-2 p-3 bg-muted rounded-lg text-xs overflow-x-auto">
                   {selectedPeerConfig.config}
                 </pre>
@@ -570,7 +567,7 @@ export function NetworkSettings() {
                     variant="outline"
                     onClick={() => copyToClipboard(selectedPeerConfig.config)}
                   >
-                    <Copy className="h-4 w-4 mr-1" />
+                    <CopyIcon className="h-4 w-4 mr-1" />
                     Copy
                   </Button>
                   <Button
@@ -578,7 +575,7 @@ export function NetworkSettings() {
                     variant="outline"
                     onClick={() => downloadConfig(selectedPeerConfig.config, 'wireguard.conf')}
                   >
-                    <Download className="h-4 w-4 mr-1" />
+                    <DownloadIcon className="h-4 w-4 mr-1" />
                     Download
                   </Button>
                 </div>

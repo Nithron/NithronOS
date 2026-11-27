@@ -2,34 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getErrorMessage } from '@/lib/nos-client';
-import { 
-  Package,
-  Play,
-  Square,
-  RotateCw,
-  ExternalLink,
-  Download,
-  Trash2,
-  ChevronLeft,
-  Shield,
-  Activity,
-  Terminal,
-  Settings,
-  History,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Loader2,
-  Copy,
-  Pause,
-  PlayCircle,
-  ArrowUp,
-  Clock,
-  HardDrive
-} from 'lucide-react';
+import { AppIcon, ChevronLeftIcon, CopyIcon, DeleteIcon, DownloadIcon, FailedIcon, HistoryIcon, OkIcon, OpenExternalIcon, PauseIcon, RestartIcon, SecurityIcon, StartIcon, StopIcon, StorageIcon, TimeIcon, UpgradeIcon, WorkingIcon } from '@/components/icons'
 import { appsApi } from '../api/apps';
 import type { AppSnapshot, AppEvent, ContainerHealth, PortMapping } from '../api/apps.types';
 import { cn } from '../lib/utils';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/toast';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -182,28 +159,28 @@ export function AppDetails() {
   const getStatusColor = (status?: string) => {
     switch (status) {
       case 'running':
-        return 'text-green-500';
+        return 'text-status-ok-text';
       case 'stopped':
-        return 'text-gray-500';
+        return 'text-ink-2';
       case 'error':
-        return 'text-red-500';
+        return 'text-status-failed-text';
       case 'starting':
       case 'stopping':
       case 'upgrading':
-        return 'text-yellow-500';
+        return 'text-status-warning-text';
       default:
-        return 'text-gray-400';
+        return 'text-ink-2';
     }
   };
 
   const getHealthColor = (status?: string) => {
     switch (status) {
       case 'healthy':
-        return 'text-green-500';
+        return 'text-status-ok-text';
       case 'unhealthy':
-        return 'text-red-500';
+        return 'text-status-failed-text';
       default:
-        return 'text-gray-400';
+        return 'text-ink-2';
     }
   };
 
@@ -216,7 +193,7 @@ export function AppDetails() {
     return (
       <div className="container mx-auto py-6">
         <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+          <WorkingIcon className="w-8 h-8 animate-spin text-ink-2" />
         </div>
       </div>
     );
@@ -226,13 +203,13 @@ export function AppDetails() {
     return (
       <div className="container mx-auto py-6">
         <div className="text-center py-12">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <FailedIcon className="w-12 h-12 text-status-failed-text mx-auto mb-4" />
           <p className="text-lg">App not found</p>
           <button
             onClick={() => navigate('/apps')}
             className="btn btn-primary mt-4"
           >
-            Back to Apps
+            Back to apps
           </button>
         </div>
       </div>
@@ -242,32 +219,32 @@ export function AppDetails() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
-      <div className="bg-gray-800 rounded-lg p-6">
+      <div className="border border-hairline p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4">
             <button
               onClick={() => navigate('/apps')}
               className="btn btn-secondary btn-sm mt-1"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeftIcon className="w-4 h-4" />
             </button>
-            <div className="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center">
-              <Package className="w-8 h-8 text-gray-400" />
+            <div className="w-16 h-16 border border-hairline flex items-center justify-center">
+              <AppIcon className="w-8 h-8 text-ink-2" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{app.name}</h1>
+              <h1 className="screen-title">{app.name}</h1>
               <div className="flex items-center gap-4 mt-2">
-                <span className="text-sm text-gray-400">v{app.version}</span>
+                <span className="text-sm text-ink-2">v{app.version}</span>
                 <div className={cn('flex items-center gap-1', getStatusColor(app.status))}>
-                  {app.status === 'running' && <CheckCircle className="w-4 h-4" />}
-                  {app.status === 'stopped' && <XCircle className="w-4 h-4" />}
-                  {app.status === 'error' && <AlertCircle className="w-4 h-4" />}
+                  {app.status === 'running' && <OkIcon className="w-4 h-4" />}
+                  {app.status === 'stopped' && <FailedIcon className="w-4 h-4" />}
+                  {app.status === 'error' && <FailedIcon className="w-4 h-4" />}
                   {(app.status === 'starting' || app.status === 'stopping') && 
-                    <Loader2 className="w-4 h-4 animate-spin" />}
+                    <WorkingIcon className="w-4 h-4 animate-spin" />}
                   <span className="capitalize">{app.status}</span>
                 </div>
                 <div className={cn('flex items-center gap-1', getHealthColor(app.health?.status))}>
-                  <Shield className="w-4 h-4" />
+                  <SecurityIcon className="w-4 h-4" />
                   <span className="capitalize">{app.health?.status || 'unknown'}</span>
                 </div>
               </div>
@@ -281,8 +258,8 @@ export function AppDetails() {
                       rel="noopener noreferrer"
                       className="btn btn-secondary btn-sm"
                     >
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      Open App
+                      <OpenExternalIcon className="w-4 h-4 mr-2" />
+                      Open app
                     </a>
                   ))}
                 </div>
@@ -297,7 +274,7 @@ export function AppDetails() {
                 disabled={startMutation.isPending}
                 className="btn btn-primary"
               >
-                <Play className="w-4 h-4 mr-2" />
+                <StartIcon className="w-4 h-4 mr-2" />
                 Start
               </button>
             ) : app.status === 'running' ? (
@@ -307,7 +284,7 @@ export function AppDetails() {
                   disabled={restartMutation.isPending}
                   className="btn btn-secondary"
                 >
-                  <RotateCw className="w-4 h-4 mr-2" />
+                  <RestartIcon className="w-4 h-4 mr-2" />
                   Restart
                 </button>
                 <button
@@ -315,7 +292,7 @@ export function AppDetails() {
                   disabled={stopMutation.isPending}
                   className="btn btn-secondary"
                 >
-                  <Square className="w-4 h-4 mr-2" />
+                  <StopIcon className="w-4 h-4 mr-2" />
                   Stop
                 </button>
               </>
@@ -324,7 +301,7 @@ export function AppDetails() {
               onClick={() => navigate(`/apps/install/${app.id}`)}
               className="btn btn-secondary"
             >
-              <ArrowUp className="w-4 h-4 mr-2" />
+              <UpgradeIcon className="w-4 h-4 mr-2" />
               Upgrade
             </button>
           </div>
@@ -332,65 +309,51 @@ export function AppDetails() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-gray-800 rounded-lg w-fit">
-        {[
-          { key: 'health', label: 'Health', icon: Activity },
-          { key: 'logs', label: 'Logs', icon: Terminal },
-          { key: 'config', label: 'Config', icon: Settings },
-          { key: 'snapshots', label: 'Snapshots', icon: History },
-        ].map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
-            className={cn(
-              'px-4 py-2 rounded-md transition-colors flex items-center gap-2',
-              activeTab === tab.key
-                ? 'bg-gray-700 text-white'
-                : 'text-gray-400 hover:text-white'
-            )}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+        <TabsList>
+          <TabsTrigger value="health">Health</TabsTrigger>
+          <TabsTrigger value="logs">Logs</TabsTrigger>
+          <TabsTrigger value="config">Config</TabsTrigger>
+          <TabsTrigger value="snapshots">Snapshots</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Tab Content */}
-      <div className="bg-gray-800 rounded-lg p-6">
+      <div className="border border-hairline p-6">
         {activeTab === 'health' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Health Status</h2>
+              <h2 className="text-xl font-[560]">Health status</h2>
               <button
                 onClick={() => healthCheckMutation.mutate()}
                 disabled={healthCheckMutation.isPending}
                 className="btn btn-secondary btn-sm"
               >
-                <RotateCw className={cn(
+                <RestartIcon className={cn(
                   "w-4 h-4 mr-2",
                   healthCheckMutation.isPending && "animate-spin"
                 )} />
-                Check Now
+                Check now
               </button>
             </div>
             
             {/* Overall Health */}
-            <div className="bg-gray-700 rounded-lg p-4">
+            <div className="border border-hairline p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-400">Overall Health</p>
-                  <p className={cn('text-2xl font-semibold', getHealthColor(app.health?.status))}>
+                  <p className="text-sm text-ink-2">Overall health</p>
+                  <p className={cn('text-2xl font-[560]', getHealthColor(app.health?.status))}>
                     {app.health?.status || 'Unknown'}
                   </p>
                 </div>
                 {app.health?.checked_at && (
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-ink-2">
                     Last checked: {formatDistanceToNow(new Date(app.health.checked_at), { addSuffix: true })}
                   </p>
                 )}
               </div>
               {app.health?.message && (
-                <p className="text-sm text-gray-300 mt-2">{app.health.message}</p>
+                <p className="text-sm text-ink mt-2">{app.health.message}</p>
               )}
             </div>
             
@@ -400,20 +363,20 @@ export function AppDetails() {
                 <h3 className="font-medium mb-3">Containers</h3>
                 <div className="space-y-2">
                   {app.health.containers.map((container: ContainerHealth, idx: number) => (
-                    <div key={idx} className="bg-gray-700 rounded-lg p-3">
+                    <div key={idx} className="border border-hairline p-3">
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{container.name}</span>
                         <div className="flex items-center gap-4">
                           <span className={cn(
                             'text-sm',
-                            container.status === 'running' ? 'text-green-500' : 'text-gray-400'
+                            container.status === 'running' ? 'text-status-ok-text' : 'text-ink-2'
                           )}>
                             {container.status}
                           </span>
                           {container.health && (
                             <span className={cn(
                               'text-sm',
-                              container.health === 'healthy' ? 'text-green-500' : 'text-red-500'
+                              container.health === 'healthy' ? 'text-status-ok-text' : 'text-status-failed-text'
                             )}>
                               {container.health}
                             </span>
@@ -429,21 +392,21 @@ export function AppDetails() {
             {/* Recent Events */}
             {eventsData?.events && eventsData.events.length > 0 && (
               <div>
-                <h3 className="font-medium mb-3">Recent Events</h3>
+                <h3 className="font-medium mb-3">Recent events</h3>
                 <div className="space-y-2">
                   {eventsData.events.slice(0, 5).map((event: AppEvent) => (
-                    <div key={event.id} className="bg-gray-700 rounded-lg p-3">
+                    <div key={event.id} className="border border-hairline p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-gray-400" />
+                          <TimeIcon className="w-4 h-4 text-ink-2" />
                           <span className="text-sm">{event.type}</span>
                         </div>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-ink-2">
                           {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}
                         </span>
                       </div>
                       {event.details && (
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-ink-2 mt-1">
                           {JSON.stringify(event.details)}
                         </p>
                       )}
@@ -458,7 +421,7 @@ export function AppDetails() {
         {activeTab === 'logs' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Logs</h2>
+              <h2 className="text-xl font-[560]">Logs</h2>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setLogsPaused(!logsPaused)}
@@ -466,12 +429,12 @@ export function AppDetails() {
                 >
                   {logsPaused ? (
                     <>
-                      <PlayCircle className="w-4 h-4 mr-2" />
+                      <StartIcon className="w-4 h-4 mr-2" />
                       Resume
                     </>
                   ) : (
                     <>
-                      <Pause className="w-4 h-4 mr-2" />
+                      <PauseIcon className="w-4 h-4 mr-2" />
                       Pause
                     </>
                   )}
@@ -488,21 +451,21 @@ export function AppDetails() {
                   }}
                   className="btn btn-secondary btn-sm"
                 >
-                  <Download className="w-4 h-4 mr-2" />
+                  <DownloadIcon className="w-4 h-4 mr-2" />
                   Download
                 </button>
               </div>
             </div>
             
-            <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm h-96 overflow-y-auto">
+            <div className="border border-hairline p-4 font-mono text-sm h-96 overflow-y-auto">
               {logs.length === 0 ? (
-                <p className="text-gray-500">No logs available</p>
+                <p className="text-ink-2">No logs available</p>
               ) : (
                 <>
                   {logs.map((line, idx) => (
-                    <div key={idx} className="hover:bg-gray-800 px-2 py-0.5">
-                      <span className="text-gray-500 mr-4">{idx + 1}</span>
-                      <span className="text-gray-300">{line}</span>
+                    <div key={idx} className="hover:bg-ink/[.09] px-2 py-0.5">
+                      <span className="text-ink-2 mr-4">{idx + 1}</span>
+                      <span className="text-ink">{line}</span>
                     </div>
                   ))}
                   <div ref={logsEndRef} />
@@ -514,21 +477,21 @@ export function AppDetails() {
 
         {activeTab === 'config' && (
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Configuration</h2>
+            <h2 className="text-xl font-[560]">Configuration</h2>
             
             {/* Environment Variables */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-medium">Environment Variables</h3>
+                <h3 className="font-medium">Environment variables</h3>
                 <button
                   onClick={() => copyToClipboard(JSON.stringify(app.params, null, 2))}
                   className="btn btn-secondary btn-sm"
                 >
-                  <Copy className="w-4 h-4 mr-2" />
+                  <CopyIcon className="w-4 h-4 mr-2" />
                   Copy
                 </button>
               </div>
-              <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm">
+              <div className="border border-hairline p-4 font-mono text-sm">
                 <pre>{JSON.stringify(app.params, null, 2)}</pre>
               </div>
             </div>
@@ -536,10 +499,10 @@ export function AppDetails() {
             {/* Port Mappings */}
             {app.ports && app.ports.length > 0 && (
               <div>
-                <h3 className="font-medium mb-3">Port Mappings</h3>
+                <h3 className="font-medium mb-3">Port mappings</h3>
                 <div className="space-y-2">
                   {app.ports.map((port: PortMapping, idx: number) => (
-                    <div key={idx} className="bg-gray-700 rounded-lg p-3">
+                    <div key={idx} className="border border-hairline p-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm">
                           Container: {port.container}/{port.protocol}
@@ -559,28 +522,28 @@ export function AppDetails() {
         {activeTab === 'snapshots' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Snapshots</h2>
+              <h2 className="text-xl font-[560]">Snapshots</h2>
               <button
                 className="btn btn-secondary btn-sm"
                 onClick={() => snapshotMutation.mutate()}
                 disabled={snapshotMutation.isPending}
               >
-                <HardDrive className="w-4 h-4 mr-2" />
-                Create Snapshot
+                <StorageIcon className="w-4 h-4 mr-2" />
+                Create snapshot
               </button>
             </div>
             
             {app.snapshots && app.snapshots.length > 0 ? (
               <div className="space-y-2">
                 {app.snapshots.map((snapshot: AppSnapshot) => (
-                  <div key={snapshot.id} className="bg-gray-700 rounded-lg p-4">
+                  <div key={snapshot.id} className="border border-hairline p-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">{snapshot.name}</p>
-                        <p className="text-sm text-gray-400">
+                        <p className="text-sm text-ink-2">
                           {formatDistanceToNow(new Date(snapshot.timestamp), { addSuffix: true })}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-ink-2">
                           Type: {snapshot.type} • ID: {snapshot.id}
                         </p>
                       </div>
@@ -591,7 +554,7 @@ export function AppDetails() {
                             disabled={rollbackMutation.isPending}
                             className="btn btn-danger btn-sm"
                           >
-                            Confirm Rollback
+                            Confirm rollback
                           </button>
                           <button
                             onClick={() => setSelectedSnapshot(null)}
@@ -605,7 +568,7 @@ export function AppDetails() {
                           onClick={() => setSelectedSnapshot(snapshot.id)}
                           className="btn btn-secondary btn-sm"
                         >
-                          <History className="w-4 h-4 mr-2" />
+                          <HistoryIcon className="w-4 h-4 mr-2" />
                           Rollback
                         </button>
                       )}
@@ -615,8 +578,8 @@ export function AppDetails() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <HardDrive className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-400">No snapshots available</p>
+                <StorageIcon className="w-12 h-12 text-ink-2 mx-auto mb-4" />
+                <p className="text-ink-2">No snapshots available</p>
               </div>
             )}
           </div>
@@ -624,19 +587,19 @@ export function AppDetails() {
       </div>
 
       {/* Danger Zone */}
-      <div className="bg-red-900/20 border border-red-800 rounded-lg p-6">
-        <h2 className="text-xl font-semibold text-red-400 mb-4">Danger Zone</h2>
+      <div className="border border-status-failed p-6">
+        <h2 className="text-xl font-[560] text-status-failed-text mb-4">Danger zone</h2>
         {!showDeleteConfirm ? (
           <button
             onClick={() => setShowDeleteConfirm(true)}
             className="btn btn-danger"
           >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Delete App
+            <DeleteIcon className="w-4 h-4 mr-2" />
+            Delete app
           </button>
         ) : (
           <div className="space-y-4">
-            <p className="text-sm text-gray-300">
+            <p className="text-sm text-ink">
               This will stop and remove the app. You can choose to keep the data.
             </p>
             <label className="flex items-center gap-2 cursor-pointer">
@@ -656,13 +619,13 @@ export function AppDetails() {
               >
                 {deleteMutation.isPending ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <WorkingIcon className="w-4 h-4 mr-2 animate-spin" />
                     Deleting...
                   </>
                 ) : (
                   <>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Confirm Delete
+                    <DeleteIcon className="w-4 h-4 mr-2" />
+                    Confirm delete
                   </>
                 )}
               </button>

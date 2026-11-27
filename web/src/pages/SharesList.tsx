@@ -1,19 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { 
-	 
-	Network, 
-	Users, 
-	Clock, 
-	Trash2, 
-	Edit, 
-	Plus,
-	FolderOpen,
-	Shield,
-	MoreVertical,
-	Server,
-	Share2
-} from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { AddIcon, DeleteIcon, EditIcon, FolderIcon, MoreIcon, NetworkIcon, ServerIcon, ShareIcon } from '@/components/icons'
 import { useShares, useShareMutations, type Share } from '@/api/shares'
 import { getErrorMessage } from '@/lib/nos-client'
 import { toast } from '@/components/ui/toast'
@@ -22,7 +9,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
 import { EmptyState } from '@/components/ui/empty-state'
-import { StatusPill } from '@/components/ui/status-pill'
+import { StatusMark } from '@/components/ui/pixel'
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -73,16 +60,15 @@ export function SharesList() {
 			cell: ({ row }: any) => {
 				const share = row.original as Share
 				return (
-					<div className="flex items-center gap-3">
-						<div className="p-2 bg-blue-500/10 rounded-lg">
-							<FolderOpen className="h-4 w-4 text-blue-500" />
-						</div>
-						<div>
-							<div className="font-medium">{share.name}</div>
-							<div className="text-xs text-muted-foreground">
-								/srv/shares/{share.name}
-							</div>
-						</div>
+					<div>
+						<Link
+							to={`/shares/${encodeURIComponent(share.name)}`}
+							className="font-[560] underline decoration-ink-2 underline-offset-4 hover:decoration-ink"
+							onClick={(e) => e.stopPropagation()}
+						>
+							{share.name}
+						</Link>
+						<div className="font-mono text-xs text-ink-2">/srv/shares/{share.name}</div>
 					</div>
 				)
 			},
@@ -96,13 +82,13 @@ export function SharesList() {
 					<div className="flex items-center gap-2">
 						{share.smb?.enabled && (
 							<div className="flex items-center gap-1.5">
-								<Server className="h-4 w-4 text-muted-foreground" />
+								<ServerIcon className="h-4 w-4 text-muted-foreground" />
 								<span className="text-sm">SMB</span>
 							</div>
 						)}
 						{share.nfs?.enabled && (
 							<div className="flex items-center gap-1.5">
-								<Network className="h-4 w-4 text-muted-foreground" />
+								<NetworkIcon className="h-4 w-4 text-muted-foreground" />
 								<span className="text-sm">NFS</span>
 							</div>
 						)}
@@ -120,24 +106,10 @@ export function SharesList() {
 				const share = row.original as Share
 				return (
 					<div className="flex items-center gap-2">
-						{share.smb?.guest && (
-							<StatusPill status="warning" size="sm">
-								<Users className="h-3 w-3" />
-								Guest
-							</StatusPill>
-						)}
-						{share.smb?.time_machine && (
-							<StatusPill status="success" size="sm">
-								<Clock className="h-3 w-3" />
-								Time Machine
-							</StatusPill>
-						)}
-						{share.smb?.recycle?.enabled && (
-							<StatusPill status="info" size="sm">
-								<Trash2 className="h-3 w-3" />
-								Recycle
-							</StatusPill>
-						)}
+						{/* Guest access is a state worth a warning; the rest are words. */}
+						{share.smb?.guest && <StatusMark state="warning" className="text-sm">Guest access</StatusMark>}
+						{share.smb?.time_machine && <span className="text-sm">Time Machine</span>}
+						{share.smb?.recycle?.enabled && <span className="text-sm">Recycle bin</span>}
 					</div>
 				)
 			},
@@ -154,14 +126,14 @@ export function SharesList() {
 					<div className="flex items-center gap-3 text-sm">
 						{ownerCount > 0 && (
 							<div className="flex items-center gap-1.5">
-								<Shield className="h-3.5 w-3.5 text-green-500" />
-								<span>{ownerCount} owner{ownerCount !== 1 ? 's' : ''}</span>
+								<span className="font-mono tabular-nums">{ownerCount}</span>
+								<span>owner{ownerCount !== 1 ? 's' : ''}</span>
 							</div>
 						)}
 						{readerCount > 0 && (
 							<div className="flex items-center gap-1.5">
-								<Shield className="h-3.5 w-3.5 text-blue-500" />
-								<span>{readerCount} reader{readerCount !== 1 ? 's' : ''}</span>
+								<span className="font-mono tabular-nums">{readerCount}</span>
+								<span>reader{readerCount !== 1 ? 's' : ''}</span>
 							</div>
 						)}
 						{ownerCount === 0 && readerCount === 0 && (
@@ -181,25 +153,25 @@ export function SharesList() {
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button variant="ghost" size="icon">
-								<MoreVertical className="h-4 w-4" />
+								<MoreIcon className="h-4 w-4" />
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
 							<DropdownMenuItem onClick={() => handleEditShare(share.name)}>
-								<Edit className="h-4 w-4 mr-2" />
-								Edit Share
+								<EditIcon className="h-4 w-4 mr-2" />
+								Edit share
 							</DropdownMenuItem>
 							<DropdownMenuItem>
-								<FolderOpen className="h-4 w-4 mr-2" />
-								Open in Files
+								<FolderIcon className="h-4 w-4 mr-2" />
+								Open in files
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem 
 								onClick={() => setDeleteTarget(share.name)}
 								className="text-destructive"
 							>
-								<Trash2 className="h-4 w-4 mr-2" />
-								Delete Share
+								<DeleteIcon className="h-4 w-4 mr-2" />
+								Delete share
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
@@ -217,13 +189,13 @@ export function SharesList() {
 				/>
 				<div className="flex-1 flex items-center justify-center p-8">
 					<EmptyState
-						icon={Share2}
+						icon={ShareIcon}
 						title="No shares configured"
 						description="Create your first network share to enable file access over SMB or NFS"
 						action={
 							<Button onClick={handleCreateShare}>
-								<Plus className="h-4 w-4 mr-2" />
-								Create Share
+								<AddIcon className="h-4 w-4 mr-2" />
+								Create share
 							</Button>
 						}
 					/>
@@ -239,8 +211,8 @@ export function SharesList() {
 				description="Network file shares for SMB and NFS access"
 				action={
 					<Button onClick={handleCreateShare}>
-						<Plus className="h-4 w-4 mr-2" />
-						Create Share
+						<AddIcon className="h-4 w-4 mr-2" />
+						Create share
 					</Button>
 				}
 			/>
@@ -260,7 +232,7 @@ export function SharesList() {
 			<AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete Share</AlertDialogTitle>
+						<AlertDialogTitle>Delete share</AlertDialogTitle>
 						<AlertDialogDescription>
 							Are you sure you want to delete the share "{deleteTarget}"? 
 							This will remove all share configurations but will not delete the actual files.
@@ -272,7 +244,7 @@ export function SharesList() {
 							onClick={handleDeleteShare}
 							className="bg-destructive text-destructive-foreground"
 						>
-							Delete Share
+							Delete share
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

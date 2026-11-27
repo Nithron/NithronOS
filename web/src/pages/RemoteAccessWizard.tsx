@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { StatusMark } from '@/components/ui/pixel'
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,10 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Wifi, Shield, Globe, Lock, AlertTriangle, CheckCircle2, 
-  ChevronLeft, ChevronRight, Loader2, Router, Key
-} from 'lucide-react';
+import { ChevronLeftIcon, ChevronRightIcon, ConnectionIcon, InternetIcon, KeyIcon, LockIcon, OkIcon, RouterIcon, SecurityIcon, WarningIcon, WorkingIcon } from '@/components/icons'
 import {
   useStartWizard,
   useWizardState,
@@ -21,10 +19,10 @@ import {
 import type { AccessMode, HTTPSMode } from '@/api/net.types';
 
 const WIZARD_STEPS = [
-  { id: 1, title: 'Access Mode', icon: Shield },
-  { id: 2, title: 'Configuration', icon: Router },
-  { id: 3, title: 'Security', icon: Lock },
-  { id: 4, title: 'Review', icon: CheckCircle2 },
+  { id: 1, title: 'Access mode', icon: SecurityIcon },
+  { id: 2, title: 'Configuration', icon: RouterIcon },
+  { id: 3, title: 'Security', icon: LockIcon },
+  { id: 4, title: 'Review', icon: OkIcon },
 ];
 
 export function RemoteAccessWizard() {
@@ -112,8 +110,8 @@ export function RemoteAccessWizard() {
                 <RadioGroupItem value="lan_only" id="lan_only" />
                 <Label htmlFor="lan_only" className="flex-1 cursor-pointer">
                   <div className="flex items-center gap-2">
-                    <Wifi className="h-5 w-5" />
-                    <span className="font-semibold">LAN Only (Recommended)</span>
+                    <ConnectionIcon className="h-5 w-5" />
+                    <span className="font-[560]">LAN only (recommended)</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     Access nOS only from your local network. Most secure option.
@@ -129,8 +127,8 @@ export function RemoteAccessWizard() {
                 <RadioGroupItem value="wireguard" id="wireguard" />
                 <Label htmlFor="wireguard" className="flex-1 cursor-pointer">
                   <div className="flex items-center gap-2">
-                    <Key className="h-5 w-5" />
-                    <span className="font-semibold">WireGuard VPN</span>
+                    <KeyIcon className="h-5 w-5" />
+                    <span className="font-[560]">WireGuard VPN</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     Secure remote access through encrypted VPN tunnel.
@@ -146,8 +144,8 @@ export function RemoteAccessWizard() {
                 <RadioGroupItem value="public_https" id="public_https" />
                 <Label htmlFor="public_https" className="flex-1 cursor-pointer">
                   <div className="flex items-center gap-2">
-                    <Globe className="h-5 w-5" />
-                    <span className="font-semibold">Public HTTPS</span>
+                    <InternetIcon className="h-5 w-5" />
+                    <span className="font-[560]">Public HTTPS</span>
                     <Badge variant="secondary">Advanced</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -162,7 +160,7 @@ export function RemoteAccessWizard() {
 
       {formData.access_mode === 'public_https' && (
         <Alert>
-          <AlertTriangle className="h-4 w-4" />
+          <WarningIcon className="h-4 w-4" />
           <AlertDescription>
             Public HTTPS requires a domain name pointing to this server and open ports 80/443.
             2FA will be enforced for all non-LAN connections.
@@ -178,12 +176,12 @@ export function RemoteAccessWizard() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>WireGuard Configuration</CardTitle>
+              <CardTitle>WireGuard configuration</CardTitle>
               <CardDescription>Configure your VPN server settings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="wg-cidr">VPN Subnet</Label>
+                <Label htmlFor="wg-cidr">VPN subnet</Label>
                 <Input
                   id="wg-cidr"
                   value={formData.wireguard.cidr}
@@ -199,7 +197,7 @@ export function RemoteAccessWizard() {
               </div>
 
               <div>
-                <Label htmlFor="wg-port">Listen Port</Label>
+                <Label htmlFor="wg-port">Listen port</Label>
                 <Input
                   id="wg-port"
                   type="number"
@@ -216,7 +214,7 @@ export function RemoteAccessWizard() {
               </div>
 
               <div>
-                <Label htmlFor="wg-endpoint">Public Endpoint (Optional)</Label>
+                <Label htmlFor="wg-endpoint">Public endpoint (optional)</Label>
                 <Input
                   id="wg-endpoint"
                   value={formData.wireguard.endpoint_hostname}
@@ -232,7 +230,7 @@ export function RemoteAccessWizard() {
               </div>
 
               <div>
-                <Label htmlFor="wg-dns">DNS Servers</Label>
+                <Label htmlFor="wg-dns">DNS servers</Label>
                 <Input
                   id="wg-dns"
                   value={formData.wireguard.dns.join(', ')}
@@ -257,12 +255,12 @@ export function RemoteAccessWizard() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>HTTPS Configuration</CardTitle>
+              <CardTitle>HTTPS configuration</CardTitle>
               <CardDescription>Configure domain and SSL certificate</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="https-domain">Domain Name</Label>
+                <Label htmlFor="https-domain">Domain name</Label>
                 <Input
                   id="https-domain"
                   value={formData.https.domain}
@@ -279,7 +277,7 @@ export function RemoteAccessWizard() {
               </div>
 
               <div>
-                <Label htmlFor="https-email">Email Address</Label>
+                <Label htmlFor="https-email">Email address</Label>
                 <Input
                   id="https-email"
                   type="email"
@@ -297,7 +295,7 @@ export function RemoteAccessWizard() {
               </div>
 
               <div>
-                <Label>Certificate Method</Label>
+                <Label>Certificate method</Label>
                 <p className="text-sm text-muted-foreground">
                   A free Let's Encrypt certificate, obtained with the HTTP challenge: ports 80 and 443 must be
                   reachable from the internet, and the domain must point to this system. (The DNS challenge
@@ -316,14 +314,14 @@ export function RemoteAccessWizard() {
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>LAN Only Configuration</CardTitle>
+            <CardTitle>LAN only configuration</CardTitle>
             <CardDescription>
               Your nOS instance will only be accessible from your local network
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Alert>
-              <Shield className="h-4 w-4" />
+              <SecurityIcon className="h-4 w-4" />
               <AlertDescription>
                 No additional configuration needed. The firewall will block all external access.
               </AlertDescription>
@@ -338,38 +336,38 @@ export function RemoteAccessWizard() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Security Settings</CardTitle>
+          <CardTitle>Security settings</CardTitle>
           <CardDescription>Review security implications of your configuration</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {formData.access_mode === 'public_https' && (
             <Alert>
-              <Lock className="h-4 w-4" />
+              <LockIcon className="h-4 w-4" />
               <AlertDescription>
-                <strong>2FA Enforcement:</strong> All non-LAN admin sessions will require two-factor authentication.
+                <strong>2FA enforcement:</strong> All non-LAN admin sessions will require two-factor authentication.
                 Make sure to set up TOTP after completing this wizard.
               </AlertDescription>
             </Alert>
           )}
 
           <div className="space-y-2">
-            <h4 className="font-medium">Firewall Rules Preview</h4>
+            <h4 className="font-medium">Firewall rules preview</h4>
             <div className="rounded-lg bg-muted p-4 font-mono text-sm">
               <div className="space-y-1">
-                <div className="text-green-600">+ Allow LAN to UI/API (192.168.0.0/16, 10.0.0.0/8)</div>
+                <div className="text-status-ok-text">+ Allow LAN to UI/API (192.168.0.0/16, 10.0.0.0/8)</div>
                 {formData.access_mode === 'lan_only' && (
-                  <div className="text-red-600">+ Block WAN to ports 80, 443</div>
+                  <div className="text-status-failed-text">+ Block WAN to ports 80, 443</div>
                 )}
                 {formData.access_mode === 'wireguard' && (
                   <>
-                    <div className="text-green-600">+ Allow UDP port {formData.wireguard.listen_port} (WireGuard)</div>
-                    <div className="text-red-600">+ Block WAN to UI/API</div>
+                    <div className="text-status-ok-text">+ Allow UDP port {formData.wireguard.listen_port} (WireGuard)</div>
+                    <div className="text-status-failed-text">+ Block WAN to UI/API</div>
                   </>
                 )}
                 {formData.access_mode === 'public_https' && (
                   <>
-                    <div className="text-green-600">+ Allow TCP ports 80, 443 (HTTPS)</div>
-                    <div className="text-yellow-600">+ Require 2FA for non-LAN</div>
+                    <div className="text-status-ok-text">+ Allow TCP ports 80, 443 (HTTPS)</div>
+                    <div className="text-status-warning-text">+ Require 2FA for non-LAN</div>
                   </>
                 )}
               </div>
@@ -377,7 +375,7 @@ export function RemoteAccessWizard() {
           </div>
 
           <Alert>
-            <AlertTriangle className="h-4 w-4" />
+            <WarningIcon className="h-4 w-4" />
             <AlertDescription>
               A 60-second rollback timer will activate after applying firewall changes.
               You must confirm the changes work or they will automatically revert.
@@ -392,12 +390,12 @@ export function RemoteAccessWizard() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Review Configuration</CardTitle>
+          <CardTitle>Review configuration</CardTitle>
           <CardDescription>Confirm your remote access settings before applying</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h4 className="font-medium mb-2">Access Mode</h4>
+            <h4 className="font-medium mb-2">Access mode</h4>
             <Badge variant="outline" className="text-base">
               {formData.access_mode === 'lan_only' && 'LAN Only'}
               {formData.access_mode === 'wireguard' && 'WireGuard VPN'}
@@ -407,7 +405,7 @@ export function RemoteAccessWizard() {
 
           {formData.access_mode === 'wireguard' && (
             <div className="space-y-2">
-              <h4 className="font-medium">WireGuard Settings</h4>
+              <h4 className="font-medium">WireGuard settings</h4>
               <dl className="grid grid-cols-2 gap-2 text-sm">
                 <dt className="text-muted-foreground">Subnet:</dt>
                 <dd>{formData.wireguard.cidr}</dd>
@@ -421,7 +419,7 @@ export function RemoteAccessWizard() {
 
           {formData.access_mode === 'public_https' && (
             <div className="space-y-2">
-              <h4 className="font-medium">HTTPS Settings</h4>
+              <h4 className="font-medium">HTTPS settings</h4>
               <dl className="grid grid-cols-2 gap-2 text-sm">
                 <dt className="text-muted-foreground">Domain:</dt>
                 <dd>{formData.https.domain}</dd>
@@ -434,7 +432,7 @@ export function RemoteAccessWizard() {
           )}
 
           <Alert>
-            <CheckCircle2 className="h-4 w-4" />
+            <OkIcon className="h-4 w-4" />
             <AlertDescription>
               Ready to apply configuration. The system will configure firewall rules,
               {formData.access_mode === 'wireguard' && ' enable WireGuard VPN,'}
@@ -465,7 +463,7 @@ export function RemoteAccessWizard() {
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Remote Access Wizard</h1>
+        <h1 className="screen-title">Remote access wizard</h1>
         <p className="text-muted-foreground mt-2">
           Configure how you access nOS from outside your local network
         </p>
@@ -473,36 +471,26 @@ export function RemoteAccessWizard() {
 
       {/* Progress indicator */}
       <div className="mb-8">
-        <Progress value={(currentStep / 4) * 100} className="mb-4" />
-        <div className="flex justify-between">
-          {WIZARD_STEPS.map((step) => {
-            const Icon = step.icon;
-            return (
-              <div
-                key={step.id}
-                className={`flex flex-col items-center ${
-                  step.id <= currentStep ? 'text-primary' : 'text-muted-foreground'
-                }`}
+        <Progress value={(currentStep / 4) * 100} label="Wizard progress" className="mb-4" />
+        <ol className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+          {WIZARD_STEPS.map((step) => (
+            <li key={step.id} aria-current={step.id === currentStep ? 'step' : undefined}>
+              <StatusMark
+                state={step.id < currentStep ? 'ok' : step.id === currentStep ? 'running' : 'off'}
+                className={step.id === currentStep ? 'font-[560] text-ink' : 'text-ink-2'}
               >
-                <div
-                  className={`rounded-full p-2 ${
-                    step.id <= currentStep ? 'bg-primary/10' : 'bg-muted'
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                </div>
-                <span className="text-xs mt-1">{step.title}</span>
-              </div>
-            );
-          })}
-        </div>
+                {step.title}
+              </StatusMark>
+            </li>
+          ))}
+        </ol>
       </div>
 
       {/* Step content */}
       <div className="mb-8">
         {wizardState.data?.error && (
           <Alert variant="destructive" className="mb-4">
-            <AlertTriangle className="h-4 w-4" />
+            <WarningIcon className="h-4 w-4" />
             <AlertDescription>{wizardState.data.error}</AlertDescription>
           </Alert>
         )}
@@ -517,7 +505,7 @@ export function RemoteAccessWizard() {
           onClick={handleBack}
           disabled={currentStep === 1}
         >
-          <ChevronLeft className="h-4 w-4 mr-2" />
+          <ChevronLeftIcon className="h-4 w-4 mr-2" />
           Back
         </Button>
 
@@ -526,16 +514,16 @@ export function RemoteAccessWizard() {
             onClick={handleNext}
             disabled={wizardNext.isPending}
           >
-            {wizardNext.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {wizardNext.isPending && <WorkingIcon className="h-4 w-4 mr-2 animate-spin" />}
             Next
-            <ChevronRight className="h-4 w-4 ml-2" />
+            <ChevronRightIcon className="h-4 w-4 ml-2" />
           </Button>
         ) : (
           <Button
             onClick={handleComplete}
             disabled={completeWizard.isPending}
           >
-            {completeWizard.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {completeWizard.isPending && <WorkingIcon className="h-4 w-4 mr-2 animate-spin" />}
             Apply Configuration
           </Button>
         )}

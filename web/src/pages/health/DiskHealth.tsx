@@ -1,18 +1,13 @@
 import { motion } from 'framer-motion'
-import { 
-  Activity, AlertCircle, CheckCircle, Database,
-  HardDrive, Info, RefreshCw, Thermometer, Play,
-  AlertTriangle
-} from 'lucide-react'
+import { FailedIcon, NoticeIcon, RefreshIcon, StartIcon, TemperatureIcon, WorkingIcon } from '@/components/icons'
 import { useMemo, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
+import { Meter, StatusMark, Working, type MarkState } from '@/components/ui/pixel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useDiskHealth, formatBytes, getDiskHealthColor } from '@/hooks/use-health'
+import { useDiskHealth, formatBytes } from '@/hooks/use-health'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { toFixedSafe } from '@/lib/format'
@@ -42,19 +37,18 @@ const itemVariants: any = {
 }
 
 // Health status component
+const diskMark = (state: string): MarkState =>
+  state === 'critical' ? 'failed' : state === 'warning' ? 'warning' : state === 'healthy' ? 'ok' : 'off'
+
 function HealthStatus({ state }: { state: string }) {
-  const Icon = state === 'critical' ? AlertTriangle :
-               state === 'warning' ? AlertCircle : CheckCircle
-  
-  const color = getDiskHealthColor(state)
-  
-  return (
-    <div className={cn("flex items-center gap-1", color)}>
-      <Icon className="h-4 w-4" />
-      <span className="capitalize">{state}</span>
-    </div>
-  )
+  return <StatusMark state={diskMark(state)} className="text-sm">{state}</StatusMark>
 }
+
+// A temperature as a state: over 50 °C failing, over 40 °C a warning.
+/** A temperature the disk reported; 0 means none was read. */
+const hasTemp = (c?: number): c is number => typeof c === 'number' && c > 0
+
+const tempMark = (c: number): MarkState => (c > 50 ? 'failed' : c > 40 ? 'warning' : 'ok')
 
 // Disk card component
 function DiskCard({ 
@@ -66,27 +60,29 @@ function DiskCard({
   isSelected: boolean
   onClick: () => void 
 }) {
-  const usageColor = disk.usagePct > 90 ? 'bg-red-500' :
-                    disk.usagePct > 80 ? 'bg-yellow-500' : ''
-
   return (
     <motion.div variants={itemVariants}>
-      <Card 
-        className={cn(
-          "cursor-pointer transition-all hover:shadow-md",
-          isSelected && "ring-2 ring-primary"
-        )}
+      <Card
+        role="button"
+        tabIndex={0}
+        aria-pressed={isSelected}
+        className={cn('cursor-pointer hover:bg-ink/[.09] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink', isSelected && 'outline outline-2 -outline-offset-2 outline-ink')}
         onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onClick()
+          }
+        }}
       >
         <CardHeader className="pb-3">
-          <div className="flex justify-between items-start">
-            <div className="space-y-1">
-              <CardTitle className="text-base flex items-center gap-2">
-                <HardDrive className="h-4 w-4" />
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="break-all font-mono text-sm font-normal">
                 {disk.name}
               </CardTitle>
               <CardDescription className="text-xs">
-                {disk.model || 'Unknown Model'} • {formatBytes(disk.sizeBytes)}
+                {disk.model || 'Unknown model'}, <span className="font-mono">{formatBytes(disk.sizeBytes)}</span>
               </CardDescription>
             </div>
             <HealthStatus state={disk.state} />
@@ -94,40 +90,35 @@ function DiskCard({
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Usage</span>
-              <span className="font-medium">{Math.round(disk.usagePct)}%</span>
-            </div>
-            <Progress 
-              value={disk.usagePct} 
-              className="h-2"
-              indicatorClassName={cn("transition-all", usageColor)}
+            <p className="text-sm text-ink-2">Usage</p>
+            <Meter
+              value={disk.usagePct}
+              blocks={16}
+              label={`${disk.name} used`}
+              tone={disk.usagePct > 90 ? 'failed' : disk.usagePct > 80 ? 'warning' : 'ink'}
             />
           </div>
           
-          {disk.tempC !== undefined && (
+          {hasTemp(disk.tempC) && (
             <div className="flex justify-between items-center text-sm">
               <span className="text-muted-foreground flex items-center gap-1">
-                <Thermometer className="h-3 w-3" />
+                <TemperatureIcon className="h-3 w-3" />
                 Temperature
               </span>
-              <span className={cn(
-                "font-medium",
-                disk.tempC > 50 ? 'text-red-500' : disk.tempC > 40 ? 'text-yellow-500' : ''
-              )}>
-                {toFixedSafe(disk.tempC, 0, '0')}°C
-              </span>
+              <StatusMark state={tempMark(disk.tempC)} className="font-mono tabular-nums">
+                {toFixedSafe(disk.tempC, 0, '0')} °C
+              </StatusMark>
             </div>
           )}
 
           <div className="flex justify-between items-center text-sm">
             <span className="text-muted-foreground">SMART</span>
-            <Badge variant={disk.smart.passed ? "default" : "destructive"} className="text-xs">
+            <StatusMark state={disk.smart.passed ? 'ok' : 'failed'}>
               {disk.smart.passed ? 'Passed' : 'Failed'}
-            </Badge>
+            </StatusMark>
           </div>
 
-          <div className="pt-2 border-t">
+          <div className="border-t border-hairline pt-2">
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div>
                 <p className="text-muted-foreground">Filesystem</p>
@@ -169,8 +160,8 @@ export default function DiskHealth() {
     const healthyDisks = disks.filter(d => d.state === 'healthy').length
     const warningDisks = disks.filter(d => d.state === 'warning').length
     const criticalDisks = disks.filter(d => d.state === 'critical').length
-    const avgTemp = disks.filter(d => d.tempC !== undefined).reduce((sum, d) => sum + (d.tempC || 0), 0) / 
-                   (disks.filter(d => d.tempC !== undefined).length || 1)
+    const measured = disks.filter((d) => hasTemp(d.tempC))
+    const avgTemp = measured.reduce((sum, d) => sum + (d.tempC || 0), 0) / (measured.length || 1)
 
     return {
       totalDisks: disks.length,
@@ -180,7 +171,7 @@ export default function DiskHealth() {
       healthyDisks,
       warningDisks,
       criticalDisks,
-      avgTemp: disks.some(d => d.tempC !== undefined) ? avgTemp : undefined
+      avgTemp: measured.length > 0 ? avgTemp : undefined
     }
   }, [disks])
 
@@ -213,24 +204,9 @@ export default function DiskHealth() {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Disk Health</h2>
+          <h2 className="text-xl font-[560]">Disk health</h2>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="pb-3">
-                <div className="h-4 bg-muted rounded w-32"></div>
-                <div className="h-3 bg-muted rounded w-48 mt-2"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="h-2 bg-muted rounded"></div>
-                  <div className="h-4 bg-muted rounded w-20"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Working>Reading the disks</Working>
       </div>
     )
   }
@@ -239,7 +215,7 @@ export default function DiskHealth() {
     return (
       <div className="space-y-6">
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <FailedIcon className="h-4 w-4" />
           <AlertDescription>
             Failed to load disk health data. 
             <Button 
@@ -259,19 +235,19 @@ export default function DiskHealth() {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Disk Health</h2>
+          <h2 className="text-xl font-[560]">Disk health</h2>
           <Button
             variant="outline"
             size="sm"
             onClick={handleManualRefresh}
             disabled={isManualRefreshing}
           >
-            <RefreshCw className={cn("h-4 w-4 mr-2", isManualRefreshing && "animate-spin")} />
+            <RefreshIcon className={cn("h-4 w-4 mr-2", isManualRefreshing && "animate-spin")} />
             Refresh
           </Button>
         </div>
         <Alert>
-          <Info className="h-4 w-4" />
+          <NoticeIcon className="h-4 w-4" />
           <AlertDescription>
             No disks detected. Make sure disks are properly connected and the system has necessary permissions.
           </AlertDescription>
@@ -283,19 +259,18 @@ export default function DiskHealth() {
   return (
     <motion.div
       variants={containerVariants}
-      initial="hidden"
+      initial={false}
       animate="visible"
       className="space-y-6"
     >
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold">Disk Health</h2>
+          <h2 className="text-xl font-[560]">Disk health</h2>
           {summary && (
-            <Badge variant="outline" className="gap-1">
-              <Database className="h-3 w-3" />
-              {summary.totalDisks} {summary.totalDisks === 1 ? 'Disk' : 'Disks'}
-            </Badge>
+            <span className="font-mono text-sm text-ink-2">
+              {summary.totalDisks} {summary.totalDisks === 1 ? 'disk' : 'disks'}
+            </span>
           )}
         </div>
         <Button
@@ -304,7 +279,7 @@ export default function DiskHealth() {
           onClick={handleManualRefresh}
           disabled={isManualRefreshing}
         >
-          <RefreshCw className={cn("h-4 w-4 mr-2", isManualRefreshing && "animate-spin")} />
+          <RefreshIcon className={cn("h-4 w-4 mr-2", isManualRefreshing && "animate-spin")} />
           Refresh
         </Button>
       </div>
@@ -314,45 +289,32 @@ export default function DiskHealth() {
         <motion.div variants={itemVariants}>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Storage Overview</CardTitle>
+              <CardTitle className="text-base">Storage overview</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Capacity</p>
-                  <p className="text-xl font-bold">{formatBytes(summary.totalCapacity)}</p>
+                  <p className="text-sm text-muted-foreground">Total capacity</p>
+                  <p className="pixel-display pixel-24 mt-1">{formatBytes(summary.totalCapacity)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Used Space</p>
-                  <p className="text-xl font-bold">{formatBytes(summary.totalUsed)}</p>
+                  <p className="text-sm text-muted-foreground">Used space</p>
+                  <p className="pixel-display pixel-24 mt-1">{formatBytes(summary.totalUsed)}</p>
                   <p className="text-xs text-muted-foreground">{Math.round(summary.usagePercent)}% used</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Disk Status</p>
+                  <p className="text-sm text-muted-foreground">Disk status</p>
                   <div className="flex gap-2 mt-1">
-                    {summary.healthyDisks > 0 && (
-                      <Badge variant="default" className="text-xs">
-                        {summary.healthyDisks} Healthy
-                      </Badge>
-                    )}
-                    {summary.warningDisks > 0 && (
-                      <Badge variant="secondary" className="text-xs bg-yellow-100">
-                        {summary.warningDisks} Warning
-                      </Badge>
-                    )}
-                    {summary.criticalDisks > 0 && (
-                      <Badge variant="destructive" className="text-xs">
-                        {summary.criticalDisks} Critical
-                      </Badge>
-                    )}
+                    {summary.healthyDisks > 0 && <StatusMark state="ok" className="text-sm">{summary.healthyDisks} healthy</StatusMark>}
+                    {summary.warningDisks > 0 && <StatusMark state="warning" className="text-sm">{summary.warningDisks} warning</StatusMark>}
+                    {summary.criticalDisks > 0 && <StatusMark state="failed" className="text-sm">{summary.criticalDisks} failing</StatusMark>}
                   </div>
                 </div>
                 {summary.avgTemp !== undefined && (
                   <div>
-                    <p className="text-sm text-muted-foreground">Avg Temperature</p>
-                    <p className="text-xl font-bold flex items-center gap-1">
-                      <Thermometer className="h-4 w-4" />
-                      {toFixedSafe(summary.avgTemp, 0, '0')}°C
+                    <p className="text-sm text-muted-foreground">Avg temperature</p>
+                    <p className="pixel-display pixel-24 mt-1">
+                      {toFixedSafe(summary.avgTemp, 0, '0')} °C
                     </p>
                   </div>
                 )}
@@ -365,7 +327,7 @@ export default function DiskHealth() {
       {/* Disk cards grid */}
       <motion.div 
         variants={containerVariants}
-        className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+        className="grid border-l border-t border-hairline md:grid-cols-2 lg:grid-cols-3 [&>*]:border-b [&>*]:border-r [&>*]:border-hairline [&>*>*]:h-full [&>*>*]:border-0"
       >
         {disks.map((disk) => (
           <DiskCard
@@ -383,7 +345,6 @@ export default function DiskHealth() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <HardDrive className="h-4 w-4" />
                 {selectedDiskData.name} Details
               </CardTitle>
               <CardDescription>
@@ -394,7 +355,7 @@ export default function DiskHealth() {
               <Tabs defaultValue="info" className="space-y-4">
                 <TabsList>
                   <TabsTrigger value="info">Information</TabsTrigger>
-                  <TabsTrigger value="smart">SMART Data</TabsTrigger>
+                  <TabsTrigger value="smart">SMART data</TabsTrigger>
                   <TabsTrigger value="tests">Tests</TabsTrigger>
                 </TabsList>
 
@@ -405,7 +366,7 @@ export default function DiskHealth() {
                       <p className="font-medium">{selectedDiskData.model || 'Unknown'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Serial Number</p>
+                      <p className="text-sm text-muted-foreground">Serial number</p>
                       <p className="font-medium">{selectedDiskData.serial || 'Unknown'}</p>
                     </div>
                     <div>
@@ -417,7 +378,7 @@ export default function DiskHealth() {
                       <p className="font-medium">{selectedDiskData.filesystem || 'Unknown'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Mount Point</p>
+                      <p className="text-sm text-muted-foreground">Mount point</p>
                       <p className="font-medium">{selectedDiskData.mountPoint || 'Not mounted'}</p>
                     </div>
                     <div>
@@ -430,10 +391,10 @@ export default function DiskHealth() {
                 <TabsContent value="smart" className="space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">SMART Status</span>
-                      <Badge variant={selectedDiskData.smart.passed ? "default" : "destructive"}>
-                        {selectedDiskData.smart.passed ? 'PASSED' : 'FAILED'}
-                      </Badge>
+                      <span className="text-sm font-medium">SMART status</span>
+                      <StatusMark state={selectedDiskData.smart.passed ? 'ok' : 'failed'}>
+                        {selectedDiskData.smart.passed ? 'Passed' : 'Failed'}
+                      </StatusMark>
                     </div>
                     
                     {selectedDiskData.smart.attrs && Object.keys(selectedDiskData.smart.attrs).length > 0 ? (
@@ -449,13 +410,13 @@ export default function DiskHealth() {
                         <TableBody>
                           {Object.entries(selectedDiskData.smart.attrs).map(([key, value]: [string, any]) => (
                             <TableRow key={key}>
-                              <TableCell className="font-medium">{key}</TableCell>
-                              <TableCell>{value.value || '-'}</TableCell>
-                              <TableCell>{value.threshold || '-'}</TableCell>
+                              <TableCell className="font-mono">{key}</TableCell>
+                              <TableCell className="font-mono tabular-nums">{value.value || '-'}</TableCell>
+                              <TableCell className="font-mono tabular-nums">{value.threshold || '-'}</TableCell>
                               <TableCell>
-                                <Badge variant={value.status === 'ok' ? 'default' : 'destructive'} className="text-xs">
-                                  {value.status || 'Unknown'}
-                                </Badge>
+                                <StatusMark state={value.status === 'ok' ? 'ok' : value.status ? 'failed' : 'off'}>
+                                  {value.status || 'unknown'}
+                                </StatusMark>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -463,7 +424,7 @@ export default function DiskHealth() {
                       </Table>
                     ) : (
                       <Alert>
-                        <Info className="h-4 w-4" />
+                        <NoticeIcon className="h-4 w-4" />
                         <AlertDescription>
                           No SMART attributes available for this disk.
                         </AlertDescription>
@@ -484,7 +445,7 @@ export default function DiskHealth() {
                         onClick={() => handleRunTest(selectedDiskData.id, 'short')}
                         disabled={runningTests.has(selectedDiskData.id)}
                       >
-                        <Play className="h-3 w-3 mr-1" />
+                        <StartIcon className="h-3 w-3 mr-1" />
                         Short Test (~2 min)
                       </Button>
                       <Button
@@ -493,7 +454,7 @@ export default function DiskHealth() {
                         onClick={() => handleRunTest(selectedDiskData.id, 'conveyance')}
                         disabled={runningTests.has(selectedDiskData.id)}
                       >
-                        <Play className="h-3 w-3 mr-1" />
+                        <StartIcon className="h-3 w-3 mr-1" />
                         Conveyance Test (~5 min)
                       </Button>
                       <Button
@@ -502,13 +463,13 @@ export default function DiskHealth() {
                         onClick={() => handleRunTest(selectedDiskData.id, 'long')}
                         disabled={runningTests.has(selectedDiskData.id)}
                       >
-                        <Play className="h-3 w-3 mr-1" />
+                        <StartIcon className="h-3 w-3 mr-1" />
                         Extended Test (~30 min)
                       </Button>
                     </div>
                     {runningTests.has(selectedDiskData.id) && (
                       <Alert>
-                        <Activity className="h-4 w-4 animate-spin" />
+                        <WorkingIcon className="h-4 w-4" />
                         <AlertDescription>
                           Test is running... This may take several minutes.
                         </AlertDescription>

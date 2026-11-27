@@ -1,28 +1,9 @@
-import {
-  LayoutDashboard,
-  HardDrive,
-  Share2,
-  Package,
-  Globe,
-  Settings,
-  Archive,
-  Camera,
-  Calendar,
-  Activity,
-  Heart,
-  Cloud,
-  Smartphone,
-  AlertTriangle,
-  History,
-  Users,
-  Shield,
-  LucideIcon,
-} from 'lucide-react'
+import { AppIcon, BackupIcon, ConflictsIcon, DashboardIcon, EncryptionIcon, HealthIcon, HistoryIcon, MonitoringIcon, OffSiteIcon, PhoneIcon, ScheduleIcon, SettingsIcon, ShareIcon, SharingIcon, SnapshotIcon, StorageIcon, SyncIcon, type IconComponent } from '@/components/icons'
 
 export interface NavItem {
   id: string
   label: string
-  icon?: LucideIcon
+  icon?: IconComponent
   path: string
   children?: NavItem[]
 }
@@ -31,67 +12,67 @@ export const navItems: NavItem[] = [
   {
     id: 'dashboard',
     label: 'Dashboard',
-    icon: LayoutDashboard,
+    icon: DashboardIcon,
     path: '/',
   },
   {
     id: 'storage',
     label: 'Storage',
-    icon: HardDrive,
+    icon: StorageIcon,
     path: '/storage',
   },
   {
     id: 'health',
     label: 'Health',
-    icon: Heart,
+    icon: HealthIcon,
     path: '/health/system',
   },
   {
     id: 'shares',
     label: 'Shares',
-    icon: Share2,
+    icon: ShareIcon,
     path: '/shares',
   },
   {
     id: 'sync',
     label: 'Sync',
-    icon: Cloud,
+    icon: SyncIcon,
     path: '/settings/sync',
     children: [
       {
         id: 'sync-settings',
         label: 'Settings',
-        icon: Settings,
+        icon: SettingsIcon,
         path: '/settings/sync',
       },
       {
         id: 'sync-devices',
         label: 'Devices',
-        icon: Smartphone,
+        icon: PhoneIcon,
         path: '/settings/sync/devices',
       },
       {
         id: 'sync-activity',
         label: 'Activity',
-        icon: History,
+        icon: HistoryIcon,
         path: '/settings/sync/activity',
       },
       {
         id: 'sync-conflicts',
         label: 'Conflicts',
-        icon: AlertTriangle,
+        icon: ConflictsIcon,
         path: '/settings/sync/conflicts',
       },
       {
         id: 'sync-sharing',
         label: 'Sharing',
-        icon: Users,
+        icon: SharingIcon,
         path: '/settings/sync/sharing',
       },
       {
         id: 'sync-encryption',
         label: 'Encryption',
-        icon: Shield,
+        icon: EncryptionIcon,
         path: '/settings/sync/encryption',
       },
     ],
@@ -99,25 +80,25 @@ export const navItems: NavItem[] = [
   {
     id: 'backup',
     label: 'Backup',
-    icon: Archive,
+    icon: BackupIcon,
     path: '/backup/snapshots',
     children: [
       {
         id: 'snapshots',
         label: 'Snapshots',
-        icon: Camera,
+        icon: SnapshotIcon,
         path: '/backup/snapshots',
       },
       {
         id: 'schedules',
         label: 'Schedules',
-        icon: Calendar,
+        icon: ScheduleIcon,
         path: '/backup/schedules',
       },
       {
         id: 'remote',
         label: 'Off-site copies',
-        icon: Globe,
+        icon: OffSiteIcon,
         path: '/backup/remote',
       },
     ],
@@ -125,19 +106,19 @@ export const navItems: NavItem[] = [
   {
     id: 'apps',
     label: 'Apps',
-    icon: Package,
+    icon: AppIcon,
     path: '/apps',
   },
   {
     id: 'monitor',
     label: 'Monitoring',
-    icon: Activity,
+    icon: MonitoringIcon,
     path: '/monitor',
   },
   {
     id: 'settings',
     label: 'Settings',
-    icon: Settings,
+    icon: SettingsIcon,
     path: '/settings',
     children: [
       {
@@ -147,12 +128,12 @@ export const navItems: NavItem[] = [
       },
       {
         id: 'network',
-        label: 'Network & Remote',
+        label: 'Network & remote',
         path: '/settings/network',
       },
       {
         id: '2fa',
-        label: 'Two-Factor Auth',
+        label: 'Two-factor auth',
         path: '/settings/2fa',
       },
       {
@@ -172,7 +153,7 @@ export const navItems: NavItem[] = [
       },
       {
         id: 'updates',
-        label: 'Updates & Releases',
+        label: 'Updates & releases',
         path: '/settings/updates',
       },
     ],

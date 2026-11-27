@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { BackIcon } from '@/components/icons'
+import { Working } from '@/components/ui/pixel'
 import { PageHeader } from '@/components/layouts/PageHeader'
 import { Button } from '@/components/ui/button'
 import { ShareForm } from '@/components/shares/ShareForm'
@@ -38,7 +39,7 @@ export function ShareDetails() {
 	if (isLoading && !isNew) {
 		return (
 			<div className="flex items-center justify-center h-full">
-				<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+				<Working>Loading the share</Working>
 			</div>
 		)
 	}
@@ -47,7 +48,7 @@ export function ShareDetails() {
 		return (
 			<div className="flex flex-col h-full">
 				<PageHeader
-					title="Share Not Found"
+					title="Share not found"
 					description="The requested share could not be found"
 				/>
 				<div className="flex-1 flex items-center justify-center">
@@ -56,8 +57,8 @@ export function ShareDetails() {
 							The share "{name}" does not exist or has been deleted.
 						</p>
 						<Button onClick={() => navigate('/shares')}>
-							<ArrowLeft className="h-4 w-4 mr-2" />
-							Back to Shares
+							<BackIcon className="h-4 w-4 mr-2" />
+							Back to shares
 						</Button>
 					</div>
 				</div>
@@ -68,15 +69,14 @@ export function ShareDetails() {
 	return (
 		<div className="flex flex-col h-full">
 			<PageHeader
-				title={isNew ? 'Create Share' : `Edit Share: ${name}`}
-				description={isNew ? 'Configure a new network file share' : 'Modify share settings and permissions'}
+				title={isNew ? 'Create share' : `Edit share: ${name}`}
 				breadcrumbs={[
 					{ label: 'Shares', href: '/shares' },
 					{ label: isNew ? 'New' : name || '' }
 				]}
 			/>
 			
-			<div className="flex-1 p-6 max-w-4xl mx-auto w-full">
+			<div className="w-full max-w-4xl flex-1 p-6">
 				<ShareForm
 					share={share || undefined}
 					onSubmit={handleSubmit}

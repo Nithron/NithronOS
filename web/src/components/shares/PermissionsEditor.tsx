@@ -1,16 +1,8 @@
 import { useState, useMemo } from 'react'
-import {
-	Shield,
-	UserPlus,
-	Users,
-	User,
-	X,
-	AlertCircle,
-	Info
-} from 'lucide-react'
+import { AddUserIcon, FailedIcon, NoticeIcon, PermissionsIcon, UserIcon, UsersIcon, WarningIcon } from '@/components/icons'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Chip } from '@/components/ui/chip'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 import {
@@ -129,24 +121,24 @@ export function PermissionsEditor({
 
 
 	return (
-		<div className="space-y-6">
+		<div className="[&>*+*]:-mt-px">
 			{/* Permissions Summary */}
 			<Card className="p-6">
 				<div className="space-y-4">
 					<div className="flex items-center gap-2">
-						<Shield className="h-5 w-5 text-muted-foreground" />
-						<h3 className="font-medium">Permissions Summary</h3>
+						<PermissionsIcon className="h-5 w-5 text-muted-foreground" />
+						<h3 className="font-medium">Permissions summary</h3>
 					</div>
 					
 					<div className="grid gap-4 md:grid-cols-2">
 						<div className="space-y-2">
-							<p className="text-sm font-medium text-green-600">Owners (Read/Write)</p>
+							<p className="text-sm font-[560]">Owners (read and write)</p>
 							<p className="text-sm text-muted-foreground">
 								Full access to create, modify, and delete files
 							</p>
 						</div>
 						<div className="space-y-2">
-							<p className="text-sm font-medium text-blue-600">Readers (Read Only)</p>
+							<p className="text-sm font-[560]">Readers (read only)</p>
 							<p className="text-sm text-muted-foreground">
 								Can view and download files but cannot modify
 							</p>
@@ -155,7 +147,7 @@ export function PermissionsEditor({
 
 					{guestEnabled && (
 						<Alert>
-							<AlertCircle className="h-4 w-4" />
+							<WarningIcon className="h-4 w-4" />
 							<AlertDescription>
 								Guest access is enabled. Anyone on the network can access this share without authentication.
 								Explicit permissions will still apply for authenticated users.
@@ -181,32 +173,18 @@ export function PermissionsEditor({
 								setPickerOpen(true)
 							}}
 						>
-							<UserPlus className="h-4 w-4 mr-2" />
-							Add Owner
+							<AddUserIcon className="h-4 w-4 mr-2" />
+							Add owner
 						</Button>
 					</div>
 
 					{ownersParsed.length > 0 ? (
 						<div className="flex flex-wrap gap-2">
 							{ownersParsed.map((principal, index) => (
-								<Badge
-									key={index}
-									variant="secondary"
-									className="pl-2 pr-1 py-1 bg-green-500/10 text-green-700 hover:bg-green-500/20"
-								>
-									{principal.type === 'user' ? (
-										<User className="h-3 w-3 mr-1" />
-									) : (
-										<Users className="h-3 w-3 mr-1" />
-									)}
+								<Chip key={index} name={principal.name} onRemove={() => handleRemoveOwner(owners[index])}>
+									{principal.type === 'user' ? <UserIcon className="h-3 w-3" /> : <UsersIcon className="h-3 w-3" />}
 									{principal.name}
-									<button
-										className="h-4 w-4 ml-1 hover:bg-green-500/20 rounded"
-										onClick={() => handleRemoveOwner(owners[index])}
-									>
-										<X className="h-3 w-3" />
-									</button>
-								</Badge>
+								</Chip>
 							))}
 						</div>
 					) : (
@@ -231,32 +209,18 @@ export function PermissionsEditor({
 								setPickerOpen(true)
 							}}
 						>
-							<UserPlus className="h-4 w-4 mr-2" />
-							Add Reader
+							<AddUserIcon className="h-4 w-4 mr-2" />
+							Add reader
 						</Button>
 					</div>
 
 					{readersParsed.length > 0 ? (
 						<div className="flex flex-wrap gap-2">
 							{readersParsed.map((principal, index) => (
-								<Badge
-									key={index}
-									variant="secondary"
-									className="pl-2 pr-1 py-1 bg-blue-500/10 text-blue-700 hover:bg-blue-500/20"
-								>
-									{principal.type === 'user' ? (
-										<User className="h-3 w-3 mr-1" />
-									) : (
-										<Users className="h-3 w-3 mr-1" />
-									)}
+								<Chip key={index} name={principal.name} onRemove={() => handleRemoveReader(readers[index])}>
+									{principal.type === 'user' ? <UserIcon className="h-3 w-3" /> : <UsersIcon className="h-3 w-3" />}
 									{principal.name}
-									<button
-										className="h-4 w-4 ml-1 hover:bg-blue-500/20 rounded"
-										onClick={() => handleRemoveReader(readers[index])}
-									>
-										<X className="h-3 w-3" />
-									</button>
-								</Badge>
+								</Chip>
 							))}
 						</div>
 					) : (
@@ -268,7 +232,7 @@ export function PermissionsEditor({
 			{/* Warnings */}
 			{owners.length === 0 && readers.length === 0 && !guestEnabled && (
 				<Alert variant="destructive">
-					<AlertCircle className="h-4 w-4" />
+					<FailedIcon className="h-4 w-4" />
 					<AlertDescription>
 						No permissions configured. This share will not be accessible to anyone.
 						Add at least one owner or reader, or enable guest access.
@@ -278,7 +242,7 @@ export function PermissionsEditor({
 
 			{guestEnabled && readers.length > 0 && (
 				<Alert>
-					<Info className="h-4 w-4" />
+					<NoticeIcon className="h-4 w-4" />
 					<AlertDescription>
 						Guest access is enabled along with explicit readers. 
 						Guests will have read-only access, while configured readers will have their specified permissions.
@@ -320,7 +284,7 @@ export function PermissionsEditor({
 													setSearchQuery('')
 												}}
 											>
-												<User className="h-4 w-4 mr-2" />
+												<UserIcon className="h-4 w-4 mr-2" />
 												{principal.display}
 											</CommandItem>
 										))}
@@ -340,7 +304,7 @@ export function PermissionsEditor({
 													setSearchQuery('')
 												}}
 											>
-												<Users className="h-4 w-4 mr-2" />
+												<UsersIcon className="h-4 w-4 mr-2" />
 												{principal.display}
 											</CommandItem>
 										))}

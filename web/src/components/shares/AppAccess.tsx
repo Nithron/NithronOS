@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Boxes } from 'lucide-react'
+import { AppsIcon } from '@/components/icons'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -45,7 +45,7 @@ export function AppAccess({ selected, onChange }: AppAccessProps) {
   return (
     <Card className="p-6 space-y-4">
       <div className="flex items-start gap-3">
-        <Boxes className="h-5 w-5 mt-0.5 text-muted-foreground" aria-hidden />
+        <AppsIcon className="h-5 w-5 mt-0.5 text-muted-foreground" aria-hidden />
         <div>
           <h3 className="font-medium">Apps that can read this share</h3>
           <p className="text-sm text-muted-foreground">

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import AxeBuilder from '@axe-core/playwright'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 
@@ -7,6 +8,12 @@ import * as path from 'node:path'
 // passes when it renders without a script
 // error, without a console error and without an API call failing with a
 // server error or a missing route.
+//
+// The walk runs twice, in the system's dark and light theme (the tokens
+// follow prefers-color-scheme), saves a capture of every page in each, and
+// measures the contrast of every text (axe, WCAG AA): no page may have a
+// text below AA in either theme. The counts are also written to
+// test-results/contrast-report.json.
 
 // The walk saves its own screenshots; no video (and no ffmpeg) needed.
 test.use({ video: 'off', trace: 'off' })
@@ -46,8 +53,12 @@ const notWalked: Record<string, string> = {
 	'/apps/:id': "an installed app's page; the live container has no Docker to install one",
 }
 
+const themes = ['dark', 'light'] as const
+
 interface PageReport {
 	path: string
+	theme: (typeof themes)[number]
+	contrast: { count: number; examples: string[] }
 	pageErrors: string[]
 	consoleErrors: string[]
 	failedCalls: string[]
@@ -64,7 +75,7 @@ async function signIn(page: Page) {
 }
 
 test('every page renders against a real nosd', async ({ page }) => {
-	test.setTimeout(8 * 60_000)
+	test.setTimeout(20 * 60_000)
 	expect(pass, 'NOS_PASS').not.toBe('')
 	await signIn(page)
 
@@ -121,31 +132,55 @@ test('every page renders against a real nosd', async ({ page }) => {
 	// broke.
 	expect(missing, 'routes with nothing to open').toEqual([])
 
-	for (const p of pages) {
-		current = { path: p, pageErrors: [], consoleErrors: [], failedCalls: [], heading: '' }
-		await page.goto(p)
-		await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {})
-		await page.waitForTimeout(500)
-		current.heading = (await page.locator('h1').first().textContent({ timeout: 2_000 }).catch(() => null))?.trim() ?? '(no h1)'
-		const file = `test-results/live/${p.replace(/\//g, '_') || '_root'}`
-		await page.screenshot({ path: `${file}.png`, fullPage: true })
-		// The visible text, for reviewing what a page claims (error cards,
-		// placeholders, made-up numbers).
-		fs.mkdirSync('test-results/live', { recursive: true })
-		fs.writeFileSync(`${file}.txt`, await page.locator('main').first().innerText({ timeout: 2_000 }).catch(() => page.locator('body').innerText()))
-		reports.push(current)
+	for (const theme of themes) {
+		await page.emulateMedia({ colorScheme: theme })
+		const dir = `test-results/live/${theme}`
+		fs.mkdirSync(dir, { recursive: true })
+		for (const p of pages) {
+			current = {
+				path: p, theme, contrast: { count: 0, examples: [] },
+				pageErrors: [], consoleErrors: [], failedCalls: [], heading: '',
+			}
+			await page.goto(p)
+			await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {})
+			await page.waitForTimeout(500)
+			current.heading = (await page.locator('h1').first().textContent({ timeout: 2_000 }).catch(() => null))?.trim() ?? '(no h1)'
+			const file = `${dir}/${p.replace(/\//g, '_') || '_root'}`
+			await page.screenshot({ path: `${file}.png`, fullPage: true })
+			// The visible text, for reviewing what a page claims (error cards,
+			// placeholders, made-up numbers); once, it is the same in both themes.
+			if (theme === themes[0]) {
+				fs.writeFileSync(`${file}.txt`, await page.locator('main').first().innerText({ timeout: 2_000 }).catch(() => page.locator('body').innerText()))
+			}
+			const axe = await new AxeBuilder({ page }).withRules(['color-contrast']).analyze()
+			const nodes = axe.violations.flatMap((v) => v.nodes)
+			current.contrast = {
+				count: nodes.length,
+				examples: nodes.slice(0, 5).map((n) => `${n.target.join(' ')}: ${n.failureSummary?.split('\n').pop()?.trim() ?? ''}`),
+			}
+			reports.push(current)
+		}
 	}
 	current = null
+	await page.emulateMedia({ colorScheme: null })
 
 	fs.mkdirSync('test-results', { recursive: true })
 	fs.writeFileSync('live-report.json', JSON.stringify(reports, null, 2))
+	const contrast = reports.map((r) => ({ path: r.path, theme: r.theme, below_aa: r.contrast.count, examples: r.contrast.examples }))
+	fs.writeFileSync('test-results/contrast-report.json', JSON.stringify(contrast, null, 2))
+	for (const theme of themes) {
+		const mine = contrast.filter((c) => c.theme === theme)
+		console.log(`contrast, ${theme}: ${mine.filter((c) => c.below_aa === 0).length}/${mine.length} pages with every text at AA`)
+	}
 	const broken = reports.filter((r) => r.pageErrors.length || r.consoleErrors.length || r.failedCalls.length)
 	for (const r of broken) {
-		console.log(`\n${r.path} [${r.heading}]`)
+		console.log(`\n${r.path} (${r.theme}) [${r.heading}]`)
 		for (const e of r.pageErrors) console.log(`  script error: ${e}`)
 		for (const e of r.consoleErrors) console.log(`  console: ${e}`)
 		for (const e of r.failedCalls) console.log(`  api: ${e}`)
 	}
-	console.log(`\n${reports.length - broken.length}/${reports.length} pages clean`)
-	expect(broken.map((r) => r.path)).toEqual([])
+	console.log(`\n${reports.length - broken.length}/${reports.length} page views clean`)
+	expect(broken.map((r) => `${r.path} (${r.theme})`)).toEqual([])
+	const belowAA = reports.filter((r) => r.contrast.count > 0)
+	expect(belowAA.map((r) => `${r.path} (${r.theme}): ${r.contrast.examples.join('; ')}`), 'text below AA').toEqual([])
 })

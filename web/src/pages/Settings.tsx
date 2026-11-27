@@ -1,17 +1,7 @@
 import { useEffect, useState } from 'react'
+import { formatDateTime } from '@/lib/datetime'
 import { useNavigate } from 'react-router-dom'
-import {
-  Calendar,
-  ChevronRight,
-  Clock,
-  Download,
-  Info,
-  Lock,
-  Network,
-  Server,
-  UserCog,
-  Users,
-} from 'lucide-react'
+import { AccountIcon, ChevronRightIcon, DownloadIcon, LockIcon, NetworkIcon, NoticeIcon, ScheduleIcon, ServerIcon, TimeIcon, UsersIcon } from '@/components/icons'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card } from '@/components/ui/card-enhanced'
 import { Button } from '@/components/ui/button'
@@ -32,22 +22,24 @@ import {
   useTimezone,
   useTimezoneList,
 } from '@/api/system'
+import { useAppearance, useSetTheme } from '@/api/appearance'
+import { isThemeChoice, themeChoices, type ThemeChoice } from '@/lib/theme'
 
 type Section = 'system' | 'account' | 'about'
 
-const sections: Array<{ id: Section; label: string; icon: typeof Server }> = [
-  { id: 'system', label: 'System', icon: Server },
-  { id: 'account', label: 'My account', icon: UserCog },
-  { id: 'about', label: 'About', icon: Info },
+const sections: Array<{ id: Section; label: string; icon: typeof ServerIcon }> = [
+  { id: 'system', label: 'System', icon: ServerIcon },
+  { id: 'account', label: 'My account', icon: AccountIcon },
+  { id: 'about', label: 'About', icon: NoticeIcon },
 ]
 
 const otherPages = [
-  { label: 'Users', path: '/settings/users', icon: Users, adminOnly: true },
-  { label: 'Groups', path: '/settings/groups', icon: Users, adminOnly: true },
-  { label: 'Network', path: '/settings/network', icon: Network, adminOnly: true },
-  { label: 'Schedules', path: '/settings/schedules', icon: Calendar, adminOnly: true },
-  { label: 'Updates', path: '/settings/updates', icon: Download, adminOnly: true },
-  { label: 'Two-factor sign-in', path: '/settings/2fa', icon: Lock, adminOnly: false },
+  { label: 'Users', path: '/settings/users', icon: UsersIcon, adminOnly: true },
+  { label: 'Groups', path: '/settings/groups', icon: UsersIcon, adminOnly: true },
+  { label: 'Network', path: '/settings/network', icon: NetworkIcon, adminOnly: true },
+  { label: 'Schedules', path: '/settings/schedules', icon: ScheduleIcon, adminOnly: true },
+  { label: 'Updates', path: '/settings/updates', icon: DownloadIcon, adminOnly: true },
+  { label: 'Two-factor sign-in', path: '/settings/2fa', icon: LockIcon, adminOnly: false },
 ]
 
 function useIsAdmin(): boolean {
@@ -166,8 +158,8 @@ function TimeCard({ canEdit }: { canEdit: boolean }) {
           </div>
           {tz.data && (
             <p className="text-sm text-muted-foreground">
-              <Clock className="mr-1 inline h-3.5 w-3.5" aria-hidden />
-              Time on nOS when loaded: {new Date(tz.data.time).toLocaleString()}
+              <TimeIcon className="mr-1 inline h-3.5 w-3.5" aria-hidden />
+              Time on nOS when loaded: {formatDateTime(tz.data.time)}
             </p>
           )}
         </div>
@@ -220,6 +212,51 @@ function TimeCard({ canEdit }: { canEdit: boolean }) {
   )
 }
 
+function ThemeCard({ canEdit }: { canEdit: boolean }) {
+  const { data, isLoading, error, refetch } = useAppearance()
+  const setTheme = useSetTheme()
+  const current: ThemeChoice = isThemeChoice(data?.theme) ? data.theme : 'auto'
+  const choose = (theme: ThemeChoice) =>
+    setTheme.mutate(theme, {
+      onSuccess: () => toast.success(theme === 'auto' ? 'The theme follows each device' : `The theme is ${theme}`),
+      onError: (e) => toast.error(getErrorMessage(e)),
+    })
+  return (
+    <Card
+      title="Theme"
+      description="Light or dark for everyone who signs in. Follow the system uses each device's own setting."
+      isLoading={isLoading}
+      error={error ? getErrorMessage(error) : null}
+      onRetry={() => refetch()}
+    >
+      <fieldset disabled={!canEdit || setTheme.isPending}>
+        <legend className="sr-only">Theme</legend>
+        <div className="inline-flex divide-x divide-rule overflow-hidden rounded-lg border border-rule">
+          {themeChoices.map((c) => (
+            <label
+              key={c.value}
+              className={cn(
+                'flex min-h-11 cursor-pointer items-center px-4 text-sm transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-4 has-[:focus-visible]:outline-ink',
+                current === c.value ? 'bg-ink text-page' : 'hover:bg-ink/[.09]',
+              )}
+            >
+              <input
+                type="radio"
+                name="theme"
+                value={c.value}
+                checked={current === c.value}
+                onChange={() => choose(c.value)}
+                className="sr-only"
+              />
+              {c.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    </Card>
+  )
+}
+
 function SystemSection() {
   const isAdmin = useIsAdmin()
   return (
@@ -229,6 +266,7 @@ function SystemSection() {
       )}
       <HostnameCard canEdit={isAdmin} />
       <TimeCard canEdit={isAdmin} />
+      <ThemeCard canEdit={isAdmin} />
     </div>
   )
 }
@@ -309,7 +347,7 @@ function AccountSection() {
         description="A code from an authenticator app on top of your password."
       >
         <Button variant="outline" onClick={() => navigate('/settings/2fa')}>
-          <Lock className="mr-2 h-4 w-4" aria-hidden />
+          <LockIcon className="mr-2 h-4 w-4" aria-hidden />
           Manage two-factor sign-in
         </Button>
       </Card>
@@ -392,7 +430,7 @@ export function Settings() {
                   aria-current={active === s.id ? 'page' : undefined}
                   className={cn(
                     'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors',
-                    active === s.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/50',
+                    active === s.id ? 'bg-primary text-primary-foreground' : 'hover:bg-ink/[.09]',
                   )}
                 >
                   <s.icon className="h-4 w-4" aria-hidden />
@@ -409,13 +447,13 @@ export function Settings() {
                   <button
                     key={p.path}
                     onClick={() => navigate(p.path)}
-                    className="flex w-full items-center justify-between rounded-lg p-2 text-left text-sm hover:bg-muted/50"
+                    className="flex w-full items-center justify-between rounded-lg p-2 text-left text-sm hover:bg-ink/[.09]"
                   >
                     <span className="flex items-center gap-2">
                       <p.icon className="h-4 w-4 text-muted-foreground" aria-hidden />
                       {p.label}
                     </span>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
+                    <ChevronRightIcon className="h-4 w-4 text-muted-foreground" aria-hidden />
                   </button>
                 ))}
             </nav>

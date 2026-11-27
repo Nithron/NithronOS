@@ -42,11 +42,10 @@ interface TabsListProps {
 
 export function TabsList({ children, className }: TabsListProps) {
   return (
+    // A caller's grid or full-width classes would stretch the row of words.
     <div
-      className={cn(
-        'inline-flex h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground',
-        className
-      )}
+      role="tablist"
+      className={cn('flex items-end gap-6 border-b border-hairline', className?.replace(/(?<![\w-])(?:grid|grid-cols-\d+|w-full)(?![\w-])/g, ''))}
     >
       {children}
     </div>
@@ -68,13 +67,18 @@ export function TabsTrigger({ value, children, className, disabled }: TabsTrigge
 
   return (
     <button
+      type="button"
+      role="tab"
+      aria-selected={isSelected}
       onClick={() => !disabled && context.onValueChange(value)}
       disabled={disabled}
+      // A row of words over one hairline; the current one in ink at 560
+      // with a 2 px ink mark under it.
       className={cn(
-        'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+        'relative -mb-px inline-flex min-h-10 items-center whitespace-nowrap py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:pointer-events-none disabled:opacity-50',
         isSelected
-          ? 'bg-background text-foreground shadow-sm'
-          : 'text-muted-foreground hover:text-foreground',
+          ? 'font-[560] text-ink after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:bg-ink'
+          : 'text-ink-2 hover:text-ink',
         className
       )}
     >
@@ -98,7 +102,7 @@ export function TabsContent({ value, children, className }: TabsContentProps) {
   return (
     <div
       className={cn(
-        'mt-4 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'mt-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink',
         className
       )}
     >

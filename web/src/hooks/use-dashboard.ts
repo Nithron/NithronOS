@@ -177,12 +177,12 @@ export function formatTimestamp(iso: string): string {
 export function getHealthColor(status: 'ok' | 'degraded' | 'critical'): string {
   switch (status) {
     case 'critical':
-      return 'text-red-500'
+      return 'text-status-failed-text'
     case 'degraded':
-      return 'text-yellow-500'
+      return 'text-status-warning-text'
     case 'ok':
     default:
-      return 'text-green-500'
+      return 'text-status-ok-text'
   }
 }
 

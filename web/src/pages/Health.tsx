@@ -1,11 +1,6 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { PageHeader } from '@/components/ui/page-header'
 import { cn } from '@/lib/utils'
-import {
-  Activity,
-  HardDrive,
-  Server,
-} from 'lucide-react'
 
 export function Health() {
   const location = useLocation()
@@ -15,13 +10,11 @@ export function Health() {
     { 
       name: 'System', 
       href: '/health/system',
-      icon: Server,
       description: 'System resource monitoring'
     },
     { 
       name: 'Disk', 
       href: '/health/disk',
-      icon: HardDrive,
       description: 'Disk health and SMART status'
     },
   ]
@@ -29,41 +22,32 @@ export function Health() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Health Monitoring"
-        description="Monitor system and disk health status"
+        title="Health monitoring"
       />
       
-      <div className="flex space-x-1 border-b">
-        {tabs.map((tab) => {
-          const Icon = tab.icon
-          return (
-            <NavLink
-              key={tab.href}
-              to={tab.href}
-              className={({ isActive }) => cn(
-                "flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors hover:text-primary",
-                "border-b-2 -mb-[2px]",
+      {/* The same row of words as the Tabs component, as links. */}
+      <nav aria-label="Health" className="flex items-end gap-6 border-b border-hairline">
+        {tabs.map((tab) => (
+          <NavLink
+            key={tab.href}
+            to={tab.href}
+            className={({ isActive }) =>
+              cn(
+                'relative -mb-px inline-flex min-h-10 items-center py-2 text-sm transition-colors',
                 isActive
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground"
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {tab.name}
-            </NavLink>
-          )
-        })}
-      </div>
+                  ? 'font-[560] text-ink after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:bg-ink'
+                  : 'text-ink-2 hover:text-ink',
+              )
+            }
+          >
+            {tab.name}
+          </NavLink>
+        ))}
+      </nav>
       
       {isBaseHealthPath ? (
         // Show system health by default when at /health
-        <div className="text-center py-12">
-          <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">Select a health category</h3>
-          <p className="text-sm text-muted-foreground">
-            Choose System or Disk health monitoring from the tabs above
-          </p>
-        </div>
+        <p className="py-6 text-sm text-ink-2">Choose system or disk health above.</p>
       ) : (
         <Outlet />
       )}

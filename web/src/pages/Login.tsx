@@ -196,7 +196,7 @@ export function Login() {
     return (
       <div className="min-h-screen w-full flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold mb-4">Backend Unreachable</h1>
+          <h1 className="screen-title mb-4">Backend unreachable</h1>
           <p className="text-muted-foreground">
             The server is not responding. Please check your proxy configuration.
           </p>
@@ -207,9 +207,9 @@ export function Login() {
   
   return (
     <div className="min-h-screen w-full flex items-center justify-center">
-      <div className="relative w-full max-w-sm p-6 pt-20">
+      <div className="w-full max-w-sm p-6">
         <BrandHeader />
-        <h1 className="mb-6 text-center text-2xl font-semibold">Sign In</h1>
+        <h1 className="screen-title mb-6">Sign in</h1>
         
         {!requiresCode ? (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -220,14 +220,14 @@ export function Login() {
               <input
                 id="username"
                 type="text"
-                className="w-full rounded bg-card p-2"
+                className="field"
                 placeholder="Enter your username"
                 autoComplete="username"
                 disabled={loading}
                 {...register('username')}
               />
               {errors.username && (
-                <p className="text-xs text-red-400 mt-1">{errors.username.message}</p>
+                <p className="text-xs text-status-failed-text mt-1">{errors.username.message}</p>
               )}
             </div>
             
@@ -238,14 +238,14 @@ export function Login() {
               <input
                 id="password"
                 type="password"
-                className="w-full rounded bg-card p-2"
+                className="field"
                 placeholder="Enter your password"
                 autoComplete="current-password"
                 disabled={loading}
                 {...register('password')}
               />
               {errors.password && (
-                <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>
+                <p className="text-xs text-status-failed-text mt-1">{errors.password.message}</p>
               )}
             </div>
             
@@ -263,17 +263,17 @@ export function Login() {
             </div>
             
             {error && !requiresCode && (
-              <div className="text-sm text-red-400" role="alert" aria-live="polite">
+              <div className="text-sm text-status-failed-text" role="alert" aria-live="polite">
                 {error}
               </div>
             )}
             
             <button
               type="submit"
-              className="btn bg-primary text-primary-foreground w-full py-3"
+              className="btn btn-primary w-full py-3"
               disabled={loading}
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
         ) : (
@@ -286,12 +286,12 @@ export function Login() {
             
             <div>
               <label htmlFor="totpCode" className="block text-sm font-medium mb-2">
-                Two-Factor Authentication Code
+                Two-factor authentication code
               </label>
               <input
                 id="totpCode"
                 type="text"
-                className="w-full rounded bg-card p-2 text-center tracking-widest font-mono"
+                className="field text-center tracking-widest font-mono"
                 placeholder="123 456"
                 value={totpCode}
                 onChange={(e) => setTotpCode(e.target.value)}
@@ -305,17 +305,17 @@ export function Login() {
             </div>
             
             {error && (
-              <div className="text-sm text-red-400" role="alert" aria-live="polite">
+              <div className="text-sm text-status-failed-text" role="alert" aria-live="polite">
                 {error}
               </div>
             )}
             
             <button
               type="submit"
-              className="btn bg-primary text-primary-foreground w-full py-3"
+              className="btn btn-primary w-full py-3"
               disabled={loading}
             >
-              {loading ? 'Verifying...' : 'Verify and Sign In'}
+              {loading ? 'Verifying…' : 'Verify and sign in'}
             </button>
             
             <button

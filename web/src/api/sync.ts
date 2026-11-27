@@ -3,6 +3,8 @@
  * Handles sync device management and file synchronization operations
  */
 
+import { formatDate } from '@/lib/datetime'
+
 import http from '@/lib/nos-client';
 
 // ============================================================================
@@ -606,7 +608,7 @@ export function formatRelativeTime(dateString: string | undefined): string {
   if (diffHour < 24) return `${diffHour}h ago`;
   if (diffDay < 7) return `${diffDay}d ago`;
   
-  return date.toLocaleDateString();
+  return formatDate(date);
 }
 
 /**

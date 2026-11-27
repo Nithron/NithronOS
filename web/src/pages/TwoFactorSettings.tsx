@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { confirmAction } from '@/components/ui/confirm'
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -6,10 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import {
-  Shield, Smartphone, Key, Copy, Download, RefreshCw,
-  CheckCircle, XCircle, AlertTriangle, Loader2
-} from 'lucide-react';
+import { CopyIcon, DownloadIcon, FailedIcon, KeyIcon, OkIcon, PhoneIcon, RefreshIcon, TwoFactorIcon, WarningIcon, WorkingIcon } from '@/components/icons'
 import {
   useTOTPStatus,
   useEnrollTOTP,
@@ -64,7 +62,7 @@ export function TwoFactorSettings() {
   };
 
   const handleDisable2FA = async () => {
-    if (!confirm('Are you sure you want to disable two-factor authentication? This will make your account less secure.')) {
+    if (!(await confirmAction({ title: 'Turn off two-factor sign-in?', description: 'Signing in will need only your password.', action: 'Turn off two-factor sign-in' }))) {
       return;
     }
 
@@ -76,7 +74,7 @@ export function TwoFactorSettings() {
   };
 
   const handleRegenerateBackupCodes = async () => {
-    if (!confirm('Are you sure you want to regenerate backup codes? Your old codes will no longer work.')) {
+    if (!(await confirmAction({ title: 'Make new backup codes?', description: 'Your current backup codes stop working.', action: 'Make new backup codes' }))) {
       return;
     }
 
@@ -107,7 +105,7 @@ export function TwoFactorSettings() {
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Two-Factor Authentication</h1>
+        <h1 className="screen-title">Two-factor authentication</h1>
         <p className="text-muted-foreground">
           Add an extra layer of security to your account
         </p>
@@ -116,7 +114,7 @@ export function TwoFactorSettings() {
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>2FA Status</CardTitle>
+            <CardTitle>2FA status</CardTitle>
             <CardDescription>
               Current two-factor authentication configuration
             </CardDescription>
@@ -124,8 +122,8 @@ export function TwoFactorSettings() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${totpStatus.data?.enrolled ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}>
-                  <Shield className={`h-5 w-5 ${totpStatus.data?.enrolled ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`} />
+                <div>
+                  <TwoFactorIcon className={`h-5 w-5 ${totpStatus.data?.enrolled ? 'text-status-ok-text' : 'text-muted-foreground'}`} />
                 </div>
                 <div>
                   <div className="font-medium">Status</div>
@@ -137,12 +135,12 @@ export function TwoFactorSettings() {
               <div>
                 {totpStatus.data?.enrolled ? (
                   <Badge variant="default">
-                    <CheckCircle className="h-3 w-3 mr-1" />
+                    <OkIcon className="h-3 w-3 mr-1" />
                     Enabled
                   </Badge>
                 ) : (
                   <Badge variant="secondary">
-                    <XCircle className="h-3 w-3 mr-1" />
+                    <FailedIcon className="h-3 w-3 mr-1" />
                     Disabled
                   </Badge>
                 )}
@@ -151,7 +149,7 @@ export function TwoFactorSettings() {
 
             {totpStatus.data?.required && !totpStatus.data?.enrolled && (
               <Alert>
-                <AlertTriangle className="h-4 w-4" />
+                <WarningIcon className="h-4 w-4" />
                 <AlertDescription>
                   Two-factor authentication is required for non-LAN access. Please enable it to secure your account.
                 </AlertDescription>
@@ -161,14 +159,14 @@ export function TwoFactorSettings() {
             <div className="flex gap-2">
               {!totpStatus.data?.enrolled ? (
                 <Button onClick={() => setShowEnrollDialog(true)}>
-                  <Smartphone className="h-4 w-4 mr-2" />
+                  <PhoneIcon className="h-4 w-4 mr-2" />
                   Enable 2FA
                 </Button>
               ) : (
                 <>
                   <Button variant="outline" onClick={handleRegenerateBackupCodes}>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Regenerate Backup Codes
+                    <RefreshIcon className="h-4 w-4 mr-2" />
+                    Regenerate backup codes
                   </Button>
                   <Button variant="destructive" onClick={handleDisable2FA}>
                     Disable 2FA
@@ -182,7 +180,7 @@ export function TwoFactorSettings() {
         {totpStatus.data?.enrolled && (
           <Card>
             <CardHeader>
-              <CardTitle>Session Status</CardTitle>
+              <CardTitle>Session status</CardTitle>
               <CardDescription>
                 Current session verification status
               </CardDescription>
@@ -191,12 +189,12 @@ export function TwoFactorSettings() {
               <div className="flex items-center gap-2">
                 {totpStatus.data?.verified ? (
                   <>
-                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <OkIcon className="h-5 w-5 text-status-ok-text" />
                     <span>Your current session is 2FA verified</span>
                   </>
                 ) : (
                   <>
-                    <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                    <WarningIcon className="h-5 w-5 text-status-warning-text" />
                     <span>Your current session is not 2FA verified</span>
                   </>
                 )}
@@ -207,7 +205,7 @@ export function TwoFactorSettings() {
 
         <Card>
           <CardHeader>
-            <CardTitle>How It Works</CardTitle>
+            <CardTitle>How it works</CardTitle>
             <CardDescription>
               Protect your account with time-based one-time passwords
             </CardDescription>
@@ -215,7 +213,7 @@ export function TwoFactorSettings() {
           <CardContent>
             <ol className="space-y-3">
               <li className="flex gap-3">
-                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center border border-rule font-mono text-sm">
                   1
                 </div>
                 <div>
@@ -226,7 +224,7 @@ export function TwoFactorSettings() {
                 </div>
               </li>
               <li className="flex gap-3">
-                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center border border-rule font-mono text-sm">
                   2
                 </div>
                 <div>
@@ -237,7 +235,7 @@ export function TwoFactorSettings() {
                 </div>
               </li>
               <li className="flex gap-3">
-                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center border border-rule font-mono text-sm">
                   3
                 </div>
                 <div>
@@ -256,14 +254,14 @@ export function TwoFactorSettings() {
       <Dialog open={showEnrollDialog} onOpenChange={setShowEnrollDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Enable Two-Factor Authentication</DialogTitle>
+            <DialogTitle>Enable two-factor authentication</DialogTitle>
             <DialogDescription>
               First, verify your password to continue
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="password">Current Password</Label>
+              <Label htmlFor="password">Current password</Label>
               <Input
                 id="password"
                 type="password"
@@ -281,7 +279,7 @@ export function TwoFactorSettings() {
               onClick={handleStartEnrollment} 
               disabled={!password || enrollTOTP.isPending}
             >
-              {enrollTOTP.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {enrollTOTP.isPending && <WorkingIcon className="h-4 w-4 mr-2 animate-spin" />}
               Continue
             </Button>
           </DialogFooter>
@@ -292,19 +290,19 @@ export function TwoFactorSettings() {
       <Dialog open={showVerifyDialog} onOpenChange={setShowVerifyDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Scan QR Code</DialogTitle>
+            <DialogTitle>Scan QR code</DialogTitle>
             <DialogDescription>
               Scan this QR code with your authenticator app
             </DialogDescription>
           </DialogHeader>
           {enrollmentData && (
             <div className="space-y-4">
-              <div className="flex justify-center p-4 bg-white rounded-lg">
+              <div className="flex justify-center p-4 bg-page rounded-lg">
                 <img src={enrollmentData.qr_code} alt="TOTP QR Code" className="w-48 h-48" />
               </div>
               
               <div>
-                <Label>Manual Entry</Label>
+                <Label>Manual entry</Label>
                 <div className="mt-1 p-2 bg-muted rounded text-xs font-mono break-all">
                   {enrollmentData.secret}
                 </div>
@@ -314,13 +312,13 @@ export function TwoFactorSettings() {
                   onClick={() => copyToClipboard(enrollmentData.secret)}
                   className="mt-1"
                 >
-                  <Copy className="h-3 w-3 mr-1" />
-                  Copy Secret
+                  <CopyIcon className="h-3 w-3 mr-1" />
+                  Copy secret
                 </Button>
               </div>
 
               <div>
-                <Label htmlFor="verification-code">Verification Code</Label>
+                <Label htmlFor="verification-code">Verification code</Label>
                 <Input
                   id="verification-code"
                   value={verificationCode}
@@ -343,7 +341,7 @@ export function TwoFactorSettings() {
               onClick={handleVerifyEnrollment}
               disabled={verificationCode.length !== 6 || verifyTOTP.isPending}
             >
-              {verifyTOTP.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {verifyTOTP.isPending && <WorkingIcon className="h-4 w-4 mr-2 animate-spin" />}
               Verify & Enable
             </Button>
           </DialogFooter>
@@ -354,14 +352,14 @@ export function TwoFactorSettings() {
       <Dialog open={showBackupCodesDialog} onOpenChange={setShowBackupCodesDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Save Your Backup Codes</DialogTitle>
+            <DialogTitle>Save your backup codes</DialogTitle>
             <DialogDescription>
               Store these codes in a safe place. Each code can only be used once.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Alert>
-              <Key className="h-4 w-4" />
+              <KeyIcon className="h-4 w-4" />
               <AlertDescription>
                 These codes are the only way to access your account if you lose your authenticator device.
                 Treat them like passwords!
@@ -385,22 +383,22 @@ export function TwoFactorSettings() {
                 onClick={() => copyToClipboard(backupCodes.join('\n'))}
                 className="flex-1"
               >
-                <Copy className="h-4 w-4 mr-2" />
-                Copy All
+                <CopyIcon className="h-4 w-4 mr-2" />
+                Copy all
               </Button>
               <Button
                 variant="outline"
                 onClick={downloadBackupCodes}
                 className="flex-1"
               >
-                <Download className="h-4 w-4 mr-2" />
+                <DownloadIcon className="h-4 w-4 mr-2" />
                 Download
               </Button>
             </div>
           </div>
           <DialogFooter>
             <Button onClick={() => setShowBackupCodesDialog(false)}>
-              I've Saved My Codes
+              I've saved my codes
             </Button>
           </DialogFooter>
         </DialogContent>

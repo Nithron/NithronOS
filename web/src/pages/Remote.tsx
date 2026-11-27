@@ -1,10 +1,11 @@
 import { useState } from 'react'
+import { formatDateTime } from '@/lib/datetime'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { HardDrive, KeyRound, Plus, Send, Server, Trash2, Wifi, X } from 'lucide-react'
+import { AddIcon, CloseIcon, ConnectionIcon, DeleteIcon, DiskIcon, KeyIcon, SendTestIcon, ServerIcon } from '@/components/icons'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card } from '@/components/ui/card-enhanced'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Meter, StatusMark, type MarkState } from '@/components/ui/pixel'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -45,15 +46,14 @@ function target(d: Destination): string {
   return d.path ?? ''
 }
 
-const stateBadge: Record<
-  JobState,
-  'default' | 'secondary' | 'success' | 'destructive' | 'outline'
-> = {
-  pending: 'secondary',
-  running: 'default',
-  succeeded: 'success',
-  failed: 'destructive',
-  canceled: 'outline',
+// A job's state as a mark: pending is a warning (it waits), running a
+// lamp, succeeded in order, failed a cross, canceled off.
+const stateMark: Record<JobState, MarkState> = {
+  pending: 'warning',
+  running: 'running',
+  succeeded: 'ok',
+  failed: 'failed',
+  canceled: 'off',
 }
 
 function AddDestinationDialog({
@@ -133,9 +133,9 @@ function AddDestinationDialog({
                 className={`flex items-center gap-2 rounded-lg border p-3 text-left text-sm ${type === t ? 'border-primary bg-primary/5' : 'border-input'}`}
               >
                 {t === 'ssh' ? (
-                  <Server className="h-4 w-4" aria-hidden />
+                  <ServerIcon className="h-4 w-4" aria-hidden />
                 ) : (
-                  <HardDrive className="h-4 w-4" aria-hidden />
+                  <DiskIcon className="h-4 w-4" aria-hidden />
                 )}
                 <span>
                   <span className="block font-medium">
@@ -318,7 +318,7 @@ function CopyNowDialog({ dest, onClose }: { dest: Destination | null; onClose: (
             <option value="">Choose a snapshot</option>
             {list.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.subvolume} · {new Date(s.created_at).toLocaleString()}
+                {s.subvolume} · {formatDateTime(s.created_at)}
               </option>
             ))}
           </select>
@@ -328,7 +328,7 @@ function CopyNowDialog({ dest, onClose }: { dest: Destination | null; onClose: (
             Cancel
           </Button>
           <Button onClick={() => replicate.mutate()} disabled={!snapshotId || replicate.isPending}>
-            <Send className="mr-2 h-4 w-4" aria-hidden />
+            <SendTestIcon className="mr-2 h-4 w-4" aria-hidden />
             Copy
           </Button>
         </DialogFooter>
@@ -375,7 +375,7 @@ function DestinationsCard() {
       onRetry={() => refetch()}
       actions={
         <Button size="sm" onClick={() => setAdding(true)}>
-          <Plus className="mr-2 h-4 w-4" aria-hidden />
+          <AddIcon className="mr-2 h-4 w-4" aria-hidden />
           Add destination
         </Button>
       }
@@ -401,12 +401,12 @@ function DestinationsCard() {
                 <TableCell className="font-medium">{d.name}</TableCell>
                 <TableCell className="font-mono text-xs">{target(d)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">
-                  {d.last_test ? new Date(d.last_test).toLocaleString() : 'Never'}
+                  {d.last_test ? formatDateTime(d.last_test) : 'Never'}
                 </TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-1">
                     <Button variant="outline" size="sm" onClick={() => setCopyTo(d)}>
-                      <Send className="mr-1 h-4 w-4" aria-hidden />
+                      <SendTestIcon className="mr-1 h-4 w-4" aria-hidden />
                       Copy now
                     </Button>
                     <Button
@@ -416,7 +416,7 @@ function DestinationsCard() {
                       disabled={test.isPending}
                       title="Check the connection"
                     >
-                      <Wifi className="h-4 w-4" aria-hidden />
+                      <ConnectionIcon className="h-4 w-4" aria-hidden />
                       <span className="sr-only">Check the connection to {d.name}</span>
                     </Button>
                     {d.type === 'ssh' && (
@@ -426,7 +426,7 @@ function DestinationsCard() {
                         onClick={() => setKeyFor(d)}
                         title="Replace the SSH key"
                       >
-                        <KeyRound className="h-4 w-4" aria-hidden />
+                        <KeyIcon className="h-4 w-4" aria-hidden />
                         <span className="sr-only">Replace the SSH key of {d.name}</span>
                       </Button>
                     )}
@@ -437,7 +437,7 @@ function DestinationsCard() {
                       disabled={remove.isPending}
                       title="Remove"
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" aria-hidden />
+                      <DeleteIcon className="h-4 w-4 text-destructive" aria-hidden />
                       <span className="sr-only">Remove {d.name}</span>
                     </Button>
                   </div>
@@ -501,16 +501,18 @@ function CopiesCard() {
           <TableBody>
             {jobs.map((j) => (
               <TableRow key={j.id}>
-                <TableCell className="text-sm">{new Date(j.started_at).toLocaleString()}</TableCell>
+                <TableCell className="font-mono text-sm">{formatDateTime(j.started_at)}</TableCell>
                 <TableCell className="text-sm">
                   {names.get(j.destination_id ?? '') ?? j.destination_id}
                 </TableCell>
                 <TableCell>
-                  <Badge variant={stateBadge[j.state]}>
+                  <StatusMark state={stateMark[j.state]} className="text-sm">
                     {j.state}
-                    {j.state === 'running' ? ` ${Math.round(j.progress)}%` : ''}
-                  </Badge>
-                  {j.error && <p className="mt-1 text-xs text-destructive">{j.error}</p>}
+                  </StatusMark>
+                  {j.state === 'running' && (
+                    <Meter className="mt-1" value={j.progress} kind="progress" blocks={10} label="Copy progress" />
+                  )}
+                  {j.error && <p className="mt-1 text-xs text-status-failed-text">{j.error}</p>}
                 </TableCell>
                 <TableCell className="text-right">
                   {(j.state === 'running' || j.state === 'pending') && (
@@ -520,7 +522,7 @@ function CopiesCard() {
                       onClick={() => cancel.mutate(j.id)}
                       disabled={cancel.isPending}
                     >
-                      <X className="mr-1 h-4 w-4" aria-hidden />
+                      <CloseIcon className="mr-1 h-4 w-4" aria-hidden />
                       Stop
                     </Button>
                   )}
@@ -547,8 +549,11 @@ export function Remote() {
         title="Off-site copies"
         description="Copies of your snapshots on another machine or disk"
       />
-      <DestinationsCard />
-      <CopiesCard />
+      {/* One ruled group: the two panels share their border. */}
+      <div className="[&>*+*]:-mt-px">
+        <DestinationsCard />
+        <CopiesCard />
+      </div>
     </div>
   )
 }

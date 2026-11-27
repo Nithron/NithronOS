@@ -87,23 +87,20 @@ export const formatVersion = (version: SystemVersion): string => {
 
 export const getUpdateStateColor = (state: UpdateProgress['state']): string => {
   switch (state) {
-    case 'idle':
-      return 'text-gray-500';
     case 'checking':
     case 'downloading':
     case 'applying':
     case 'verifying':
-      return 'text-blue-500';
+      return 'text-ink';
     case 'success':
-      return 'text-green-500';
+      return 'text-status-ok-text';
     case 'failed':
-      return 'text-red-500';
+      return 'text-status-failed-text';
     case 'rolling_back':
-      return 'text-yellow-500';
     case 'rolled_back':
-      return 'text-orange-500';
+      return 'text-status-warning-text';
     default:
-      return 'text-gray-500';
+      return 'text-ink-2';
   }
 };
 

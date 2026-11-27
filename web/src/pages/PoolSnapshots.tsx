@@ -28,22 +28,22 @@ export function PoolSnapshots({ id }: { id: string }) {
 
   return (
     <div className="space-y-3">
-      <div className="rounded bg-card p-3 space-y-2">
+      <div className="space-y-2">
         <div className="grid gap-2 md:grid-cols-3">
-          <input className="rounded bg-background p-2" placeholder="Subvolume path (e.g., /mnt/pool/data)" value={subvol} onChange={(e) => setSubvol(e.target.value)} />
-          <input className="rounded bg-background p-2" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-          <button className="btn bg-primary text-primary-foreground" onClick={createSnap}>Create snapshot</button>
+          <input className="field font-mono" aria-label="Subvolume path" placeholder="Subvolume path, for example /srv/pool/pool1/data" value={subvol} onChange={(e) => setSubvol(e.target.value)} />
+          <input className="field font-mono" aria-label="Snapshot name" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+          <button className="btn btn-primary" onClick={createSnap}>Create snapshot</button>
         </div>
-        {error && <div className="text-sm text-red-400">{error}</div>}
+        {error && <p role="alert" className="text-sm text-status-failed-text">{error}</p>}
       </div>
       <table className="w-full text-sm">
-        <thead className="text-left text-muted-foreground">
-          <tr><th>Name</th><th>Path</th></tr>
+        <thead className="text-left font-mono text-[0.8125rem] text-ink-2">
+          <tr className="border-b border-hairline"><th className="py-2 font-normal">Name</th><th className="py-2 font-normal">Path</th></tr>
         </thead>
         <tbody>
           {snaps.map((s) => (
-            <tr key={s.path} className="border-t border-muted/20">
-              <td className="py-2">{s.name}</td>
+            <tr key={s.path} className="border-b border-hairline">
+              <td className="py-3 font-mono">{s.name}</td>
               <td className="font-mono text-xs">{s.path}</td>
             </tr>
           ))}

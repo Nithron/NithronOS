@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Meter, StatusMark, Working } from '@/components/ui/pixel'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -120,7 +121,7 @@ export default function Setup() {
     return (
       <div className="min-h-screen w-full flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold mb-4">Backend Unreachable</h1>
+          <h1 className="screen-title mb-4">Backend unreachable</h1>
           <p className="text-muted-foreground">
             The server is not responding. Please check your proxy configuration.
           </p>
@@ -133,8 +134,7 @@ export default function Setup() {
     return (
       <div className="min-h-screen w-full flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <div className="text-muted-foreground">Loading setup...</div>
+          <Working>Loading setup</Working>
         </div>
       </div>
     )
@@ -146,16 +146,16 @@ export default function Setup() {
         <div className="mb-8">
           <BrandHeader />
         </div>
-        <h1 className="mb-6 text-center text-2xl font-semibold">First-time Setup</h1>
+        <h1 className="screen-title mb-6">First-time setup</h1>
         
         {error && error.includes('Setup already completed') ? (
           <div className="text-center">
-            <div className="mb-4 text-yellow-400">{error}</div>
+            <div className="mb-4 text-status-warning-text">{error}</div>
             <button 
-              className="btn bg-primary text-primary-foreground"
+              className="btn btn-primary"
               onClick={() => navigate('/login')}
             >
-              Go to Sign In
+              Go to sign in
             </button>
           </div>
         ) : (
@@ -171,7 +171,7 @@ export default function Setup() {
             {step === 'otp' && (
               <>
                 {otpNotice && (
-                  <div role="status" className="mb-4 rounded-md border border-yellow-600/40 bg-yellow-600/10 p-3 text-sm">
+                  <div role="status" className="mb-4 rounded-md border border-status-warning/40 bg-status-warning-tint p-3 text-sm">
                     {otpNotice}
                   </div>
                 )}
@@ -296,23 +296,18 @@ function SetupSteps({ currentStep }: { currentStep: SetupStep }) {
   const currentIndex = steps.findIndex(s => s.id === currentStep)
   
   return (
-    <div className="flex items-center justify-between mb-8 px-2">
+    <ol className="mb-8 flex flex-wrap gap-x-5 gap-y-2 border-b border-hairline pb-3 text-sm">
       {steps.map((step, index) => (
-        <div
-          key={step.id}
-          className={`text-xs ${
-            index <= currentIndex ? 'text-primary' : 'text-muted-foreground'
-          }`}
-        >
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-1 mx-auto ${
-            index <= currentIndex ? 'bg-primary text-primary-foreground' : 'bg-muted'
-          }`}>
-            {index + 1}
-          </div>
-          <span className="hidden sm:block">{step.label}</span>
-        </div>
+        <li key={step.id} aria-current={index === currentIndex ? 'step' : undefined}>
+          <StatusMark
+            state={index < currentIndex ? 'ok' : index === currentIndex ? 'running' : 'off'}
+            className={index === currentIndex ? 'font-[560] text-ink' : 'text-ink-2'}
+          >
+            {step.label}
+          </StatusMark>
+        </li>
       ))}
-    </div>
+    </ol>
   )
 }
 
@@ -324,7 +319,7 @@ function StepWelcome({ onContinue }: { onContinue: () => void }) {
   return (
     <div className="space-y-6">
       <div className="text-center space-y-3">
-        <h2 className="text-2xl font-semibold">Welcome to nOS!</h2>
+        <h2 className="text-2xl font-[560]">Welcome to nOS!</h2>
         <p className="text-muted-foreground">
           Let's get your system set up and ready to use.
         </p>
@@ -336,7 +331,7 @@ function StepWelcome({ onContinue }: { onContinue: () => void }) {
           The 6-digit code is shown on the server's own screen (monitor or serial console),
           above the login prompt, together with the address to open.
         </p>
-        <div className="bg-card rounded p-3">
+        <div className="border border-hairline p-3">
           <p className="text-xs text-muted-foreground mb-1">No screen attached? Over SSH:</p>
           <code className="block bg-background rounded p-2 text-xs font-mono">
             sudo journalctl -u nosd | grep 'setup code' | tail -n 1
@@ -364,7 +359,7 @@ function StepWelcome({ onContinue }: { onContinue: () => void }) {
       </div>
       
       <button
-        className="btn bg-primary text-primary-foreground w-full py-3"
+        className="btn btn-primary w-full py-3"
         onClick={onContinue}
       >
         I have the code - Continue
@@ -475,7 +470,7 @@ function StepOTP({ onSuccess }: { onSuccess: (token: string) => void }) {
         <input
           id="otp"
           type="text"
-          className="w-full rounded bg-card p-2 text-center tracking-widest font-mono text-lg"
+          className="field text-center tracking-widest font-mono text-lg"
           placeholder="123 456"
           value={otp}
           onChange={(e) => setOtp(e.target.value)}
@@ -494,14 +489,14 @@ function StepOTP({ onSuccess }: { onSuccess: (token: string) => void }) {
       </div>
       
       {error && (
-        <div className="text-sm text-red-400">
+        <div className="text-sm text-status-failed-text">
           {error}
         </div>
       )}
       
       <button
         type="submit"
-        className="btn bg-primary text-primary-foreground w-full py-3"
+        className="btn btn-primary w-full py-3"
         disabled={loading}
       >
         {loading ? 'Verifying...' : 'Verify code'}
@@ -608,14 +603,14 @@ function StepCreateAdmin({
         <input
           id="username"
           type="text"
-          className="w-full rounded bg-card p-2"
+          className="field"
           placeholder="admin"
           autoComplete="username"
           disabled={loading}
           {...register('username')}
         />
         {errors.username && (
-          <p className="text-xs text-red-400 mt-1">{errors.username.message}</p>
+          <p className="text-xs text-status-failed-text mt-1">{errors.username.message}</p>
         )}
       </div>
       
@@ -626,7 +621,7 @@ function StepCreateAdmin({
         <input
           id="password"
           type="password"
-          className="w-full rounded bg-card p-2"
+          className="field"
           placeholder="••••••••••••"
           autoComplete="new-password"
           disabled={loading}
@@ -634,25 +629,25 @@ function StepCreateAdmin({
         />
         <PasswordStrengthMeter strength={strength} />
         {errors.password && (
-          <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>
+          <p className="text-xs text-status-failed-text mt-1">{errors.password.message}</p>
         )}
       </div>
       
       <div>
         <label htmlFor="confirmPassword" className="block text-sm font-medium mb-2">
-          Confirm Password
+          Confirm password
         </label>
         <input
           id="confirmPassword"
           type="password"
-          className="w-full rounded bg-card p-2"
+          className="field"
           placeholder="••••••••••••"
           autoComplete="new-password"
           disabled={loading}
           {...register('confirmPassword')}
         />
         {errors.confirmPassword && (
-          <p className="text-xs text-red-400 mt-1">{errors.confirmPassword.message}</p>
+          <p className="text-xs text-status-failed-text mt-1">{errors.confirmPassword.message}</p>
         )}
       </div>
       
@@ -669,14 +664,14 @@ function StepCreateAdmin({
         </label>
       </div>
       
-      {error && <div className="text-sm text-red-400">{error}</div>}
+      {error && <div className="text-sm text-status-failed-text">{error}</div>}
       
       <button
         type="submit"
-        className="btn bg-primary text-primary-foreground w-full py-3"
+        className="btn btn-primary w-full py-3"
         disabled={loading}
       >
-        {loading ? 'Creating Admin...' : 'Create Admin Account'}
+        {loading ? 'Creating the administrator…' : 'Create administrator account'}
       </button>
     </form>
   )
@@ -687,26 +682,21 @@ function StepCreateAdmin({
 // ============================================================================
 
 function PasswordStrengthMeter({ strength }: { strength: number }) {
-  const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500', 'bg-green-600']
+  // Blocks that fill one by one, the strength in words: too weak is
+  // failed, fair a warning, good and strong in order.
   const labels = ['Very weak', 'Weak', 'Fair', 'Good', 'Strong']
-  
+  const tone = strength <= 1 ? 'failed' : strength === 2 ? 'warning' : 'ok'
+
   return (
-    <div className="mt-2">
-      <div className="h-1 w-full bg-muted rounded overflow-hidden">
-        <div
-          className={`h-full transition-all ${colors[strength]}`}
-          style={{ width: `${Math.max(10, strength * 20)}%` }}
-        />
-      </div>
-      <p className="text-xs text-muted-foreground mt-1">
-        Strength: {labels[strength]}
-      </p>
+    <div className="mt-2 flex items-center gap-3">
+      <Meter value={strength + 1} max={5} blocks={5} label="Password strength" showValue={false} tone={tone} />
+      <span className="text-sm">{labels[strength]}</span>
     </div>
   )
 }
 
 // ============================================================================
-// Step 3: TOTP Enrollment (Optional)
+// Step 3: TOTP Enrollment (optional)
 // ============================================================================
 
 function StepTOTPEnroll({ 
@@ -819,12 +809,12 @@ function StepTOTPEnroll({
   if (recoveryCodes) {
     return (
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Recovery Codes</h2>
+        <h2 className="text-lg font-[560]">Recovery codes</h2>
         <p className="text-sm text-muted-foreground">
           Save these recovery codes in a safe place. Each code can be used once to sign in if you lose access to your authenticator.
         </p>
         
-        <div className="bg-card rounded p-4 font-mono text-sm space-y-1">
+        <div className="border border-hairline p-4 font-mono text-sm space-y-1">
           {recoveryCodes.map((code, index) => (
             <div key={index}>{code}</div>
           ))}
@@ -833,14 +823,14 @@ function StepTOTPEnroll({
         <div className="flex gap-2">
           <button
             type="button"
-            className="btn bg-secondary flex-1"
+            className="btn btn-line flex-1"
             onClick={handleCopyRecoveryCodes}
           >
             Copy
           </button>
           <button
             type="button"
-            className="btn bg-secondary flex-1"
+            className="btn btn-line flex-1"
             onClick={handleDownloadRecoveryCodes}
           >
             Download
@@ -849,10 +839,10 @@ function StepTOTPEnroll({
         
         <button
           type="button"
-          className="btn bg-primary text-primary-foreground w-full"
+          className="btn btn-primary w-full"
           onClick={onSuccess}
         >
-          Continue to Setup Complete
+          Continue to setup complete
         </button>
       </div>
     )
@@ -861,11 +851,11 @@ function StepTOTPEnroll({
   // Show QR code and verification form
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Enable Two-Factor Authentication</h2>
+      <h2 className="text-lg font-[560]">Enable two-factor authentication</h2>
       
       {loading && !qrCode && (
         <div className="text-center py-8">
-          <div className="text-muted-foreground">Loading...</div>
+          <Working />
         </div>
       )}
       
@@ -885,12 +875,12 @@ function StepTOTPEnroll({
           <form onSubmit={handleVerify} className="space-y-4">
             <div>
               <label htmlFor="totpCode" className="block text-sm font-medium mb-2">
-                Verification Code
+                Verification code
               </label>
               <input
                 id="totpCode"
                 type="text"
-                className="w-full rounded bg-card p-2 text-center tracking-widest font-mono"
+                className="field text-center tracking-widest font-mono"
                 placeholder="123 456"
                 value={totpCode}
                 onChange={(e) => setTotpCode(e.target.value)}
@@ -904,11 +894,11 @@ function StepTOTPEnroll({
               </p>
             </div>
             
-            {error && <div className="text-sm text-red-400">{error}</div>}
+            {error && <div className="text-sm text-status-failed-text">{error}</div>}
             
             <button
               type="submit"
-              className="btn bg-primary text-primary-foreground w-full"
+              className="btn btn-primary w-full"
               disabled={loading}
             >
               {loading ? 'Verifying...' : 'Verify and Enable 2FA'}
@@ -916,7 +906,7 @@ function StepTOTPEnroll({
           </form>
           <button
             type="button"
-            className="btn bg-secondary w-full"
+            className="btn btn-line w-full"
             onClick={onSuccess}
             disabled={loading}
           >
@@ -936,16 +926,16 @@ function StepDone({ onContinue }: { onContinue: () => void }) {
   return (
     <div className="text-center space-y-4">
       <div className="text-4xl mb-4">✅</div>
-      <h2 className="text-lg font-semibold">Setup Complete!</h2>
+      <h2 className="text-lg font-[560]">Setup complete!</h2>
       <p className="text-sm text-muted-foreground">
         Your nOS admin account has been created successfully.
         You can now sign in to access the dashboard.
       </p>
       <button
-        className="btn bg-primary text-primary-foreground w-full py-3"
+        className="btn btn-primary w-full py-3"
         onClick={onContinue}
       >
-        Go to Sign In
+        Go to sign in
       </button>
     </div>
   )
@@ -1034,7 +1024,7 @@ function StepSystemConfig({ onSuccess }: { onSuccess: () => void }) {
   
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <h2 className="text-lg font-semibold">System Configuration</h2>
+      <h2 className="text-lg font-[560]">System configuration</h2>
       
       <div>
         <label htmlFor="hostname" className="block text-sm font-medium mb-2">
@@ -1043,7 +1033,7 @@ function StepSystemConfig({ onSuccess }: { onSuccess: () => void }) {
         <input
           id="hostname"
           type="text"
-          className="w-full rounded bg-card p-2"
+          className="field"
           placeholder="nos"
           value={hostname}
           onChange={(e) => setHostname(e.target.value)}
@@ -1060,7 +1050,7 @@ function StepSystemConfig({ onSuccess }: { onSuccess: () => void }) {
         </label>
         <select
           id="region"
-          className="w-full rounded bg-card p-2"
+          className="field"
           value={selectedRegion}
           onChange={(e) => setSelectedRegion(e.target.value)}
           disabled={loading}
@@ -1077,7 +1067,7 @@ function StepSystemConfig({ onSuccess }: { onSuccess: () => void }) {
         </label>
         <select
           id="timezone"
-          className="w-full rounded bg-card p-2"
+          className="field"
           value={timezone}
           onChange={(e) => setTimezone(e.target.value)}
           disabled={loading}
@@ -1102,11 +1092,11 @@ function StepSystemConfig({ onSuccess }: { onSuccess: () => void }) {
         </label>
       </div>
       
-      {error && <div className="text-sm text-red-400">{error}</div>}
+      {error && <div className="text-sm text-status-failed-text">{error}</div>}
       
       <button
         type="submit"
-        className="btn bg-primary text-primary-foreground w-full"
+        className="btn btn-primary w-full"
         disabled={loading}
       >
         {loading ? 'Saving...' : 'Continue'}
@@ -1214,15 +1204,15 @@ function StepNetworkConfig({ onSuccess }: { onSuccess: () => void }) {
   
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <h2 className="text-lg font-semibold">Network Configuration</h2>
+      <h2 className="text-lg font-[560]">Network configuration</h2>
       
       <div>
         <label htmlFor="interface" className="block text-sm font-medium mb-2">
-          Network Interface
+          Network interface
         </label>
         <select
           id="interface"
-          className="w-full rounded bg-card p-2"
+          className="field"
           value={selectedInterface}
           onChange={(e) => setSelectedInterface(e.target.value)}
           disabled={loading}
@@ -1254,12 +1244,12 @@ function StepNetworkConfig({ onSuccess }: { onSuccess: () => void }) {
         <>
           <div>
             <label htmlFor="ipAddress" className="block text-sm font-medium mb-2">
-              IP Address (CIDR)
+              IP address (CIDR)
             </label>
             <input
               id="ipAddress"
               type="text"
-              className="w-full rounded bg-card p-2"
+              className="field"
               placeholder="192.168.1.100/24"
               value={ipAddress}
               onChange={(e) => setIpAddress(e.target.value)}
@@ -1274,7 +1264,7 @@ function StepNetworkConfig({ onSuccess }: { onSuccess: () => void }) {
             <input
               id="gateway"
               type="text"
-              className="w-full rounded bg-card p-2"
+              className="field"
               placeholder="192.168.1.1"
               value={gateway}
               onChange={(e) => setGateway(e.target.value)}
@@ -1284,12 +1274,12 @@ function StepNetworkConfig({ onSuccess }: { onSuccess: () => void }) {
           
           <div>
             <label htmlFor="dns1" className="block text-sm font-medium mb-2">
-              DNS Servers
+              DNS servers
             </label>
             <input
               id="dns1"
               type="text"
-              className="w-full rounded bg-card p-2 mb-2"
+              className="field mb-2"
               placeholder="Primary DNS"
               value={dns[0] || ''}
               onChange={(e) => setDns([e.target.value, dns[1] || ''])}
@@ -1298,7 +1288,7 @@ function StepNetworkConfig({ onSuccess }: { onSuccess: () => void }) {
             <input
               id="dns2"
               type="text"
-              className="w-full rounded bg-card p-2"
+              className="field"
               placeholder="Secondary DNS (optional)"
               value={dns[1] || ''}
               onChange={(e) => setDns([dns[0] || '', e.target.value])}
@@ -1308,12 +1298,12 @@ function StepNetworkConfig({ onSuccess }: { onSuccess: () => void }) {
         </>
       )}
       
-      {error && <div className="text-sm text-red-400">{error}</div>}
+      {error && <div className="text-sm text-status-failed-text">{error}</div>}
       
       <div className="flex gap-2">
         <button
           type="button"
-          className="btn bg-secondary flex-1"
+          className="btn btn-line flex-1"
           onClick={handleSkip}
           disabled={loading}
         >
@@ -1321,7 +1311,7 @@ function StepNetworkConfig({ onSuccess }: { onSuccess: () => void }) {
         </button>
         <button
           type="submit"
-          className="btn bg-primary text-primary-foreground flex-1"
+          className="btn btn-primary flex-1"
           disabled={loading}
         >
           {loading ? 'Saving...' : 'Continue'}
@@ -1376,7 +1366,7 @@ function StepTelemetry({ onSuccess }: { onSuccess: () => void }) {
   
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <h2 className="text-lg font-semibold">Help Improve nOS</h2>
+      <h2 className="text-lg font-[560]">Help Improve nOS</h2>
       
       <p className="text-sm text-muted-foreground">
         Would you like to share anonymous usage data to help us improve nOS? 
@@ -1445,17 +1435,17 @@ function StepTelemetry({ onSuccess }: { onSuccess: () => void }) {
         )}
       </div>
       
-      <div className="bg-card rounded p-3 text-xs text-muted-foreground">
-        <strong>Privacy Promise:</strong> We never collect personal data, file names, 
+      <div className="border border-hairline p-3 text-xs text-muted-foreground">
+        <strong>Privacy promise:</strong> We never collect personal data, file names, 
         file contents, or any identifiable information. All data is aggregated and 
         anonymous. You can view exactly what data is sent in the logs.
       </div>
       
-      {error && <div className="text-sm text-red-400">{error}</div>}
+      {error && <div className="text-sm text-status-failed-text">{error}</div>}
       
       <button
         type="submit"
-        className="btn bg-primary text-primary-foreground w-full"
+        className="btn btn-primary w-full"
         disabled={loading}
       >
         {loading ? 'Saving...' : 'Continue'}

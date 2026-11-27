@@ -2,79 +2,295 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * nOS on the Nithron tokens. The tokens (styles/nithron-tokens.css, loaded
+ * first by main.tsx) hold every value and follow the system's light or dark
+ * theme; data-theme on <html> pins one (lib/theme.ts). This file is the one
+ * place where nOS names meet the tokens: it never holds a colour value.
+ *
+ * The interface has no hue: the current item, the focus ring and chosen
+ * controls are ink. Colour is only status: ok, warning, failed.
+ */
 @layer base {
-  :root {
-    /* nOS Brand Palette */
-    --background: 218 19% 7%;      /* #0B0E13 */
-    --foreground: 218 40% 93%;     /* #E6EDF7 */
-    
-    --card: 228 30% 10%;           /* #121622 */
-    --card-foreground: 218 40% 93%;
-    
-    --popover: 228 30% 10%;
-    --popover-foreground: 218 40% 93%;
-    
-    --primary: 217 96% 57%;        /* #2D7FF9 */
-    --primary-foreground: 218 19% 7%;
-    
-    --secondary: 228 30% 15%;
-    --secondary-foreground: 218 40% 93%;
-    
-    --muted: 210 15% 65%;          /* #9AA7B8 */
-    --muted-foreground: 210 15% 45%;
-    
-    --accent: 82 88% 58%;          /* #A4F932 lime */
-    --accent-foreground: 218 19% 7%;
-    
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    
-    --border: 228 20% 20%;
-    --input: 228 20% 20%;
-    --ring: 217 96% 57%;
-    
-    --radius: 0.5rem;
+  @font-face {
+    font-family: 'Nithron Pixel';
+    src: url('/fonts/nithron-pixel.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
   }
-  
-  .dark {
-    /* Dark mode uses the same palette (already dark) */
-    --background: 218 19% 7%;
-    --foreground: 218 40% 93%;
-    
-    --card: 228 30% 10%;
-    --card-foreground: 218 40% 93%;
-    
-    --popover: 228 30% 10%;
-    --popover-foreground: 218 40% 93%;
-    
-    --primary: 217 96% 57%;
-    --primary-foreground: 218 19% 7%;
-    
-    --secondary: 228 30% 15%;
-    --secondary-foreground: 218 40% 93%;
-    
-    --muted: 210 15% 65%;
-    --muted-foreground: 210 15% 45%;
-    
-    --accent: 82 88% 58%;
-    --accent-foreground: 218 19% 7%;
-    
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    
-    --border: 228 20% 20%;
-    --input: 228 20% 20%;
-    --ring: 217 96% 57%;
-  }
-}
 
-@layer base {
+  @font-face {
+    font-family: 'Mona Sans Variable';
+    src: url('/fonts/MonaSansVF-opsz-wght.woff2') format('woff2');
+    font-weight: 200 900;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: 'Monaspace Neon';
+    src: url('/fonts/MonaspaceNeon-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  :root {
+    /* The shadcn names the components use. */
+    --background: var(--page);
+    --foreground: var(--ink);
+    --card: var(--page);
+    --card-foreground: var(--ink);
+    --popover: var(--page);
+    --popover-foreground: var(--ink);
+    --primary: var(--ink);
+    --primary-foreground: var(--page);
+    --secondary: var(--page);
+    --secondary-foreground: var(--ink);
+    /* Under the pointer, a selected row: ink at 9 percent over the ground. */
+    --muted: color-mix(in srgb, var(--ink) 9%, var(--page));
+    --muted-foreground: var(--ink-2);
+    --accent: color-mix(in srgb, var(--ink) 9%, var(--page));
+    --accent-foreground: var(--ink);
+    --destructive: var(--status-failed);
+    --destructive-foreground: var(--page);
+    --border: var(--hairline);
+    --input: var(--edge);
+    --ring: var(--ink);
+    --radius: var(--radius-control);
+
+    /* The states, by the names an application uses. */
+    --status-ok: var(--status-pass);
+    --status-ok-text: var(--status-pass-text);
+    --status-ok-tint: var(--status-pass-tint);
+    --status-ok-bar: var(--status-pass-bar);
+    --status-warning: var(--status-earlier);
+    --status-warning-text: var(--status-earlier-text);
+    --status-warning-tint: var(--status-earlier-tint);
+    --status-warning-bar: var(--status-earlier-bar);
+    /* --status-failed and its endings keep the tokens' name. */
+
+    /* Chart series: the subject in ink, the others from the tokens' series
+       (the monitoring screens also tell them apart by line style later). */
+    --chart-1: var(--ink);
+    --chart-2: var(--series-1);
+    --chart-3: var(--series-2);
+    --chart-4: var(--series-3);
+  }
+
   * {
     @apply border-border;
   }
+
+  html {
+    font-family: var(--font-sans);
+  }
+
   body {
     @apply bg-background text-foreground;
   }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--font-mono);
+  }
 }
 
+/* The title of a screen: --text-h3, weight 560, sentence case. */
+@layer components {
+  .screen-title {
+    font-size: var(--text-h3);
+    line-height: var(--leading-h3);
+    font-weight: var(--weight-h3);
+    letter-spacing: var(--tracking-h3);
+    color: var(--ink);
+  }
+}
 
+/* Fields: 44 px high, a 1 px --edge line that turns ink on focus. */
+@layer components {
+  .field {
+    display: flex;
+    height: var(--control-height);
+    width: 100%;
+    border: 1px solid var(--edge);
+    border-radius: var(--radius-control);
+    background: var(--page);
+    color: var(--ink);
+    padding: 0 0.75rem;
+    font-size: var(--text-small);
+  }
+
+  .field::placeholder {
+    color: var(--dim);
+  }
+
+  .field:focus {
+    border-color: var(--ink);
+    outline: none;
+  }
+
+  .field:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+
+  .field:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .field[aria-invalid='true'] {
+    border-color: var(--status-failed);
+  }
+}
+
+/* Buttons outside components/ui/button (the same two kinds): the first
+   action in ink, every other one a line button. */
+@layer components {
+  .btn {
+    display: inline-flex;
+    min-height: var(--control-height);
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-control);
+    padding: 0 1.25rem;
+    font-size: var(--text-small);
+    font-weight: var(--weight-strong);
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 4px;
+  }
+
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .btn-primary {
+    background: var(--ink);
+    color: var(--page);
+  }
+
+  .btn-line {
+    border: 1px solid var(--rule);
+    color: var(--ink);
+  }
+
+  .btn-line:hover {
+    border-color: var(--ink);
+  }
+}
+
+/* A check box is a drawn square: its edge, and a filled square when on. */
+@layer base {
+  /* :where() keeps these at zero specificity, so utility classes win. */
+  :where(input[type='checkbox']) {
+    appearance: none;
+    display: inline-grid;
+    place-content: center;
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+    border: 1px solid var(--edge);
+    background: var(--page);
+    cursor: pointer;
+  }
+
+  :where(input[type='checkbox'])::before {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    background: var(--ink);
+    transform: scale(0);
+  }
+
+  :where(input[type='checkbox']:checked) {
+    border-color: var(--ink);
+  }
+
+  :where(input[type='checkbox']:checked)::before {
+    transform: scale(1);
+  }
+
+  :where(input[type='checkbox']:focus-visible) {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+
+  :where(input[type='checkbox']:disabled) {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+/* The pixel layer (components/ui/pixel.tsx): whole pixels, no smoothing. */
+@layer components {
+  /* The pixel display face (Nithron Pixel, @nithron/tokens 0.4.0): the
+     product's name, a screen's one large number, the words of an empty
+     or loading screen, the number beside a block meter. Nothing else.
+     Sharp only at whole multiples of 8 px, on whole pixels, left aligned,
+     with nothing synthesised. */
+  .pixel-display {
+    font-family: var(--font-pixel);
+    font-size: 16px;
+    line-height: 1.25;
+    font-weight: 400;
+    font-style: normal;
+    font-synthesis: none;
+    letter-spacing: 0;
+    font-kerning: none;
+    font-variant-ligatures: none;
+  }
+
+  .pixel-display.pixel-24 {
+    font-size: 24px;
+  }
+
+  .pixel-display.pixel-32 {
+    font-size: 32px;
+  }
+
+  /* A lamp for something running: it dims and comes back in steps, so the
+     square is always there. */
+  .pixel-blink {
+    animation: pixel-lamp var(--loop-lamp) steps(1, end) infinite;
+  }
+
+  /* The block cursor after words that are still loading. */
+  .pixel-cursor::after {
+    content: '';
+    display: inline-block;
+    width: 0.6em;
+    height: 1.1em;
+    margin-left: 0.15em;
+    vertical-align: text-bottom;
+    background: currentColor;
+    animation: pixel-blink var(--loop-cursor) steps(1, end) infinite;
+  }
+
+  @keyframes pixel-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes pixel-lamp {
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pixel-blink,
+    .pixel-cursor::after {
+      animation: none;
+    }
+  }
+}

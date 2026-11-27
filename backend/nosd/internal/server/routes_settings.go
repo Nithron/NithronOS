@@ -46,7 +46,7 @@ func (d *routeDeps) registerSettings(pr chi.Router) {
 
 	// Appearance settings endpoints
 	appearanceHandler := NewAppearanceHandler(cfg)
-	pr.Mount("/api/v1/settings/appearance", appearanceHandler.Routes())
+	pr.Mount("/api/v1/settings/appearance", appearanceHandler.Routes(adminRequired))
 
 	// About/System info endpoints
 	aboutHandler := NewAboutHandler(cfg)

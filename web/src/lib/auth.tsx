@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
+import { Working } from '@/components/ui/pixel'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { api, AuthSession, APIError, ProxyMisconfiguredError } from './nos-client'
 import { toast } from '@/components/ui/toast'
@@ -245,7 +246,7 @@ export function AuthGuard({
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
+        <Working />
       </div>
     )
   }
