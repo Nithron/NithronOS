@@ -346,16 +346,11 @@ func (ct *ChangeTracker) shouldExclude(name, relPath string) bool {
 
 // GetFileMetadata returns metadata for a specific file
 func (ct *ChangeTracker) GetFileMetadata(sharePath, filePath string) (*FileMetadata, error) {
-	fullPath := filepath.Join(sharePath, filePath)
-
-	// Ensure the path is within the share
-	cleanPath, err := filepath.Abs(fullPath)
+	// (A prefix check without a separator let share "media" reach a sibling
+	// share "media2", and didn't follow symlinks.)
+	fullPath, err := ResolveInShare(sharePath, filePath)
 	if err != nil {
-		return nil, fmt.Errorf("invalid path: %w", err)
-	}
-	cleanSharePath, _ := filepath.Abs(sharePath)
-	if !strings.HasPrefix(cleanPath, cleanSharePath) {
-		return nil, fmt.Errorf("path escapes share directory")
+		return nil, err
 	}
 
 	info, err := os.Stat(fullPath)

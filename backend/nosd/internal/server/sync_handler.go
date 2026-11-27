@@ -564,7 +564,11 @@ func (h *SyncHandler) GetBlockHashes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fullPath := filepath.Join(share.Path, req.Path)
+	fullPath, err := nosync.ResolveInShare(share.Path, req.Path)
+	if err != nil {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.invalid", "path is outside the share", 0)
+		return
+	}
 	response, err := h.deltaSync.ComputeBlockHashes(fullPath)
 	if err != nil {
 		h.logger.Error().Err(err).Str("path", req.Path).Msg("Failed to compute block hashes")
