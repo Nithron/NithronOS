@@ -47,7 +47,7 @@ export function ShareDetails() {
 		return (
 			<div className="flex flex-col h-full">
 				<PageHeader
-					title="Share Not Found"
+					title="Share not found"
 					description="The requested share could not be found"
 				/>
 				<div className="flex-1 flex items-center justify-center">
@@ -57,7 +57,7 @@ export function ShareDetails() {
 						</p>
 						<Button onClick={() => navigate('/shares')}>
 							<BackIcon className="h-4 w-4 mr-2" />
-							Back to Shares
+							Back to shares
 						</Button>
 					</div>
 				</div>

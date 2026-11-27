@@ -25,7 +25,7 @@ export function Health() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Health Monitoring"
+        title="Health monitoring"
         description="Monitor system and disk health status"
       />
       

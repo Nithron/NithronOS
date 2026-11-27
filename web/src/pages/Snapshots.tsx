@@ -58,7 +58,7 @@ export default function Snapshots() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Snapshots</h1>
+          <h1 className="screen-title">Snapshots</h1>
           <p className="text-muted-foreground">
             Manage system snapshots and restore points
           </p>
@@ -68,7 +68,7 @@ export default function Snapshots() {
           className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
         >
           <AddIcon className="w-4 h-4 mr-2" />
-          Create Snapshot
+          Create snapshot
         </button>
       </div>
       
@@ -79,7 +79,7 @@ export default function Snapshots() {
             <div className="flex items-center space-x-3">
               <PoolIcon className="w-8 h-8 text-primary" />
               <div>
-                <p className="text-sm text-muted-foreground">Total Snapshots</p>
+                <p className="text-sm text-muted-foreground">Total snapshots</p>
                 <p className="text-2xl font-semibold">{stats.total_count}</p>
               </div>
             </div>
@@ -89,7 +89,7 @@ export default function Snapshots() {
             <div className="flex items-center space-x-3">
               <PoolIcon className="w-8 h-8 text-primary" />
               <div>
-                <p className="text-sm text-muted-foreground">Total Size</p>
+                <p className="text-sm text-muted-foreground">Total size</p>
                 <p className="text-2xl font-semibold">{formatBytes(stats.total_size_bytes)}</p>
               </div>
             </div>
@@ -99,7 +99,7 @@ export default function Snapshots() {
             <div className="flex items-center space-x-3">
               <ScheduleIcon className="w-8 h-8 text-primary" />
               <div>
-                <p className="text-sm text-muted-foreground">Oldest Snapshot</p>
+                <p className="text-sm text-muted-foreground">Oldest snapshot</p>
                 <p className="text-2xl font-semibold">
                   {stats.oldest_snapshot 
                     ? formatDistanceToNow(new Date(stats.oldest_snapshot), { addSuffix: true })
@@ -143,7 +143,7 @@ export default function Snapshots() {
               className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
             >
               <AddIcon className="w-4 h-4 mr-2" />
-              Create First Snapshot
+              Create first snapshot
             </button>
           </div>
         ) : (
@@ -284,12 +284,12 @@ function CreateSnapshotDialog({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-background rounded-lg p-6 max-w-md w-full">
-        <h2 className="text-lg font-semibold mb-4">Create Snapshot</h2>
+        <h2 className="text-lg font-semibold mb-4">Create snapshot</h2>
         
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">
-              Select Subvolumes
+              Select subvolumes
             </label>
             <div className="space-y-2">
               {availableSubvolumes.map((subvol) => (
@@ -331,7 +331,7 @@ function CreateSnapshotDialog({
           </button>
           <button
             onClick={handleCreate}
-            className="btn bg-primary text-primary-foreground"
+            className="btn btn-primary"
             disabled={isCreating}
           >
             {isCreating ? 'Creating...' : 'Create Snapshot'}
@@ -397,7 +397,7 @@ function RestoreDialog({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-background rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <h2 className="text-lg font-semibold mb-4">Restore from Snapshot</h2>
+        <h2 className="text-lg font-semibold mb-4">Restore from snapshot</h2>
         
         <div className="bg-card rounded p-4 mb-4">
           <p className="text-sm text-muted-foreground">Restoring from:</p>
@@ -411,7 +411,7 @@ function RestoreDialog({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-2">
-                Restore Type
+                Restore type
               </label>
               <div className="space-y-2">
                 <label className="flex items-center">
@@ -449,7 +449,7 @@ function RestoreDialog({
             
             <div>
               <label htmlFor="targetPath" className="block text-sm font-medium mb-2">
-                Target Path
+                Target path
               </label>
               <input
                 id="targetPath"
@@ -467,7 +467,7 @@ function RestoreDialog({
               </button>
               <button
                 onClick={handleCreatePlan}
-                className="btn bg-primary text-primary-foreground"
+                className="btn btn-primary"
                 disabled={isCreatingPlan}
               >
                 {isCreatingPlan ? 'Creating Plan...' : 'Create Restore Plan'}
@@ -480,7 +480,7 @@ function RestoreDialog({
               <div className="flex items-start space-x-3">
                 <WarningIcon className="w-5 h-5 text-yellow-500 mt-0.5" />
                 <div>
-                  <p className="font-medium text-yellow-500">Restore Plan</p>
+                  <p className="font-medium text-yellow-500">Restore plan</p>
                   <p className="text-sm mt-1">
                     Estimated time: {Math.round(plan.estimated_time_seconds / 60)} minutes
                   </p>
@@ -514,9 +514,9 @@ function RestoreDialog({
               </button>
               <button
                 onClick={handleApplyRestore}
-                className="btn bg-primary text-primary-foreground"
+                className="btn btn-primary"
               >
-                Apply Restore
+                Apply restore
               </button>
             </div>
           </div>

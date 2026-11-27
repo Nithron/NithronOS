@@ -128,12 +128,12 @@ export const navItems: NavItem[] = [
       },
       {
         id: 'network',
-        label: 'Network & Remote',
+        label: 'Network & remote',
         path: '/settings/network',
       },
       {
         id: '2fa',
-        label: 'Two-Factor Auth',
+        label: 'Two-factor auth',
         path: '/settings/2fa',
       },
       {
@@ -153,7 +153,7 @@ export const navItems: NavItem[] = [
       },
       {
         id: 'updates',
-        label: 'Updates & Releases',
+        label: 'Updates & releases',
         path: '/settings/updates',
       },
     ],

@@ -18,7 +18,7 @@ import {
 import type { AccessMode, HTTPSMode } from '@/api/net.types';
 
 const WIZARD_STEPS = [
-  { id: 1, title: 'Access Mode', icon: SecurityIcon },
+  { id: 1, title: 'Access mode', icon: SecurityIcon },
   { id: 2, title: 'Configuration', icon: RouterIcon },
   { id: 3, title: 'Security', icon: LockIcon },
   { id: 4, title: 'Review', icon: OkIcon },
@@ -110,7 +110,7 @@ export function RemoteAccessWizard() {
                 <Label htmlFor="lan_only" className="flex-1 cursor-pointer">
                   <div className="flex items-center gap-2">
                     <ConnectionIcon className="h-5 w-5" />
-                    <span className="font-semibold">LAN Only (Recommended)</span>
+                    <span className="font-semibold">LAN only (recommended)</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     Access nOS only from your local network. Most secure option.
@@ -175,12 +175,12 @@ export function RemoteAccessWizard() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>WireGuard Configuration</CardTitle>
+              <CardTitle>WireGuard configuration</CardTitle>
               <CardDescription>Configure your VPN server settings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="wg-cidr">VPN Subnet</Label>
+                <Label htmlFor="wg-cidr">VPN subnet</Label>
                 <Input
                   id="wg-cidr"
                   value={formData.wireguard.cidr}
@@ -196,7 +196,7 @@ export function RemoteAccessWizard() {
               </div>
 
               <div>
-                <Label htmlFor="wg-port">Listen Port</Label>
+                <Label htmlFor="wg-port">Listen port</Label>
                 <Input
                   id="wg-port"
                   type="number"
@@ -213,7 +213,7 @@ export function RemoteAccessWizard() {
               </div>
 
               <div>
-                <Label htmlFor="wg-endpoint">Public Endpoint (Optional)</Label>
+                <Label htmlFor="wg-endpoint">Public endpoint (optional)</Label>
                 <Input
                   id="wg-endpoint"
                   value={formData.wireguard.endpoint_hostname}
@@ -229,7 +229,7 @@ export function RemoteAccessWizard() {
               </div>
 
               <div>
-                <Label htmlFor="wg-dns">DNS Servers</Label>
+                <Label htmlFor="wg-dns">DNS servers</Label>
                 <Input
                   id="wg-dns"
                   value={formData.wireguard.dns.join(', ')}
@@ -254,12 +254,12 @@ export function RemoteAccessWizard() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>HTTPS Configuration</CardTitle>
+              <CardTitle>HTTPS configuration</CardTitle>
               <CardDescription>Configure domain and SSL certificate</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="https-domain">Domain Name</Label>
+                <Label htmlFor="https-domain">Domain name</Label>
                 <Input
                   id="https-domain"
                   value={formData.https.domain}
@@ -276,7 +276,7 @@ export function RemoteAccessWizard() {
               </div>
 
               <div>
-                <Label htmlFor="https-email">Email Address</Label>
+                <Label htmlFor="https-email">Email address</Label>
                 <Input
                   id="https-email"
                   type="email"
@@ -294,7 +294,7 @@ export function RemoteAccessWizard() {
               </div>
 
               <div>
-                <Label>Certificate Method</Label>
+                <Label>Certificate method</Label>
                 <p className="text-sm text-muted-foreground">
                   A free Let's Encrypt certificate, obtained with the HTTP challenge: ports 80 and 443 must be
                   reachable from the internet, and the domain must point to this system. (The DNS challenge
@@ -313,7 +313,7 @@ export function RemoteAccessWizard() {
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>LAN Only Configuration</CardTitle>
+            <CardTitle>LAN only configuration</CardTitle>
             <CardDescription>
               Your nOS instance will only be accessible from your local network
             </CardDescription>
@@ -335,7 +335,7 @@ export function RemoteAccessWizard() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Security Settings</CardTitle>
+          <CardTitle>Security settings</CardTitle>
           <CardDescription>Review security implications of your configuration</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -343,14 +343,14 @@ export function RemoteAccessWizard() {
             <Alert>
               <LockIcon className="h-4 w-4" />
               <AlertDescription>
-                <strong>2FA Enforcement:</strong> All non-LAN admin sessions will require two-factor authentication.
+                <strong>2FA enforcement:</strong> All non-LAN admin sessions will require two-factor authentication.
                 Make sure to set up TOTP after completing this wizard.
               </AlertDescription>
             </Alert>
           )}
 
           <div className="space-y-2">
-            <h4 className="font-medium">Firewall Rules Preview</h4>
+            <h4 className="font-medium">Firewall rules preview</h4>
             <div className="rounded-lg bg-muted p-4 font-mono text-sm">
               <div className="space-y-1">
                 <div className="text-green-600">+ Allow LAN to UI/API (192.168.0.0/16, 10.0.0.0/8)</div>
@@ -389,12 +389,12 @@ export function RemoteAccessWizard() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Review Configuration</CardTitle>
+          <CardTitle>Review configuration</CardTitle>
           <CardDescription>Confirm your remote access settings before applying</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h4 className="font-medium mb-2">Access Mode</h4>
+            <h4 className="font-medium mb-2">Access mode</h4>
             <Badge variant="outline" className="text-base">
               {formData.access_mode === 'lan_only' && 'LAN Only'}
               {formData.access_mode === 'wireguard' && 'WireGuard VPN'}
@@ -404,7 +404,7 @@ export function RemoteAccessWizard() {
 
           {formData.access_mode === 'wireguard' && (
             <div className="space-y-2">
-              <h4 className="font-medium">WireGuard Settings</h4>
+              <h4 className="font-medium">WireGuard settings</h4>
               <dl className="grid grid-cols-2 gap-2 text-sm">
                 <dt className="text-muted-foreground">Subnet:</dt>
                 <dd>{formData.wireguard.cidr}</dd>
@@ -418,7 +418,7 @@ export function RemoteAccessWizard() {
 
           {formData.access_mode === 'public_https' && (
             <div className="space-y-2">
-              <h4 className="font-medium">HTTPS Settings</h4>
+              <h4 className="font-medium">HTTPS settings</h4>
               <dl className="grid grid-cols-2 gap-2 text-sm">
                 <dt className="text-muted-foreground">Domain:</dt>
                 <dd>{formData.https.domain}</dd>
@@ -462,7 +462,7 @@ export function RemoteAccessWizard() {
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Remote Access Wizard</h1>
+        <h1 className="screen-title">Remote access wizard</h1>
         <p className="text-muted-foreground mt-2">
           Configure how you access nOS from outside your local network
         </p>

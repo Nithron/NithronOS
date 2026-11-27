@@ -160,19 +160,19 @@ function DeviceCard({
       <CardContent>
         <div className="grid grid-cols-2 gap-4 text-sm mb-4">
           <div>
-            <span className="text-muted-foreground">Last Sync</span>
+            <span className="text-muted-foreground">Last sync</span>
             <p className="font-medium">{formatRelativeTime(device.last_sync_at)}</p>
           </div>
           <div>
-            <span className="text-muted-foreground">Last Seen</span>
+            <span className="text-muted-foreground">Last seen</span>
             <p className="font-medium">{formatRelativeTime(device.last_seen_at)}</p>
           </div>
           <div>
-            <span className="text-muted-foreground">Total Synced</span>
+            <span className="text-muted-foreground">Total synced</span>
             <p className="font-medium">{formatBytes(device.bytes_synced)}</p>
           </div>
           <div>
-            <span className="text-muted-foreground">Sync Count</span>
+            <span className="text-muted-foreground">Sync count</span>
             <p className="font-medium">{device.sync_count.toLocaleString()}</p>
           </div>
         </div>
@@ -325,7 +325,7 @@ export default function SyncDevices() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Sync Devices</h1>
+          <h1 className="screen-title">Sync devices</h1>
           <p className="text-muted-foreground">
             Manage devices connected to NithronSync
           </p>
@@ -337,7 +337,7 @@ export default function SyncDevices() {
           </Button>
           <Button onClick={() => setShowAddDialog(true)}>
             <AddIcon className="h-4 w-4 mr-2" />
-            Add Device
+            Add device
           </Button>
         </div>
       </div>
@@ -346,7 +346,7 @@ export default function SyncDevices() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Devices</CardTitle>
+            <CardTitle className="text-sm font-medium">Total devices</CardTitle>
             <PhoneIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -355,7 +355,7 @@ export default function SyncDevices() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Now</CardTitle>
+            <CardTitle className="text-sm font-medium">Active now</CardTitle>
             <SyncIcon className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -373,7 +373,7 @@ export default function SyncDevices() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Synced</CardTitle>
+            <CardTitle className="text-sm font-medium">Total synced</CardTitle>
             <DownloadIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -404,7 +404,7 @@ export default function SyncDevices() {
             <div className="flex gap-2">
               <Button onClick={() => setShowAddDialog(true)}>
                 <AddIcon className="h-4 w-4 mr-2" />
-                Add Device
+                Add device
               </Button>
             </div>
           </CardContent>
@@ -432,18 +432,18 @@ export default function SyncDevices() {
       <Dialog open={!!editDevice} onOpenChange={() => setEditDevice(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rename Device</DialogTitle>
+            <DialogTitle>Rename device</DialogTitle>
             <DialogDescription>
               Give this device a recognizable name.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Label htmlFor="device-name">Device Name</Label>
+            <Label htmlFor="device-name">Device name</Label>
             <Input
               id="device-name"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
-              placeholder="My Laptop"
+              placeholder="My laptop"
               className="mt-2"
             />
           </div>
@@ -462,7 +462,7 @@ export default function SyncDevices() {
       <AlertDialog open={!!revokeDeviceTarget} onOpenChange={() => setRevokeDeviceTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Revoke Device Access?</AlertDialogTitle>
+            <AlertDialogTitle>Revoke device access?</AlertDialogTitle>
             <AlertDialogDescription>
               This will immediately disconnect "{revokeDeviceTarget?.device_name}" and prevent it from syncing files.
               The device will need to be re-registered to sync again.
@@ -471,7 +471,7 @@ export default function SyncDevices() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleRevoke} className="bg-red-600 hover:bg-red-700">
-              Revoke Access
+              Revoke access
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -481,7 +481,7 @@ export default function SyncDevices() {
       <Dialog open={showAddDialog} onOpenChange={resetAddDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add Sync Device</DialogTitle>
+            <DialogTitle>Add sync device</DialogTitle>
             <DialogDescription>
               {!registeredDevice
                 ? 'Register a new device to sync files with nOS.'
@@ -493,7 +493,7 @@ export default function SyncDevices() {
             <>
               <div className="space-y-4 py-4">
                 <div>
-                  <Label htmlFor="new-device-name">Device Name</Label>
+                  <Label htmlFor="new-device-name">Device name</Label>
                   <Input
                     id="new-device-name"
                     value={newDeviceName}
@@ -503,7 +503,7 @@ export default function SyncDevices() {
                   />
                 </div>
                 <div>
-                  <Label>Device Type</Label>
+                  <Label>Device type</Label>
                   <div className="grid grid-cols-5 gap-2 mt-2">
                     {(['windows', 'linux', 'macos', 'android', 'ios'] as DeviceType[]).map((type) => (
                       <button
@@ -527,7 +527,7 @@ export default function SyncDevices() {
                   Cancel
                 </Button>
                 <Button onClick={handleRegister} disabled={!newDeviceName.trim()}>
-                  Register Device
+                  Register device
                 </Button>
               </DialogFooter>
             </>
@@ -537,7 +537,7 @@ export default function SyncDevices() {
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex items-center gap-2 text-green-700 mb-2">
                     <ChosenIcon className="h-5 w-5" />
-                    <span className="font-medium">Device Registered!</span>
+                    <span className="font-medium">Device registered!</span>
                   </div>
                   <p className="text-sm text-green-600">
                     {(newDeviceType === 'ios' || newDeviceType === 'android')
@@ -554,7 +554,7 @@ export default function SyncDevices() {
                 )}
                 
                 <div>
-                  <Label>Pairing Link</Label>
+                  <Label>Pairing link</Label>
                   <div className="flex gap-2 mt-2">
                     <Input
                       value={registeredLink}

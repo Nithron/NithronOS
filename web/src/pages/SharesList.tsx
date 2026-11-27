@@ -174,11 +174,11 @@ export function SharesList() {
 						<DropdownMenuContent align="end">
 							<DropdownMenuItem onClick={() => handleEditShare(share.name)}>
 								<EditIcon className="h-4 w-4 mr-2" />
-								Edit Share
+								Edit share
 							</DropdownMenuItem>
 							<DropdownMenuItem>
 								<FolderIcon className="h-4 w-4 mr-2" />
-								Open in Files
+								Open in files
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem 
@@ -186,7 +186,7 @@ export function SharesList() {
 								className="text-destructive"
 							>
 								<DeleteIcon className="h-4 w-4 mr-2" />
-								Delete Share
+								Delete share
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
@@ -210,7 +210,7 @@ export function SharesList() {
 						action={
 							<Button onClick={handleCreateShare}>
 								<AddIcon className="h-4 w-4 mr-2" />
-								Create Share
+								Create share
 							</Button>
 						}
 					/>
@@ -227,7 +227,7 @@ export function SharesList() {
 				action={
 					<Button onClick={handleCreateShare}>
 						<AddIcon className="h-4 w-4 mr-2" />
-						Create Share
+						Create share
 					</Button>
 				}
 			/>
@@ -247,7 +247,7 @@ export function SharesList() {
 			<AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete Share</AlertDialogTitle>
+						<AlertDialogTitle>Delete share</AlertDialogTitle>
 						<AlertDialogDescription>
 							Are you sure you want to delete the share "{deleteTarget}"? 
 							This will remove all share configurations but will not delete the actual files.
@@ -259,7 +259,7 @@ export function SharesList() {
 							onClick={handleDeleteShare}
 							className="bg-destructive text-destructive-foreground"
 						>
-							Delete Share
+							Delete share
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

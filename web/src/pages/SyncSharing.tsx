@@ -43,7 +43,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/toast';
 
 import {
   listSharedFolders,
@@ -206,7 +206,7 @@ export default function SyncSharing() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Shared Folders</h1>
+          <h1 className="screen-title">Shared folders</h1>
           <p className="text-muted-foreground">
             Collaborate on folders with other users
           </p>
@@ -218,7 +218,7 @@ export default function SyncSharing() {
           </Button>
           <Button onClick={() => setCreateDialogOpen(true)}>
             <AddIcon className="h-4 w-4 mr-2" />
-            Share Folder
+            Share folder
           </Button>
         </div>
       </div>
@@ -258,7 +258,7 @@ export default function SyncSharing() {
         <TabsContent value="folders" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Shared Folders</CardTitle>
+              <CardTitle>Shared folders</CardTitle>
               <CardDescription>
                 Folders you own or have been shared with you
               </CardDescription>
@@ -273,13 +273,13 @@ export default function SyncSharing() {
               ) : folders.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <FolderIcon className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="font-semibold text-lg mb-1">No Shared Folders</h3>
+                  <h3 className="font-semibold text-lg mb-1">No shared folders</h3>
                   <p className="text-muted-foreground mb-4">
                     Create a shared folder to collaborate with others
                   </p>
                   <Button onClick={() => setCreateDialogOpen(true)}>
                     <AddIcon className="h-4 w-4 mr-2" />
-                    Share Your First Folder
+                    Share your first folder
                   </Button>
                 </div>
               ) : (
@@ -349,7 +349,7 @@ export default function SyncSharing() {
         <TabsContent value="invites" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Pending Invitations</CardTitle>
+              <CardTitle>Pending invitations</CardTitle>
               <CardDescription>
                 Invitations to join shared folders
               </CardDescription>
@@ -364,7 +364,7 @@ export default function SyncSharing() {
               ) : invites.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <MailIcon className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="font-semibold text-lg mb-1">No Pending Invitations</h3>
+                  <h3 className="font-semibold text-lg mb-1">No pending invitations</h3>
                   <p className="text-muted-foreground">
                     You'll see invitations here when someone shares a folder with you
                   </p>
@@ -425,14 +425,14 @@ export default function SyncSharing() {
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Share a Folder</DialogTitle>
+            <DialogTitle>Share a folder</DialogTitle>
             <DialogDescription>
               Create a shared folder that others can access
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Sync Share</Label>
+              <Label>Sync share</Label>
               <Select value={selectedShareId} onValueChange={setSelectedShareId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a share" />
@@ -447,7 +447,7 @@ export default function SyncSharing() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Folder Path</Label>
+              <Label>Folder path</Label>
               <Input
                 value={newFolderPath}
                 onChange={(e) => setNewFolderPath(e.target.value)}
@@ -455,11 +455,11 @@ export default function SyncSharing() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Display Name</Label>
+              <Label>Display name</Label>
               <Input
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
-                placeholder="Shared Documents"
+                placeholder="Shared documents"
               />
             </div>
           </div>
@@ -471,7 +471,7 @@ export default function SyncSharing() {
               onClick={() => createMutation.mutate()}
               disabled={!selectedShareId || !newFolderPath || !newFolderName || createMutation.isPending}
             >
-              Create Shared Folder
+              Create shared folder
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -481,7 +481,7 @@ export default function SyncSharing() {
       <Dialog open={manageMembersOpen} onOpenChange={setManageMembersOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Manage Members</DialogTitle>
+            <DialogTitle>Manage members</DialogTitle>
             <DialogDescription>
               {selectedFolder?.name} - {selectedFolder?.members.length} members
             </DialogDescription>
@@ -531,7 +531,7 @@ export default function SyncSharing() {
             </Button>
             <Button onClick={() => setAddMemberOpen(true)}>
               <AddUserIcon className="h-4 w-4 mr-2" />
-              Add Member
+              Add member
             </Button>
           </DialogFooter>
         </DialogContent>

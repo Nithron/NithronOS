@@ -85,7 +85,7 @@ function LiveMetric({
       </div>
       <motion.div
         key={value}
-        initial={{ opacity: 0, y: -5 }}
+        initial={false}
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-1"
       >
@@ -210,7 +210,7 @@ export default function MonitoringDashboard() {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">System Monitoring</h2>
+          <h2 className="text-2xl font-bold">System monitoring</h2>
         </div>
         <div className="grid gap-4">
           {[...Array(3)].map((_, i) => (
@@ -251,14 +251,14 @@ export default function MonitoringDashboard() {
   return (
     <motion.div
       variants={containerVariants}
-      initial="hidden"
+      initial={false}
       animate="visible"
       className="space-y-6"
     >
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold">System Monitoring</h2>
+          <h2 className="text-2xl font-bold">System monitoring</h2>
           <Badge variant="outline" className="gap-1">
             <LiveIcon className="h-3 w-3 text-green-500 animate-pulse" />
             Live
@@ -284,7 +284,7 @@ export default function MonitoringDashboard() {
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Live Metrics</CardTitle>
+            <CardTitle className="text-base">Live metrics</CardTitle>
             <CardDescription>Real-time system performance (1Hz refresh)</CardDescription>
           </CardHeader>
           <CardContent>
@@ -322,7 +322,7 @@ export default function MonitoringDashboard() {
       <motion.div variants={itemVariants}>
         <Tabs defaultValue="cpu" className="space-y-4">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="cpu">CPU & Memory</TabsTrigger>
+            <TabsTrigger value="cpu">CPU & memory</TabsTrigger>
             <TabsTrigger value="network">Network</TabsTrigger>
             <TabsTrigger value="disk">Disk I/O</TabsTrigger>
             <TabsTrigger value="services">Services</TabsTrigger>
@@ -331,7 +331,7 @@ export default function MonitoringDashboard() {
           <TabsContent value="cpu" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">CPU & Memory Usage</CardTitle>
+                <CardTitle className="text-base">CPU & memory usage</CardTitle>
                 <CardDescription>Last 60 seconds</CardDescription>
               </CardHeader>
               <CardContent>
@@ -381,7 +381,7 @@ export default function MonitoringDashboard() {
           <TabsContent value="network" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Network Traffic</CardTitle>
+                <CardTitle className="text-base">Network traffic</CardTitle>
                 <CardDescription>Upload and download speeds</CardDescription>
               </CardHeader>
               <CardContent>
@@ -428,11 +428,11 @@ export default function MonitoringDashboard() {
                 
                 <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Downloaded</p>
+                    <p className="text-sm text-muted-foreground">Total downloaded</p>
                     <p className="text-lg font-semibold">{formatBytes(stats?.totalNetworkRx || 0)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Uploaded</p>
+                    <p className="text-sm text-muted-foreground">Total uploaded</p>
                     <p className="text-lg font-semibold">{formatBytes(stats?.totalNetworkTx || 0)}</p>
                   </div>
                 </div>
@@ -490,11 +490,11 @@ export default function MonitoringDashboard() {
                 
                 <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Read</p>
+                    <p className="text-sm text-muted-foreground">Total read</p>
                     <p className="text-lg font-semibold">{formatBytes(stats?.totalDiskRead || 0)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Written</p>
+                    <p className="text-sm text-muted-foreground">Total written</p>
                     <p className="text-lg font-semibold">{formatBytes(stats?.totalDiskWrite || 0)}</p>
                   </div>
                 </div>
@@ -505,7 +505,7 @@ export default function MonitoringDashboard() {
           <TabsContent value="services" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">System Services</CardTitle>
+                <CardTitle className="text-base">System services</CardTitle>
                 <CardDescription>Status of core services</CardDescription>
               </CardHeader>
               <CardContent>
@@ -532,24 +532,24 @@ export default function MonitoringDashboard() {
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">System Information</CardTitle>
+            <CardTitle className="text-base">System information</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <p className="text-sm text-muted-foreground">Load Average (1m)</p>
+                <p className="text-sm text-muted-foreground">Load average (1m)</p>
                 <p className="font-semibold">{toFixedSafe(metrics?.load1, 2, '0.00')}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Load Average (5m)</p>
+                <p className="text-sm text-muted-foreground">Load average (5m)</p>
                 <p className="font-semibold">{toFixedSafe(metrics?.load5, 2, '0.00')}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Load Average (15m)</p>
+                <p className="text-sm text-muted-foreground">Load average (15m)</p>
                 <p className="font-semibold">{toFixedSafe(metrics?.load15, 2, '0.00')}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">CPU Temperature</p>
+                <p className="text-sm text-muted-foreground">CPU temperature</p>
                 <p className="font-semibold">
                   {metrics?.tempCpu !== undefined ? `${toFixedSafe(metrics.tempCpu, 1, '0.0')}°C` : 'N/A'}
                 </p>

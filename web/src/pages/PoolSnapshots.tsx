@@ -32,7 +32,7 @@ export function PoolSnapshots({ id }: { id: string }) {
         <div className="grid gap-2 md:grid-cols-3">
           <input className="rounded bg-background p-2" placeholder="Subvolume path (e.g., /mnt/pool/data)" value={subvol} onChange={(e) => setSubvol(e.target.value)} />
           <input className="rounded bg-background p-2" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-          <button className="btn bg-primary text-primary-foreground" onClick={createSnap}>Create snapshot</button>
+          <button className="btn btn-primary" onClick={createSnap}>Create snapshot</button>
         </div>
         {error && <div className="text-sm text-red-400">{error}</div>}
       </div>

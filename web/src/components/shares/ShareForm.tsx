@@ -142,7 +142,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 					<Card className="p-6 space-y-6">
 						<div className="space-y-4">
 							<div className="space-y-2">
-								<Label htmlFor="name">Share Name</Label>
+								<Label htmlFor="name">Share name</Label>
 								<Input
 									id="name"
 									{...register('name')}
@@ -195,7 +195,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 										<div className="flex items-center gap-3">
 											<UsersIcon className="h-4 w-4 text-muted-foreground" />
 											<div>
-												<Label>Guest Access</Label>
+												<Label>Guest access</Label>
 												<p className="text-sm text-muted-foreground">
 													Allow anonymous access without authentication
 												</p>
@@ -238,7 +238,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 										<div className="flex items-center gap-3">
 											<DeleteIcon className="h-4 w-4 text-muted-foreground" />
 											<div>
-												<Label>Recycle Bin</Label>
+												<Label>Recycle bin</Label>
 												<p className="text-sm text-muted-foreground">
 													Keep deleted files in a hidden directory
 												</p>
@@ -252,7 +252,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 
 									{watchSmbRecycleEnabled && (
 										<div className="ml-7 space-y-2">
-											<Label htmlFor="recycle-dir">Recycle Directory</Label>
+											<Label htmlFor="recycle-dir">Recycle directory</Label>
 											<Input
 												id="recycle-dir"
 												{...register('smb.recycle.directory')}
@@ -290,7 +290,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 										<div className="flex items-center gap-3">
 											<PermissionsIcon className="h-4 w-4 text-muted-foreground" />
 											<div>
-												<Label>Read Only</Label>
+												<Label>Read only</Label>
 												<p className="text-sm text-muted-foreground">
 													Prevent write access via NFS
 												</p>
@@ -303,7 +303,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 									</div>
 
 									<div className="space-y-2">
-										<Label>Allowed Networks</Label>
+										<Label>Allowed networks</Label>
 										<div className="flex flex-wrap gap-2">
 											{watch('nfs.networks')?.map((network, index) => (
 												<Badge key={index} variant="secondary">

@@ -120,7 +120,7 @@ export default function SyncActivityPage() {
         return (
           <Badge variant="secondary" className="bg-blue-500/10 text-blue-600">
             <RefreshIcon className="h-3 w-3 mr-1 animate-spin" />
-            In Progress
+            In progress
           </Badge>
         );
       case 'pending':
@@ -151,7 +151,7 @@ export default function SyncActivityPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Sync Activity</h1>
+          <h1 className="screen-title">Sync activity</h1>
           <p className="text-muted-foreground">
             Monitor file synchronization operations
           </p>
@@ -162,7 +162,7 @@ export default function SyncActivityPage() {
               <SelectValue placeholder="All shares" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Shares</SelectItem>
+              <SelectItem value="all">All shares</SelectItem>
               {sharesData?.shares.map((share) => (
                 <SelectItem key={share.share_id} value={share.share_id}>
                   {share.share_name}
@@ -234,7 +234,7 @@ export default function SyncActivityPage() {
                 <p className="text-2xl font-bold">
                   {loadingStats ? '-' : formatBytes(stats?.bytes_synced || 0)}
                 </p>
-                <p className="text-sm text-muted-foreground">Total Synced</p>
+                <p className="text-sm text-muted-foreground">Total synced</p>
               </div>
             </div>
           </CardContent>
@@ -246,7 +246,7 @@ export default function SyncActivityPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ActivityIcon className="h-5 w-5" />
-            Recent Activity
+            Recent activity
           </CardTitle>
           <CardDescription>
             Showing {activities.length} of {activityResponse?.total || 0} activities
@@ -264,7 +264,7 @@ export default function SyncActivityPage() {
               <div className="p-3 rounded-full bg-muted mb-4">
                 <ActivityIcon className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="font-semibold text-lg mb-1">No Activity</h3>
+              <h3 className="font-semibold text-lg mb-1">No activity</h3>
               <p className="text-muted-foreground">
                 Sync activity will appear here
               </p>

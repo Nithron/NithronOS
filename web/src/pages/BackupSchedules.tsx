@@ -102,7 +102,7 @@ export default function BackupSchedules() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Backup Schedules</h1>
+          <h1 className="screen-title">Backup schedules</h1>
           <p className="text-muted-foreground">
             Configure automatic backup schedules with retention policies
           </p>
@@ -112,7 +112,7 @@ export default function BackupSchedules() {
           className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
         >
           <AddIcon className="w-4 h-4 mr-2" />
-          Create Schedule
+          Create schedule
         </button>
       </div>
       
@@ -131,7 +131,7 @@ export default function BackupSchedules() {
               className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
             >
               <AddIcon className="w-4 h-4 mr-2" />
-              Create First Schedule
+              Create first schedule
             </button>
           </div>
         ) : (
@@ -318,7 +318,7 @@ function ScheduleDialog({
           {/* Basic Settings */}
           <div>
             <label htmlFor="name" className="block text-sm font-medium mb-2">
-              Schedule Name
+              Schedule name
             </label>
             <input
               id="name"
@@ -346,7 +346,7 @@ function ScheduleDialog({
           {/* Subvolumes */}
           <div>
             <label className="block text-sm font-medium mb-2">
-              Subvolumes to Backup
+              Subvolumes to backup
             </label>
             <div className="grid grid-cols-2 gap-2">
               {availableSubvolumes.map((subvol) => (
@@ -477,7 +477,7 @@ function ScheduleDialog({
           {/* Retention */}
           <div>
             <label className="block text-sm font-medium mb-2">
-              Retention Policy (GFS)
+              Retention policy (GFS)
             </label>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -547,7 +547,7 @@ function ScheduleDialog({
           </button>
           <button
             onClick={handleSave}
-            className="btn bg-primary text-primary-foreground"
+            className="btn btn-primary"
             disabled={isSaving}
           >
             {isSaving ? 'Saving...' : (schedule ? 'Update Schedule' : 'Create Schedule')}

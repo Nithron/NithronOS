@@ -409,7 +409,7 @@ export function AppCatalog() {
             <AppIcon className="w-8 h-8 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold">App Catalog</h1>
+            <h1 className="screen-title">App catalog</h1>
             <p className="text-muted-foreground">
               Discover and install applications for your nOS
             </p>
@@ -424,7 +424,7 @@ export function AppCatalog() {
             "w-4 h-4 mr-2",
             (isRefreshing || syncCatalogsMutation.isPending) && "animate-spin"
           )} />
-          Sync Catalogs
+          Sync catalogs
         </Button>
       </div>
 
@@ -511,7 +511,7 @@ export function AppCatalog() {
               onClick={() => setOfficialOnly(!officialOnly)}
             >
               <SecurityIcon className="w-4 h-4 mr-2" />
-              Verified Only
+              Verified only
             </Button>
           </div>
 
@@ -527,7 +527,7 @@ export function AppCatalog() {
                     : 'bg-muted hover:bg-muted/80'
                 )}
               >
-                All Categories
+                All categories
               </button>
               {categories.map((cat) => {
                 const Icon = iconFor(cat);
@@ -557,7 +557,7 @@ export function AppCatalog() {
         {activeTab === 'catalog' ? (
           <motion.div
             key="catalog"
-            initial={{ opacity: 0 }}
+            initial={false}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
@@ -578,7 +578,7 @@ export function AppCatalog() {
             ) : (
               <motion.div
                 variants={containerVariants}
-                initial="hidden"
+                initial={false}
                 animate="visible"
                 className={cn(
                   viewMode === 'grid'
@@ -599,7 +599,7 @@ export function AppCatalog() {
         ) : (
           <motion.div
             key="installed"
-            initial={{ opacity: 0 }}
+            initial={false}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
@@ -615,13 +615,13 @@ export function AppCatalog() {
                   Install apps from the catalog to get started
                 </p>
                 <Button onClick={() => setActiveTab('catalog')}>
-                  Browse Catalog
+                  Browse catalog
                 </Button>
               </Card>
             ) : (
               <motion.div
                 variants={containerVariants}
-                initial="hidden"
+                initial={false}
                 animate="visible"
                 className={cn(
                   viewMode === 'grid'

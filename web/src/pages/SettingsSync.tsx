@@ -92,9 +92,9 @@ export default function SettingsSync() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <h1 className="screen-title flex items-center gap-2">
             <SyncIcon className="h-6 w-6 text-blue-500" />
-            NithronSync Settings
+            NithronSync settings
           </h1>
           <p className="text-muted-foreground">
             Configure file synchronization between your devices
@@ -103,7 +103,7 @@ export default function SettingsSync() {
         <div className="flex gap-2">
           <Link to="/settings/sync/devices">
             <Button variant="outline">
-              Manage Devices
+              Manage devices
               <ChevronRightIcon className="h-4 w-4 ml-1" />
             </Button>
           </Link>
@@ -122,7 +122,7 @@ export default function SettingsSync() {
                 <SyncedFolderIcon className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Selected Shares</p>
+                <p className="text-sm text-muted-foreground">Selected shares</p>
                 <p className="text-xl font-bold">{selectedShares.length}</p>
               </div>
             </div>
@@ -131,7 +131,7 @@ export default function SettingsSync() {
                 <DownloadIcon className="h-5 w-5 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Files</p>
+                <p className="text-sm text-muted-foreground">Total files</p>
                 <p className="text-xl font-bold">{totalFiles.toLocaleString()}</p>
               </div>
             </div>
@@ -140,7 +140,7 @@ export default function SettingsSync() {
                 <UploadIcon className="h-5 w-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Size</p>
+                <p className="text-sm text-muted-foreground">Total size</p>
                 <p className="text-xl font-bold">{formatBytes(totalSize)}</p>
               </div>
             </div>
@@ -172,7 +172,7 @@ export default function SettingsSync() {
         <TabsContent value="shares" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Sync-Enabled Shares</CardTitle>
+              <CardTitle>Sync-enabled shares</CardTitle>
               <CardDescription>
                 Select which shares should be available for sync on your devices
               </CardDescription>
@@ -190,7 +190,7 @@ export default function SettingsSync() {
                     Create network shares to enable file synchronization
                   </p>
                   <Link to="/shares">
-                    <Button variant="outline">Manage Shares</Button>
+                    <Button variant="outline">Manage shares</Button>
                   </Link>
                 </div>
               ) : (
@@ -222,7 +222,7 @@ export default function SettingsSync() {
                       </div>
                       <div className="flex items-center gap-3">
                         {share.sync_enabled && (
-                          <Badge variant="secondary">Sync Enabled</Badge>
+                          <Badge variant="secondary">Sync enabled</Badge>
                         )}
                         <Switch
                           checked={selectedShares.includes(share.share_id)}
@@ -241,7 +241,7 @@ export default function SettingsSync() {
         <TabsContent value="settings" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Sync Control</CardTitle>
+              <CardTitle>Sync control</CardTitle>
               <CardDescription>
                 Control sync behavior across all your devices
               </CardDescription>
@@ -249,7 +249,7 @@ export default function SettingsSync() {
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label className="text-base">Pause Sync</Label>
+                  <Label className="text-base">Pause sync</Label>
                   <p className="text-sm text-muted-foreground">
                     Temporarily stop all sync operations
                   </p>
@@ -263,7 +263,7 @@ export default function SettingsSync() {
               <Separator />
               
               <div className="space-y-3">
-                <Label className="text-base">Bandwidth Limit</Label>
+                <Label className="text-base">Bandwidth limit</Label>
                 <p className="text-sm text-muted-foreground">
                   Limit upload/download speed (0 = unlimited)
                 </p>
@@ -297,7 +297,7 @@ export default function SettingsSync() {
               <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg">
                 <EncryptionIcon className="h-5 w-5 text-green-600" />
                 <div>
-                  <p className="font-medium text-green-800">End-to-End Encryption</p>
+                  <p className="font-medium text-green-800">End-to-end encryption</p>
                   <p className="text-sm text-green-600">
                     All sync traffic is encrypted using TLS 1.3
                   </p>
@@ -306,7 +306,7 @@ export default function SettingsSync() {
               
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label className="text-base">Device Token Rotation</Label>
+                  <Label className="text-base">Device token rotation</Label>
                   <p className="text-sm text-muted-foreground">
                     Tokens automatically rotate every 90 days
                   </p>
@@ -339,7 +339,7 @@ export default function SettingsSync() {
                   </div>
                   <Button variant="outline" size="sm" disabled>
                     <DownloadIcon className="h-4 w-4 mr-2" />
-                    Coming Soon
+                    Coming soon
                   </Button>
                 </div>
 
@@ -354,7 +354,7 @@ export default function SettingsSync() {
                   </div>
                   <Button variant="outline" size="sm" disabled>
                     <DownloadIcon className="h-4 w-4 mr-2" />
-                    Coming Soon
+                    Coming soon
                   </Button>
                 </div>
 
@@ -369,7 +369,7 @@ export default function SettingsSync() {
                   </div>
                   <Button variant="outline" size="sm" disabled>
                     <DownloadIcon className="h-4 w-4 mr-2" />
-                    Coming Soon
+                    Coming soon
                   </Button>
                 </div>
 
@@ -384,7 +384,7 @@ export default function SettingsSync() {
                   </div>
                   <Button variant="outline" size="sm" disabled>
                     <DownloadIcon className="h-4 w-4 mr-2" />
-                    Coming Soon
+                    Coming soon
                   </Button>
                 </div>
               </div>
@@ -393,7 +393,7 @@ export default function SettingsSync() {
                 <div className="flex items-start gap-3">
                   <NoticeIcon className="h-5 w-5 text-blue-600 mt-0.5" />
                   <div>
-                    <h4 className="font-medium text-blue-800">WebDAV Access</h4>
+                    <h4 className="font-medium text-blue-800">WebDAV access</h4>
                     <p className="text-sm text-blue-700 mt-1">
                       You can also access your files using any WebDAV-compatible client.
                       Connect to: <code className="bg-blue-100 px-1 rounded">/dav/{"<share_id>"}</code>
@@ -416,7 +416,7 @@ export default function SettingsSync() {
                 >
                   <div className="flex items-center gap-3">
                     <NoticeIcon className="h-5 w-5 text-muted-foreground" />
-                    <span>Getting Started Guide</span>
+                    <span>Getting started guide</span>
                   </div>
                   <OpenExternalIcon className="h-4 w-4 text-muted-foreground" />
                 </a>
@@ -426,7 +426,7 @@ export default function SettingsSync() {
                 >
                   <div className="flex items-center gap-3">
                     <EncryptionIcon className="h-5 w-5 text-muted-foreground" />
-                    <span>Security Best Practices</span>
+                    <span>Security best practices</span>
                   </div>
                   <OpenExternalIcon className="h-4 w-4 text-muted-foreground" />
                 </a>
@@ -436,7 +436,7 @@ export default function SettingsSync() {
                 >
                   <div className="flex items-center gap-3">
                     <SettingsIcon className="h-5 w-5 text-muted-foreground" />
-                    <span>API Documentation</span>
+                    <span>API documentation</span>
                   </div>
                   <OpenExternalIcon className="h-4 w-4 text-muted-foreground" />
                 </a>

@@ -92,18 +92,18 @@ export default function SettingsSchedules() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold">Schedules</h1>
+        <h1 className="screen-title">Schedules</h1>
         <p className="text-sm text-muted-foreground">System maintenance cadences (systemd OnCalendar).</p>
       </div>
       <div className="rounded-lg bg-card p-4 space-y-3">
         <div>
-          <label className="block text-sm mb-1">Smart Scan (SMART)</label>
+          <label className="block text-sm mb-1">Smart scan (SMART)</label>
           <input ref={smartRef} name="smartScan" placeholder="Sun 03:00" className="w-full rounded border border-muted/30 bg-background px-2 py-1" value={draft.smartScan} onChange={(e) => onChange('smartScan', e.target.value)} aria-invalid={!!fieldErrors.smartScan} aria-describedby="smartScanHelp smartScanErr" />
           <p id="smartScanHelp" className="mt-1 text-xs text-muted-foreground">{helper.smartScan}</p>
           {fieldErrors.smartScan && <p id="smartScanErr" className="mt-1 text-xs text-red-400">{fieldErrors.smartScan}</p>}
         </div>
         <div>
-          <label className="block text-sm mb-1">Btrfs Scrub</label>
+          <label className="block text-sm mb-1">Btrfs scrub</label>
           <input ref={scrubRef} name="btrfsScrub" placeholder="Sun *-*-01..07 03:00" className="w-full rounded border border-muted/30 bg-background px-2 py-1" value={draft.btrfsScrub} onChange={(e) => onChange('btrfsScrub', e.target.value)} aria-invalid={!!fieldErrors.btrfsScrub} aria-describedby="btrfsScrubHelp btrfsScrubErr" />
           <p id="btrfsScrubHelp" className="mt-1 text-xs text-muted-foreground">{helper.btrfsScrub}</p>
           {fieldErrors.btrfsScrub && <p id="btrfsScrubErr" className="mt-1 text-xs text-red-400">{fieldErrors.btrfsScrub}</p>}

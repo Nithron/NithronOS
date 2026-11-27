@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
-import { ActivityIcon, AppIcon, CpuIcon, FailedIcon, FolderIcon, MaintenanceIcon, MemoryIcon, NoticeIcon, OkIcon, PoolIcon, QuickIcon, RefreshIcon, ShareIcon, StorageIcon, TimeIcon, WarningIcon } from '@/components/icons'
+import { ActivityIcon, AppIcon, CpuIcon, FailedIcon, FolderIcon, MaintenanceIcon, MemoryIcon, NoticeIcon, PoolIcon, QuickIcon, RefreshIcon, ShareIcon, StorageIcon, TimeIcon, WarningIcon } from '@/components/icons'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,14 +12,15 @@ import {
   useDashboard,
   useRefreshDashboard,
   formatTimestamp,
-  getHealthBadgeVariant
 } from '@/hooks/use-dashboard'
 import { useSystemVitals, formatUptime } from '@/hooks/use-system-vitals'
 import { bytesSafe, toFixedSafe } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { 
-  PieChart, Pie, Cell, ResponsiveContainer, Tooltip
-} from 'recharts'
+import { Meter, StatusMark, type MarkState } from '@/components/ui/pixel'
+
+// The overall health as a mark: critical is failed, degraded a warning.
+const healthMark = (status?: string): MarkState =>
+  status === 'critical' ? 'failed' : status === 'degraded' ? 'warning' : 'ok'
 
 // Animation variants
 const containerVariants: any = {
@@ -80,7 +81,7 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ActivityIcon className="h-5 w-5" />
-            System Health
+            System health
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -100,7 +101,7 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ActivityIcon className="h-5 w-5" />
-            System Health
+            System health
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -119,7 +120,7 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ActivityIcon className="h-5 w-5" />
-            System Health
+            System health
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -133,8 +134,6 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
   }
 
   const system = data.system
-  const StatusIcon = system.status === 'critical' ? FailedIcon :
-                     system.status === 'degraded' ? WarningIcon : OkIcon
 
   return (
     <Card>
@@ -142,18 +141,16 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
         <div className="flex justify-between items-start">
           <CardTitle className="flex items-center gap-2">
             <ActivityIcon className="h-5 w-5" />
-            System Health
+            System health
             {isSSE && (
-              <Badge variant="outline" className="ml-auto text-xs">
-                <QuickIcon className="h-3 w-3 mr-1" />
+              <StatusMark state="running" className="ml-auto text-xs font-normal">
                 Live
-              </Badge>
+              </StatusMark>
             )}
           </CardTitle>
-          <Badge variant={getHealthBadgeVariant(system.status as any)}>
-            <StatusIcon className="h-3 w-3 mr-1" />
-            {system.status || 'OK'}
-          </Badge>
+          <StatusMark state={healthMark(system.status)} className="text-sm">
+            {system.status || 'ok'}
+          </StatusMark>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -166,7 +163,7 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
             </span>
             <motion.span
               key={system.cpuPct}
-              initial={{ opacity: 0 }}
+              initial={false}
               animate={{ opacity: 1 }}
               className={cn(
                 "font-medium",
@@ -197,7 +194,7 @@ function SystemHealthWidget({ data: dashboardData, isLoading: dashboardLoading }
             </span>
             <motion.span
               key={system.mem?.used}
-              initial={{ opacity: 0 }}
+              initial={false}
               animate={{ opacity: 1 }}
               className="font-medium"
             >
@@ -251,10 +248,6 @@ function StorageWidget({ data, isLoading }: any) {
   const storage = data?.storage || {}
   const usagePercent = storage.totalBytes ? (storage.usedBytes / storage.totalBytes) * 100 : 0
   
-  const chartData = [
-    { name: 'Used', value: storage.usedBytes || 0, fill: 'var(--primary)' },
-    { name: 'Free', value: (storage.totalBytes || 0) - (storage.usedBytes || 0), fill: 'var(--muted)' }
-  ]
 
   return (
     <Card>
@@ -268,33 +261,23 @@ function StorageWidget({ data, isLoading }: any) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <ResponsiveContainer width="100%" height={120}>
-              <PieChart>
-                <Pie
-                  data={chartData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={35}
-                  outerRadius={50}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: any) => bytesSafe(value)} />
-              </PieChart>
-            </ResponsiveContainer>
+        <div className="space-y-4">
+          <div>
+            <Meter
+              value={storage.usedBytes || 0}
+              max={storage.totalBytes || 0}
+              blocks={16}
+              label="Storage used"
+              valueText={`${toFixedSafe(usagePercent, 1, '0.0')}%`}
+              tone={usagePercent > 90 ? 'failed' : usagePercent > 80 ? 'warning' : 'ink'}
+            />
           </div>
-          <div className="space-y-2">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Used</p>
               <motion.p
                 key={storage.usedBytes}
-                initial={{ opacity: 0 }}
+                initial={false}
                 animate={{ opacity: 1 }}
                 className="text-lg font-semibold"
               >
@@ -309,11 +292,7 @@ function StorageWidget({ data, isLoading }: any) {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Usage</p>
-              <p className={cn(
-                "text-lg font-semibold",
-                usagePercent > 90 ? 'text-red-500' :
-                usagePercent > 80 ? 'text-yellow-500' : ''
-              )}>
+              <p className="text-lg font-semibold">
                 {toFixedSafe(usagePercent, 1, '0.0')}%
               </p>
             </div>
@@ -331,7 +310,7 @@ function DiskHealthWidget({ data, isLoading }: any) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <StorageIcon className="h-5 w-5" />
-            Disk Health
+            Disk health
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -352,7 +331,7 @@ function DiskHealthWidget({ data, isLoading }: any) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <StorageIcon className="h-5 w-5" />
-          Disk Health
+          Disk health
         </CardTitle>
         <CardDescription>
           {disks.lastScanISO ? `SMART checked ${formatTimestamp(disks.lastScanISO)}` : 'Checking SMART…'}
@@ -361,34 +340,15 @@ function DiskHealthWidget({ data, isLoading }: any) {
       <CardContent>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Total Disks</span>
+            <span className="text-sm text-muted-foreground">Total disks</span>
             <span className="font-medium">{disks.total || 0}</span>
           </div>
           
           <div className="flex gap-2">
-            {disks.healthy > 0 && (
-              <Badge variant="default" className="gap-1">
-                <OkIcon className="h-3 w-3" />
-                {disks.healthy} Healthy
-              </Badge>
-            )}
-            {disks.warning > 0 && (
-              <Badge variant="secondary" className="gap-1 bg-yellow-100">
-                <WarningIcon className="h-3 w-3" />
-                {disks.warning} Warning
-              </Badge>
-            )}
-            {disks.critical > 0 && (
-              <Badge variant="destructive" className="gap-1">
-                <WarningIcon className="h-3 w-3" />
-                {disks.critical} Critical
-              </Badge>
-            )}
-            {disks.unknown > 0 && (
-              <Badge variant="outline" className="gap-1">
-                {disks.unknown} No SMART data
-              </Badge>
-            )}
+            {disks.healthy > 0 && <StatusMark state="ok" className="text-sm">{disks.healthy} healthy</StatusMark>}
+            {disks.warning > 0 && <StatusMark state="warning" className="text-sm">{disks.warning} warning</StatusMark>}
+            {disks.critical > 0 && <StatusMark state="failed" className="text-sm">{disks.critical} failing</StatusMark>}
+            {disks.unknown > 0 && <StatusMark state="off" className="text-sm">{disks.unknown} without SMART data</StatusMark>}
             {disks.lastScanISO && disks.total === 0 && (
               <span className="text-sm text-muted-foreground">No disks detected</span>
             )}
@@ -406,7 +366,7 @@ function RecentActivityWidget({ data, isLoading }: any) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ActivityIcon className="h-5 w-5" />
-            Recent Activity
+            Recent activity
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -439,7 +399,7 @@ function RecentActivityWidget({ data, isLoading }: any) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ActivityIcon className="h-5 w-5" />
-          Recent Activity
+          Recent activity
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -451,7 +411,7 @@ function RecentActivityWidget({ data, isLoading }: any) {
                   <motion.div
                     key={event.id}
                     layout
-                    initial={{ opacity: 0, x: -20 }}
+                    initial={false}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
                     className="flex items-start gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors"
@@ -486,7 +446,7 @@ function NetworkSharesWidget({ data, isLoading }: any) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ShareIcon className="h-5 w-5" />
-            Network Shares
+            Network shares
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -505,7 +465,7 @@ function NetworkSharesWidget({ data, isLoading }: any) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ShareIcon className="h-5 w-5" />
-          Network Shares
+          Network shares
         </CardTitle>
         <CardDescription>
           {activeShares.length} of {shares.length} active
@@ -552,7 +512,7 @@ function InstalledAppsWidget({ data, isLoading }: any) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AppIcon className="h-5 w-5" />
-            Installed Apps
+            Installed apps
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -571,7 +531,7 @@ function InstalledAppsWidget({ data, isLoading }: any) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <AppIcon className="h-5 w-5" />
-          Installed Apps
+          Installed apps
         </CardTitle>
         <CardDescription>
           {runningApps.length} of {apps.length} running
@@ -605,7 +565,7 @@ function InstalledAppsWidget({ data, isLoading }: any) {
             <AppIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">No apps installed</p>
             <Button variant="outline" size="sm" className="mt-2">
-              Browse Catalog
+              Browse catalog
             </Button>
           </div>
         )}
@@ -621,7 +581,7 @@ function MaintenanceWidget({ data, isLoading }: any) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MaintenanceIcon className="h-5 w-5" />
-            Maintenance Operations
+            Maintenance operations
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -652,13 +612,13 @@ function MaintenanceWidget({ data, isLoading }: any) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <MaintenanceIcon className="h-5 w-5" />
-          Maintenance Operations
+          Maintenance operations
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Pool Scrub</span>
+            <span className="text-sm font-medium">Pool scrub</span>
             {getStatusBadge(maintenance.scrub?.state || 'idle')}
           </div>
           {maintenance.scrub?.nextISO && maintenance.scrub.state !== 'running' && (
@@ -708,7 +668,7 @@ export function Dashboard() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <h1 className="screen-title">Dashboard</h1>
           <p className="text-muted-foreground">System overview and status</p>
         </div>
         <Button
@@ -725,7 +685,7 @@ export function Dashboard() {
       {/* Main Grid */}
       <motion.div
         variants={containerVariants}
-        initial="hidden"
+        initial={false}
         animate="visible"
         className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
       >

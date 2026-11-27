@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/toast';
 
 import {
   listConflicts,
@@ -104,7 +104,7 @@ export default function SyncConflicts() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Sync Conflicts</h1>
+          <h1 className="screen-title">Sync conflicts</h1>
           <p className="text-muted-foreground">
             Review and resolve file synchronization conflicts
           </p>
@@ -155,7 +155,7 @@ export default function SyncConflicts() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <WarningIcon className="h-5 w-5 text-yellow-500" />
-            Unresolved Conflicts
+            Unresolved conflicts
           </CardTitle>
           <CardDescription>
             These files have conflicting changes that need your attention
@@ -173,7 +173,7 @@ export default function SyncConflicts() {
               <div className="p-3 rounded-full bg-green-500/10 mb-4">
                 <ChosenIcon className="h-8 w-8 text-green-500" />
               </div>
-              <h3 className="font-semibold text-lg mb-1">All Clear!</h3>
+              <h3 className="font-semibold text-lg mb-1">All clear!</h3>
               <p className="text-muted-foreground">
                 You have no file conflicts to resolve
               </p>
@@ -183,8 +183,8 @@ export default function SyncConflicts() {
               <TableHeader>
                 <TableRow>
                   <TableHead>File</TableHead>
-                  <TableHead>Local Version</TableHead>
-                  <TableHead>Remote Version</TableHead>
+                  <TableHead>Local version</TableHead>
+                  <TableHead>Remote version</TableHead>
                   <TableHead>Detected</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
@@ -245,7 +245,7 @@ export default function SyncConflicts() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TimeIcon className="h-5 w-5" />
-              Resolution History
+              Resolution history
             </CardTitle>
             <CardDescription>
               Previously resolved conflicts
@@ -293,7 +293,7 @@ export default function SyncConflicts() {
       <Dialog open={resolveDialogOpen} onOpenChange={setResolveDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Resolve Conflict</DialogTitle>
+            <DialogTitle>Resolve conflict</DialogTitle>
             <DialogDescription>
               Choose how to resolve this file conflict
             </DialogDescription>
@@ -316,7 +316,7 @@ export default function SyncConflicts() {
                 <div className="p-3 border rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
                     <ServerIcon className="h-4 w-4 text-blue-500" />
-                    <span className="font-medium">Local Version</span>
+                    <span className="font-medium">Local version</span>
                   </div>
                   <p className="text-sm">
                     {formatBytes(selectedConflict.local_version.size)}
@@ -328,7 +328,7 @@ export default function SyncConflicts() {
                 <div className="p-3 border rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
                     <SyncIcon className="h-4 w-4 text-green-500" />
-                    <span className="font-medium">Remote Version</span>
+                    <span className="font-medium">Remote version</span>
                   </div>
                   <p className="text-sm">
                     {formatBytes(selectedConflict.remote_version.size)}
@@ -349,7 +349,7 @@ export default function SyncConflicts() {
               className="flex-1"
             >
               <ServerIcon className="h-4 w-4 mr-2" />
-              Keep Local
+              Keep local
             </Button>
             <Button
               variant="outline"
@@ -358,7 +358,7 @@ export default function SyncConflicts() {
               className="flex-1"
             >
               <SyncIcon className="h-4 w-4 mr-2" />
-              Keep Remote
+              Keep remote
             </Button>
             <Button
               onClick={() => handleResolve('keep_both')}
@@ -366,7 +366,7 @@ export default function SyncConflicts() {
               className="flex-1"
             >
               <CopyIcon className="h-4 w-4 mr-2" />
-              Keep Both
+              Keep both
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -21,7 +21,7 @@ export default function Banner({ variant = 'info', title, message, action }: Ban
             {message && <div className="opacity-80">{message}</div>}
           </div>
           {action && (
-            <a href={action.to} className="btn bg-secondary whitespace-nowrap text-xs">
+            <a href={action.to} className="btn btn-line whitespace-nowrap text-xs">
               {action.label}
             </a>
           )}

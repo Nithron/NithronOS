@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Card } from '@/components/ui/card-enhanced'
 import { EmptyState } from '@/components/ui/empty-state'
 import { StatusPill } from '@/components/ui/status'
+import { Meter } from '@/components/ui/pixel'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -135,19 +136,17 @@ const poolColumns: ColumnDef<Pool>[] = [
       const percentage = size > 0 ? (used / size) * 100 : 0
       return (
         <div className="space-y-1">
-          <div className="text-sm">
+          <div className="font-mono text-sm tabular-nums">
             {formatBytes(used)} / {formatBytes(size)}
           </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden w-24">
-            <div 
-              className={cn(
-                "h-full transition-all",
-                percentage < 70 ? "bg-green-500" : 
-                percentage < 90 ? "bg-yellow-500" : "bg-red-500"
-              )}
-              style={{ width: `${percentage}%` }}
-            />
-          </div>
+          <Meter
+            value={used}
+            max={size}
+            blocks={10}
+            label={`${row.original.label || row.original.id} used`}
+            valueText={`${percentage.toFixed(0)}%`}
+            tone={percentage >= 90 ? 'failed' : percentage >= 80 ? 'warning' : 'ink'}
+          />
         </div>
       )
     },
@@ -246,7 +245,7 @@ export function Storage() {
               onClick={() => window.location.href = '/storage/create'}
             >
               <AddIcon className="h-4 w-4 mr-2" />
-              Create Pool
+              Create pool
             </Button>
           </>
         }
@@ -254,7 +253,7 @@ export function Storage() {
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
         <TabsList>
-          <TabsTrigger value="pools">Storage Pools</TabsTrigger>
+          <TabsTrigger value="pools">Storage pools</TabsTrigger>
           <TabsTrigger value="devices">Devices</TabsTrigger>
         </TabsList>
 
@@ -265,7 +264,7 @@ export function Storage() {
               <Card className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Capacity</p>
+                    <p className="text-sm text-muted-foreground">Total capacity</p>
                     <p className="text-2xl font-bold">
                       {formatBytes(pools.reduce((acc, p) => acc + p.size, 0))}
                     </p>
@@ -277,7 +276,7 @@ export function Storage() {
               <Card className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Used Space</p>
+                    <p className="text-sm text-muted-foreground">Used space</p>
                     <p className="text-2xl font-bold">
                       {formatBytes(pools.reduce((acc, p) => acc + p.used, 0))}
                     </p>
@@ -305,7 +304,7 @@ export function Storage() {
 
           {/* Pools Table */}
           <Card
-            title="Storage Pools"
+            title="Storage pools"
             description={`${pools?.length || 0} configured`}
             isLoading={poolsLoading}
             error={poolsError ? getErrorMessage(poolsError) : null}
@@ -326,7 +325,7 @@ export function Storage() {
                 action={
                   <Button onClick={() => window.location.href = '/storage/create'}>
                     <AddIcon className="h-4 w-4 mr-2" />
-                    Create Pool
+                    Create pool
                   </Button>
                 }
               />
@@ -338,7 +337,7 @@ export function Storage() {
             <div className="grid gap-6 md:grid-cols-2">
               {/* Scrub Status */}
               <Card
-                title="Data Scrub"
+                title="Data scrub"
                 description="Verify data integrity"
                 actions={
                   pools[0] && (
@@ -348,7 +347,7 @@ export function Storage() {
                       onClick={() => handleStartScrub(pools[0].id)}
                       disabled={scrubStatus?.some(s => s.status === 'running')}
                     >
-                      Start Scrub
+                      Start scrub
                     </Button>
                   )
                 }
@@ -398,7 +397,7 @@ export function Storage() {
 
               {/* Balance Status */}
               <Card
-                title="Data Balance"
+                title="Data balance"
                 description="Redistribute data across devices"
                 actions={
                   pools[0] && (
@@ -408,7 +407,7 @@ export function Storage() {
                       onClick={() => handleStartBalance(pools[0].id)}
                       disabled={balanceStatus?.some(b => b.status === 'running')}
                     >
-                      Start Balance
+                      Start balance
                     </Button>
                   )
                 }
@@ -454,7 +453,7 @@ export function Storage() {
         <TabsContent value="devices" className="space-y-6">
           {/* Devices Table */}
           <Card
-            title="Storage Devices"
+            title="Storage devices"
             description={`${devices?.length || 0} detected`}
             isLoading={devicesLoading}
             error={devicesError ? getErrorMessage(devicesError) : null}
@@ -480,7 +479,7 @@ export function Storage() {
           {/* SMART Details */}
           {selectedDevice && (
             <Card
-              title="SMART Details"
+              title="SMART details"
               description={selectedDevice}
             >
               {smartError && <p className="text-sm text-destructive">{getErrorMessage(smartError)}</p>}
@@ -497,7 +496,7 @@ export function Storage() {
                         smartData.health === 'unknown' && "bg-muted-foreground"
                       )} />
                       <div>
-                        <p className="font-medium">Overall Health</p>
+                        <p className="font-medium">Overall health</p>
                         <p className="text-sm text-muted-foreground">
                           {smartData.health === 'unknown' ? 'No SMART data' : smartData.health}
                         </p>

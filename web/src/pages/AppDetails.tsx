@@ -208,7 +208,7 @@ export function AppDetails() {
             onClick={() => navigate('/apps')}
             className="btn btn-primary mt-4"
           >
-            Back to Apps
+            Back to apps
           </button>
         </div>
       </div>
@@ -231,7 +231,7 @@ export function AppDetails() {
               <AppIcon className="w-8 h-8 text-gray-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{app.name}</h1>
+              <h1 className="screen-title">{app.name}</h1>
               <div className="flex items-center gap-4 mt-2">
                 <span className="text-sm text-gray-400">v{app.version}</span>
                 <div className={cn('flex items-center gap-1', getStatusColor(app.status))}>
@@ -258,7 +258,7 @@ export function AppDetails() {
                       className="btn btn-secondary btn-sm"
                     >
                       <OpenExternalIcon className="w-4 h-4 mr-2" />
-                      Open App
+                      Open app
                     </a>
                   ))}
                 </div>
@@ -336,7 +336,7 @@ export function AppDetails() {
         {activeTab === 'health' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Health Status</h2>
+              <h2 className="text-xl font-semibold">Health status</h2>
               <button
                 onClick={() => healthCheckMutation.mutate()}
                 disabled={healthCheckMutation.isPending}
@@ -346,7 +346,7 @@ export function AppDetails() {
                   "w-4 h-4 mr-2",
                   healthCheckMutation.isPending && "animate-spin"
                 )} />
-                Check Now
+                Check now
               </button>
             </div>
             
@@ -354,7 +354,7 @@ export function AppDetails() {
             <div className="bg-gray-700 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-400">Overall Health</p>
+                  <p className="text-sm text-gray-400">Overall health</p>
                   <p className={cn('text-2xl font-semibold', getHealthColor(app.health?.status))}>
                     {app.health?.status || 'Unknown'}
                   </p>
@@ -405,7 +405,7 @@ export function AppDetails() {
             {/* Recent Events */}
             {eventsData?.events && eventsData.events.length > 0 && (
               <div>
-                <h3 className="font-medium mb-3">Recent Events</h3>
+                <h3 className="font-medium mb-3">Recent events</h3>
                 <div className="space-y-2">
                   {eventsData.events.slice(0, 5).map((event: AppEvent) => (
                     <div key={event.id} className="bg-gray-700 rounded-lg p-3">
@@ -495,7 +495,7 @@ export function AppDetails() {
             {/* Environment Variables */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-medium">Environment Variables</h3>
+                <h3 className="font-medium">Environment variables</h3>
                 <button
                   onClick={() => copyToClipboard(JSON.stringify(app.params, null, 2))}
                   className="btn btn-secondary btn-sm"
@@ -512,7 +512,7 @@ export function AppDetails() {
             {/* Port Mappings */}
             {app.ports && app.ports.length > 0 && (
               <div>
-                <h3 className="font-medium mb-3">Port Mappings</h3>
+                <h3 className="font-medium mb-3">Port mappings</h3>
                 <div className="space-y-2">
                   {app.ports.map((port: PortMapping, idx: number) => (
                     <div key={idx} className="bg-gray-700 rounded-lg p-3">
@@ -542,7 +542,7 @@ export function AppDetails() {
                 disabled={snapshotMutation.isPending}
               >
                 <StorageIcon className="w-4 h-4 mr-2" />
-                Create Snapshot
+                Create snapshot
               </button>
             </div>
             
@@ -567,7 +567,7 @@ export function AppDetails() {
                             disabled={rollbackMutation.isPending}
                             className="btn btn-danger btn-sm"
                           >
-                            Confirm Rollback
+                            Confirm rollback
                           </button>
                           <button
                             onClick={() => setSelectedSnapshot(null)}
@@ -601,14 +601,14 @@ export function AppDetails() {
 
       {/* Danger Zone */}
       <div className="bg-red-900/20 border border-red-800 rounded-lg p-6">
-        <h2 className="text-xl font-semibold text-red-400 mb-4">Danger Zone</h2>
+        <h2 className="text-xl font-semibold text-red-400 mb-4">Danger zone</h2>
         {!showDeleteConfirm ? (
           <button
             onClick={() => setShowDeleteConfirm(true)}
             className="btn btn-danger"
           >
             <DeleteIcon className="w-4 h-4 mr-2" />
-            Delete App
+            Delete app
           </button>
         ) : (
           <div className="space-y-4">
@@ -638,7 +638,7 @@ export function AppDetails() {
                 ) : (
                   <>
                     <DeleteIcon className="w-4 h-4 mr-2" />
-                    Confirm Delete
+                    Confirm delete
                   </>
                 )}
               </button>

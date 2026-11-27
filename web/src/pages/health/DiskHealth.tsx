@@ -209,7 +209,7 @@ export default function DiskHealth() {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Disk Health</h2>
+          <h2 className="text-2xl font-bold">Disk health</h2>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(3)].map((_, i) => (
@@ -255,7 +255,7 @@ export default function DiskHealth() {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Disk Health</h2>
+          <h2 className="text-2xl font-bold">Disk health</h2>
           <Button
             variant="outline"
             size="sm"
@@ -279,14 +279,14 @@ export default function DiskHealth() {
   return (
     <motion.div
       variants={containerVariants}
-      initial="hidden"
+      initial={false}
       animate="visible"
       className="space-y-6"
     >
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold">Disk Health</h2>
+          <h2 className="text-2xl font-bold">Disk health</h2>
           {summary && (
             <Badge variant="outline" className="gap-1">
               <PoolIcon className="h-3 w-3" />
@@ -310,21 +310,21 @@ export default function DiskHealth() {
         <motion.div variants={itemVariants}>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Storage Overview</CardTitle>
+              <CardTitle className="text-base">Storage overview</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Capacity</p>
+                  <p className="text-sm text-muted-foreground">Total capacity</p>
                   <p className="text-xl font-bold">{formatBytes(summary.totalCapacity)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Used Space</p>
+                  <p className="text-sm text-muted-foreground">Used space</p>
                   <p className="text-xl font-bold">{formatBytes(summary.totalUsed)}</p>
                   <p className="text-xs text-muted-foreground">{Math.round(summary.usagePercent)}% used</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Disk Status</p>
+                  <p className="text-sm text-muted-foreground">Disk status</p>
                   <div className="flex gap-2 mt-1">
                     {summary.healthyDisks > 0 && (
                       <Badge variant="default" className="text-xs">
@@ -345,7 +345,7 @@ export default function DiskHealth() {
                 </div>
                 {summary.avgTemp !== undefined && (
                   <div>
-                    <p className="text-sm text-muted-foreground">Avg Temperature</p>
+                    <p className="text-sm text-muted-foreground">Avg temperature</p>
                     <p className="text-xl font-bold flex items-center gap-1">
                       <TemperatureIcon className="h-4 w-4" />
                       {toFixedSafe(summary.avgTemp, 0, '0')}°C
@@ -390,7 +390,7 @@ export default function DiskHealth() {
               <Tabs defaultValue="info" className="space-y-4">
                 <TabsList>
                   <TabsTrigger value="info">Information</TabsTrigger>
-                  <TabsTrigger value="smart">SMART Data</TabsTrigger>
+                  <TabsTrigger value="smart">SMART data</TabsTrigger>
                   <TabsTrigger value="tests">Tests</TabsTrigger>
                 </TabsList>
 
@@ -401,7 +401,7 @@ export default function DiskHealth() {
                       <p className="font-medium">{selectedDiskData.model || 'Unknown'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Serial Number</p>
+                      <p className="text-sm text-muted-foreground">Serial number</p>
                       <p className="font-medium">{selectedDiskData.serial || 'Unknown'}</p>
                     </div>
                     <div>
@@ -413,7 +413,7 @@ export default function DiskHealth() {
                       <p className="font-medium">{selectedDiskData.filesystem || 'Unknown'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Mount Point</p>
+                      <p className="text-sm text-muted-foreground">Mount point</p>
                       <p className="font-medium">{selectedDiskData.mountPoint || 'Not mounted'}</p>
                     </div>
                     <div>
@@ -426,7 +426,7 @@ export default function DiskHealth() {
                 <TabsContent value="smart" className="space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">SMART Status</span>
+                      <span className="text-sm font-medium">SMART status</span>
                       <Badge variant={selectedDiskData.smart.passed ? "default" : "destructive"}>
                         {selectedDiskData.smart.passed ? 'PASSED' : 'FAILED'}
                       </Badge>

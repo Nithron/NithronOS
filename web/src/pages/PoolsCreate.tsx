@@ -52,7 +52,7 @@ export function PoolsCreate() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Create Pool</h1>
+      <h1 className="screen-title">Create pool</h1>
       {error && <div className="text-sm text-red-400">{error}</div>}
       <div className="rounded-lg bg-card p-4 space-y-3">
         {step === 1 && (
@@ -127,7 +127,7 @@ export function PoolsCreate() {
 
         {step === 4 && (
           <div className="space-y-2">
-            <button className="btn bg-primary text-primary-foreground" onClick={doPlan}>Fetch Plan</button>
+            <button className="btn btn-primary" onClick={doPlan}>Fetch plan</button>
           </div>
         )}
 

@@ -109,18 +109,18 @@ export function NetworkSettings() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Network Status</CardTitle>
+          <CardTitle>Network status</CardTitle>
           <CardDescription>Current network configuration and access settings</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label className="text-muted-foreground">Access Mode</Label>
+              <Label className="text-muted-foreground">Access mode</Label>
               <div className="flex items-center gap-2 mt-1">
                 {networkStatus.data?.access_mode === 'lan_only' && (
                   <>
                     <ConnectionIcon className="h-4 w-4" />
-                    <span>LAN Only</span>
+                    <span>LAN only</span>
                   </>
                 )}
                 {networkStatus.data?.access_mode === 'wireguard' && (
@@ -146,7 +146,7 @@ export function NetworkSettings() {
             </div>
 
             <div>
-              <Label className="text-muted-foreground">LAN Access</Label>
+              <Label className="text-muted-foreground">LAN access</Label>
               <div className="mt-1">
                 {networkStatus.data?.lan_access ? (
                   <Badge variant="default">
@@ -163,7 +163,7 @@ export function NetworkSettings() {
             </div>
 
             <div>
-              <Label className="text-muted-foreground">WAN Blocked</Label>
+              <Label className="text-muted-foreground">WAN blocked</Label>
               <div className="mt-1">
                 {networkStatus.data?.wan_blocked ? (
                   <Badge variant="default">
@@ -192,7 +192,7 @@ export function NetworkSettings() {
           </div>
 
           <div>
-            <Label className="text-muted-foreground">Open Ports</Label>
+            <Label className="text-muted-foreground">Open ports</Label>
             <div className="mt-1 flex flex-wrap gap-2">
               {networkStatus.data?.open_ports?.map((port) => (
                 <Badge key={port} variant="outline">
@@ -206,7 +206,7 @@ export function NetworkSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
+          <CardTitle>Quick actions</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button
@@ -214,7 +214,7 @@ export function NetworkSettings() {
             onClick={() => navigate('/settings/network/wizard')}
           >
             <SettingsIcon className="h-4 w-4 mr-2" />
-            Run Setup Wizard
+            Run setup wizard
           </Button>
           
           {networkStatus.data?.access_mode === 'public_https' && (
@@ -253,7 +253,7 @@ export function NetworkSettings() {
                 Confirm
               </Button>
               <Button size="sm" variant="outline" onClick={handleRollbackFirewall}>
-                Rollback Now
+                Rollback now
               </Button>
             </div>
           </AlertDescription>
@@ -262,7 +262,7 @@ export function NetworkSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Firewall Status</CardTitle>
+          <CardTitle>Firewall status</CardTitle>
           <CardDescription>
             Current firewall rules and configuration
           </CardDescription>
@@ -278,7 +278,7 @@ export function NetworkSettings() {
               </div>
             </div>
             <div>
-              <Label className="text-muted-foreground">Last Applied</Label>
+              <Label className="text-muted-foreground">Last applied</Label>
               <div className="mt-1 text-sm">
                 {firewallState.data?.last_applied
                   ? format(new Date(firewallState.data.last_applied), 'PPp')
@@ -288,7 +288,7 @@ export function NetworkSettings() {
           </div>
 
           <div>
-            <Label className="text-muted-foreground mb-2">Active Rules</Label>
+            <Label className="text-muted-foreground mb-2">Active rules</Label>
             <div className="space-y-1">
               {firewallState.data?.rules
                 ?.filter((rule) => rule.enabled)
@@ -344,11 +344,11 @@ export function NetworkSettings() {
                   <div className="mt-1">{wgState.data.interface}</div>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Listen Port</Label>
+                  <Label className="text-muted-foreground">Listen port</Label>
                   <div className="mt-1">{wgState.data.listen_port}</div>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Server Subnet</Label>
+                  <Label className="text-muted-foreground">Server subnet</Label>
                   <div className="mt-1 font-mono text-sm">{wgState.data.server_cidr}</div>
                 </div>
                 <div>
@@ -364,7 +364,7 @@ export function NetworkSettings() {
                   <Label>Peers ({wgState.data.peers?.length || 0})</Label>
                   <Button size="sm" onClick={() => setShowAddPeerDialog(true)}>
                     <AddIcon className="h-4 w-4 mr-1" />
-                    Add Peer
+                    Add peer
                   </Button>
                 </div>
                 <div className="space-y-2">
@@ -411,7 +411,7 @@ export function NetworkSettings() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>HTTPS Configuration</CardTitle>
+          <CardTitle>HTTPS configuration</CardTitle>
           <CardDescription>
             SSL/TLS certificate and domain settings
           </CardDescription>
@@ -463,7 +463,7 @@ export function NetworkSettings() {
 
           {httpsConfig.data?.expiry && (
             <div>
-              <Label className="text-muted-foreground">Certificate Expiry</Label>
+              <Label className="text-muted-foreground">Certificate expiry</Label>
               <div className="mt-1">
                 {format(new Date(httpsConfig.data.expiry), 'PPP')}
                 {httpsConfig.data.next_renewal && (
@@ -489,7 +489,7 @@ export function NetworkSettings() {
   return (
     <div className="container mx-auto p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Network & Remote Access</h1>
+        <h1 className="screen-title">Network & remote access</h1>
         <p className="text-muted-foreground">
           Configure network settings, firewall rules, and remote access options
         </p>
@@ -513,14 +513,14 @@ export function NetworkSettings() {
       <Dialog open={showAddPeerDialog} onOpenChange={setShowAddPeerDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add WireGuard Peer</DialogTitle>
+            <DialogTitle>Add WireGuard peer</DialogTitle>
             <DialogDescription>
               Create a new VPN client configuration
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="peer-name">Peer Name</Label>
+              <Label htmlFor="peer-name">Peer name</Label>
               <Input
                 id="peer-name"
                 value={newPeerName}
@@ -545,7 +545,7 @@ export function NetworkSettings() {
       <Dialog open={showPeerConfigDialog} onOpenChange={setShowPeerConfigDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>WireGuard Client Configuration</DialogTitle>
+            <DialogTitle>WireGuard client configuration</DialogTitle>
             <DialogDescription>
               Save this configuration or scan the QR code with your WireGuard app
             </DialogDescription>
@@ -556,7 +556,7 @@ export function NetworkSettings() {
                 <img src={selectedPeerConfig.qr_code} alt="WireGuard QR Code" className="w-64 h-64" />
               </div>
               <div>
-                <Label>Configuration File</Label>
+                <Label>Configuration file</Label>
                 <pre className="mt-2 p-3 bg-muted rounded-lg text-xs overflow-x-auto">
                   {selectedPeerConfig.config}
                 </pre>

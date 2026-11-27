@@ -19,8 +19,8 @@ export function PoolDetails() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Pool Details</h1>
-        <Link to="/storage" className="text-sm text-primary">Back to Storage</Link>
+        <h1 className="screen-title">Pool details</h1>
+        <Link to="/storage" className="text-sm text-primary">Back to storage</Link>
       </div>
       <div className="flex gap-3 border-b border-muted/30">
         <button className={`px-2 py-1 text-sm ${tab==='overview'?'text-primary border-b-2 border-primary':''}`} onClick={()=>setTab('overview')}>Overview</button>
@@ -301,7 +301,7 @@ function DevicesWizards({ id }: { id: string }) {
 
       {tx && (
         <div className="rounded bg-card p-3">
-          <div className="text-sm font-medium mb-2">Transaction Log</div>
+          <div className="text-sm font-medium mb-2">Transaction log</div>
           <pre className="whitespace-pre-wrap text-xs font-mono max-h-48 overflow-auto">{log.join('\n')}</pre>
         </div>
       )}

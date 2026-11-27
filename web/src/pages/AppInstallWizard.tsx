@@ -77,7 +77,7 @@ export function AppInstallWizard() {
     { title: 'Overview', icon: NoticeIcon },
     { title: 'Configuration', icon: SettingsIcon },
     { title: 'Storage', icon: StorageIcon },
-    { title: 'Review & Install', icon: ChosenIcon }
+    { title: 'Review & install', icon: ChosenIcon }
   ];
 
   const validateForm = (): boolean => {
@@ -224,7 +224,7 @@ export function AppInstallWizard() {
             onClick={() => navigate('/apps')}
             className="btn btn-primary mt-4"
           >
-            Back to Catalog
+            Back to catalog
           </button>
         </div>
       </div>
@@ -243,7 +243,7 @@ export function AppInstallWizard() {
         </button>
         <AppIcon className="w-8 h-8 text-blue-500" />
         <div>
-          <h1 className="text-2xl font-bold">Install {app.name}</h1>
+          <h1 className="screen-title">Install {app.name}</h1>
           <p className="text-sm text-gray-400">{app.description}</p>
         </div>
       </div>
@@ -361,10 +361,10 @@ export function AppInstallWizard() {
 
         {currentStep === 2 && (
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Storage Configuration</h2>
+            <h2 className="text-xl font-semibold">Storage configuration</h2>
             
             <div className="bg-gray-700 rounded-lg p-4">
-              <h3 className="font-medium mb-2">Data Directory</h3>
+              <h3 className="font-medium mb-2">Data directory</h3>
               <code className="text-sm text-blue-400">/srv/apps/{app.id}/data</code>
               <p className="text-sm text-gray-400 mt-2">
                 App data will be stored here. This directory will be automatically created
@@ -374,7 +374,7 @@ export function AppInstallWizard() {
             
             {app.defaults?.volumes?.length > 0 && (
               <div>
-                <h3 className="font-medium mb-3">Volume Mounts</h3>
+                <h3 className="font-medium mb-3">Volume mounts</h3>
                 <div className="space-y-2">
                   {app.defaults.volumes.map((vol: VolumeMount, idx: number) => (
                     <div key={idx} className="bg-gray-700 rounded-lg p-3">
@@ -394,7 +394,7 @@ export function AppInstallWizard() {
               <div className="flex items-start gap-3">
                 <NoticeIcon className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
                 <div className="text-sm">
-                  <p className="text-blue-300 font-medium mb-1">Automatic Snapshots</p>
+                  <p className="text-blue-300 font-medium mb-1">Automatic snapshots</p>
                   <p className="text-gray-400">
                     Snapshots will be created before any app updates or configuration changes,
                     allowing easy rollback if needed.
@@ -407,11 +407,11 @@ export function AppInstallWizard() {
 
         {currentStep === 3 && (
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Review & Install</h2>
+            <h2 className="text-xl font-semibold">Review & install</h2>
             
             <div className="space-y-4">
               <div className="bg-gray-700 rounded-lg p-4">
-                <h3 className="font-medium mb-3">Configuration Summary</h3>
+                <h3 className="font-medium mb-3">Configuration summary</h3>
                 <div className="space-y-2">
                   {Object.entries(formData).map(([key, value]) => (
                     <div key={key} className="flex items-center justify-between text-sm">
@@ -430,7 +430,7 @@ export function AppInstallWizard() {
                 <div className="flex items-start gap-3">
                   <NoticeIcon className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
                   <div className="text-sm">
-                    <p className="text-yellow-300 font-medium mb-1">Ready to Install</p>
+                    <p className="text-yellow-300 font-medium mb-1">Ready to install</p>
                     <p className="text-gray-400">
                       The app will be installed with the configuration shown above.
                       Docker images will be downloaded and the app will be started automatically.
@@ -476,7 +476,7 @@ export function AppInstallWizard() {
             ) : (
               <>
                 <ChosenIcon className="w-4 h-4 mr-2" />
-                Install App
+                Install app
               </>
             )}
           </button>

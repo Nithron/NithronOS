@@ -127,7 +127,7 @@ export function PermissionsEditor({
 				<div className="space-y-4">
 					<div className="flex items-center gap-2">
 						<PermissionsIcon className="h-5 w-5 text-muted-foreground" />
-						<h3 className="font-medium">Permissions Summary</h3>
+						<h3 className="font-medium">Permissions summary</h3>
 					</div>
 					
 					<div className="grid gap-4 md:grid-cols-2">
@@ -138,7 +138,7 @@ export function PermissionsEditor({
 							</p>
 						</div>
 						<div className="space-y-2">
-							<p className="text-sm font-medium text-blue-600">Readers (Read Only)</p>
+							<p className="text-sm font-medium text-blue-600">Readers (Read only)</p>
 							<p className="text-sm text-muted-foreground">
 								Can view and download files but cannot modify
 							</p>
@@ -174,7 +174,7 @@ export function PermissionsEditor({
 							}}
 						>
 							<AddUserIcon className="h-4 w-4 mr-2" />
-							Add Owner
+							Add owner
 						</Button>
 					</div>
 
@@ -224,7 +224,7 @@ export function PermissionsEditor({
 							}}
 						>
 							<AddUserIcon className="h-4 w-4 mr-2" />
-							Add Reader
+							Add reader
 						</Button>
 					</div>
 

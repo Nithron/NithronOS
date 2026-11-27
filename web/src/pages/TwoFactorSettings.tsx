@@ -104,7 +104,7 @@ export function TwoFactorSettings() {
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Two-Factor Authentication</h1>
+        <h1 className="screen-title">Two-factor authentication</h1>
         <p className="text-muted-foreground">
           Add an extra layer of security to your account
         </p>
@@ -113,7 +113,7 @@ export function TwoFactorSettings() {
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>2FA Status</CardTitle>
+            <CardTitle>2FA status</CardTitle>
             <CardDescription>
               Current two-factor authentication configuration
             </CardDescription>
@@ -165,7 +165,7 @@ export function TwoFactorSettings() {
                 <>
                   <Button variant="outline" onClick={handleRegenerateBackupCodes}>
                     <RefreshIcon className="h-4 w-4 mr-2" />
-                    Regenerate Backup Codes
+                    Regenerate backup codes
                   </Button>
                   <Button variant="destructive" onClick={handleDisable2FA}>
                     Disable 2FA
@@ -179,7 +179,7 @@ export function TwoFactorSettings() {
         {totpStatus.data?.enrolled && (
           <Card>
             <CardHeader>
-              <CardTitle>Session Status</CardTitle>
+              <CardTitle>Session status</CardTitle>
               <CardDescription>
                 Current session verification status
               </CardDescription>
@@ -204,7 +204,7 @@ export function TwoFactorSettings() {
 
         <Card>
           <CardHeader>
-            <CardTitle>How It Works</CardTitle>
+            <CardTitle>How it works</CardTitle>
             <CardDescription>
               Protect your account with time-based one-time passwords
             </CardDescription>
@@ -253,14 +253,14 @@ export function TwoFactorSettings() {
       <Dialog open={showEnrollDialog} onOpenChange={setShowEnrollDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Enable Two-Factor Authentication</DialogTitle>
+            <DialogTitle>Enable two-factor authentication</DialogTitle>
             <DialogDescription>
               First, verify your password to continue
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="password">Current Password</Label>
+              <Label htmlFor="password">Current password</Label>
               <Input
                 id="password"
                 type="password"
@@ -289,7 +289,7 @@ export function TwoFactorSettings() {
       <Dialog open={showVerifyDialog} onOpenChange={setShowVerifyDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Scan QR Code</DialogTitle>
+            <DialogTitle>Scan QR code</DialogTitle>
             <DialogDescription>
               Scan this QR code with your authenticator app
             </DialogDescription>
@@ -301,7 +301,7 @@ export function TwoFactorSettings() {
               </div>
               
               <div>
-                <Label>Manual Entry</Label>
+                <Label>Manual entry</Label>
                 <div className="mt-1 p-2 bg-muted rounded text-xs font-mono break-all">
                   {enrollmentData.secret}
                 </div>
@@ -312,12 +312,12 @@ export function TwoFactorSettings() {
                   className="mt-1"
                 >
                   <CopyIcon className="h-3 w-3 mr-1" />
-                  Copy Secret
+                  Copy secret
                 </Button>
               </div>
 
               <div>
-                <Label htmlFor="verification-code">Verification Code</Label>
+                <Label htmlFor="verification-code">Verification code</Label>
                 <Input
                   id="verification-code"
                   value={verificationCode}
@@ -351,7 +351,7 @@ export function TwoFactorSettings() {
       <Dialog open={showBackupCodesDialog} onOpenChange={setShowBackupCodesDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Save Your Backup Codes</DialogTitle>
+            <DialogTitle>Save your backup codes</DialogTitle>
             <DialogDescription>
               Store these codes in a safe place. Each code can only be used once.
             </DialogDescription>
@@ -383,7 +383,7 @@ export function TwoFactorSettings() {
                 className="flex-1"
               >
                 <CopyIcon className="h-4 w-4 mr-2" />
-                Copy All
+                Copy all
               </Button>
               <Button
                 variant="outline"
@@ -397,7 +397,7 @@ export function TwoFactorSettings() {
           </div>
           <DialogFooter>
             <Button onClick={() => setShowBackupCodesDialog(false)}>
-              I've Saved My Codes
+              I've saved my codes
             </Button>
           </DialogFooter>
         </DialogContent>
