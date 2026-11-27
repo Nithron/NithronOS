@@ -76,7 +76,7 @@ function LiveMetric({
   color?: string
 }) {
   return (
-    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+    <div className="flex items-center justify-between border border-hairline p-3">
       <div className="flex items-center gap-2">
         <Icon className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm text-muted-foreground">{label}</span>
@@ -89,7 +89,7 @@ function LiveMetric({
       >
         <span className={cn("font-[560]", color)}>{value}</span>
         {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
-        {trend === 'up' && <RisingIcon className="h-3 w-3 text-status-ok-text" />}
+        {trend === 'up' && <RisingIcon className="h-3 w-3 text-ink-2" />}
       </motion.div>
     </div>
   )

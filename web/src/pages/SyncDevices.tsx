@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Mark } from '@/components/ui/pixel';
 import QRCode from 'qrcode';
 import { pairingLink } from '@/lib/pairing';
-import { AddIcon, ChosenIcon, CopyIcon, DeleteIcon, DesktopIcon, DownloadIcon, EditIcon, FailedIcon, LaptopIcon, OfflineIcon, PhoneIcon, RefreshIcon, SyncIcon, TerminalIcon } from '@/components/icons'
+import { AddIcon, ChosenIcon, CopyIcon, DeleteIcon, DesktopIcon, EditIcon, FailedIcon, LaptopIcon, PhoneIcon, RefreshIcon, TerminalIcon } from '@/components/icons'
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -341,41 +341,37 @@ export default function SyncDevices() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid border-l border-t border-hairline md:grid-cols-4 [&>*]:border-0 [&>*]:border-b [&>*]:border-r [&>*]:border-hairline">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total devices</CardTitle>
-            <PhoneIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-[560]">{devices.length}</div>
+            <div className="font-mono text-2xl tabular-nums">{devices.length}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active now</CardTitle>
-            <SyncIcon className="h-4 w-4 text-status-ok-text" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-[560] text-status-ok-text">{activeDevices}</div>
+            <div className="font-mono text-2xl tabular-nums">{activeDevices}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Offline</CardTitle>
-            <OfflineIcon className="h-4 w-4 text-ink-2" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-[560] text-ink-2">{devices.length - activeDevices}</div>
+            <div className="font-mono text-2xl tabular-nums">{devices.length - activeDevices}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total synced</CardTitle>
-            <DownloadIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-[560]">{formatBytes(totalSynced)}</div>
+            <div className="font-mono text-2xl tabular-nums">{formatBytes(totalSynced)}</div>
           </CardContent>
         </Card>
       </div>

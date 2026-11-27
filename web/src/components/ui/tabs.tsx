@@ -42,7 +42,11 @@ interface TabsListProps {
 
 export function TabsList({ children, className }: TabsListProps) {
   return (
-    <div role="tablist" className={cn('flex items-end gap-6 border-b border-hairline', className)}>
+    // A caller's grid or full-width classes would stretch the row of words.
+    <div
+      role="tablist"
+      className={cn('flex items-end gap-6 border-b border-hairline', className?.replace(/(?<![\w-])(?:grid|grid-cols-\d+|w-full)(?![\w-])/g, ''))}
+    >
       {children}
     </div>
   )
