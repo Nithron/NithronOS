@@ -39,7 +39,7 @@ function MetricCard({
   title, 
   value, 
   unit, 
-  icon: Icon, 
+  icon: _icon,
   trend, 
   color = 'text-primary',
   className 
@@ -55,15 +55,10 @@ function MetricCard({
   const TrendIcon = trend === 'up' ? RisingIcon : trend === 'down' ? FallingIcon : null
 
   return (
-    <Card className={cn("relative overflow-hidden", className)}>
+    <Card className={cn("relative h-full overflow-hidden", className)}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <Icon className="h-4 w-4" />
-            {title}
-          </span>
-          {TrendIcon && <TrendIcon className="h-4 w-4 text-muted-foreground" />}
-        </CardTitle>
+        {/* A label is words only; the trend is an icon with its word. */}
+        <CardTitle className="text-sm font-normal text-ink-2">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex items-baseline gap-1">
@@ -71,12 +66,18 @@ function MetricCard({
             key={value}
             initial={false}
             animate={{ opacity: 1, y: 0 }}
-            className={cn("text-2xl font-[560] transition-colors", color)}
+            className={cn('pixel-display pixel-24', color)}
           >
             {value}
           </motion.span>
-          {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
+          {unit && <span className="text-sm text-ink-2">{unit}</span>}
         </div>
+        {TrendIcon && (
+          <p className="mt-2 flex items-center gap-1 text-sm text-ink-2">
+            <TrendIcon className="h-4 w-4" />
+            {trend === 'up' ? 'rising' : 'falling'}
+          </p>
+        )}
       </CardContent>
     </Card>
   )
@@ -224,7 +225,7 @@ export default function SystemHealth() {
       {/* Quick metrics grid */}
       <motion.div 
         variants={containerVariants}
-        className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+        className="grid border-l border-t border-hairline md:grid-cols-2 lg:grid-cols-4 [&>*]:border-b [&>*]:border-r [&>*]:border-hairline [&>*>*]:h-full [&>*>*]:border-0"
       >
         <motion.div variants={itemVariants}>
           <MetricCard

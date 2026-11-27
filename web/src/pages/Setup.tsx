@@ -855,7 +855,7 @@ function StepTOTPEnroll({
       
       {loading && !qrCode && (
         <div className="text-center py-8">
-          <div className="text-muted-foreground">Loading...</div>
+          <Working />
         </div>
       )}
       

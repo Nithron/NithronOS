@@ -3,7 +3,7 @@ import { Switch } from '@/components/ui/switch';
 import { confirmAction } from '@/components/ui/confirm';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { AddIcon, DeleteIcon, EditIcon, ScheduleIcon, TimeIcon } from '@/components/icons'
+import { AddIcon, DeleteIcon, EditIcon, ScheduleIcon, StartIcon, TimeIcon } from '@/components/icons'
 import { backupApi } from '@/api/backup';
 import type { Schedule, ScheduleFrequency, RetentionPolicy } from '@/api/backup.types';
 import { toast } from '@/components/ui/toast';
@@ -183,6 +183,7 @@ export default function BackupSchedules() {
                       onClick={() => handleRunNow(schedule)}
                       className="btn btn-line min-h-8 px-3"
                     >
+                      <StartIcon className="h-4 w-4" />
                       Run now
                     </button>
                     <button

@@ -76,8 +76,7 @@ function LiveMetric({
   color?: string
 }) {
   return (
-    // A cell of the ruled row: its word, then its number. No icon: two of
-    // the four meanings have no drawing yet, so all four are words.
+    // A cell of the ruled row: its word, then its number, no icon.
     <div className="flex items-center justify-between p-3">
       <span className="text-sm text-ink-2">{label}</span>
       <motion.div

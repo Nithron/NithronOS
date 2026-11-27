@@ -1,4 +1,5 @@
 import { createBrowserRouter, RouterProvider, Navigate, Outlet } from 'react-router-dom'
+import { Working } from './components/ui/pixel'
 import { AppShell } from './components/layout/AppShell'
 import { useAppliedTheme } from './api/appearance'
 import { Dashboard } from './pages/Dashboard'
@@ -123,7 +124,7 @@ function SetupGuard({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
+        <Working />
       </div>
     )
   }
