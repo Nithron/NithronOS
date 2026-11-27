@@ -2170,19 +2170,6 @@
         ]
       }
     },
-    "/api/v1/pools/create": {
-      "post": {
-        "operationId": "postPoolsCreate",
-        "responses": {
-          "default": {
-            "description": "See docs/api/versioning-and-errors.md for the error format."
-          }
-        },
-        "tags": [
-          "pools"
-        ]
-      }
-    },
     "/api/v1/pools/discover": {
       "get": {
         "operationId": "getPoolsDiscover",

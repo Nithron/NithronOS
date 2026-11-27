@@ -1,10 +1,7 @@
 package server
 
 import (
-	"os"
-
 	"github.com/go-chi/chi/v5"
-	// "nos/backend/nosd/pkg/firewall"
 )
 
 // registerProtected serves everything that needs a signed-in user.
@@ -13,12 +10,8 @@ func (d *routeDeps) registerProtected(r chi.Router) {
 	users := d.users
 	// Protected routes
 	r.Group(func(pr chi.Router) {
-		// Require auth via new opaque cookies or legacy session cookie (skip in tests when NOS_TEST_SKIP_AUTH=1)
-		if os.Getenv("NOS_TEST_SKIP_AUTH") != "1" {
-			pr.Use(requireAuth)
-		}
-		if os.Getenv("NOS_TEST_SKIP_AUTH") != "1" {
-			pr.Use(requireCSRF)
+		if !skipAuthChecks.Load() {
+			pr.Use(requireAuth, requireCSRF)
 		}
 
 		// TOTP enroll (logged-in): generate secret, encrypt with secret.key, store pending enc

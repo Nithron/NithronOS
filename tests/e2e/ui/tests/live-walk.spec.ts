@@ -3,8 +3,8 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 
 // The live UI pass (scripts/live-ui/run.sh): against a real nosd and
-// nos-agent, sign in and open every page the navigation offers, plus the
-// pages reached from them. A page passes when it renders without a script
+// nos-agent, sign in and open every route of the web UI's router. A page
+// passes when it renders without a script
 // error, without a console error and without an API call failing with a
 // server error or a missing route.
 
@@ -14,12 +14,36 @@ test.use({ video: 'off', trace: 'off' })
 const user = process.env.NOS_USER ?? 'admin'
 const pass = process.env.NOS_PASS ?? ''
 
-// Every path in the web UI's navigation, plus pages linked from them.
-function pagesToVisit(): string[] {
-	const nav = fs.readFileSync(path.resolve(__dirname, '../../../../web/src/config/nav.ts'), 'utf8')
-	const fromNav = [...nav.matchAll(/path:\s*'([^']+)'/g)].map((m) => m[1])
-	const extra = ['/shares/new', '/storage/create', '/health/disk', '/settings/network/wizard', '/help/proxy']
-	return [...new Set([...fromNav, ...extra])]
+// Every route in the web UI's router (web/src/App.tsx), nested paths
+// joined. Routes with a parameter (":id") are filled from live data below.
+function routedPaths(appSource: string): string[] {
+	const paths: string[] = []
+	const prefixes: { depth: number; prefix: string }[] = [{ depth: -1, prefix: '' }]
+	let depth = 0
+	let last = ''
+	const token = /path:\s*'([^']*)'|children:\s*\[|\[|\]/g
+	for (const m of appSource.matchAll(token)) {
+		const prefix = prefixes[prefixes.length - 1].prefix
+		if (m[1] !== undefined) {
+			last = m[1].startsWith('/') ? m[1] : `${prefix.replace(/\/$/, '')}/${m[1]}`
+			paths.push(last)
+		} else if (m[0].startsWith('children')) {
+			prefixes.push({ depth, prefix: last })
+			depth++
+		} else if (m[0] === '[') {
+			depth++
+		} else {
+			depth--
+			if (depth <= prefixes[prefixes.length - 1].depth) prefixes.pop()
+		}
+	}
+	return [...new Set(paths)]
+}
+
+// Routes the walk can't open, and why.
+const notWalked: Record<string, string> = {
+	'/*': 'the not-found page; /no-such-page is opened instead',
+	'/apps/:id': "an installed app's page; the live container has no Docker to install one",
 }
 
 interface PageReport {
@@ -59,14 +83,43 @@ test('every page renders against a real nosd', async ({ page }) => {
 		}
 	})
 
-	// Detail pages of things that exist: the first pool.
-	const pages = pagesToVisit()
+	// Every route; a route with a parameter opens the first thing of its kind
+	// (the share the sync pass made, the first pool, the first catalog app).
 	// Asked from the page: the session cookie is Secure, which Playwright's
 	// own request client won't send over http, while the browser does on
 	// 127.0.0.1.
-	const pools = await page.evaluate(() => fetch('/api/v1/pools').then((r) => (r.ok ? r.json() : [])).catch(() => []))
-	const pool = Array.isArray(pools) ? pools[0] : undefined
-	if (pool?.id || pool?.uuid) pages.push(`/storage/${encodeURIComponent(pool.id || pool.uuid)}`)
+	const get = (url: string) =>
+		page.evaluate((u) => fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null), url)
+	const pools = await get('/api/v1/pools')
+	const shares = await get('/api/v1/shares')
+	const catalog = await get('/api/v1/apps/catalog')
+	const first = (list: unknown, ...keys: string[]): string | undefined => {
+		const item = Array.isArray(list) ? list[0] : undefined
+		for (const k of keys) if (item?.[k]) return String(item[k])
+		return undefined
+	}
+	const params: Record<string, string | undefined> = {
+		'/storage/:id': first(pools, 'id', 'uuid'),
+		'/shares/:name': first(shares, 'name'),
+		'/apps/install/:id': first(catalog?.entries, 'id'),
+	}
+	const appSource = fs.readFileSync(path.resolve(__dirname, '../../../../web/src/App.tsx'), 'utf8')
+	const pages: string[] = ['/no-such-page']
+	const missing: string[] = []
+	for (const route of routedPaths(appSource)) {
+		if (route in notWalked) continue
+		if (!route.includes(':')) {
+			pages.push(route)
+		} else if (params[route]) {
+			pages.push(route.replace(/:[^/]+/, encodeURIComponent(params[route]!)))
+		} else {
+			missing.push(route)
+		}
+	}
+	// A new route with a parameter needs a value above (or a reason in
+	// notWalked); a known one without data means the setup before the walk
+	// broke.
+	expect(missing, 'routes with nothing to open').toEqual([])
 
 	for (const p of pages) {
 		current = { path: p, pageErrors: [], consoleErrors: [], failedCalls: [], heading: '' }

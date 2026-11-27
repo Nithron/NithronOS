@@ -14,7 +14,7 @@ import (
 // to be refused by the session check in front of it, and the session by the
 // device check).
 func TestSyncAPIAcceptsDeviceTokenAndSession(t *testing.T) {
-	t.Setenv("NOS_TEST_SKIP_AUTH", "0") // real auth here
+	withRealAuth(t)
 	e := newLoginEnv(t, false)
 	b, _ := json.Marshal(map[string]string{"username": "alice", "password": "Correct-Horse-9"})
 	res := httptest.NewRecorder()

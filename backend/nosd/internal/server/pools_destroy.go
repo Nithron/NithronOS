@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"nos/backend/nosd/internal/config"
-	"nos/backend/nosd/internal/fsatomic"
 	"nos/backend/nosd/internal/pools"
 	"nos/backend/nosd/pkg/httpx"
 
@@ -28,29 +27,46 @@ type destroyPlanResp struct {
 	Warnings []string         `json:"warnings"`
 }
 
+// resolvePoolMount finds a mounted pool by id, UUID, label or mountpoint.
+func resolvePoolMount(ctx context.Context, id string) (string, bool) {
+	list, _ := pools.ListPools(ctx)
+	for _, p := range list {
+		if p.Mount != "" && (id == p.ID || id == p.UUID || id == p.Label || id == p.Mount) {
+			return p.Mount, true
+		}
+	}
+	return "", false
+}
+
 func handlePlanDestroy(cfg config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "id")
-		mount := id
-		if strings.TrimSpace(mount) == "" {
-			httpx.WriteError(w, http.StatusBadRequest, "id required")
+		mount, ok := resolvePoolMount(r.Context(), chi.URLParam(r, "id"))
+		if !ok {
+			httpx.WriteError(w, http.StatusNotFound, "no such pool")
 			return
 		}
 		var req destroyPlanReq
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		if err := checkMountClean(mount); err != nil && !req.Force {
-			httpx.WriteError(w, http.StatusPreconditionFailed, `{"error":{"code":"destroy.not_clean","message":"`+err.Error()+`"}}`)
+		warnings := []string{}
+		if err := checkMountClean(mount); err != nil {
+			if !req.Force {
+				httpx.WriteError(w, http.StatusPreconditionFailed, `{"error":{"code":"destroy.not_clean","message":"`+err.Error()+`"}}`)
+				return
+			}
+			warnings = append(warnings, err.Error())
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), poolQuickCallTimeout)
+		defer cancel()
+		var res agentPoolResult
+		if err := agentPoolOp(ctx, "/v1/pools/destroy", map[string]any{"mountpoint": mount, "wipe": req.Wipe, "dry_run": true}, &res); err != nil {
+			writeAgentPoolError(w, err)
 			return
 		}
-		steps := []pools.PlanStep{
-			{ID: "umount", Description: "unmount pool", Command: "umount " + shellQuote(mount)},
-			{ID: "fstab", Description: "remove fstab entry", Command: "FSTAB_REMOVE contains=" + shellQuote(mount)},
-			{ID: "crypttab", Description: "remove crypttab entries", Command: "CRYPTTAB_REMOVE contains=" + shellQuote(mount)},
+		steps := make([]pools.PlanStep, 0, len(res.Steps))
+		for _, st := range res.Steps {
+			steps = append(steps, pools.PlanStep{ID: st.ID, Description: describePoolStep(st.ID), Command: st.Command, Destructive: st.Destructive})
 		}
-		if req.Wipe {
-			steps = append(steps, pools.PlanStep{ID: "wipe", Description: "wipe signatures (manual devices)", Command: "wipefs -a <devices>"})
-		}
-		writeJSON(w, destroyPlanResp{Steps: steps})
+		writeJSON(w, destroyPlanResp{Steps: steps, Warnings: warnings})
 	}
 }
 
@@ -72,52 +88,64 @@ func checkMountClean(mount string) error {
 		if _, ok := allowed[name]; !ok {
 			return errors.New("unexpected entry: " + name)
 		}
+		// data and apps hold shares and app data
+		if name != "snaps" {
+			if sub, err := os.ReadDir(filepath.Join(mount, name)); err != nil || len(sub) > 0 {
+				return errors.New(name + " is not empty")
+			}
+		}
 	}
 	return nil
 }
 
 func handleApplyDestroy(cfg config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "id")
-		mount := id
 		var body struct {
 			Confirm string `json:"confirm"`
 			Force   bool   `json:"force"`
+			Wipe    bool   `json:"wipe"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		if strings.ToUpper(strings.TrimSpace(body.Confirm)) != "DESTROY" {
 			httpx.WriteError(w, http.StatusPreconditionRequired, "confirm=DESTROY required")
 			return
 		}
-		if cur := currentPoolTx(mount); cur != "" {
-			httpx.WriteError(w, http.StatusConflict, `{"error":{"code":"pool.busy","txId":"`+cur+`"}}`)
+		mount, ok := resolvePoolMount(r.Context(), chi.URLParam(r, "id"))
+		if !ok {
+			httpx.WriteError(w, http.StatusNotFound, "no such pool")
 			return
 		}
 		if err := checkMountClean(mount); err != nil && !body.Force {
 			httpx.WriteError(w, http.StatusPreconditionFailed, `{"error":{"code":"destroy.not_clean","message":"`+err.Error()+`"}}`)
 			return
 		}
-		// Create tx and execute cleanup steps
 		tx := pools.Tx{ID: generateUUID(), StartedAt: time.Now().UTC()}
-		_ = saveTx(tx)
 		if !tryAcquirePoolLock(mount, tx.ID) {
 			httpx.WriteError(w, http.StatusConflict, `{"error":{"code":"pool.busy","txId":"`+currentPoolTx(mount)+`"}}`)
 			return
 		}
-		// fstab and crypttab paths
-		fstabPath := filepath.Join(cfg.EtcDir, "fstab")
-		crypttabPath := filepath.Join(cfg.EtcDir, "crypttab")
-		// remove fstab lines containing mount
-		_ = removeLinesContaining(r.Context(), fstabPath, mount)
-		// remove crypttab lines heuristically containing mount
-		_ = removeLinesContaining(r.Context(), crypttabPath, mount)
-		// attempt to unmount (best-effort via /proc/self/mounts knowledge not needed)
-		// mark success
+		defer releasePoolLock(mount)
+		ctx, cancel := context.WithTimeout(r.Context(), poolCreateTimeout)
+		defer cancel()
+		var res agentPoolResult
+		err := agentPoolOp(ctx, "/v1/pools/destroy", map[string]any{"mountpoint": mount, "wipe": body.Wipe}, &res)
+		for _, st := range res.Steps {
+			tx.Steps = append(tx.Steps, pools.TxStep{ID: st.ID, Name: describePoolStep(st.ID), Cmd: st.Command, Destructive: st.Destructive, Status: st.Status, Err: firstLine(st.Output, st.Status == "error")})
+		}
 		now := time.Now().UTC()
-		tx.OK = true
 		tx.FinishedAt = &now
+		if err == nil && !res.OK {
+			err = errors.New(res.Error)
+		}
+		if err != nil {
+			tx.Error = err.Error()
+			_ = saveTx(tx)
+			writeAgentPoolError(w, err)
+			return
+		}
+		tx.OK = true
 		_ = saveTx(tx)
-		// remove pool from pools.json
+		// forget the pool's options
 		_ = updatePoolOptions(cfg, func(st *poolOptionsStore) {
 			out := st.Records[:0]
 			for _, rec := range st.Records {
@@ -127,22 +155,6 @@ func handleApplyDestroy(cfg config.Config) http.HandlerFunc {
 			}
 			st.Records = out
 		})
-		releasePoolLock(mount)
-		writeJSON(w, map[string]any{"ok": true, "tx_id": tx.ID})
+		writeJSON(w, map[string]any{"ok": true, "tx_id": tx.ID, "devices": res.Devices})
 	}
-}
-
-func removeLinesContaining(ctx context.Context, path, contains string) error {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	lines := strings.Split(string(b), "\n")
-	out := make([]string, 0, len(lines))
-	for _, ln := range lines {
-		if !strings.Contains(ln, contains) {
-			out = append(out, ln)
-		}
-	}
-	return fsatomic.SaveJSON(path, strings.Join(out, "\n"), 0o644)
 }

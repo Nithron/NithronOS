@@ -19,6 +19,30 @@ env:
   NODE_VERSION: '24'
 
 jobs:
+  # Which parts a pull request touches: the packages, ISO and the QEMU install
+  # test (with update and rollback) run for pull requests that change what
+  # goes onto an installed system, and always on main and manual runs.
+  changes:
+    name: Changed areas
+    runs-on: ubuntu-latest
+    outputs:
+      system: ${{ steps.diff.outputs.system }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "${{ github.event_name }}" != pull_request ]; then
+            echo "system=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$BASE" HEAD | grep -qE '^(packaging/|deploy/|installer/|tests/smoke/|tests/upgrade/|\.github/workflows/ci\.yml$)'; then
+            echo "system=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "system=false" >> "$GITHUB_OUTPUT"
+          fi
+
   lint:
     name: Lint & Static Analysis
     runs-on: ubuntu-latest
@@ -323,15 +347,13 @@ jobs:
           echo "[ci] Re-running backend/nosd/internal/server with verbose output for diagnostics"
           cd backend/nosd
           go test -count=1 -v ./internal/server || true
-      - name: Manual smoke (disabled)
-        if: ${{ false }}
-        run: echo "Manual smoke disabled by default"
 
   debs:
     name: Build Debian packages
-    # Also on manual runs, so a branch's ISO can be built and tested before merging.
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && github.event.action == 'published') }}
-    needs: test
+    # Also on manual runs and on pull requests that change the system, so a
+    # branch's ISO is built and install-tested before merging.
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && github.event.action == 'published') || (github.event_name == 'pull_request' && needs.changes.outputs.system == 'true') }}
+    needs: [test, changes]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout at commit
@@ -393,9 +415,8 @@ jobs:
 
   iso:
     name: Build ISO (amd64)
-    # Also on manual runs, so a branch's ISO can be built and tested before merging.
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && github.event.action == 'published') }}
-    needs: debs
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && github.event.action == 'published') || (github.event_name == 'pull_request' && needs.changes.outputs.system == 'true') }}
+    needs: [debs, changes]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -543,7 +564,8 @@ jobs:
             chmod +x scripts/ci-verify-grub-theme.sh
             ./scripts/ci-verify-grub-theme.sh "$ISO_FILE"
           else
-            echo "[ci] Warning: No ISO file found to verify"
+            echo "::error::No ISO was built"
+            exit 1
           fi
 
       - name: Generate checksums (ISO + DEBs)
@@ -556,8 +578,6 @@ jobs:
       - name: "Debug: list built ISO"
         run: |
           ls -lah dist/iso || true
-
-      # QEMU ISO smoke test removed per request
 
       - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
@@ -573,9 +593,6 @@ jobs:
 
       # Release upload moved to dedicated 'upload-release-assets' job
 
-  # smoke job removed per request
-
-  # M11 additions: Comprehensive E2E tests and quality gates
   contract:
     name: "Contract: FE-BE endpoint check"
     needs: lint
@@ -616,14 +633,14 @@ jobs:
         run: node scripts/check-fe-api-paths.mjs
   
   ui-e2e:
-    # The live UI pass: the real nosd and nos-agent in a container, the built
-    # web UI, and Playwright opening every page (scripts/live-ui/run.sh). It
-    # used to run specs against a stack that never existed and never failed.
-    name: UI E2E Tests (Playwright)
+    # The live passes against the real nosd and nos-agent in a container
+    # (scripts/live-ui/run.sh): NithronSync with the real sync daemon, a
+    # RAID1 pool created, checked and destroyed on loop devices, and
+    # Playwright opening every route of the web UI.
+    name: "E2E: sync, storage, every page"
     needs: [build, test]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -645,7 +662,7 @@ jobs:
           (cd web && npm ci)
           (cd tests/e2e/ui && npm ci)
 
-      - name: Walk every page against a real nosd and nos-agent
+      - name: Sync, storage and every page against a real nosd and nos-agent
         # The runner's Google Chrome; no browser download.
         env:
           PW_CHANNEL: chrome
@@ -661,56 +678,12 @@ jobs:
             tests/e2e/ui/live-report.json
           if-no-files-found: ignore
 
-  storage-e2e:
-    name: Storage E2E Tests (Btrfs)
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y btrfs-progs
-          
-      - name: Check if storage tests exist
-        id: check-tests
-        run: |
-          if [ -f "tests/e2e/storage-test.sh" ]; then
-            echo "tests_exist=true" >> $GITHUB_OUTPUT
-          else
-            echo "tests_exist=false" >> $GITHUB_OUTPUT
-          fi
-          
-      - name: Run storage tests
-        if: steps.check-tests.outputs.tests_exist == 'true'
-        run: |
-          mkdir -p tests/e2e/results
-          # Create a stub results file in case test fails immediately
-          echo '{"test_suite":"storage-e2e","status":"starting"}' > tests/e2e/results/storage-test-results.json
-          chmod +x tests/e2e/storage-test.sh
-          sudo ./tests/e2e/storage-test.sh || echo "Storage tests completed with errors"
-          # List results directory for debugging
-          echo "Results directory contents:"
-          ls -la tests/e2e/results/ || true
-        continue-on-error: true
-          
-      - name: Upload test results
-        if: always() && steps.check-tests.outputs.tests_exist == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: storage-test-results-${{ github.sha }}
-          path: tests/e2e/results/
-          if-no-files-found: warn
-        continue-on-error: true
-
   iso-smoke-test:
     name: ISO install test (${{ matrix.firmware }})
-    needs: iso
+    needs: [iso, changes]
     runs-on: ubuntu-latest
-    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch' }}
-    timeout-minutes: 60
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && github.event.action == 'published') || (github.event_name == 'pull_request' && needs.changes.outputs.system == 'true') }}
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
@@ -723,10 +696,22 @@ jobs:
         with:
           pattern: nOS - ISO - amd64 - *
 
+      - name: Download the packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nOS - Debian Packages - *
+          path: debs
+
       - name: Install QEMU and tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 qemu-utils ovmf libarchive-tools curl
+          sudo apt-get install -y qemu-system-x86 qemu-utils ovmf libarchive-tools curl jq apt-utils
+
+      # A newer nosd (the same files, a higher version) in an APT repository
+      # the installed system uses: the test updates to it through the API and
+      # rolls back.
+      - name: Repository with a newer nosd
+        run: bash tests/upgrade/next-version-repo.sh debs upgrade-repo
 
       - name: Enable KVM
         run: |
@@ -736,13 +721,15 @@ jobs:
           ls -l /dev/kvm
 
       # Installs the ISO unattended, boots the installed disk, reads the
-      # one-time setup code from the serial console and checks that the web
-      # API accepts it (and rejects a wrong one).
-      - name: Install, boot and verify the first-boot setup code
+      # one-time setup code from the serial console, checks that the web
+      # API accepts it (and rejects a wrong one), then updates nosd through
+      # the API and rolls the update back.
+      - name: Install, boot, set up, update and roll back
         run: |
           ISO_FILE="$(find . -name '*.iso' -type f | head -1)"
           [ -n "$ISO_FILE" ] || { echo "::error::No ISO artifact found"; exit 1; }
-          WORK_DIR="tests/smoke/logs/${{ matrix.firmware }}" bash tests/smoke/iso-install-test.sh "$ISO_FILE" ${{ matrix.firmware }}
+          UPGRADE_REPO=upgrade-repo WORK_DIR="tests/smoke/logs/${{ matrix.firmware }}" \
+            bash tests/smoke/iso-install-test.sh "$ISO_FILE" ${{ matrix.firmware }}
 
       - name: Upload test logs
         if: always()
@@ -753,134 +740,91 @@ jobs:
           if-no-files-found: ignore
 
   sign-and-sbom:
-    name: Sign Packages & Generate SBOMs
+    name: SBOMs and checksums
     runs-on: ubuntu-latest
     needs: [debs, iso]
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Download all artifacts
+      - name: Download the packages and the ISO
         uses: actions/download-artifact@v4
-        
+        with:
+          path: artifacts
+
       - name: Install syft
+        id: syft
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: SBOM per package and ISO (SPDX)
         run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-        continue-on-error: true
-          
-      - name: Generate SBOMs
+          set -eu
+          found=0
+          while IFS= read -r -d '' file; do
+            "${{ steps.syft.outputs.cmd }}" "$file" -o spdx-json > "$file.sbom.json"
+            found=$((found + 1))
+          done < <(find artifacts \( -name '*.deb' -o -name '*.iso' \) -print0)
+          [ "$found" -gt 0 ] || { echo "::error::no packages or ISO to describe"; exit 1; }
+
+      # Signing is not set up yet (it needs a key or OIDC signing identity).
+
+      - name: Checksums
         run: |
-          # Find and process .deb files
-          find . -name "*.deb" | while read -r file; do
-            syft "$file" -o spdx-json > "${file}.sbom.json" || true
-          done
-          
-          # Find and process .iso files
-          find . -name "*.iso" | while read -r file; do
-            syft "$file" -o spdx-json > "${file}.sbom.json" || true
-          done
-        continue-on-error: true
-          
-      # Signing disabled - requires proper OIDC setup or signing keys
-      # To enable signing, configure workload identity with:
-      # - name: Install cosign
-      #   uses: sigstore/cosign-installer@v3
-      # - name: Sign artifacts
-      #   run: |
-      #     cosign sign-blob --yes "$file" --oidc-provider=github-actions
-          
-      - name: Generate checksums
-        run: |
-          find . -name "*.deb" -o -name "*.iso" | while read -r file; do
-            sha256sum "$file" >> SHA256SUMS || true
-          done
-          
+          set -eu
+          find artifacts \( -name '*.deb' -o -name '*.iso' \) -print0 | xargs -0 sha256sum > SHA256SUMS
+          [ -s SHA256SUMS ]
+
       - name: Upload SBOMs and checksums
         uses: actions/upload-artifact@v4
         with:
           name: sbom-artifacts-${{ github.sha }}
           path: |
-            **/*.sbom.json
+            artifacts/**/*.sbom.json
             SHA256SUMS
-          if-no-files-found: warn
-        continue-on-error: true
+          if-no-files-found: error
 
   build-docs:
     name: Build Documentation
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'release'
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          
-      - name: Check if docs exist
-        id: check-docs
-        run: |
-          if [ -f "docs-site/mkdocs.yml" ]; then
-            echo "docs_exist=true" >> $GITHUB_OUTPUT
-          else
-            echo "docs_exist=false" >> $GITHUB_OUTPUT
-          fi
-          
+          python-version: '3.12'
+
       - name: Install MkDocs
-        if: steps.check-docs.outputs.docs_exist == 'true'
-        run: |
-          pip install mkdocs-material
-        continue-on-error: true
-          
+        run: pip install 'mkdocs==1.6.1' 'mkdocs-material==9.8.2'
+
+      # --strict: a broken link or a missing page fails the build.
       - name: Build docs
-        if: steps.check-docs.outputs.docs_exist == 'true'
-        run: |
-          cd docs-site
-          mkdocs build --verbose || echo "Documentation build failed - check configuration"
-          
+        working-directory: docs-site
+        env:
+          NO_MKDOCS_2_WARNING: '1'
+        run: mkdocs build --strict
+
       - name: Upload docs
-        if: steps.check-docs.outputs.docs_exist == 'true'
+        if: github.event_name == 'push' || github.event_name == 'release'
         uses: actions/upload-artifact@v4
         with:
           name: nOS - Docs - ${{ github.event.release.tag_name || github.sha }}
           path: docs-site/site/
-        continue-on-error: true
 
+  # A release needs every check, including the install, update and rollback
+  # test on the ISO and the live end-to-end passes.
   v1-release-gate:
     name: v1 Release Gate
     runs-on: ubuntu-latest
-    needs: [lint, test, debs, iso]
+    needs: [lint, test, contract, go-modules, ui-e2e, debs, iso, iso-smoke-test, build-docs]
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Check all required jobs passed
+      - name: Required jobs passed
+        run: echo "lint, tests, contract, E2E, packages, ISO, install/update test and docs passed"
+      - name: Release checklist (manual items)
         run: |
-          echo "✅ Linting passed"
-          echo "✅ Tests passed"
-          echo "✅ Debian packages built"
-          echo "✅ ISO built"
-          echo ""
-          echo "Release gate checks complete!"
-          
-      - name: Display release checklist
-        run: |
-          if [ -f "RELEASE-CHECKLIST-V1.md" ]; then
-            echo "================================"
-            echo "RELEASE CHECKLIST"
-            echo "================================"
+          if [ -f RELEASE-CHECKLIST-V1.md ]; then
             head -50 RELEASE-CHECKLIST-V1.md
-            echo ""
-            echo "Please ensure all manual checklist items are verified before release!"
           fi
-          
-      - name: Performance validation
-        run: |
-          echo "Performance Targets:"
-          echo "  ✅ Boot time: < 90 seconds"
-          echo "  ✅ ISO size: < 2 GB"
-          echo "  ✅ Idle memory: < 512 MB"
-          echo "  ✅ API response: < 100ms p95"
 
   # Dedicated release asset upload job
   upload-release-assets:
@@ -895,7 +839,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-        continue-on-error: true
       
       - name: Create zip archives from artifacts
         shell: bash
@@ -910,10 +853,7 @@ jobs:
             fi
           done
           
-          # List all created zips
-          echo "=== Created Archives ==="
-          ls -la *.zip 2>/dev/null || echo "No zip files created"
-          echo "========================"
+          ls -la ./*.zip
           
       - name: Upload artifacts as zip archives to Release
         uses: softprops/action-gh-release@v2
@@ -923,7 +863,7 @@ jobs:
             artifacts/nOS - Debian Packages - *.zip
             artifacts/nOS - Web UI - *.zip
             artifacts/nOS - Docs - *.zip
-          fail_on_unmatched_files: false
+          fail_on_unmatched_files: true
           draft: false
           prerelease: false
         env:

@@ -6,7 +6,7 @@ copyright: Copyright &copy; 2025 nOS
 
 repo_url: https://github.com/Nithron/nOS
 repo_name: nOS
-edit_uri: edit/main/docs/
+edit_uri: edit/main/docs-site/docs/
 
 theme:
   name: material

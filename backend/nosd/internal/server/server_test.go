@@ -18,8 +18,6 @@ func TestMain(m *testing.M) {
 	}
 
 	env := map[string]string{
-		// Skip auth in handler tests
-		"NOS_TEST_SKIP_AUTH": "1",
 		// Soften rate limits to avoid delays in tests
 		"NOS_RATE_OTP_PER_MIN":      "1000",
 		"NOS_RATE_LOGIN_PER_15M":    "1000",
@@ -45,7 +43,19 @@ func TestMain(m *testing.M) {
 		}
 	}
 
+	// Handler tests run without sign-in, admin and CSRF checks; tests of
+	// those checks call withRealAuth.
+	skipAuthChecks.Store(true)
+
 	code := m.Run()
 	_ = os.RemoveAll(dir)
 	os.Exit(code)
+}
+
+// withRealAuth builds routers with the sign-in, admin and CSRF checks for
+// the rest of the test.
+func withRealAuth(t *testing.T) {
+	t.Helper()
+	skipAuthChecks.Store(false)
+	t.Cleanup(func() { skipAuthChecks.Store(true) })
 }

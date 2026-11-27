@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -68,7 +67,8 @@ func buildMux() http.Handler {
 	// System configuration endpoint
 	mux.HandleFunc("/execute", handleExecute)
 	// Storage endpoints
-	mux.HandleFunc("/v1/btrfs/create", handleBtrfsCreate)
+	mux.HandleFunc("/v1/pools/create", handlePoolCreate)
+	mux.HandleFunc("/v1/pools/destroy", handlePoolDestroy)
 	mux.HandleFunc("/v1/btrfs/mount", handleBtrfsMount)
 	mux.HandleFunc("/v1/btrfs/snapshot", handleBtrfsSnapshot)
 	mux.HandleFunc("/v1/btrfs/balance/status", handleBtrfsBalanceStatus)
@@ -173,79 +173,6 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
-type BtrfsCreateRequest struct {
-	Devices []string `json:"devices"`
-	Raid    string   `json:"raid"`
-	Label   string   `json:"label"`
-	Encrypt bool     `json:"encrypt"`
-	DryRun  bool     `json:"dry_run"`
-}
-
-func handleBtrfsCreate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeErr(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-	var req BtrfsCreateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, http.StatusBadRequest, "invalid json")
-		return
-	}
-	if len(req.Devices) == 0 {
-		writeErr(w, http.StatusBadRequest, "devices required")
-		return
-	}
-	allowedRaids := map[string]bool{"single": true, "raid1": true, "raid10": true}
-	if req.Raid == "" {
-		req.Raid = "single"
-	}
-	if !allowedRaids[strings.ToLower(req.Raid)] {
-		writeErr(w, http.StatusBadRequest, "invalid raid")
-		return
-	}
-	if req.Label == "" {
-		req.Label = "pool"
-	}
-
-	plan := []string{}
-	if req.Encrypt {
-		for idx, dev := range req.Devices {
-			name := fmt.Sprintf("nos%d", idx)
-			plan = append(plan,
-				fmt.Sprintf("cryptsetup luksFormat %s", shellQuote(dev)),
-				fmt.Sprintf("cryptsetup open %s %s", shellQuote(dev), shellQuote(name)),
-			)
-		}
-		mapped := []string{}
-		for idx := range req.Devices {
-			mapped = append(mapped, "/dev/mapper/"+fmt.Sprintf("nos%d", idx))
-		}
-		plan = append(plan, mkfsBtrfsCommand(req.Label, req.Raid, mapped...))
-	} else {
-		plan = append(plan, mkfsBtrfsCommand(req.Label, req.Raid, req.Devices...))
-	}
-
-	if req.DryRun || runtime.GOOS == "windows" {
-		writeJSON(w, http.StatusOK, PlanResponse{Plan: plan})
-		return
-	}
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
-	defer cancel()
-	for _, cmdline := range plan {
-		parts := strings.Fields(cmdline)
-		if len(parts) == 0 {
-			continue
-		}
-		cmd := exec.CommandContext(ctx, parts[0], parts[1:]...)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			writeErr(w, http.StatusInternalServerError, fmt.Sprintf("%s: %s", err, string(out)))
-			return
-		}
-	}
-	writeJSON(w, http.StatusOK, PlanResponse{Plan: plan})
-}
-
 type ServiceReloadRequest struct {
 	Name string `json:"name"`
 }
@@ -290,15 +217,6 @@ func handleServiceReload(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "service not allowed")
 		return
 	}
-}
-
-func mkfsBtrfsCommand(label, raid string, devices ...string) string {
-	args := []string{"mkfs.btrfs", "-L", label}
-	if raid != "single" {
-		args = append(args, "-m", raid, "-d", raid)
-	}
-	args = append(args, devices...)
-	return strings.Join(quoteAll(args), " ")
 }
 
 func quoteAll(items []string) []string {
@@ -354,8 +272,13 @@ func handleBtrfsMount(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "missing fields")
 		return
 	}
+	if !validPoolMountpoint(req.Target) || (!strings.HasPrefix(req.UUIDOrDevice, "UUID=") && !(validDevice(req.UUIDOrDevice) && isBlockDevice(req.UUIDOrDevice))) ||
+		strings.ContainsAny(req.UUIDOrDevice, " \t\n,") {
+		writeErr(w, http.StatusBadRequest, "target: a path below /srv or /mnt; source: UUID=… or /dev/…")
+		return
+	}
 	_ = os.MkdirAll(req.Target, 0o755)
-	args := []string{"-t", "btrfs", "-o", "noatime,compress=zstd:3", req.UUIDOrDevice, req.Target}
+	args := []string{"-t", "btrfs", "-o", "noatime,compress=zstd:3,nosuid,nodev", req.UUIDOrDevice, req.Target}
 	cmd := exec.Command("mount", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {

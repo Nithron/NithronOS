@@ -78,21 +78,23 @@ export default function Setup() {
       setLoading(true)
       setError(null)
       
-      // Clear any stale auth cookies
+      const state = await api.setup.getState()
+
+      if (!state.firstBoot) {
+        // Setup already complete: leave any session alone (this page used
+        // to sign out whoever opened it).
+        setError('Setup already completed')
+        toast.info('Setup already completed.')
+        setTimeout(() => navigate('/'), 2000)
+        return
+      }
+      // Clear any stale auth cookies from an earlier installation.
       try {
         await api.auth.logout()
       } catch {
         // Ignore logout errors
       }
-      
-      const state = await api.setup.getState()
-      
-      if (!state.firstBoot) {
-        // Setup already complete
-        setError('Setup already completed')
-        toast.info('Setup already completed. Please sign in.')
-        setTimeout(() => navigate('/login'), 2000)
-      } else if (!state.otpRequired) {
+      if (!state.otpRequired) {
         // nosd keeps a valid code while setup is pending, so this means it
         // could not create one (for example an unwritable state directory).
         setError('The server could not create a setup code. Check the nosd service log on the server.')
@@ -101,8 +103,8 @@ export default function Setup() {
       if (err instanceof APIError && err.status === 410) {
         // Setup complete (410 Gone)
         setError('Setup already completed')
-        toast.info('Setup already completed. Please sign in.')
-        setTimeout(() => navigate('/login'), 2000)
+        toast.info('Setup already completed.')
+        setTimeout(() => navigate('/'), 2000)
       } else if (err instanceof ProxyMisconfiguredError) {
         setError('Backend unreachable. Check your proxy configuration.')
       } else {

@@ -4,6 +4,9 @@
 #   - the installer finishes unattended (BIOS or UEFI),
 #   - the installed system shows the one-time setup code on its console,
 #   - the web API rejects a wrong code and accepts the one on the console.
+# With UPGRADE_REPO=<folder> (tests/upgrade/next-version-repo.sh), the
+# installed system also gets that folder as an APT repository and
+# tests/upgrade/upgrade-test.sh updates nosd and rolls it back.
 #
 # usage: tests/smoke/iso-install-test.sh <iso> [bios|uefi]
 #
@@ -23,11 +26,17 @@ BOOT_TIMEOUT="${BOOT_TIMEOUT:-420}"
 mkdir -p "$WORK_DIR"
 WORK_DIR="$(cd "$WORK_DIR" && pwd)"
 ISO="$(cd "$(dirname "$ISO")" && pwd)/$(basename "$ISO")"
+[ -z "${UPGRADE_REPO:-}" ] || UPGRADE_REPO="$(cd "$UPGRADE_REPO" && pwd)"
 log() { echo "[iso-install-test:$MODE] $*"; }
 fail() { log "FAIL: $*"; exit 1; }
 
 QEMU_PID=""
-cleanup() { [ -n "$QEMU_PID" ] && kill "$QEMU_PID" 2>/dev/null || true; }
+REPO_PID=""
+REPO_PORT="${REPO_PORT:-18901}"
+cleanup() {
+	[ -n "$QEMU_PID" ] && kill "$QEMU_PID" 2>/dev/null || true
+	[ -n "$REPO_PID" ] && kill "$REPO_PID" 2>/dev/null || true
+}
 trap cleanup EXIT
 
 firmware=()
@@ -64,6 +73,12 @@ d-i partman/confirm_nooverwrite boolean true
 d-i partman/confirm_nooverwrite seen true
 d-i debian-installer/add-kernel-opts string console=tty0 console=ttyS0,115200n8
 EOF
+if [ -n "${UPGRADE_REPO:-}" ]; then
+	# The host is 10.0.2.2 from inside QEMU's user network.
+	cat >> "$WORK_DIR/di/overlay/preseed.cfg" <<EOF
+d-i preseed/late_command string sh /usr/lib/nos-installer/late-command.sh && echo 'deb [trusted=yes] http://10.0.2.2:$REPO_PORT/ ./' > /target/etc/apt/sources.list.d/nos-upgrade-test.list
+EOF
+fi
 (cd "$WORK_DIR/di/overlay" && printf 'preseed.cfg\n' | bsdtar --format newc --uid 0 --gid 0 -cf - -T - | gzip -9) > "$WORK_DIR/di/overlay.gz"
 cat "$WORK_DIR/di/install/initrd.gz" "$WORK_DIR/di/overlay.gz" > "$WORK_DIR/di/initrd-test.gz"
 
@@ -128,8 +143,9 @@ echo "$state" | grep -q '"otpRequired":true' || fail "setup state: ${state:-no r
 wrong="000000"; [ "$code" = "$wrong" ] && wrong="111111"
 status=$(curl -sk -m 10 -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d "{\"otp\":\"$wrong\"}" "$api/otp/verify")
 [ "$status" = 400 ] || fail "a wrong code returned HTTP $status (want 400)"
-status=$(curl -sk -m 10 -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d "{\"otp\":\"$code\"}" "$api/otp/verify")
+status=$(curl -sk -m 10 -o "$WORK_DIR/verify.json" -w '%{http_code}' -H 'Content-Type: application/json' -d "{\"otp\":\"$code\"}" "$api/otp/verify")
 [ "$status" = 200 ] || fail "the console's code returned HTTP $status (want 200)"
+setup_token="$(sed -n 's/.*"token":"\([^"]*\)".*/\1/p' "$WORK_DIR/verify.json")"
 
 # 5. nosd's privileged work goes through nos-agent: the share configuration it
 #    applies at startup must have reached the real agent (an ISO that shipped a
@@ -166,4 +182,13 @@ if [ -n "$failed" ]; then
 fi
 log "no unit failed at boot"
 
-log "PASS: installed, console shows the setup code, the API accepts it, nos-agent works"
+# 8. Update and roll back (with UPGRADE_REPO).
+if [ -n "${UPGRADE_REPO:-}" ]; then
+	next="$(sed -n 's/^Version: //p' "$UPGRADE_REPO/Packages" | head -n 1)"
+	python3 -m http.server "$REPO_PORT" --bind 127.0.0.1 --directory "$UPGRADE_REPO" >"$WORK_DIR/repo.log" 2>&1 &
+	REPO_PID=$!
+	bash "$(dirname "$0")/../upgrade/upgrade-test.sh" "https://127.0.0.1:$PORT" "$setup_token" "$next" ||
+		{ tail -n 20 "$WORK_DIR/repo.log"; fail "update and rollback"; }
+fi
+
+log "PASS: installed, console shows the setup code, the API accepts it, nos-agent works${UPGRADE_REPO:+, update and rollback work}"

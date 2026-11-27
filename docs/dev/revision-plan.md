@@ -281,6 +281,16 @@ Status (2026-11-27, PR #13):
 - Upgrade test (`tests/upgrade`) for snapshot-before-update and rollback once Phase 4 wires it.
 - From phase 5: `NOS_TEST_SKIP_AUTH=1` turns off sign-in, admin and CSRF checks in the shipped binary (`routes_protected.go`, `deps.go`, `sync_handler.go`). Tests should inject a test router instead, so no environment variable can disable authentication on a real system.
 
+Status (2026-11-27, `revision/phase-8-testing`):
+
+- **No job reports a pass it didn't earn.** The storage, docs, SBOM and release jobs no longer swallow failures; the release gate's printed "performance validation" (checks that never ran) is gone, and the gate needs every job, including the install test and the live E2E passes.
+- **Authentication can't be switched off.** `NOS_TEST_SKIP_AUTH` is gone; handler tests use a package variable only the package's tests can set (`skipAuthChecks`, `withRealAuth`), and a test checks that the old variable does nothing.
+- **Storage end to end** (`scripts/live-ui/storage-e2e.sh`, in the E2E job): a RAID1 pool planned, created, checked on the system, snapshotted, scrubbed and destroyed on loop devices through nosd and nos-agent. Its first run showed that **creating a pool had never worked** (nosd sent the plan's shell-quoted commands, which the agent refused, and the fstab line was a literal `UUID=<uuid>`) and that destroy didn't unmount. Pool create and destroy are now one validated agent operation each (`/v1/pools/create`, `/v1/pools/destroy`). The old `tests/e2e/storage-test.sh` only exercised btrfs-progs and is removed.
+- **Every routed page:** the Playwright walk opens every route of `web/src/App.tsx` (parameters from live data) and a missing page. It found that opening `/setup` after setup signed the user out.
+- **Update and rollback on a real install:** `tests/upgrade/upgrade-test.sh`, run by the ISO install test, updates nosd through the API from a repository with a newer version (`next-version-repo.sh`) and rolls back; `/etc/nos` comes back as it was. The simulated `tests/upgrade/test-upgrade.sh` is removed.
+- **The ISO and its install test run on pull requests** that change `packaging/`, `deploy/`, `installer/`, the install or upgrade tests or the workflow (and on every push to main). Making them, and the contract check, *required* is a branch-protection setting on GitHub.
+- **Docs:** the docs site builds with `--strict` on every run; its only page had seven dead links and claimed features nOS doesn't have, and now links to the repository's guides.
+
 ---
 
 ## NithronAI (nAI) integration constraints
@@ -320,4 +330,4 @@ The README overstates completion. Proposed re-baseline:
 
 Decided (2026-11-27): nOS's domain is **nos.nithron.com**: the documentation at `https://nos.nithron.com/docs/`, the APT repository at `https://nos.nithron.com/apt` (`docs/updates.md`, `docs-site/mkdocs.yml`, the mobile app's docs link). Company pages and contact addresses stay on nithron.com.
 
-Open for later: Debian base. The ISO targets bookworm (Debian 12, now in LTS); moving to trixie (Debian 13) belongs in Phase 6.
+Decided (2026-11-27): the ISO moves from bookworm (Debian 12, now in LTS) to trixie (Debian 13) after Phase 8, as its own step.

@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"net/http"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -126,7 +125,7 @@ func (h *SyncHandler) Routes() chi.Router {
 	// A signed-in user (browser session) adds a device; the device then
 	// uses its own token. Refresh takes the device's refresh token.
 	register := http.Handler(http.HandlerFunc(h.RegisterDevice))
-	if os.Getenv("NOS_TEST_SKIP_AUTH") != "1" {
+	if !skipAuthChecks.Load() {
 		register = requireAuth(requireCSRF(register))
 	}
 	r.Method(http.MethodPost, "/devices/register", register)

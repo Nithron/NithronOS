@@ -3,17 +3,19 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"nos/backend/nosd/internal/pools"
+	"nos/backend/nosd/pkg/agentclient"
 	"nos/backend/nosd/pkg/httpx"
-	"nos/backend/nosd/pkg/shell"
 )
+
+// Creating a pool: plan-create shows what will run (the agent checks the
+// request and lists its steps without running them); apply-create sends
+// the same request for real. The agent builds and runs the commands itself.
 
 type planCreateRequest struct {
 	pools.PoolSpec
@@ -21,126 +23,125 @@ type planCreateRequest struct {
 	MountOptions string `json:"mountOptions"`
 }
 
+// agentPoolOp calls one of the agent's pool operations; tests replace it.
+var agentPoolOp = func(ctx context.Context, path string, body, out any) error {
+	return agentclient.New("/run/nos-agent.sock").PostJSON(ctx, path, body, out)
+}
+
+const poolCreateTimeout = 15 * time.Minute
+
+// agentPoolResult is the agent's answer to /v1/pools/create and destroy.
+type agentPoolResult struct {
+	OK         bool     `json:"ok"`
+	Error      string   `json:"error"`
+	Warnings   []string `json:"warnings"`
+	UUID       string   `json:"uuid"`
+	Mountpoint string   `json:"mountpoint"`
+	Fstab      string   `json:"fstab"`
+	Devices    []string `json:"devices"`
+	Steps      []struct {
+		ID          string `json:"id"`
+		Command     string `json:"command"`
+		Destructive bool   `json:"destructive"`
+		Status      string `json:"status"`
+		Output      string `json:"output"`
+	} `json:"steps"`
+}
+
+var poolStepDescriptions = map[string]string{
+	"wipe": "erase existing filesystem signatures", "key": "make the pool key",
+	"luks-format": "encrypt the device (LUKS2)", "luks-open": "open the encrypted device",
+	"mkfs": "create the btrfs filesystem", "scan": "find the pool's devices",
+	"mkdir": "create the mountpoint", "mount": "mount the pool",
+	"subvol": "create a default subvolume", "uuid": "read the filesystem UUID",
+	"fstab": "mount the pool at boot (/etc/fstab)", "crypttab": "open the devices at boot (/etc/crypttab)",
+	"umount": "unmount the pool", "luks-close": "close the encrypted device", "rmdir": "remove the mountpoint",
+}
+
+func describePoolStep(id string) string {
+	for key := len(id); key > 0; key = strings.LastIndex(id[:key], "-") {
+		if d, ok := poolStepDescriptions[id[:key]]; ok {
+			return d
+		}
+	}
+	return id
+}
+
+// agentCreateBody checks the request and turns it into the agent's.
+func (req planCreateRequest) agentCreateBody(ctx context.Context, dryRun bool) (map[string]any, pools.PoolSpec, string, error) {
+	spec, err := pools.ValidateSpec(req.PoolSpec)
+	if err != nil {
+		return nil, spec, "", err
+	}
+	opts := strings.TrimSpace(req.MountOptions)
+	if opts == "" {
+		opts = getDefaultMountOpts(ctx, spec.Devices)
+	}
+	body := map[string]any{
+		"name": spec.Name, "devices": spec.Devices, "raid_data": spec.RaidData, "raid_meta": spec.RaidMeta,
+		"mountpoint": spec.Mountpoint, "mount_options": opts, "force": req.Force, "dry_run": dryRun,
+	}
+	if spec.Encrypt.Enabled {
+		body["keyfile"] = spec.Encrypt.Keyfile
+	}
+	return body, spec, opts, nil
+}
+
+// writeAgentPoolError answers with the agent's refusal (its 400 and 409 are
+// about the request) or 502.
+func writeAgentPoolError(w http.ResponseWriter, err error) {
+	var he *agentclient.HTTPError
+	if errors.As(err, &he) && (he.Status == http.StatusBadRequest || he.Status == http.StatusConflict || he.Status == http.StatusNotFound) {
+		var body struct {
+			Error string `json:"error"`
+		}
+		msg := he.Body
+		if json.Unmarshal([]byte(he.Body), &body) == nil && body.Error != "" {
+			msg = body.Error
+		}
+		httpx.WriteError(w, he.Status, msg)
+		return
+	}
+	httpx.WriteError(w, http.StatusBadGateway, "nos-agent: "+err.Error())
+}
+
 func handlePlanCreateV1(w http.ResponseWriter, r *http.Request) {
 	var req planCreateRequest
-	_ = json.NewDecoder(r.Body).Decode(&req)
-
-	spec, err := pools.ValidateSpec(req.PoolSpec)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	body, _, opts, err := req.agentCreateBody(r.Context(), true)
 	if err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	// Guard rails: refuse if any device has fs/signature unless force=true
-	warnings := []string{}
-	if _, err := exec.LookPath("wipefs"); err == nil {
-		for _, d := range spec.Devices {
-			ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-			res, _ := shell.Run(ctx, 3*time.Second, "wipefs", "-n", d)
-			cancel()
-			out := strings.TrimSpace(string(res.Stdout))
-			if out != "" {
-				warnings = append(warnings, fmt.Sprintf("device %s has existing signatures", d))
-			}
-		}
-	}
-	if len(warnings) > 0 && !req.Force {
-		httpx.WriteError(w, http.StatusPreconditionFailed, "devices have existing signatures; set force=true to proceed")
+	ctx, cancel := context.WithTimeout(r.Context(), poolQuickCallTimeout)
+	defer cancel()
+	var res agentPoolResult
+	if err := agentPoolOp(ctx, "/v1/pools/create", body, &res); err != nil {
+		writeAgentPoolError(w, err)
 		return
 	}
-
-	steps := []pools.PlanStep{}
-	// 1) wipefs report (non-destructive)
-	for idx, d := range spec.Devices {
-		steps = append(steps, pools.PlanStep{
-			ID:          fmt.Sprintf("wipefs-check-%d", idx+1),
-			Description: "report existing filesystem/signatures",
-			Command:     fmt.Sprintf("wipefs -n %s", shellQuote(d)),
-			Destructive: false,
+	if res.Error != "" {
+		writeJSONStatus(w, http.StatusPreconditionFailed, map[string]any{
+			"error": map[string]any{"code": "pools.signatures", "message": res.Error}, "warnings": res.Warnings,
 		})
+		return
 	}
-
-	// Optional: encryption
-	mapped := []string{}
-	if spec.Encrypt.Enabled {
-		key := spec.Encrypt.Keyfile
-		steps = append(steps, pools.PlanStep{ID: "key-ensure", Description: "ensure pool key exists (0600)", Command: fmt.Sprintf("[keyfile] %s", shellQuote(key)), Destructive: false})
-		for idx, dev := range spec.Devices {
-			name := fmt.Sprintf("luks-%s-%d", spec.Name, idx)
-			steps = append(steps, pools.PlanStep{ID: fmt.Sprintf("luks-format-%d", idx+1), Description: "luksFormat device", Command: fmt.Sprintf("cryptsetup luksFormat --type luks2 --batch-mode %s", shellQuote(dev)), Destructive: true})
-			steps = append(steps, pools.PlanStep{ID: fmt.Sprintf("luks-open-%d", idx+1), Description: "open LUKS mapping", Command: fmt.Sprintf("cryptsetup open --key-file %s %s %s", shellQuote(key), shellQuote(dev), shellQuote(name)), Destructive: false})
-			mapped = append(mapped, filepath.Join("/dev/mapper", name))
-		}
+	steps := make([]pools.PlanStep, 0, len(res.Steps))
+	for _, st := range res.Steps {
+		steps = append(steps, pools.PlanStep{ID: st.ID, Description: describePoolStep(st.ID), Command: st.Command, Destructive: st.Destructive})
 	}
-
-	// 2) mkfs.btrfs
-	mkTargets := spec.Devices
-	if spec.Encrypt.Enabled {
-		mkTargets = mapped
+	warnings := res.Warnings
+	if warnings == nil {
+		warnings = []string{}
 	}
-	mkfs := []string{"mkfs.btrfs", "-L", spec.Name, "-d", spec.RaidData, "-m", spec.RaidMeta}
-	mkfs = append(mkfs, mkTargets...)
-	steps = append(steps, pools.PlanStep{
-		ID:          "mkfs-btrfs",
-		Description: "create btrfs filesystem",
-		Command:     strings.Join(quoteAll(mkfs), " "),
-		Destructive: true,
-	})
-
-	// Compute mount options (default by device mix if not provided)
-	opts := strings.TrimSpace(req.MountOptions)
-	if opts == "" {
-		opts = getDefaultMountOpts(r.Context(), spec.Devices)
-	}
-	// 3) mount by UUID (discover from first device) or mapper
-	steps = append(steps, pools.PlanStep{
-		ID:          "mkdir-mountpoint",
-		Description: "create mountpoint directory",
-		Command:     fmt.Sprintf("mkdir -p %s", shellQuote(spec.Mountpoint)),
-		Destructive: false,
-	})
-	if spec.Encrypt.Enabled {
-		steps = append(steps, pools.PlanStep{ID: "mount", Description: "mount btrfs (mapper)", Command: fmt.Sprintf("mount -t btrfs -o %s %s %s", shellQuote(opts), shellQuote(mkTargets[0]), shellQuote(spec.Mountpoint)), Destructive: false})
-	} else {
-		steps = append(steps, pools.PlanStep{ID: "mount", Description: "mount filesystem by UUID", Command: fmt.Sprintf("mount -t btrfs -o %s UUID=$(blkid -s UUID -o value %s) %s", shellQuote(opts), shellQuote(spec.Devices[0]), shellQuote(spec.Mountpoint)), Destructive: false})
-	}
-
-	// 4) default subvolumes
-	for _, sv := range []string{"data", "snaps", "apps"} {
-		steps = append(steps, pools.PlanStep{
-			ID:          "subvol-" + sv,
-			Description: "create default subvolume",
-			Command:     fmt.Sprintf("btrfs subvolume create %s", shellQuote(strings.TrimRight(spec.Mountpoint, "/")+"/"+sv)),
-			Destructive: false,
-		})
-	}
-
-	// 5) proposed fstab entry and crypttab lines
-	fstab := []string{fmt.Sprintf("UUID=<uuid> %s btrfs %s 0 0", spec.Mountpoint, opts)}
-	if spec.Encrypt.Enabled {
-		fstab[0] = fmt.Sprintf("/dev/mapper/luks-%s-0 %s btrfs %s 0 0", spec.Name, spec.Mountpoint, opts)
-		for idx := range mkTargets {
-			name := fmt.Sprintf("luks-%s-%d", spec.Name, idx)
-			fstab = append(fstab, fmt.Sprintf("[crypttab] %s UUID=<luksUUID-%d> %s luks,discard", name, idx, spec.Encrypt.Keyfile))
-		}
-	}
-
-	// include options in response
-	writeJSON(w, map[string]any{"plan": pools.CreatePlan{Steps: steps}, "fstab": fstab, "warnings": warnings, "mountOptions": opts})
+	writeJSON(w, map[string]any{"plan": pools.CreatePlan{Steps: steps}, "fstab": []string{res.Fstab}, "warnings": warnings, "mountOptions": opts})
 }
 
-// local quote helpers (copy of agent style)
-func shellQuote(s string) string {
-	if s == "" {
-		return "''"
-	}
-	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
-}
-
-func quoteAll(items []string) []string {
-	res := make([]string, len(items))
-	for i, v := range items {
-		res[i] = shellQuote(v)
-	}
-	return res
+func writeJSONStatus(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
 }

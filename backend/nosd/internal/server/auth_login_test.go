@@ -41,7 +41,7 @@ func newLoginEnv(t *testing.T, withTOTP bool, recovery ...string) loginEnv {
 	t.Setenv("NOS_SESSIONS_PATH", filepath.Join(dir, "sessions.json"))
 	t.Setenv("NOS_RATE_LOGIN_PER_15M", "1000")
 	t.Setenv("NOS_DISABLE_APP_EVENTS", "1")
-	t.Setenv("NOS_TEST_SKIP_AUTH", "0") // real sign-in, admin and CSRF checks
+	withRealAuth(t) // real sign-in, admin and CSRF checks
 
 	h, err := pwhash.HashPassword("Correct-Horse-9")
 	if err != nil {
