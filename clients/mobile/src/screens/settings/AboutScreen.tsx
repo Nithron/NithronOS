@@ -11,22 +11,25 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
+  Alert,
 } from 'react-native';
 import {useTheme} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-const APP_VERSION = '1.0.0';
-const BUILD_NUMBER = '1';
+import {APP_VERSION} from '../../version';
 
 export function AboutScreen(): React.JSX.Element {
   const {colors} = useTheme();
 
   const handleLink = (url: string) => {
-    Linking.openURL(url);
+    Linking.openURL(url).catch(() =>
+      Alert.alert("Couldn't open the link", url),
+    );
   };
 
   return (
-    <ScrollView style={[styles.container, {backgroundColor: colors.background}]}>
+    <ScrollView
+      style={[styles.container, {backgroundColor: colors.background}]}>
       {/* App Logo & Info */}
       <View style={styles.header}>
         <View style={[styles.logo, {backgroundColor: colors.primary}]}>
@@ -34,22 +37,33 @@ export function AboutScreen(): React.JSX.Element {
         </View>
         <Text style={[styles.appName, {color: colors.text}]}>NithronSync</Text>
         <Text style={[styles.version, {color: `${colors.text}60`}]}>
-          Version {APP_VERSION} ({BUILD_NUMBER})
+          Version {APP_VERSION}
         </Text>
       </View>
 
       {/* Description */}
-      <View style={[styles.card, {backgroundColor: colors.card, borderColor: colors.border}]}>
+      <View
+        style={[
+          styles.card,
+          {backgroundColor: colors.card, borderColor: colors.border},
+        ]}>
         <Text style={[styles.description, {color: `${colors.text}80`}]}>
-          NithronSync is the official mobile client for nOS file synchronization.
-          Keep your files in sync across all your devices with secure, private, self-hosted storage.
+          NithronSync is the official mobile client for nOS file
+          synchronization. Keep your files in sync across all your devices with
+          secure, private, self-hosted storage.
         </Text>
       </View>
 
       {/* Links Section */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>SUPPORT</Text>
-        <View style={[styles.card, {backgroundColor: colors.card, borderColor: colors.border}]}>
+        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>
+          SUPPORT
+        </Text>
+        <View
+          style={[
+            styles.card,
+            {backgroundColor: colors.card, borderColor: colors.border},
+          ]}>
           <LinkRow
             icon="web"
             title="Website"
@@ -62,7 +76,7 @@ export function AboutScreen(): React.JSX.Element {
             icon="book-open-variant"
             title="Documentation"
             subtitle="View user guide"
-            onPress={() => handleLink('https://docs.nithron.com/sync')}
+            onPress={() => handleLink('https://nos.nithron.com/docs/sync/')}
             colors={colors}
           />
           <Divider color={colors.border} />
@@ -86,8 +100,14 @@ export function AboutScreen(): React.JSX.Element {
 
       {/* Legal Section */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>LEGAL</Text>
-        <View style={[styles.card, {backgroundColor: colors.card, borderColor: colors.border}]}>
+        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>
+          LEGAL
+        </Text>
+        <View
+          style={[
+            styles.card,
+            {backgroundColor: colors.card, borderColor: colors.border},
+          ]}>
           <LinkRow
             icon="shield-lock-outline"
             title="Privacy Policy"
@@ -135,13 +155,19 @@ interface LinkRowProps {
 function LinkRow({icon, title, subtitle, onPress, colors}: LinkRowProps) {
   return (
     <TouchableOpacity style={styles.linkRow} onPress={onPress}>
-      <View style={[styles.iconContainer, {backgroundColor: `${colors.primary}15`}]}>
+      <View
+        style={[
+          styles.iconContainer,
+          {backgroundColor: `${colors.primary}15`},
+        ]}>
         <Icon name={icon} size={20} color={colors.primary} />
       </View>
       <View style={styles.rowContent}>
         <Text style={[styles.rowTitle, {color: colors.text}]}>{title}</Text>
         {subtitle && (
-          <Text style={[styles.rowSubtitle, {color: `${colors.text}60`}]}>{subtitle}</Text>
+          <Text style={[styles.rowSubtitle, {color: `${colors.text}60`}]}>
+            {subtitle}
+          </Text>
         )}
       </View>
       <Icon name="chevron-right" size={20} color={`${colors.text}40`} />
@@ -239,4 +265,3 @@ const styles = StyleSheet.create({
 });
 
 export default AboutScreen;
-

@@ -31,6 +31,10 @@ type SyncHandler struct {
 	access             shareAccessChecker
 	logger             zerolog.Logger
 	cfg                config.Config
+	cursors            *nosync.CursorStore
+	// webTLSAddr is where Caddy serves the web interface (the key pin
+	// comes from there); tests point it elsewhere.
+	webTLSAddr string
 }
 
 // shareAccessChecker says what a nOS user (by id) may do in a share.
@@ -42,7 +46,7 @@ type shareAccessChecker interface {
 // A share the user can't read looks the same as a missing one.
 func (h *SyncHandler) readableShare(r *http.Request, shareID string) (shares.Share, bool) {
 	sh, ok := h.shareStore.Get(shareID)
-	if !ok {
+	if !ok || sh.SyncDisabled {
 		return shares.Share{}, false
 	}
 	if read, _ := h.access.ShareAccess(sh, r.Header.Get("X-Device-User-ID")); !read {
@@ -56,6 +60,10 @@ func NewSyncHandler(cfg config.Config, shareStore *shares.Store, access shareAcc
 	// Initialize sync store
 	syncBasePath := filepath.Join(filepath.Dir(cfg.UsersPath), "sync")
 	syncStore, err := nosync.NewStore(syncBasePath)
+	if err != nil {
+		return nil, err
+	}
+	cursors, err := nosync.NewCursorStore(filepath.Join(syncBasePath, "cursors"))
 	if err != nil {
 		return nil, err
 	}
@@ -95,6 +103,8 @@ func NewSyncHandler(cfg config.Config, shareStore *shares.Store, access shareAcc
 	}
 
 	return &SyncHandler{
+		webTLSAddr:         "127.0.0.1:443",
+		cursors:            cursors,
 		deviceMgr:          deviceMgr,
 		changeTracker:      changeTracker,
 		deltaSync:          deltaSync,
@@ -143,6 +153,7 @@ func (h *SyncHandler) Routes() chi.Router {
 		pr.Get("/files/{share_id}/metadata", h.GetFileMetadata)
 		pr.Post("/files/{share_id}/metadata", h.GetFilesMetadata)
 		pr.Post("/files/{share_id}/hash", h.GetBlockHashes)
+		pr.Post("/files/{share_id}/delta", h.UploadDelta)
 
 		// Sync state
 		pr.Get("/state/{share_id}", h.GetSyncState)
@@ -285,6 +296,7 @@ func (h *SyncHandler) RegisterDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	response.ServerKeySHA256 = h.webKeyPin(r.Context())
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, response)
 }
@@ -391,6 +403,9 @@ func (h *SyncHandler) ListSyncShares(w http.ResponseWriter, r *http.Request) {
 	syncShares := []nosync.SyncShare{} // [] in JSON, not null
 
 	for _, share := range allShares {
+		if share.SyncDisabled {
+			continue
+		}
 		if read, _ := h.access.ShareAccess(share, userID); !read {
 			continue
 		}
@@ -402,7 +417,7 @@ func (h *SyncHandler) ListSyncShares(w http.ResponseWriter, r *http.Request) {
 			ShareID:     share.ID,
 			ShareName:   share.Name,
 			SharePath:   share.Path,
-			SyncEnabled: true, // All shares are sync-enabled for now
+			SyncEnabled: true, // disabled shares aren't listed
 			TotalSize:   totalSize,
 			FileCount:   totalFiles,
 		})
@@ -475,14 +490,27 @@ func (h *SyncHandler) GetChanges(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response, err := h.changeTracker.GetChanges(share.Path, cursor, limit)
+	// The snapshot is per device (or per user, for a signed-in session).
+	owner := r.Header.Get("X-Device-ID")
+	if owner == "" {
+		owner = "user:" + r.Header.Get("X-Device-User-ID")
+	}
+	since, known := h.cursors.Load(owner, shareID, cursor)
+	set, err := h.changeTracker.Changes(share.Path, since, limit)
 	if err != nil {
 		h.logger.Error().Err(err).Str("share_id", shareID).Msg("Failed to get changes")
 		httpx.WriteTypedError(w, http.StatusInternalServerError, "sync.changes_failed", err.Error(), 0)
 		return
 	}
-
-	writeJSON(w, response)
+	next := cursor
+	if !known || len(set.Changes) > 0 {
+		if next, err = h.cursors.Save(owner, shareID, set.Next); err != nil {
+			h.logger.Error().Err(err).Str("share_id", shareID).Msg("Failed to save the sync cursor")
+			httpx.WriteTypedError(w, http.StatusInternalServerError, "sync.changes_failed", "could not save the sync cursor", 0)
+			return
+		}
+	}
+	writeJSON(w, nosync.ChangesResponse{Changes: set.Changes, Cursor: next, HasMore: set.HasMore})
 }
 
 // GetFileMetadata handles GET /sync/files/{share_id}/metadata
@@ -564,7 +592,11 @@ func (h *SyncHandler) GetBlockHashes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fullPath := filepath.Join(share.Path, req.Path)
+	fullPath, err := nosync.ResolveInShare(share.Path, req.Path)
+	if err != nil {
+		httpx.WriteTypedError(w, http.StatusBadRequest, "input.invalid", "path is outside the share", 0)
+		return
+	}
 	response, err := h.deltaSync.ComputeBlockHashes(fullPath)
 	if err != nil {
 		h.logger.Error().Err(err).Str("path", req.Path).Msg("Failed to compute block hashes")
@@ -775,6 +807,9 @@ func (h *SyncHandler) GetRecentActivity(w http.ResponseWriter, r *http.Request) 
 
 	limit := parseIntWithDefault(r.URL.Query().Get("limit"), 20)
 	activities := h.activityStore.GetRecentActivities(devices, limit)
+	if activities == nil {
+		activities = []*nosync.SyncActivity{} // [] in JSON, not null
+	}
 	writeJSON(w, activities)
 }
 

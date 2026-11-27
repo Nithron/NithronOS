@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # The live UI pass: builds nosd, nos-agent and the web UI, runs the daemons in
 # a throwaway Debian container, completes first-boot setup through the API,
-# serves the built UI with `vite preview` (proxying /api to the container)
-# and walks every page with Playwright (tests/e2e/ui/tests/live-walk.spec.ts).
+# runs NithronSync end to end (sync-e2e.sh: the real sync daemon against the
+# container), serves the built UI with `vite preview` (proxying /api to the
+# container) and walks every page with Playwright
+# (tests/e2e/ui/tests/live-walk.spec.ts).
 #
-#   scripts/live-ui/run.sh          build, start, walk, stop
-#   KEEP=1 scripts/live-ui/run.sh   leave it running for a manual look
+#   scripts/live-ui/run.sh              build, start, sync, walk, stop
+#   KEEP=1 scripts/live-ui/run.sh       leave it running for a manual look
+#   SYNC_ONLY=1 scripts/live-ui/run.sh  only the sync pass (no UI build or walk)
 #
 # Needs docker (privileged containers, for the loop-device Btrfs pool), Go
 # and Node. The report lands in tests/e2e/ui/live-report.json.
@@ -47,7 +50,7 @@ log "building nosd, nos-agent and the web UI"
 (cd "$ROOT/agent/nos-agent" && CGO_ENABLED=0 go build -o "$WORK/nos-agent" .)
 cp "$ROOT/scripts/live-ui/Dockerfile" "$ROOT/scripts/live-ui/entrypoint.sh" "$WORK/"
 cp -r "$ROOT/usr/share/nos/apps" "$WORK/apps"
-(cd "$ROOT/web" && npm run build --silent >/dev/null)
+[ "${SYNC_ONLY:-0}" = 1 ] || (cd "$ROOT/web" && npm run build --silent >/dev/null)
 
 log "starting $NAME"
 remove_container
@@ -66,6 +69,11 @@ curl -fsS -H 'Content-Type: application/json' -H "Authorization: Bearer $token" 
 	-d "{\"token\":\"$token\",\"username\":\"$ADMIN_USER\",\"password\":\"$ADMIN_PASS\"}" "$api/setup/first-admin" >/dev/null
 curl -fsS -H 'Content-Type: application/json' -H "Authorization: Bearer $token" -d "{\"token\":\"$token\"}" "$api/setup/complete" >/dev/null
 
+status=0
+log "NithronSync end to end"
+bash "$ROOT/scripts/live-ui/sync-e2e.sh" "http://127.0.0.1:$API_PORT" "$NAME" "$ADMIN_USER" "$ADMIN_PASS" || status=$?
+[ "${SYNC_ONLY:-0}" = 1 ] && exit "$status"
+
 log "serving the UI on http://127.0.0.1:$UI_PORT"
 (cd "$ROOT/web" && NOS_API_TARGET="http://127.0.0.1:$API_PORT" exec setsid npx vite preview --host 127.0.0.1 --port "$UI_PORT" --strictPort >"$WORK/preview.log" 2>&1) &
 PREVIEW_PID=$!
@@ -73,7 +81,6 @@ for _ in $(seq 1 60); do curl -fsS "http://127.0.0.1:$UI_PORT/" >/dev/null 2>&1 
 curl -fsS "http://127.0.0.1:$UI_PORT/" >/dev/null || { cat "$WORK/preview.log"; exit 1; }
 
 log "walking the pages"
-status=0
 (cd "$ROOT/tests/e2e/ui" && BASE_URL="http://127.0.0.1:$UI_PORT" NOS_USER="$ADMIN_USER" NOS_PASS="$ADMIN_PASS" \
 	npx playwright test live-walk --reporter=line) || status=$?
 

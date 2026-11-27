@@ -1,24 +1,8 @@
 {
+  "extends": "@react-native/typescript-config/tsconfig.json",
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "lib": ["ES2022"],
-    "jsx": "react-native",
-    "strict": true,
-    "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    },
     "types": ["react-native", "jest"]
   },
-  "include": ["src/**/*", "App.tsx", "index.js"],
-  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "jest.config.js"]
+  "include": ["src/**/*", "__tests__/**/*", "__mocks__/**/*", "App.tsx", "index.js"],
+  "exclude": ["node_modules", "android", "ios"]
 }
-

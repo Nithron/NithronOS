@@ -146,12 +146,12 @@ To modify retention:
 
 ```bash
 # Import GPG key
-wget -qO - https://apt.nithronos.com/nos-release.gpg | \
+wget -qO - https://nos.nithron.com/apt/nos-release.gpg | \
   sudo gpg --dearmor -o /usr/share/keyrings/nos-archive-keyring.gpg
 
 # Add repository
 echo "deb [signed-by=/usr/share/keyrings/nos-archive-keyring.gpg] \
-  https://apt.nithronos.com stable main" | \
+  https://nos.nithron.com/apt stable main" | \
   sudo tee /etc/apt/sources.list.d/nos.list
 
 # Update package lists
@@ -186,7 +186,7 @@ APT preferences are automatically configured to prevent cross-channel package dr
 
 ### Update Fails to Start
 - Check disk space: `df -h /`
-- Verify network: `ping apt.nithronos.com`
+- Verify network: `ping nos.nithron.com`
 - Check lock file: `ls -la /var/run/nos-update.lock`
 
 ### Automatic Rollback Triggered

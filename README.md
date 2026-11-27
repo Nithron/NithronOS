@@ -43,7 +43,7 @@ Local-first storage management (Btrfs/ZFS*), snapshots, shares, backups, and a m
 ## Why nOS?
 - **Local-first, privacy-first** — admin UI served on your LAN by default; remote access is opt-in.
 - **Btrfs-first** — snapshots, send/receive; optional ZFS via DKMS*.
-- **NithronSync** — OneDrive-like file sync across Windows, Linux, macOS, iOS, and Android devices.
+- **NithronSync** — file sync with your computers (a sync daemon, a desktop app, and an early Android app), and WebDAV for file managers.
 - **One-click apps** — Docker/Compose (Plex/Jellyfin, Nextcloud, Immich, etc.).
 - **Real safety features** — dry-run plans, pre-update snapshots, easy rollback.
 - **Clean UX** — React dashboard with real-time updates, clear health/status, sensible defaults.
@@ -208,12 +208,12 @@ Back to the defaults:
 - **UI/UX Improvements**: Fixed all major crashes, improved button styles, better navigation
 - **Remote & Monitoring**: Working remote backup system and monitoring dashboard
 
-### Pre-v1 / NithronSync ✅ (Complete)
-- [x] **Server Foundation**: Sync API endpoints, device token authentication, WebDAV access, delta sync algorithm
-- [x] **Web UI**: Device management, sync settings, QR code generation for mobile setup
-- [x] **Desktop Clients**: Windows, Linux, macOS sync applications with system tray integration
-- [x] **Mobile Apps**: iOS and Android apps with QR code setup, file browser, offline support
-- [x] **Collaboration**: Conflict resolution UI, shared folder collaboration, sync activity history
+### Pre-v1 / NithronSync (in progress)
+- [x] **Server**: sync API with device tokens, WebDAV (file managers sign in with a device token), delta uploads and downloads, a change feed that scales with the share, per-share sync switch
+- [x] **Web UI**: device management and one pairing link per device (also the mobile QR code), with the server's key for its self-signed certificate
+- [x] **Sync daemon** (`clients/sync-core`): tested end to end in CI against a real nOS (up, down, folders, deltas)
+- [ ] **Desktop app** (Wails): builds in CI for Linux, Windows and macOS (unsigned); installers to come
+- [ ] **Mobile apps**: Android builds in CI as a debug APK that pairs by QR code or link (pinning the server's key) and browses shares; it doesn't sync files yet, no store release; iOS later
 
 ### Post-v1 / Alpha
 - [ ] **A1 — Reliability & Telemetry (opt-in)**: Crash reports (symbolized), perf traces, health pings; redaction; one-click diagnostics.
@@ -225,7 +225,7 @@ Back to the defaults:
 - [ ] **A7 — Hardware, Power & UPS**: NUT integration; scheduled shutdown/wake; sensors/temps/fan; CPU governor controls.
 - [ ] **A8 — Observability & Alerts v2**: Prometheus exporter, ready-made Grafana dashboards; audit log shipping; more alert channels.
 - [ ] **A9 — Extensibility & SDK v2**: Signed app bundles; nosctl improvements; app lifecycle webhooks; review tools.
-- [x] **A10 — NithronSync v2**: Real-time collaboration, end-to-end encryption, offline-first sync, smart sync (on-demand files).
+- [ ] **A10 — NithronSync v2**: Real-time collaboration, end-to-end encryption, files on demand (in the desktop client).
 
 > Each milestone ships release notes, migration notes, E2E suite green (HTTP/UI/backup/upgrade), and no data-loss regressions.
 

@@ -1,297 +1,155 @@
 # NithronSync Client Setup
 
-This guide covers installing and configuring NithronSync clients on various platforms.
+How to connect a computer or an Android phone to nOS with NithronSync, or
+reach a share with a file manager over WebDAV.
 
-## Prerequisites
+What exists today:
 
-Before setting up a client:
+| Client | State |
+|--------|-------|
+| Sync daemon (`nithron-sync-daemon`, Linux, Windows, macOS) | Works; tested end to end in CI against a real nOS |
+| Desktop app (Wails), Linux, Windows and macOS | Builds in CI (download the binary from a CI run's artifacts); no installer, macOS unsigned |
+| Android app | A debug build from CI (download the APK from a CI run's artifacts): pairs by QR code or pasted link and browses shares; it doesn't sync files yet, and there is no store release |
+| iOS app | Not available yet |
+| File managers over WebDAV | Work with a device token as the password |
 
-1. Ensure your nOS server is accessible from the client device
-2. Have at least one sync-enabled share configured
-3. Have your nOS credentials ready (or a registered device token)
+## Before you start
 
-## Windows
+1. The share must allow sync: it does unless **Sync** is turned off in the
+   share's settings (**Shares → edit → Sync**). You can sync the shares you
+   may read; you can upload to the shares you may change.
+2. Pair the device: in the web interface open **Settings → Sync → Devices →
+   Add Device**, give it a name, and copy the **pairing link**. It looks like
+   `nos://sync?server=…&token=…&refresh=…&key=…` and is shown once.
 
-### Installation
+The pairing link holds the device's tokens (keep it private) and, unless your
+nOS uses a public domain with a Let's Encrypt certificate, the server's key:
+nOS's own certificate is self-signed, so the client trusts exactly that key
+instead of a certificate authority. The device token lasts 90 days and the
+client renews it with the refresh token in the link. A device can be revoked
+on the same page.
 
-1. Download the NithronSync installer from the web UI (**Settings → Sync → Download Client**)
-2. Run `NithronSync-Setup.exe`
-3. Follow the installation wizard
-4. The app will start automatically after installation
+## Sync daemon
 
-### Initial Setup
-
-1. **Server URL** — Enter your nOS server address (e.g., `https://nas.local`)
-2. **Authentication** — Choose one:
-   - **Web Login** — Opens browser for secure authentication
-   - **Device Token** — Paste a token from the web UI
-3. **Sync Folder** — Choose where to create your NithronSync folder (default: `%USERPROFILE%\NithronSync`)
-4. **Selective Sync** — Choose which shares and folders to sync
-
-### System Tray
-
-NithronSync runs in the system tray:
-- **Green cloud** — Synced and up to date
-- **Blue arrows** — Syncing in progress
-- **Yellow warning** — Some files couldn't sync
-- **Red X** — Disconnected or error
-
-Right-click the tray icon for options:
-- Open NithronSync folder
-- Pause/Resume sync
-- View recent activity
-- Settings
-- Quit
-
-### Sync Folder Structure
-
-```
-%USERPROFILE%\NithronSync\
-├── Documents/        # Share: Documents
-│   ├── Work/
-│   └── Personal/
-├── Photos/           # Share: Photos
-└── .nithronSync/     # Local metadata (don't modify)
-```
-
-## Linux
-
-### Installation (AppImage)
+The daemon syncs every share you may read into `<folder>/<share name>`.
 
 ```bash
-# Download
-wget https://your-server/downloads/NithronSync-linux-x86_64.AppImage
-
-# Make executable
-chmod +x NithronSync-linux-x86_64.AppImage
-
-# Run
-./NithronSync-linux-x86_64.AppImage
+# Pair once (saves the configuration), then keep running
+nithron-sync-daemon --pair 'nos://sync?server=…' --folder ~/NithronSync
 ```
 
-### Installation (Debian/Ubuntu)
+Later starts need no arguments. Options: `--config <file>` (another
+configuration file), `--debug`. The poll interval (`poll_interval_secs`,
+default 30, minimum 5) is in the configuration file.
 
-```bash
-# Download
-wget https://your-server/downloads/nithron-sync_1.0.0_amd64.deb
+To run it at login on Linux, create `~/.config/systemd/user/nithron-sync.service`:
 
-# Install
-sudo dpkg -i nithron-sync_1.0.0_amd64.deb
-sudo apt-get install -f  # Install dependencies
+```ini
+[Unit]
+Description=NithronSync
 
-# Start
-nithron-sync
+[Service]
+ExecStart=%h/.local/bin/nithron-sync-daemon
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
 ```
 
-### Installation (Fedora/RHEL)
+and enable it with `systemctl --user enable --now nithron-sync`
+(`journalctl --user -u nithron-sync -f` for its log).
 
-```bash
-# Download
-wget https://your-server/downloads/nithron-sync-1.0.0.x86_64.rpm
+Build it from source: `cd clients/sync-core && go build -o nithron-sync-daemon ./cmd/daemon`
+(needs a C compiler, for SQLite).
 
-# Install
-sudo dnf install nithron-sync-1.0.0.x86_64.rpm
+## Desktop app
 
-# Start
-nithron-sync
-```
+Start NithronSync, paste the pairing link, and choose a folder (default
+`~/NithronSync`). On Windows it keeps running in the notification area when
+the window is closed; on Linux closing the window quits it (there is no tray
+there yet; use the daemon for background sync).
 
-### CLI Configuration
+## Android app
 
-```bash
-# Configure server
-nithron-sync config --server https://nas.local
+The Android app pairs with nOS and browses its shares: the folders and
+files of every share you may read, a file's details, deleting a file on a
+share you may change, and the device's sync activity. It doesn't sync files
+to the phone yet.
 
-# Authenticate
-nithron-sync auth login
-# Opens browser for authentication
+1. Get the APK: on GitHub, open a CI run of the branch you want (**Actions →
+   CI**), and download the `nithronsync-android-debug-…` artifact (kept 14
+   days). It is a debug build, signed with the shared debug key, for 64-bit
+   ARM phones and x86_64 emulators.
+2. Install it: allow installing apps from your browser or file manager when
+   Android asks, then open the APK. (Or `adb install app-debug.apk`.)
+3. In the web interface, **Settings → Sync → Devices → Add Device**: name the
+   device, pick **Android**, and register it.
+4. In the app, **Scan QR Code** and point the camera at the code the web
+   interface shows; or copy the pairing link to the phone and use **Paste
+   Pairing Link**. (The **Scan QR Code** button on the Devices page shows a
+   different code that only names the server; it can't pair a device.)
 
-# Or use device token
-nithron-sync auth token "nos_dt_..."
+The app keeps the tokens in Android's keystore-backed storage and trusts
+the server's key from the link instead of a certificate authority, as the
+desktop clients do. **Unpair This Phone** (Settings) removes the device in
+nOS and forgets the pairing.
 
-# Set sync folder
-nithron-sync config --sync-folder ~/NithronSync
+Build it yourself: `cd clients/mobile && npm ci && cd android && ./gradlew
+assembleDebug` (Node, JDK 17 and the Android SDK; the APK is in
+`android/app/build/outputs/apk/debug/`).
 
-# Start sync daemon
-nithron-sync start
-```
+## How syncing behaves
 
-### Systemd Service
+- Changes are picked up from the folder at once and from the server on every
+  poll.
+- Large files go up as deltas: only the blocks (4 MiB) that changed are sent.
+- If a file changed on both sides since the last sync, the server's version
+  is downloaded and yours is kept next to it as a conflict copy (the default
+  `conflict_policy`, `keep_both`).
+- Temporary and system files (`*.tmp`, `~$*`, `.DS_Store`, `Thumbs.db`,
+  `desktop.ini`, `.git`, `node_modules`, …) are not synced.
 
-```bash
-# Enable auto-start
-systemctl --user enable nithron-sync
-systemctl --user start nithron-sync
-
-# Check status
-systemctl --user status nithron-sync
-
-# View logs
-journalctl --user -u nithron-sync -f
-```
-
-## macOS
-
-### Installation
-
-1. Download `NithronSync.dmg` from the web UI
-2. Open the DMG and drag NithronSync to Applications
-3. Launch NithronSync from Applications
-4. Grant required permissions:
-   - **Files and Folders** — Access to sync folder
-   - **Network** — Connect to nOS server
-
-### Menu Bar
-
-NithronSync appears in the menu bar with sync status indicators. Click for quick access to:
-- Open sync folder
-- Recent activity
-- Pause/resume sync
-- Preferences
-
-### Configuration
-
-Access preferences via menu bar icon → **Preferences**:
-
-- **Account** — Server URL, sign out
-- **Sync** — Folder location, bandwidth limits
-- **Selective Sync** — Choose shares/folders
-- **Advanced** — Proxy settings, debug logging
-
-## iOS
-
-### Installation
-
-1. Download **NithronSync** from the App Store
-2. Open the app and tap **Add Server**
-3. Enter your server URL or scan the QR code from web UI
-4. Authenticate with your nOS credentials or device token
-5. Choose which shares to sync
-
-### Features
-
-- **Files App Integration** — Access synced files in the iOS Files app
-- **Offline Access** — Mark files/folders for offline availability
-- **Photo Backup** — Auto-upload camera roll to a sync share
-- **Background Sync** — Syncs in background when connected to Wi-Fi
-
-### Settings
-
-In-app settings:
-- **Auto-Sync Photos** — Enable camera roll backup
-- **Only on Wi-Fi** — Restrict sync to Wi-Fi networks
-- **Offline Files** — Manage offline-available content
-- **Storage Usage** — View and clear cached files
-
-## Android
-
-### Installation
-
-1. Download **NithronSync** from Google Play
-2. Open the app and tap **Connect to Server**
-3. Enter your server URL or scan the QR code
-4. Sign in with your nOS credentials
-5. Grant storage permissions when prompted
-
-### Features
-
-- **SAF Integration** — Access files via Android's Storage Access Framework
-- **Auto-Upload** — Automatically sync camera photos
-- **Selective Sync** — Choose folders per device
-- **Background Service** — Syncs in background
-
-### Settings
-
-- **Sync Frequency** — How often to check for changes
-- **Upload on Mobile Data** — Allow uploads on cellular
-- **Auto-Upload Folders** — Camera, screenshots, downloads
-- **Battery Optimization** — Exempt app for reliable background sync
-
-## WebDAV Clients
-
-NithronSync provides WebDAV access for third-party clients.
-
-### WebDAV URL
+## WebDAV (file managers)
 
 ```
-https://your-server.local/dav/{share_id}/
+https://<your nOS>/dav/<share id>/
 ```
 
-Find the WebDAV URL in **Settings → Sync → WebDAV Access**.
+The web interface doesn't show share ids yet; list them with the device
+token: `curl -H 'Authorization: Bearer nos_dt_…' https://<your nOS>/api/v1/sync/shares`
+(`share_id`; add `-k` or `--cacert` for a self-signed certificate). Sign in
+with any user name and the **device token** (the `token=` part of the
+pairing link, URL-decoded, `nos_dt_…`) as the password.
 
-### Authentication
-
-Use your device access token as the password:
-- **Username:** Leave empty or use any value
-- **Password:** Your device access token (starts with `nos_at_`)
-
-### Compatible Clients
-
-| Platform | Client | Notes |
-|----------|--------|-------|
-| Windows | Windows Explorer | Map network drive |
-| Windows | Cyberduck | File manager |
-| macOS | Finder | Connect to Server |
-| macOS | Cyberduck | File manager |
-| Linux | Nautilus/Files | Connect to Server |
-| Linux | Dolphin | Network locations |
-| iOS | Files app | Connect to Server |
-| Android | Solid Explorer | WebDAV plugin |
-
-### Windows: Map Network Drive
-
-1. Open File Explorer
-2. Right-click **This PC** → **Map network drive**
-3. Enter WebDAV URL: `https://your-server/dav/share_id/`
-4. Check **Connect using different credentials**
-5. Username: `token`
-6. Password: Your access token
-
-### macOS: Finder
-
-1. Open Finder
-2. Press `Cmd+K` (Connect to Server)
-3. Enter: `https://your-server/dav/share_id/`
-4. Click **Connect**
-5. Enter credentials when prompted
+- **Windows Explorer:** This PC → Map network drive → the URL → Connect using
+  different credentials. Windows refuses self-signed certificates for WebDAV:
+  import nOS's certificate into the trusted root store first, or use a public
+  domain.
+- **macOS Finder:** Go → Connect to Server (⌘K) → the URL.
+- **Linux (Files, Dolphin):** `davs://<your nOS>/dav/<share id>/`.
 
 ## Troubleshooting
 
-### Common Issues
+**The client can't connect**
+- Open the server address in a browser from the same machine.
+- "the server's TLS key doesn't match": the server's key changed (a new
+  installation) or you are connecting to another machine. Pair the device
+  again.
+- Without a key in the pairing link, the server needs a certificate from a
+  public authority (a public domain).
+- Android: "the camera" is only for the QR code; if you refused it, allow it
+  in Android's app settings, or paste the link instead.
 
-**Can't connect to server**
-- Verify server URL is correct
-- Check if server is accessible (try in browser)
-- Ensure firewall allows HTTPS (port 443)
-- Verify SSL certificate is valid
+**Nothing syncs**
+- Is the share's sync turned on, and may you read it?
+- Was the device revoked? Pair it again.
+- Look at the log (below) for "Local change not synced" or "Failed to fetch
+  changes".
 
-**Sync not starting**
-- Check if sync is paused
-- Verify internet connection
-- Check device token hasn't expired
-- Look for errors in client logs
+**Logs and configuration**
 
-**Files not syncing**
-- Check file isn't excluded by pattern
-- Verify file size is under limit
-- Check available disk space
-- Ensure share has sync enabled
-
-**Slow sync**
-- Check bandwidth limit settings
-- Verify network speed
-- Large files use delta sync automatically
-- Check server load
-
-### Logs
-
-**Windows:** `%APPDATA%\NithronSync\logs\`
-**macOS:** `~/Library/Logs/NithronSync/`
-**Linux:** `~/.local/share/nithron-sync/logs/`
-
-### Getting Help
-
-1. Check [Troubleshooting Guide](./troubleshooting.md)
-2. Visit [Community Discord](https://discord.gg/qzB37WS5AT)
-3. Report issues on [GitHub](https://github.com/Nithron/nOS/issues)
-
+| | Configuration | Logs |
+|---|---|---|
+| Linux | `~/.config/NithronSync/config.json` | `~/.local/share/nithron-sync/logs/` |
+| Windows | `%APPDATA%\NithronSync\config.json` | `%LOCALAPPDATA%\NithronSync\logs\` |
+| macOS | `~/Library/Application Support/NithronSync/config.json` | `~/Library/Logs/NithronSync/` |

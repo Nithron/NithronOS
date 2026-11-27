@@ -3,8 +3,8 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"golang.org/x/sync/errgroup"
 
 	"nos/clients/sync-core/api"
 	"nos/clients/sync-core/config"
@@ -136,7 +135,7 @@ func New(cfg *config.Config, logger zerolog.Logger) (*Engine, error) {
 	e.currentFile.Store("")
 
 	// Set up token refresh callback
-	e.apiClient.SetTokenRefreshCallback(func(access, refresh string) {
+	e.apiClient.SetTokenRefreshCallback(func(_, _ string) {
 		e.logger.Info().Msg("Token refreshed successfully")
 	})
 
@@ -199,7 +198,6 @@ func (e *Engine) Start() error {
 		}
 
 		watcherCfg := watcher.DefaultConfig(sharePath)
-		watcherCfg.ExcludePatterns = append(watcherCfg.ExcludePatterns, share.SyncExclude...)
 
 		w, err := watcher.New(watcherCfg, e.logger)
 		if err != nil {
@@ -387,13 +385,13 @@ func (e *Engine) processWatcherEvents(shareID, shareName string, w *watcher.Watc
 			// Queue the operation
 			switch event.Op {
 			case watcher.OpCreate, watcher.OpWrite:
-				e.database.EnqueueOperation(shareID, relPath, "upload", 1)
+				e.dbErr("EnqueueOperation", e.database.EnqueueOperation(shareID, relPath, "upload", 1))
 				e.pendingUploads.Add(1)
 			case watcher.OpRemove:
-				e.database.EnqueueOperation(shareID, relPath, "delete_remote", 0)
+				e.dbErr("EnqueueOperation", e.database.EnqueueOperation(shareID, relPath, "delete_remote", 0))
 			case watcher.OpRename:
 				// Renames are handled as delete + create by fsnotify
-				e.database.EnqueueOperation(shareID, relPath, "upload", 1)
+				e.dbErr("EnqueueOperation", e.database.EnqueueOperation(shareID, relPath, "upload", 1))
 			}
 
 		case err, ok := <-w.Errors():
@@ -435,6 +433,10 @@ func (e *Engine) syncLoop() {
 	}
 }
 
+// maxChangePages bounds the change pages fetched in one sync (the rest
+// come with the next).
+const maxChangePages = 100
+
 func (e *Engine) syncShare(shareID, shareName string) {
 	e.syncMu.Lock()
 	defer e.syncMu.Unlock()
@@ -452,29 +454,30 @@ func (e *Engine) syncShare(shareID, shareName string) {
 
 	e.logger.Debug().Str("share", shareName).Msg("Starting share sync")
 
-	// Get current cursor
+	// Remote changes, page by page while the server has more (it sends at
+	// most 1000 at a time; one page per poll left the rest for later polls).
 	cursor, _ := e.database.GetCursor(shareID)
-
-	// Fetch remote changes
-	changes, err := e.apiClient.GetChanges(e.ctx, shareID, cursor, 1000)
-	if err != nil {
-		e.logger.Error().Err(err).Str("share", shareName).Msg("Failed to fetch changes")
-		return
-	}
-
-	// Process remote changes
-	for _, change := range changes.Changes {
-		if err := e.processRemoteChange(shareID, shareName, change); err != nil {
-			e.logger.Error().Err(err).
-				Str("share", shareName).
-				Str("path", change.Path).
-				Msg("Failed to process remote change")
+	for page := 0; page < maxChangePages; page++ {
+		changes, err := e.apiClient.GetChanges(e.ctx, shareID, cursor, 1000)
+		if err != nil {
+			e.logger.Error().Err(err).Str("share", shareName).Msg("Failed to fetch changes")
+			return
 		}
-	}
-
-	// Update cursor
-	if changes.Cursor != "" {
-		e.database.SetCursor(shareID, changes.Cursor)
+		for _, change := range changes.Changes {
+			if err := e.processRemoteChange(shareID, shareName, change); err != nil {
+				e.logger.Error().Err(err).
+					Str("share", shareName).
+					Str("path", change.Path).
+					Msg("Failed to process remote change")
+			}
+		}
+		if changes.Cursor != "" {
+			cursor = changes.Cursor
+			e.dbErr("SetCursor", e.database.SetCursor(shareID, cursor))
+		}
+		if !changes.HasMore {
+			break
+		}
 	}
 
 	// Process pending local operations
@@ -487,22 +490,16 @@ func (e *Engine) processRemoteChange(shareID, shareName string, change api.FileC
 	sharePath := filepath.Join(e.cfg.SyncFolder, shareName)
 	localPath := filepath.Join(sharePath, change.Path)
 
-	switch change.Action {
-	case "created", "modified":
-		if change.Type == "dir" {
+	switch change.Type {
+	case api.ChangeCreate, api.ChangeModify:
+		if change.IsDir {
 			return os.MkdirAll(localPath, 0755)
 		}
 
-		// Check for conflicts
-		if info, err := os.Stat(localPath); err == nil {
-			localHash, _ := hash.QuickHash(localPath)
-
-			// Check if local file was modified
-			entry, _ := e.database.GetFile(shareID, change.Path)
-			if entry != nil && entry.LocalHash != localHash {
-				// Conflict detected
-				e.handleConflict(shareID, change.Path, info.ModTime(), localHash, change)
-				return nil
+		if info, err := os.Stat(localPath); err == nil && !info.IsDir() {
+			download, err := e.needsDownload(shareID, localPath, info, change)
+			if err != nil || !download {
+				return err
 			}
 		}
 
@@ -515,41 +512,64 @@ func (e *Engine) processRemoteChange(shareID, shareName string, change api.FileC
 			return err
 		}
 
-		// Update database
-		entry := &db.FileEntry{
-			ShareID:    shareID,
-			Path:       change.Path,
-			Type:       change.Type,
-			Size:       change.Size,
-			RemoteHash: change.ContentHash,
-			SyncStatus: "synced",
-			LastSyncAt: time.Now(),
-			Version:    change.Version,
+		info, err := os.Stat(localPath)
+		if err != nil {
+			return err
 		}
-		entry.LocalHash, _ = hash.QuickHash(localPath)
+		sum, err := hash.FileHash(localPath)
+		if err != nil {
+			return err
+		}
+		e.recordSynced(shareID, change.Path, info, sum)
+		return nil
 
-		return e.database.UpsertFile(entry)
-
-	case "deleted":
+	case api.ChangeDelete:
 		// Delete local file
 		if err := os.RemoveAll(localPath); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 		return e.database.DeleteFile(shareID, change.Path)
 
-	case "moved":
-		if change.PreviousPath != "" {
-			oldPath := filepath.Join(sharePath, change.PreviousPath)
+	case api.ChangeRename:
+		if change.OldPath != "" {
+			oldPath := filepath.Join(sharePath, change.OldPath)
 			if err := os.Rename(oldPath, localPath); err != nil {
 				// If rename fails, download the file
 				return e.downloadFile(shareID, shareName, change.Path, localPath)
 			}
-			e.database.DeleteFile(shareID, change.PreviousPath)
+			e.dbErr("DeleteFile", e.database.DeleteFile(shareID, change.OldPath))
 		}
 		return nil
 	}
 
 	return nil
+}
+
+// needsDownload decides what a server change to a file that exists here
+// means, comparing full hashes with the version both sides last had:
+//   - the server's version is the one last synced: nothing new there (often
+//     this device's own upload coming back); local edits go up as queued;
+//   - the local file already is the server's version: just record it;
+//   - the local file is unchanged since the last sync: download;
+//   - both changed: a conflict (handleConflict keeps both by default).
+func (e *Engine) needsDownload(shareID, localPath string, info os.FileInfo, change api.FileChange) (bool, error) {
+	entry, _ := e.database.GetFile(shareID, change.Path)
+	if entry != nil && change.Hash != "" && change.Hash == entry.RemoteHash {
+		return false, nil
+	}
+	localHash, err := hash.FileHash(localPath)
+	if err != nil {
+		return false, err
+	}
+	if change.Hash != "" && localHash == change.Hash {
+		e.recordSynced(shareID, change.Path, info, localHash)
+		return false, nil
+	}
+	if entry != nil && entry.LocalHash == localHash {
+		return true, nil
+	}
+	e.handleConflict(shareID, change.Path, info.ModTime(), localHash, change)
+	return false, nil
 }
 
 func (e *Engine) downloadFile(shareID, shareName, remotePath, localPath string) error {
@@ -560,7 +580,7 @@ func (e *Engine) downloadFile(shareID, shareName, remotePath, localPath string) 
 
 	// Regular download
 	if err := e.webdav.Download(e.ctx, shareID, remotePath, localPath); err != nil {
-		e.database.LogActivity(shareID, remotePath, "download", "error", err.Error(), 0)
+		e.dbErr("LogActivity", e.database.LogActivity(shareID, remotePath, "download", "error", err.Error(), 0))
 		return err
 	}
 
@@ -570,7 +590,7 @@ func (e *Engine) downloadFile(shareID, shareName, remotePath, localPath string) 
 		size = info.Size()
 	}
 	e.downloadedBytes.Add(size)
-	e.database.LogActivity(shareID, remotePath, "download", "success", "", size)
+	e.dbErr("LogActivity", e.database.LogActivity(shareID, remotePath, "download", "success", "", size))
 
 	return nil
 }
@@ -584,7 +604,8 @@ func (e *Engine) deltaDownload(shareID, shareName, remotePath, localPath string)
 	}
 
 	// Compute delta plan
-	localHashes, err := hash.ComputeBlockHashes(localPath, hash.DefaultBlockSize)
+	// Blocks of the server's size, or none would match.
+	localHashes, err := hash.ComputeBlockHashes(localPath, int(remoteHashes.BlockSize))
 	if err != nil {
 		return e.webdav.Download(e.ctx, shareID, remotePath, localPath)
 	}
@@ -635,9 +656,13 @@ func (e *Engine) deltaDownload(shareID, shareName, remotePath, localPath string)
 		for _, lb := range localHashes.Blocks {
 			if lb.StrongHash == rb.StrongHash {
 				// Read from local file
+				// The whole block or nothing: a short or failed read used to
+				// leave zeros in the rebuilt file.
 				blockData = make([]byte, lb.Size)
-				localFile.Seek(lb.Offset, io.SeekStart)
-				localFile.Read(blockData)
+				if _, err := localFile.ReadAt(blockData, lb.Offset); err != nil {
+					blockData = nil
+					continue
+				}
 				found = true
 				break
 			}
@@ -673,28 +698,38 @@ func (e *Engine) deltaDownload(shareID, shareName, remotePath, localPath string)
 	return nil
 }
 
+// maxOpsPerSync bounds the local operations done in one sync; the rest
+// wait for the next.
+const maxOpsPerSync = 2000
+
 func (e *Engine) processLocalOperations(shareID, shareName string) {
-	ops, err := e.database.DequeueOperations(e.cfg.MaxConcurrent)
-	if err != nil {
-		e.logger.Error().Err(err).Msg("Failed to dequeue operations")
-		return
-	}
-
-	if len(ops) == 0 {
-		return
-	}
-
-	g, ctx := errgroup.WithContext(e.ctx)
-
-	for _, op := range ops {
-		op := op // Capture for closure
-		g.Go(func() error {
-			return e.processOperation(ctx, shareID, shareName, op)
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		e.logger.Error().Err(err).Msg("Error processing operations")
+	// Batches of MaxConcurrent until the queue is empty. (Only one batch ran
+	// per poll, so a thousand new files took hours, and the first failure
+	// in a batch cancelled the others.)
+	batch := max(e.cfg.MaxConcurrent, 1)
+	for done := 0; done < maxOpsPerSync; done += batch {
+		ops, err := e.database.DequeueOperations(shareID, batch)
+		if err != nil {
+			e.logger.Error().Err(err).Msg("Failed to dequeue operations")
+			return
+		}
+		if len(ops) == 0 {
+			return
+		}
+		var wg sync.WaitGroup
+		for _, op := range ops {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				if err := e.processOperation(e.ctx, shareID, shareName, op); err != nil {
+					e.logger.Error().Err(err).Str("path", op.Path).Str("op", op.Operation).Msg("Local change not synced")
+				}
+			}()
+		}
+		wg.Wait()
+		if e.ctx.Err() != nil {
+			return
+		}
 	}
 }
 
@@ -711,12 +746,12 @@ func (e *Engine) processOperation(ctx context.Context, shareID, shareName string
 			e.logger.Error().Err(err).Str("path", op.Path).Msg("Failed to delete remote file")
 			// Requeue if not permanent failure
 			if op.RetryCount < e.cfg.RetryAttempts {
-				e.database.RequeueOperation(shareID, op.Path, op.Operation, err.Error(), op.RetryCount+1, time.Duration(e.cfg.RetryDelaySecs)*time.Second)
+				e.dbErr("RequeueOperation", e.database.RequeueOperation(shareID, op.Path, op.Operation, err.Error(), op.RetryCount+1, time.Duration(e.cfg.RetryDelaySecs)*time.Second))
 			}
 			return err
 		}
-		e.database.DeleteFile(shareID, op.Path)
-		e.database.LogActivity(shareID, op.Path, "delete_remote", "success", "", 0)
+		e.dbErr("DeleteFile", e.database.DeleteFile(shareID, op.Path))
+		e.dbErr("LogActivity", e.database.LogActivity(shareID, op.Path, "delete_remote", "success", "", 0))
 
 	case "mkdir":
 		if err := e.webdav.MkdirAll(ctx, shareID, op.Path); err != nil {
@@ -744,22 +779,31 @@ func (e *Engine) uploadFile(ctx context.Context, shareID, shareName, remotePath,
 	e.currentFile.Store(remotePath)
 	defer e.currentFile.Store("")
 
+	// What is sent is recorded as both sides' version (see recordSynced).
+	sum, err := hash.FileHash(localPath)
+	if err != nil {
+		return err
+	}
+
 	// Use delta sync for large files if remote exists
 	if info.Size() > hash.DefaultBlockSize {
 		if exists, _ := e.webdav.Exists(ctx, shareID, remotePath); exists {
-			if err := e.deltaUpload(ctx, shareID, remotePath, localPath); err == nil {
+			err := e.deltaUpload(ctx, shareID, remotePath, localPath, sum)
+			if err == nil {
+				e.recordSynced(shareID, remotePath, info, sum)
 				return nil
 			}
-			// Fall through to regular upload on error
+			// Fall through to a whole-file upload.
+			e.logger.Info().Err(err).Str("path", remotePath).Msg("Delta upload not used; uploading the whole file")
 		}
 	}
 
 	// Regular upload
 	if err := e.webdav.Upload(ctx, shareID, localPath, remotePath); err != nil {
-		e.database.LogActivity(shareID, remotePath, "upload", "error", err.Error(), 0)
+		e.dbErr("LogActivity", e.database.LogActivity(shareID, remotePath, "upload", "error", err.Error(), 0))
 
 		if retryCount < e.cfg.RetryAttempts {
-			e.database.RequeueOperation(shareID, remotePath, "upload", err.Error(), retryCount+1, time.Duration(e.cfg.RetryDelaySecs)*time.Second)
+			e.dbErr("RequeueOperation", e.database.RequeueOperation(shareID, remotePath, "upload", err.Error(), retryCount+1, time.Duration(e.cfg.RetryDelaySecs)*time.Second))
 		}
 		return err
 	}
@@ -767,25 +811,33 @@ func (e *Engine) uploadFile(ctx context.Context, shareID, shareName, remotePath,
 	e.uploadedBytes.Add(info.Size())
 	e.pendingUploads.Add(-1)
 
-	// Update database
-	localHash, _ := hash.QuickHash(localPath)
-	entry := &db.FileEntry{
-		ShareID:    shareID,
-		Path:       remotePath,
-		Type:       "file",
-		Size:       info.Size(),
-		ModTime:    info.ModTime(),
-		LocalHash:  localHash,
-		SyncStatus: "synced",
-		LastSyncAt: time.Now(),
-	}
-	e.database.UpsertFile(entry)
-	e.database.LogActivity(shareID, remotePath, "upload", "success", "", info.Size())
+	e.recordSynced(shareID, remotePath, info, sum)
+	e.dbErr("LogActivity", e.database.LogActivity(shareID, remotePath, "upload", "success", "", info.Size()))
 
 	return nil
 }
 
-func (e *Engine) deltaUpload(ctx context.Context, shareID, remotePath, localPath string) error {
+// recordSynced notes that both sides now hold content sum (SHA-256). The
+// next time the server reports this file, a change is new only if its
+// hash differs from this. (Only a quick hash of the first and last 64 KiB
+// was kept, and only after whole-file uploads, so an edit in the middle of
+// a file looked unchanged and the server's older copy was downloaded over
+// it.)
+func (e *Engine) recordSynced(shareID, path string, info os.FileInfo, sum string) {
+	e.dbErr("UpsertFile", e.database.UpsertFile(&db.FileEntry{
+		ShareID:    shareID,
+		Path:       path,
+		Type:       "file",
+		Size:       info.Size(),
+		ModTime:    info.ModTime(),
+		LocalHash:  sum,
+		RemoteHash: sum,
+		SyncStatus: "synced",
+		LastSyncAt: time.Now(),
+	}))
+}
+
+func (e *Engine) deltaUpload(ctx context.Context, shareID, remotePath, localPath, sum string) error {
 	// Get remote block hashes
 	remoteHashes, err := e.apiClient.GetBlockHashes(ctx, shareID, remotePath, hash.DefaultBlockSize)
 	if err != nil {
@@ -793,25 +845,45 @@ func (e *Engine) deltaUpload(ctx context.Context, shareID, remotePath, localPath
 	}
 
 	// Compute delta plan
+	// The plan uses the server's block size (it picks its own).
 	plan, err := hash.ComputeDeltaPlan(localPath, &hash.BlockHashes{
-		BlockSize: remoteHashes.BlockSize,
+		BlockSize: int(remoteHashes.BlockSize),
 		FileSize:  remoteHashes.Size,
 		Blocks:    convertAPIBlockHashes(remoteHashes.Blocks),
-	}, hash.DefaultBlockSize)
+	}, int(remoteHashes.BlockSize))
 	if err != nil {
 		return err
 	}
 
 	// If delta savings are minimal, do full upload
-	if float64(plan.SavedBytes)/float64(plan.TotalBytes) < 0.2 {
-		return fmt.Errorf("delta savings too small")
+	if plan.TotalBytes == 0 || float64(plan.SavedBytes)/float64(plan.TotalBytes) < 0.2 {
+		return errDeltaNotWorthIt
 	}
-
-	// For simplicity, we'll do a full upload for now
-	// A full delta upload implementation would send only the changed blocks
-	// and have the server reconstruct the file
-	return fmt.Errorf("delta upload requires server-side support")
+	ops := make([]api.DeltaOp, 0, len(plan.Operations))
+	var newBytes int64
+	for _, op := range plan.Operations {
+		if op.Type == "copy" {
+			ops = append(ops, api.DeltaOp{Offset: op.Offset, Size: int64(op.Size)})
+			continue
+		}
+		newBytes += int64(len(op.Data))
+		ops = append(ops, api.DeltaOp{Data: op.Data})
+	}
+	// The server takes at most 64 MiB per request (base64 grows data by a
+	// third); more new data goes as a whole-file upload.
+	if newBytes > 40<<20 {
+		return errDeltaNotWorthIt
+	}
+	// The server rebuilds the file and checks it against the hash; if the
+	// file changed there meanwhile it refuses and the caller uploads it whole.
+	if err := e.apiClient.UploadDelta(ctx, shareID, remotePath, sum, ops); err != nil {
+		return err
+	}
+	e.logger.Info().Str("path", remotePath).Int64("sent_bytes", newBytes).Int64("saved_bytes", plan.SavedBytes).Msg("Delta upload")
+	return nil
 }
+
+var errDeltaNotWorthIt = errors.New("a delta upload wouldn't save enough")
 
 func (e *Engine) handleConflict(shareID, path string, localModTime time.Time, localHash string, remote api.FileChange) {
 	e.logger.Warn().
@@ -823,41 +895,48 @@ func (e *Engine) handleConflict(shareID, path string, localModTime time.Time, lo
 	sharePath := filepath.Join(e.cfg.SyncFolder, shareName)
 	localPath := filepath.Join(sharePath, path)
 
+	logErr := func(what string, err error) {
+		if err != nil {
+			e.logger.Error().Err(err).Str("share", shareID).Str("path", path).Msg(what)
+		}
+	}
 	switch e.cfg.ConflictPolicy {
 	case "keep_local":
 		// Upload local version
-		e.database.EnqueueOperation(shareID, path, "upload", 2)
+		logErr("queue the local version for upload", e.database.EnqueueOperation(shareID, path, "upload", 2))
 
 	case "keep_remote":
 		// Download remote version
-		e.downloadFile(shareID, shareName, path, localPath)
+		logErr("download the remote version", e.downloadFile(shareID, shareName, path, localPath))
 
 	case "keep_both":
 		fallthrough
 	default:
-		// Rename local file and download remote
+		// Keep the local file as a conflict copy, then download the remote
+		// version. If the local file can't be moved aside, nothing is
+		// downloaded over it: the conflict stays recorded for the user.
+		// (A failed rename used to be ignored and the download overwrote
+		// the local edits.)
 		ext := filepath.Ext(path)
 		base := strings.TrimSuffix(path, ext)
 		conflictPath := fmt.Sprintf("%s (Conflict %s)%s", base, time.Now().Format("2006-01-02 15-04-05"), ext)
-
 		conflictLocalPath := filepath.Join(sharePath, conflictPath)
-		os.Rename(localPath, conflictLocalPath)
-
-		// Download remote version
-		e.downloadFile(shareID, shareName, path, localPath)
-
-		// Upload the conflict copy
-		e.database.EnqueueOperation(shareID, conflictPath, "upload", 0)
+		if err := os.Rename(localPath, conflictLocalPath); err != nil {
+			logErr("keep the local version as a conflict copy; the remote version was not downloaded", err)
+			break
+		}
+		logErr("download the remote version", e.downloadFile(shareID, shareName, path, localPath))
+		logErr("queue the conflict copy for upload", e.database.EnqueueOperation(shareID, conflictPath, "upload", 0))
 	}
 
 	// Record conflict
-	e.database.AddConflict(&db.Conflict{
+	logErr("record the conflict", e.database.AddConflict(&db.Conflict{
 		ShareID:      shareID,
 		Path:         path,
 		LocalHash:    localHash,
-		RemoteHash:   remote.ContentHash,
+		RemoteHash:   remote.Hash,
 		LocalModTime: localModTime,
-	})
+	}))
 
 	if e.onConflict != nil {
 		e.onConflict(Conflict{
@@ -884,12 +963,20 @@ func convertAPIBlockHashes(blocks []api.BlockHash) []hash.BlockHash {
 	result := make([]hash.BlockHash, len(blocks))
 	for i, b := range blocks {
 		result[i] = hash.BlockHash{
-			Index:      b.Index,
+			Index:      i,
 			Offset:     b.Offset,
-			Size:       b.Size,
+			Size:       int(b.Size),
 			StrongHash: b.StrongHash,
 			WeakHash:   b.WeakHash,
 		}
 	}
 	return result
+}
+
+// dbErr logs a failed write to the local sync database. (These errors were
+// ignored: a change that couldn't be queued was silently never synced.)
+func (e *Engine) dbErr(what string, err error) {
+	if err != nil {
+		e.logger.Error().Err(err).Str("op", what).Msg("sync database write failed")
+	}
 }

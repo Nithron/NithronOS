@@ -43,6 +43,9 @@ type shareInput struct {
 	Owners      *[]string   `json:"owners"`
 	Readers     *[]string   `json:"readers"`
 	Apps        *[]string   `json:"apps"`
+	Sync        *struct {
+		Enabled bool `json:"enabled"`
+	} `json:"sync"`
 }
 
 // fieldError is one problem with a share, as the UI's test call shows it.
@@ -72,7 +75,7 @@ func (h *SharesHandler) Routes(adminRequired func(http.Handler) http.Handler) ch
 }
 
 func (h *SharesHandler) list(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, h.store.List())
+	writeJSON(w, shareViews(h.store.List()))
 }
 
 func (h *SharesHandler) get(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +84,7 @@ func (h *SharesHandler) get(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteTypedError(w, http.StatusNotFound, "shares.not_found", "Share not found", 0)
 		return
 	}
-	writeJSON(w, sh)
+	writeJSON(w, newShareView(sh))
 }
 
 func decodeShareInput(w http.ResponseWriter, r *http.Request) (shareInput, bool) {
@@ -122,6 +125,9 @@ func (in shareInput) merge(sh *shares.Share) {
 	}
 	if in.Apps != nil {
 		sh.Apps = dedupe(*in.Apps)
+	}
+	if in.Sync != nil {
+		sh.SyncDisabled = !in.Sync.Enabled
 	}
 }
 
@@ -232,7 +238,7 @@ func (h *SharesHandler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(created)
+	_ = json.NewEncoder(w).Encode(newShareView(created))
 }
 
 func (h *SharesHandler) update(w http.ResponseWriter, r *http.Request) {
@@ -268,7 +274,7 @@ func (h *SharesHandler) update(w http.ResponseWriter, r *http.Request) {
 	if !h.applyOrFail(w, r) {
 		return
 	}
-	writeJSON(w, updated)
+	writeJSON(w, newShareView(updated))
 }
 
 // delete removes the share from the configuration. The folder and its files
@@ -331,4 +337,28 @@ func (h *SharesHandler) applyOrFail(w http.ResponseWriter, r *http.Request) bool
 		return false
 	}
 	return true
+}
+
+// shareView is a share as the API shows it: sync as {"enabled": bool}, the
+// shape the share form sends.
+type shareView struct {
+	shares.Share
+	SyncDisabled bool `json:"-"` // shown as sync.enabled
+	Sync         struct {
+		Enabled bool `json:"enabled"`
+	} `json:"sync"`
+}
+
+func newShareView(sh shares.Share) shareView {
+	v := shareView{Share: sh}
+	v.Sync.Enabled = !sh.SyncDisabled
+	return v
+}
+
+func shareViews(list []shares.Share) []shareView {
+	out := make([]shareView, 0, len(list))
+	for _, sh := range list {
+		out = append(out, newShareView(sh))
+	}
+	return out
 }

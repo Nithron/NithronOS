@@ -1,122 +1,91 @@
 /**
- * NithronSync API Types
- * Shared type definitions for API communication
+ * nosd's sync API as it serves it (backend/nosd/pkg/sync/types.go,
+ * docs/sync/api.md). Times are RFC 3339 strings.
  */
 
-// Device types
-export type DeviceType = 'desktop' | 'mobile' | 'tablet' | 'other';
-export type DevicePlatform = 'windows' | 'linux' | 'macos' | 'ios' | 'android' | 'other';
+export type DeviceType =
+  | 'windows'
+  | 'linux'
+  | 'macos'
+  | 'android'
+  | 'ios'
+  | 'unknown';
 
-// Authentication
-export interface DeviceRegistration {
-  name: string;
-  type: DeviceType;
-  platform: DevicePlatform;
-  model?: string;
-  osVersion?: string;
+/** GET /api/v1/sync/devices/{id}, an entry of GET /api/v1/sync/devices */
+export interface Device {
+  id: string;
+  device_name: string;
+  device_type: DeviceType;
+  os_version?: string;
+  client_version?: string;
+  created_at: string;
+  last_sync_at?: string;
+  last_seen_at?: string;
+  last_ip?: string;
+  sync_count: number;
+  bytes_synced: number;
+  is_revoked: boolean;
 }
 
-export interface DeviceTokenResponse {
-  device_id: string;
+export interface DeviceListResponse {
+  devices: Device[] | null;
+  count: number;
+}
+
+/** POST /api/v1/sync/devices/refresh: both tokens are replaced */
+export interface RefreshResponse {
   device_token: string;
   refresh_token: string;
   expires_at: string;
-  scopes: string[];
 }
 
-export interface RefreshTokenResponse {
-  device_token: string;
-  expires_at: string;
-}
-
-export interface Device {
-  id: string;
-  name: string;
-  type: DeviceType;
-  platform: DevicePlatform;
-  created_at: string;
-  last_seen: string;
-  last_sync?: string;
-  sync_bytes?: number;
-  is_online: boolean;
-}
-
-// Sync shares
 export interface SyncShare {
   share_id: string;
-  name: string;
-  path: string;
+  share_name: string;
+  share_path: string;
   sync_enabled: boolean;
-  sync_max_size?: number;
-  sync_exclude?: string[];
-  total_size?: number;
-  file_count?: number;
+  total_size: number;
+  file_count: number;
 }
 
-// Sync configuration
+export interface ShareListResponse {
+  shares: SyncShare[] | null;
+  count: number;
+}
+
+/** GET /api/v1/sync/config: the device's own record (device_id is this device) */
 export interface SyncConfig {
   device_id: string;
-  enabled_shares: string[];
-  bandwidth_limit?: number;
+  sync_shares: string[] | null;
+  selective_paths: string[] | null;
+  bandwidth_limit_kbps: number;
   pause_sync: boolean;
-  selective_sync: Record<string, string[]>;
-  sync_on_wifi_only: boolean;
-  sync_on_metered: boolean;
-  auto_upload_photos: boolean;
-  auto_upload_videos: boolean;
+  sync_on_mobile_data: boolean;
 }
 
-// File metadata
+/** GET /api/v1/sync/files/{share_id}/metadata */
 export interface FileMetadata {
   path: string;
-  name: string;
-  is_dir: boolean;
   size: number;
-  modified: string;
-  hash?: string;
-  mime_type?: string;
-  thumbnail_url?: string;
+  mtime: string;
+  hash: string;
+  is_dir: boolean;
+  mode?: number;
 }
 
-// File change tracking
-export interface FileChange {
+/** A WebDAV PROPFIND entry: what a folder listing shows */
+export interface FolderEntry {
+  /** Relative to the share, no leading slash; '' is the share itself */
   path: string;
-  change_type: 'created' | 'modified' | 'deleted' | 'renamed';
-  old_path?: string;
-  metadata?: FileMetadata;
-  timestamp: string;
+  name: string;
+  isDir: boolean;
+  size: number;
+  /** ISO time, or null when the server didn't say */
+  modified: string | null;
+  contentType: string | null;
 }
 
-export interface ChangesResponse {
-  changes: FileChange[];
-  cursor: string;
-  has_more: boolean;
-}
-
-// Sync state
-export interface SyncState {
-  device_id: string;
-  share_id: string;
-  cursor: string;
-  last_sync: string;
-  total_bytes: number;
-  synced_bytes: number;
-  pending_uploads: number;
-  pending_downloads: number;
-  conflicts: number;
-}
-
-// Conflict resolution
-export interface SyncConflict {
-  id: string;
-  share_id: string;
-  path: string;
-  local_version: FileVersion;
-  remote_version: FileVersion;
-  detected_at: string;
-  resolved: boolean;
-  resolution?: 'keep_local' | 'keep_remote' | 'keep_both' | 'merge';
-}
+export type ConflictResolution = 'keep_local' | 'keep_remote' | 'keep_both';
 
 export interface FileVersion {
   hash: string;
@@ -125,16 +94,38 @@ export interface FileVersion {
   modified_by?: string;
 }
 
-// Activity history
+export interface SyncConflict {
+  id: string;
+  share_id: string;
+  device_id: string;
+  path: string;
+  local_version: FileVersion;
+  remote_version: FileVersion;
+  detected_at: string;
+  resolved: boolean;
+  resolution?: ConflictResolution | 'merge';
+  resolved_at?: string;
+  resolved_by?: string;
+}
+
+export type ActivityAction =
+  | 'upload'
+  | 'download'
+  | 'delete'
+  | 'rename'
+  | 'conflict';
+
+export type ActivityStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
+
 export interface SyncActivity {
   id: string;
   device_id: string;
   share_id: string;
-  action: 'upload' | 'download' | 'delete' | 'rename' | 'conflict';
+  action: ActivityAction;
   path: string;
   old_path?: string;
   size?: number;
-  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  status: ActivityStatus;
   error?: string;
   started_at: string;
   completed_at?: string;
@@ -142,54 +133,13 @@ export interface SyncActivity {
 }
 
 export interface ActivityListResponse {
-  activities: SyncActivity[];
+  activities: SyncActivity[] | null;
   total: number;
   page: number;
   page_size: number;
 }
 
-// Block hashing for delta sync
-export interface BlockHash {
-  offset: number;
-  size: number;
-  weak: number; // Adler-32
-  strong: string; // SHA-256
+/** nosd's error body: {"error": {"code", "message"}} */
+export interface ErrorBody {
+  error?: {code?: string; message?: string};
 }
-
-export interface BlockHashRequest {
-  path: string;
-  block_size?: number;
-}
-
-export interface BlockHashResponse {
-  path: string;
-  size: number;
-  block_size: number;
-  blocks: BlockHash[];
-}
-
-// Transfer progress
-export interface TransferProgress {
-  path: string;
-  direction: 'upload' | 'download';
-  total_bytes: number;
-  transferred_bytes: number;
-  speed_bps: number;
-  eta_seconds?: number;
-}
-
-// Error types
-export interface APIError {
-  code: string;
-  message: string;
-  details?: Record<string, unknown>;
-}
-
-// Server discovery
-export interface ServerInfo {
-  url: string;
-  name: string;
-  version: string;
-  features: string[];
-}
-

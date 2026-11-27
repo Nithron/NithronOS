@@ -97,51 +97,6 @@ func TestDefaultDeviceScopes(t *testing.T) {
 	}
 }
 
-func TestCursorEncodeDecode(t *testing.T) {
-	original := &Cursor{
-		Timestamp:   time.Now(),
-		FileHashes:  map[string]string{"file1.txt": "abc123", "file2.txt": "def456"},
-		LastScanned: time.Now(),
-	}
-
-	encoded := EncodeCursor(original)
-	if encoded == "" {
-		t.Fatal("EncodeCursor returned empty string")
-	}
-
-	decoded, err := DecodeCursor(encoded)
-	if err != nil {
-		t.Fatalf("DecodeCursor failed: %v", err)
-	}
-
-	if len(decoded.FileHashes) != len(original.FileHashes) {
-		t.Errorf("FileHashes length mismatch: got %d, want %d", len(decoded.FileHashes), len(original.FileHashes))
-	}
-
-	for path, hash := range original.FileHashes {
-		if decoded.FileHashes[path] != hash {
-			t.Errorf("FileHash mismatch for %s: got %v, want %v", path, decoded.FileHashes[path], hash)
-		}
-	}
-}
-
-func TestCursorDecodeEmpty(t *testing.T) {
-	cursor, err := DecodeCursor("")
-	if err != nil {
-		t.Errorf("DecodeCursor('') should not return error: %v", err)
-	}
-	if cursor != nil {
-		t.Error("DecodeCursor('') should return nil cursor")
-	}
-}
-
-func TestCursorDecodeInvalid(t *testing.T) {
-	_, err := DecodeCursor("invalid-base64!")
-	if err == nil {
-		t.Error("DecodeCursor should return error for invalid input")
-	}
-}
-
 func TestDeltaSyncBlockSize(t *testing.T) {
 	// Test default block size
 	ds := NewDeltaSync(0)

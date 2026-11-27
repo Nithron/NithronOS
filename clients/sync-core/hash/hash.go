@@ -225,64 +225,78 @@ func ComputeDeltaPlanFromReader(r io.Reader, localSize int64, remoteBlocks *Bloc
 		return plan, nil
 	}
 
-	// Find matching blocks. Note: the weak hash is recomputed from scratch at
-	// every byte offset (O(n*blockSize)); switching to RollingHash is tracked
-	// in docs/dev/revision-plan.md (phase 7).
-	matchedRanges := make(map[int]bool) // Track matched remote blocks
+	// Find matching blocks. The weak hash rolls one byte at a time (Adler-32,
+	// the same value adler32.Checksum gives the server); the strong hash is
+	// computed only when the weak one matches. (It was recomputed from
+	// scratch at every offset, and each remote block could be reused only
+	// once, so repeated content was sent again.)
 	var pendingData []byte
 	pos := 0
+	var win adlerWindow
+	haveWin := false
+	if len(data) >= blockSize {
+		win = newAdlerWindow(data[:blockSize])
+		haveWin = true
+	}
+
+	// The remote file's last block is usually shorter than blockSize and
+	// can only match at one place: where it would end the new file.
+	var tail *BlockHash
+	if n := len(remoteBlocks.Blocks); n > 0 && remoteBlocks.Blocks[n-1].Size < blockSize {
+		tail = &remoteBlocks.Blocks[n-1]
+	}
 
 	for pos < len(data) {
-		// Try to find a matching block
-		end := pos + blockSize
-		if end > len(data) {
-			end = len(data)
+		if tail != nil && len(data)-pos == tail.Size && BytesHash(data[pos:]) == tail.StrongHash {
+			if len(pendingData) > 0 {
+				plan.Operations = append(plan.Operations, DeltaOp{Type: "data", Size: len(pendingData), Data: pendingData})
+				pendingData = nil
+			}
+			plan.Operations = append(plan.Operations, DeltaOp{Type: "copy", Offset: tail.Offset, Size: tail.Size, BlockIndex: tail.Index})
+			plan.SavedBytes += int64(tail.Size)
+			break
 		}
-
-		blockData := data[pos:end]
-
-		// Only try to match full blocks
-		if len(blockData) == blockSize {
-			weakHash := adler32.Checksum(blockData)
-
-			if indices, ok := weakMap[weakHash]; ok {
+		if haveWin {
+			if indices, ok := weakMap[win.sum()]; ok {
+				blockData := data[pos : pos+blockSize]
 				strongHash := BytesHash(blockData)
-
+				matched := -1
 				for _, idx := range indices {
-					if remoteBlocks.Blocks[idx].StrongHash == strongHash && !matchedRanges[idx] {
-						// Found a match!
-
-						// First, emit any pending data
-						if len(pendingData) > 0 {
-							plan.Operations = append(plan.Operations, DeltaOp{
-								Type: "data",
-								Size: len(pendingData),
-								Data: pendingData,
-							})
-							pendingData = nil
-						}
-
-						// Emit copy operation
-						plan.Operations = append(plan.Operations, DeltaOp{
-							Type:       "copy",
-							Offset:     remoteBlocks.Blocks[idx].Offset,
-							Size:       blockSize,
-							BlockIndex: idx,
-						})
-						plan.SavedBytes += int64(blockSize)
-						matchedRanges[idx] = true
-						pos = end
-						goto nextBlock
+					if remoteBlocks.Blocks[idx].StrongHash == strongHash {
+						matched = idx
+						break
 					}
+				}
+				if matched >= 0 {
+					if len(pendingData) > 0 {
+						plan.Operations = append(plan.Operations, DeltaOp{Type: "data", Size: len(pendingData), Data: pendingData})
+						pendingData = nil
+					}
+					plan.Operations = append(plan.Operations, DeltaOp{
+						Type:       "copy",
+						Offset:     remoteBlocks.Blocks[matched].Offset,
+						Size:       blockSize,
+						BlockIndex: matched,
+					})
+					plan.SavedBytes += int64(blockSize)
+					pos += blockSize
+					haveWin = pos+blockSize <= len(data)
+					if haveWin {
+						win = newAdlerWindow(data[pos : pos+blockSize])
+					}
+					continue
 				}
 			}
 		}
 
-		// No match - add byte to pending data
+		// No match here: this byte is new data; the window moves one byte.
 		pendingData = append(pendingData, data[pos])
+		if haveWin && pos+blockSize < len(data) {
+			win.roll(data[pos], data[pos+blockSize])
+		} else {
+			haveWin = false
+		}
 		pos++
-
-	nextBlock:
 	}
 
 	// Emit any remaining pending data
@@ -318,19 +332,26 @@ func QuickHash(path string) (string, error) {
 	h := sha256.New()
 
 	// Read first 64KB
+	// A failed read is an error, not a hash of whatever was read (that
+	// could make a changed file look unchanged).
 	buf := make([]byte, 64*1024)
-	n, _ := f.Read(buf)
+	n, err := io.ReadFull(f, buf)
+	if err != nil && err != io.ErrUnexpectedEOF && err != io.EOF {
+		return "", err
+	}
 	h.Write(buf[:n])
 
 	// Read last 64KB if file is large enough
 	if size > 128*1024 {
-		f.Seek(-64*1024, io.SeekEnd)
-		n, _ = f.Read(buf)
+		n, err = f.ReadAt(buf, size-64*1024)
+		if err != nil && err != io.EOF {
+			return "", err
+		}
 		h.Write(buf[:n])
 	}
 
 	// Include size in hash
-	h.Write([]byte(fmt.Sprintf(":%d", size)))
+	fmt.Fprintf(h, ":%d", size)
 
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
@@ -361,3 +382,32 @@ func (h *IncrementalHasher) Sum() string {
 func (h *IncrementalHasher) Reset() {
 	h.hash.Reset()
 }
+
+// adlerWindow is Adler-32 over a fixed-size window that can move one byte
+// at a time; sum() equals adler32.Checksum of the window's bytes.
+type adlerWindow struct {
+	a, b uint32
+	n    int64
+}
+
+const adlerMod = 65521
+
+func newAdlerWindow(block []byte) adlerWindow {
+	s := adler32.Checksum(block)
+	return adlerWindow{a: s & 0xffff, b: s >> 16, n: int64(len(block))}
+}
+
+// roll drops out (the window's first byte) and appends in.
+func (w *adlerWindow) roll(out, in byte) {
+	a := (int64(w.a) - int64(out) + int64(in)) % adlerMod
+	if a < 0 {
+		a += adlerMod
+	}
+	b := (int64(w.b) - w.n*int64(out) + a - 1) % adlerMod
+	if b < 0 {
+		b += adlerMod
+	}
+	w.a, w.b = uint32(a), uint32(b)
+}
+
+func (w adlerWindow) sum() uint32 { return w.b<<16 | w.a }

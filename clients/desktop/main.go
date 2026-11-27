@@ -43,20 +43,23 @@ func main() {
 	}
 
 	// Create app
+	app.Icon = icon
 	application := app.New(log.Logger)
 
 	// Create application with options
 	err = wails.Run(&options.App{
-		Title:             "NithronSync",
-		Width:             1024,
-		Height:            768,
-		MinWidth:          400,
-		MinHeight:         300,
-		DisableResize:     false,
-		Fullscreen:        false,
-		Frameless:         false,
-		StartHidden:       false,
-		HideWindowOnClose: true,
+		Title:         "NithronSync",
+		Width:         1024,
+		Height:        768,
+		MinWidth:      400,
+		MinHeight:     300,
+		DisableResize: false,
+		Fullscreen:    false,
+		Frameless:     false,
+		StartHidden:   false,
+		// Hidden to the tray where there is one (Windows); elsewhere
+		// closing quits rather than leaving a window nothing can reopen.
+		HideWindowOnClose: app.HasTray,
 		BackgroundColour:  &options.RGBA{R: 255, G: 255, B: 255, A: 255},
 		AssetServer: &assetserver.Options{
 			Assets: assets,
@@ -118,4 +121,3 @@ func init() {
 		runtime.GOMAXPROCS(2)
 	}
 }
-

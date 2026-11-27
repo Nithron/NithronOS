@@ -45,22 +45,10 @@ func (d *routeDeps) registerSync(pr, root chi.Router) {
 		Logger(cfg).Info().Msg("Encryption API initialized")
 	}
 
-	// Phase 4: Offline-first sync
-	offlineHandler, offErr := NewOfflineHandler(cfg, *Logger(cfg))
-	if offErr != nil {
-		Logger(cfg).Error().Err(offErr).Msg("Failed to create offline handler")
-	} else {
-		pr.Mount("/api/v1/sync/offline", offlineHandler.Routes())
-		Logger(cfg).Info().Msg("Offline sync API initialized")
-	}
-
-	// Phase 4: Smart sync (on-demand files)
-	smartsyncHandler, smartErr := NewSmartSyncHandler(cfg, *Logger(cfg))
-	if smartErr != nil {
-		Logger(cfg).Error().Err(smartErr).Msg("Failed to create smart sync handler")
-	} else {
-		pr.Mount("/api/v1/sync/smartsync", smartsyncHandler.Routes())
-		Logger(cfg).Info().Msg("Smart sync API initialized")
-	}
+	// (Offline mode and smart sync's placeholder files are client work: the
+	// sync client keeps its own queue. The server-side versions, at
+	// /api/v1/sync/offline and /sync/smartsync, kept bookkeeping nothing
+	// used, and "processing" the offline queue marked uploads done without
+	// uploading anything; they are gone.)
 
 }

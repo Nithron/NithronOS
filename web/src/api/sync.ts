@@ -38,6 +38,8 @@ export interface DeviceRegisterResponse {
   device_token: string;
   refresh_token: string;
   expires_at: string;
+  /** SHA-256 of the web certificate's public key, for the client to pin */
+  server_key_sha256?: string;
 }
 
 export interface DeviceRefreshRequest {

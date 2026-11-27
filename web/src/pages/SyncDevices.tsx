@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
+import { pairingLink } from '@/lib/pairing';
 import {
   Smartphone,
   Monitor,
@@ -9,7 +10,6 @@ import {
   Edit2,
   RefreshCw,
   Plus,
-  QrCode,
   Copy,
   Check,
   AlertCircle,
@@ -56,25 +56,18 @@ import {
 
 // QR Code component
 function TokenQRCode({ 
-  token, 
-  serverUrl,
-  deviceName,
+  link,
   size = 200 
 }: { 
-  token: string; 
-  serverUrl: string;
-  deviceName: string;
+  link: string;
   size?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!canvasRef.current || !token) return;
-
-    // Create a sync URL that the mobile app can parse
-    // Format: nos://sync?server=<url>&token=<token>&name=<name>
-    const syncUrl = `nos://sync?server=${encodeURIComponent(serverUrl)}&token=${encodeURIComponent(token)}&name=${encodeURIComponent(deviceName)}`;
+    if (!canvasRef.current || !link) return;
+    const syncUrl = link;
 
     QRCode.toCanvas(canvasRef.current, syncUrl, {
       width: size,
@@ -90,7 +83,7 @@ function TokenQRCode({
         setError('Failed to generate QR code');
       }
     });
-  }, [token, serverUrl, deviceName, size]);
+  }, [link, size]);
 
   if (error) {
     return (
@@ -115,56 +108,6 @@ function TokenQRCode({
   );
 }
 
-// Server URL QR Code for initial setup
-function ServerQRCode({ size = 200 }: { size?: number }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [error, setError] = useState<string | null>(null);
-  const serverUrl = window.location.origin;
-
-  useEffect(() => {
-    if (!canvasRef.current) return;
-
-    // Create a discovery URL for the mobile app
-    const discoveryUrl = `nos://discover?server=${encodeURIComponent(serverUrl)}`;
-
-    QRCode.toCanvas(canvasRef.current, discoveryUrl, {
-      width: size,
-      margin: 2,
-      color: {
-        dark: '#1f2937',
-        light: '#ffffff',
-      },
-      errorCorrectionLevel: 'M',
-    }, (err) => {
-      if (err) {
-        console.error('QR code generation error:', err);
-        setError('Failed to generate QR code');
-      }
-    });
-  }, [serverUrl, size]);
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center p-4 bg-red-50 border border-red-200 rounded-lg">
-        <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-        <span className="text-sm text-red-700">{error}</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col items-center">
-      <canvas 
-        ref={canvasRef}
-        data-testid="qr-code" 
-        className="rounded-lg border border-gray-200"
-      />
-      <p className="text-xs text-muted-foreground mt-2 text-center">
-        Server: {serverUrl}
-      </p>
-    </div>
-  );
-}
 
 // Device icon component
 function DeviceIcon({ type, className = 'h-5 w-5' }: { type: DeviceType; className?: string }) {
@@ -281,7 +224,6 @@ export default function SyncDevices() {
   const [editName, setEditName] = useState('');
   const [revokeDeviceTarget, setRevokeDeviceTarget] = useState<SyncDevice | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [showQRDialog, setShowQRDialog] = useState(false);
   
   // New device form
   const [newDeviceName, setNewDeviceName] = useState('');
@@ -290,6 +232,7 @@ export default function SyncDevices() {
     device_id: string;
     device_token: string;
     refresh_token: string;
+    server_key_sha256?: string;
   } | null>(null);
   const [copiedToken, setCopiedToken] = useState(false);
 
@@ -361,10 +304,20 @@ export default function SyncDevices() {
     }
   };
 
-  // Copy token to clipboard
+  const registeredLink = registeredDevice
+    ? pairingLink({
+        server: window.location.origin,
+        deviceToken: registeredDevice.device_token,
+        refreshToken: registeredDevice.refresh_token,
+        serverKey: registeredDevice.server_key_sha256,
+        deviceName: newDeviceName,
+      })
+    : '';
+
+  // Copy the pairing link to the clipboard
   const copyToken = () => {
     if (!registeredDevice) return;
-    navigator.clipboard.writeText(registeredDevice.device_token);
+    navigator.clipboard.writeText(registeredLink);
     setCopiedToken(true);
     setTimeout(() => setCopiedToken(false), 2000);
   };
@@ -467,10 +420,6 @@ export default function SyncDevices() {
               <Button onClick={() => setShowAddDialog(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Device
-              </Button>
-              <Button variant="outline" onClick={() => setShowQRDialog(true)}>
-                <QrCode className="h-4 w-4 mr-2" />
-                Scan QR Code
               </Button>
             </div>
           </CardContent>
@@ -607,44 +556,42 @@ export default function SyncDevices() {
                   </div>
                   <p className="text-sm text-green-600">
                     {(newDeviceType === 'ios' || newDeviceType === 'android')
-                      ? 'Scan the QR code with the NithronSync app, or copy the token manually.'
-                      : 'Copy the token below and paste it in your NithronSync client.'}
+                      ? 'Scan the QR code with the NithronSync app, or copy the pairing link.'
+                      : 'Copy the pairing link and paste it in NithronSync (or run nithron-sync-daemon --pair <link>).'}
                   </p>
                 </div>
 
                 {/* Show QR code for mobile devices */}
                 {(newDeviceType === 'ios' || newDeviceType === 'android') && (
                   <div className="flex justify-center py-4">
-                    <TokenQRCode
-                      token={registeredDevice.device_token}
-                      serverUrl={window.location.origin}
-                      deviceName={newDeviceName}
-                      size={180}
-                    />
+                    <TokenQRCode link={registeredLink} size={180} />
                   </div>
                 )}
                 
                 <div>
-                  <Label>Device Token</Label>
+                  <Label>Pairing Link</Label>
                   <div className="flex gap-2 mt-2">
                     <Input
-                      value={registeredDevice.device_token}
+                      value={registeredLink}
                       readOnly
                       className="font-mono text-xs"
+                      data-testid="pairing-link"
                     />
-                    <Button variant="outline" size="icon" onClick={copyToken}>
+                    <Button variant="outline" size="icon" onClick={copyToken} aria-label="Copy pairing link">
                       {copiedToken ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    This token will only be shown once. Store it securely.
+                    It holds this device's tokens and is shown only once: keep it private.
+                    {registeredDevice.server_key_sha256 &&
+                      " It also holds this server's key, so the client trusts this server's own certificate and no other."}
                   </p>
                 </div>
 
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-sm text-yellow-700">
-                    <strong>Important:</strong> The device token expires in 90 days.
-                    The client will automatically refresh it before expiration.
+                    The device token lasts 90 days; the client renews it with the refresh
+                    token in the link.
                   </p>
                 </div>
               </div>
@@ -656,75 +603,6 @@ export default function SyncDevices() {
         </DialogContent>
       </Dialog>
 
-      {/* QR Code Dialog for mobile app discovery */}
-      <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Connect with QR Code</DialogTitle>
-            <DialogDescription>
-              Scan this QR code with the NithronSync mobile app to connect to this server.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center py-6">
-            <ServerQRCode size={220} />
-            
-            <div className="mt-6 w-full">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-muted-foreground">Or enter manually</span>
-                </div>
-              </div>
-              
-              <div className="mt-4">
-                <Label>Server URL</Label>
-                <div className="flex gap-2 mt-2">
-                  <Input
-                    value={window.location.origin}
-                    readOnly
-                    className="font-mono text-sm"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={() => {
-                      navigator.clipboard.writeText(window.location.origin);
-                      toast.success('Server URL copied!');
-                    }}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-            
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg w-full">
-              <h4 className="font-medium text-blue-900 mb-2">Get the NithronSync App</h4>
-              <div className="flex gap-3">
-                <a 
-                  href="#" 
-                  className="flex-1 flex items-center justify-center gap-2 p-2 bg-black text-white rounded-lg text-sm hover:bg-gray-800 transition-colors"
-                >
-                  <Smartphone className="h-4 w-4" />
-                  App Store
-                </a>
-                <a 
-                  href="#" 
-                  className="flex-1 flex items-center justify-center gap-2 p-2 bg-black text-white rounded-lg text-sm hover:bg-gray-800 transition-colors"
-                >
-                  <Smartphone className="h-4 w-4" />
-                  Play Store
-                </a>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setShowQRDialog(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

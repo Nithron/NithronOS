@@ -279,20 +279,25 @@ func (w *Watcher) handleEvent(fsEvent fsnotify.Event) {
 	switch {
 	case fsEvent.Has(fsnotify.Create):
 		op = OpCreate
-		// If a directory was created, add it to the watcher
+		// A new folder: watch it and its subfolders, and report what is
+		// already in it. (Only the folder itself was watched, after the
+		// fact: a file written right after `mkdir -p`, or a folder moved
+		// or copied in whole, was never seen.)
 		if info, err := os.Stat(fsEvent.Name); err == nil && info.IsDir() {
-			w.watcher.Add(fsEvent.Name)
+			if err := w.addRecursive(fsEvent.Name); err != nil {
+				w.logger.Warn().Err(err).Str("path", fsEvent.Name).Msg("Can't watch a new folder; its changes won't be seen")
+			}
+			w.announceContents(fsEvent.Name)
 		}
 	case fsEvent.Has(fsnotify.Write):
 		op = OpWrite
 	case fsEvent.Has(fsnotify.Remove):
 		op = OpRemove
 		// Remove from watcher (ignore error if not watched)
-		w.watcher.Remove(fsEvent.Name)
+		_ = w.watcher.Remove(fsEvent.Name)
 	case fsEvent.Has(fsnotify.Rename):
 		op = OpRename
 	case fsEvent.Has(fsnotify.Chmod):
-		op = OpChmod
 		// Ignore chmod-only events
 		return
 	default:
@@ -314,6 +319,23 @@ func (w *Watcher) handleEvent(fsEvent fsnotify.Event) {
 
 	// Debounce the event
 	w.debounce(event)
+}
+
+// announceContents reports everything under dir as created.
+func (w *Watcher) announceContents(dir string) {
+	_ = filepath.Walk(dir, func(p string, info os.FileInfo, err error) error {
+		if err != nil || p == dir {
+			return nil
+		}
+		if w.shouldExclude(p) {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		w.debounce(Event{Path: p, Op: OpCreate, IsDir: info.IsDir(), Timestamp: time.Now()})
+		return nil
+	})
 }
 
 // debounce debounces events for the same path.

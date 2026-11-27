@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"nos/clients/sync-core/api"
 	"nos/clients/sync-core/config"
 	"nos/clients/sync-core/engine"
 )
@@ -32,6 +33,8 @@ func main() {
 		serverURL   = flag.String("server", "", "Server URL (for initial setup)")
 		deviceToken = flag.String("token", "", "Device token (for initial setup)")
 		syncFolder  = flag.String("folder", "", "Sync folder path (for initial setup)")
+		pairLink    = flag.String("pair", "", "Pairing link from the nOS web interface (nos://sync?...), instead of --server, --token and --server-key")
+		serverKey   = flag.String("server-key", "", "The server's TLS key, SHA-256 in hex, as the pairing page shows it (for initial setup; not needed for a public domain)")
 	)
 	flag.Parse()
 
@@ -75,7 +78,23 @@ func main() {
 	}
 
 	// Handle initial setup via command line
-	if *serverURL != "" && *deviceToken != "" {
+	if *pairLink != "" {
+		p, err := api.ParsePairingLink(*pairLink)
+		if err != nil {
+			log.Fatal().Err(err).Msg("--pair")
+		}
+		folder := *syncFolder
+		if folder == "" {
+			folder, _ = config.GetDefaultSyncFolder()
+		}
+		if err := p.Apply(cfg, folder); err != nil {
+			log.Fatal().Err(err).Msg("Failed to save configuration")
+		}
+		if err := os.MkdirAll(folder, 0o755); err != nil {
+			log.Fatal().Err(err).Msg("Failed to create sync folder")
+		}
+		log.Info().Str("server", p.ServerURL).Str("folder", folder).Msg("Paired")
+	} else if *serverURL != "" && *deviceToken != "" {
 		log.Info().Msg("Setting up from command line arguments...")
 
 		folder := *syncFolder
@@ -83,7 +102,14 @@ func main() {
 			folder, _ = config.GetDefaultSyncFolder()
 		}
 
+		pin := ""
+		if *serverKey != "" {
+			if pin, err = api.NormalizeKeyPin(*serverKey); err != nil {
+				log.Fatal().Err(err).Msg("--server-key")
+			}
+		}
 		if err := cfg.Update(func(c *config.Config) {
+			c.ServerKeySHA256 = pin
 			c.ServerURL = *serverURL
 			c.DeviceToken = *deviceToken
 			c.SyncFolder = folder
@@ -169,7 +195,9 @@ func main() {
 
 	done := make(chan struct{})
 	go func() {
-		eng.Stop()
+		if err := eng.Stop(); err != nil {
+			log.Error().Err(err).Msg("stopping the sync engine")
+		}
 		close(done)
 	}()
 

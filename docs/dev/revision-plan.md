@@ -257,6 +257,17 @@ Carried forward:
 
 Order (all required for v1): finish sync-core and the server side (Phase 4) together with a CLI client and an end-to-end test first, then the desktop client, then mobile (generate real iOS/Android projects, real camera QR scanning). Correct the README, which currently marks Pre-v1/NithronSync and A10 as complete.
 
+Status (2026-11-27, PR #13):
+
+- **End to end, in CI.** `scripts/live-ui/sync-e2e.sh` (UI E2E job) pairs a device and runs the real sync daemon against a live nosd: files up and down, nested folders, a 100-byte change to a 9 MiB file as a delta, and a file manager listing a share over WebDAV. Its first runs found most of what follows.
+- **Client and server didn't speak the same API.** The client sent an access token nosd never issues (and refreshed in a tight loop on 401), and its types (shares, changes, blocks, errors, refresh) were written for another API. They now match `pkg/sync/types.go`; `docs/sync/api.md` was rewritten from it.
+- **Connecting at all:** clients pin the server's key (the web certificate is self-signed), and one pairing link carries server, both tokens and key, for the daemon (`--pair`), the desktop app and the mobile QR code.
+- **Data safety:** the engine decides with full SHA-256s against the version both sides last had (a quick hash let an edit in the middle of a file be overwritten by the server's older copy); conflict downloads no longer overwrite; the queue is per share (another share's files went into the share being synced).
+- **Server:** delta uploads exist; the change feed caches hashes, keeps snapshots behind a short cursor and continues past 1000 changes; the offline and smart-sync APIs (bookkeeping nothing used, an offline queue that marked uploads done without uploading) are gone; a per-share sync switch works; `/api/v1/health` is public again.
+- **WebDAV:** chi refused PROPFIND/MKCOL/MOVE/... with 405 (registered now); file managers sign in with the device token as the Basic password; paths can't leave a share, through `..` or a symlink (that also applied to the block-hash and metadata endpoints, which reached nosd's own files).
+- **Desktop:** builds in CI on Linux (WebKitGTK 4.1) and Windows; the tray only on Windows (it can't share the UI loop elsewhere). macOS isn't built.
+- **Mobile: Android only, browsing.** Decided: Android now, iOS later. The app installs again (the unpublished and unused dependencies are gone; QR scanning is `react-native-vision-camera`'s code scanner), has a real React Native 0.76 Android project, and builds in CI (`Mobile (Android)`: typecheck, lint, Jest, a debug APK with its JavaScript bundled, JVM tests). Its API client speaks nosd's contract (pairing link, refresh-once, `{"shares": …}`, WebDAV PROPFIND for folders), keeps the tokens in the keystore-backed secure store, and trusts the server's pinned key natively (an OkHttp trust manager: the leaf's key must match for a pinned host, CA validation for any other). Not done: syncing files to the phone, iOS (project, pinning, signing), a release build and store listing, and testing on real devices.
+
 ---
 
 ## Phase 8: Testing and CI
@@ -307,6 +318,6 @@ The README overstates completion. Proposed re-baseline:
 7. **Workflow**: one branch and one pull request per phase (`revision/phase-N-<slug>`).
 8. **Name**: nOS, with NithronOS as the long form. Everything is renamed, including package names, paths and the GitHub repository (Nithron/nOS); its own PR after Phase 3, with a migration for existing installs.
 
-Open for later: the domain nOS uses. Placeholder `nithronos.com`/`.org` addresses remain in `docs/updates.md` (apt repository URL) and `docs-site/mkdocs.yml` (`site_url`) until the maintainer picks one.
+Decided (2026-11-27): nOS's domain is **nos.nithron.com**: the documentation at `https://nos.nithron.com/docs/`, the APT repository at `https://nos.nithron.com/apt` (`docs/updates.md`, `docs-site/mkdocs.yml`, the mobile app's docs link). Company pages and contact addresses stay on nithron.com.
 
 Open for later: Debian base. The ISO targets bookworm (Debian 12, now in LTS); moving to trixie (Debian 13) belongs in Phase 6.

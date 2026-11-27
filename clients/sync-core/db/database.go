@@ -372,14 +372,17 @@ func (d *Database) EnqueueOperation(shareID, path, operation string, priority in
 }
 
 // DequeueOperations retrieves and removes operations from the queue.
-func (d *Database) DequeueOperations(limit int) ([]QueueOperation, error) {
+func (d *Database) DequeueOperations(shareID string, limit int) ([]QueueOperation, error) {
+	// One share's operations: the caller processes them as that share's.
+	// (Every share's were dequeued, and another share's files went up into
+	// the share being synced.)
 	query := `SELECT id, share_id, path, operation, priority, retry_count, last_error, created_at, scheduled_at
 			  FROM sync_queue
-			  WHERE scheduled_at <= CURRENT_TIMESTAMP
+			  WHERE share_id = ? AND scheduled_at <= CURRENT_TIMESTAMP
 			  ORDER BY priority DESC, created_at ASC
 			  LIMIT ?`
 
-	rows, err := d.db.Query(query, limit)
+	rows, err := d.db.Query(query, shareID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -407,7 +410,9 @@ func (d *Database) DequeueOperations(limit int) ([]QueueOperation, error) {
 
 	// Remove dequeued operations
 	for _, op := range ops {
-		d.db.Exec("DELETE FROM sync_queue WHERE id = ?", op.ID)
+		if _, err := d.db.Exec("DELETE FROM sync_queue WHERE id = ?", op.ID); err != nil {
+			return nil, fmt.Errorf("dequeue %d: %w", op.ID, err)
+		}
 	}
 
 	return ops, rows.Err()

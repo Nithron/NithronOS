@@ -3,11 +3,13 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -34,6 +36,7 @@ func NewWebDAVClient(cfg *config.Config) *WebDAVClient {
 				DisableCompression:    true, // Don't compress, we handle our own
 				ResponseHeaderTimeout: 30 * time.Second,
 				ExpectContinueTimeout: 1 * time.Second,
+				TLSClientConfig:       tlsConfig(cfg.GetServerKeySHA256()),
 			},
 		},
 	}
@@ -57,9 +60,8 @@ func (w *WebDAVClient) doRequest(ctx context.Context, method, url string, body i
 	}
 
 	// Set auth header
-	accessToken := w.cfg.GetAccessToken()
-	if accessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+accessToken)
+	if tok := w.cfg.GetDeviceToken(); tok != "" {
+		req.Header.Set("Authorization", "Bearer "+tok)
 	}
 
 	// Set additional headers
@@ -119,7 +121,7 @@ func (w *WebDAVClient) Download(ctx context.Context, shareID, remotePath, localP
 	// Set modification time if available
 	if lastMod := resp.Header.Get("Last-Modified"); lastMod != "" {
 		if t, err := http.ParseTime(lastMod); err == nil {
-			os.Chtimes(localPath, t, t)
+			_ = os.Chtimes(localPath, t, t) // the content is what matters
 		}
 	}
 
@@ -149,6 +151,23 @@ func (w *WebDAVClient) DownloadRange(ctx context.Context, shareID, remotePath st
 
 // Upload uploads a file to the server.
 func (w *WebDAVClient) Upload(ctx context.Context, shareID, localPath, remotePath string) error {
+	err := w.put(ctx, shareID, localPath, remotePath)
+	// 409: a parent folder doesn't exist yet (a file can be queued before
+	// its folder); make the folders and try once more.
+	if errors.Is(err, errParentMissing) {
+		if dir := path.Dir(strings.Trim(remotePath, "/")); dir != "." {
+			if err := w.MkdirAll(ctx, shareID, dir); err != nil {
+				return err
+			}
+		}
+		err = w.put(ctx, shareID, localPath, remotePath)
+	}
+	return err
+}
+
+var errParentMissing = errors.New("the parent folder doesn't exist on the server")
+
+func (w *WebDAVClient) put(ctx context.Context, shareID, localPath, remotePath string) error {
 	url := w.buildURL(shareID, remotePath)
 
 	f, err := os.Open(localPath)
@@ -173,6 +192,9 @@ func (w *WebDAVClient) Upload(ctx context.Context, shareID, localPath, remotePat
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusConflict {
+		return errParentMissing
+	}
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("upload failed with status %d: %s", resp.StatusCode, string(body))

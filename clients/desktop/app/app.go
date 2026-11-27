@@ -11,18 +11,22 @@ import (
 	"github.com/rs/zerolog"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"nos/clients/sync-core/api"
 	"nos/clients/sync-core/config"
 	"nos/clients/sync-core/db"
 	"nos/clients/sync-core/engine"
 )
 
+// Icon is the application icon (PNG), set by main.
+var Icon []byte
+
 // App represents the main application.
 type App struct {
-	ctx       context.Context
-	logger    zerolog.Logger
-	cfg       *config.Config
-	engine    *engine.Engine
-	trayMgr   *TrayManager
+	ctx     context.Context
+	logger  zerolog.Logger
+	cfg     *config.Config
+	engine  *engine.Engine
+	trayMgr *TrayManager
 }
 
 // New creates a new App.
@@ -46,12 +50,16 @@ func (a *App) Startup(ctx context.Context) {
 
 	// Initialize sync engine if configured
 	if cfg.IsConfigured() {
-		a.initEngine()
+		if err := a.initEngine(); err != nil {
+			a.logger.Error().Err(err).Msg("Sync engine didn't start")
+		}
 	}
 
 	// Initialize tray icon
-	a.trayMgr = NewTrayManager(a)
-	go a.trayMgr.Run()
+	if HasTray {
+		a.trayMgr = NewTrayManager(a)
+		go a.trayMgr.Run()
+	}
 
 	a.logger.Info().Msg("Application started")
 }
@@ -71,7 +79,9 @@ func (a *App) BeforeClose(ctx context.Context) (prevent bool) {
 // Shutdown is called when the app is shutting down.
 func (a *App) Shutdown(ctx context.Context) {
 	if a.engine != nil {
-		a.engine.Stop()
+		if err := a.engine.Stop(); err != nil {
+			a.logger.Error().Err(err).Msg("Stopping the sync engine")
+		}
 	}
 	if a.trayMgr != nil {
 		a.trayMgr.Stop()
@@ -141,53 +151,35 @@ type ConfigResponse struct {
 	IsConfigured       bool   `json:"is_configured"`
 }
 
-// SetupRequest contains setup information.
+// SetupRequest is the pairing link from nOS's pairing dialog and where to sync.
 type SetupRequest struct {
-	ServerURL   string `json:"server_url"`
-	DeviceToken string `json:"device_token"`
-	DeviceName  string `json:"device_name"`
+	PairingLink string `json:"pairing_link"`
 	SyncFolder  string `json:"sync_folder"`
 }
 
-// Setup configures the sync client.
+// Setup pairs the client with a nOS machine. (It took a server address
+// and a device token only: no refresh token, so the device stopped
+// syncing when its token expired, and no server key, so it couldn't
+// connect to a machine's own certificate.)
 func (a *App) Setup(req SetupRequest) error {
-	// Validate inputs
-	if req.ServerURL == "" {
-		return fmt.Errorf("server URL is required")
+	p, err := api.ParsePairingLink(req.PairingLink)
+	if err != nil {
+		return err
 	}
-	if req.DeviceToken == "" {
-		return fmt.Errorf("device token is required")
-	}
-
-	// Set default sync folder if not provided
 	if req.SyncFolder == "" {
-		var err error
-		req.SyncFolder, err = config.GetDefaultSyncFolder()
-		if err != nil {
+		if req.SyncFolder, err = config.GetDefaultSyncFolder(); err != nil {
 			return fmt.Errorf("failed to get default sync folder: %w", err)
 		}
 	}
-
-	// Create sync folder
-	if err := os.MkdirAll(req.SyncFolder, 0755); err != nil {
+	if err := os.MkdirAll(req.SyncFolder, 0o755); err != nil {
 		return fmt.Errorf("failed to create sync folder: %w", err)
 	}
-
-	// Update configuration
-	if err := a.cfg.Update(func(cfg *config.Config) {
-		cfg.ServerURL = req.ServerURL
-		cfg.DeviceToken = req.DeviceToken
-		cfg.SyncFolder = req.SyncFolder
-		cfg.SyncEnabled = true
-	}); err != nil {
+	if err := p.Apply(a.cfg, req.SyncFolder); err != nil {
 		return fmt.Errorf("failed to save configuration: %w", err)
 	}
-
-	// Initialize engine
 	if err := a.initEngine(); err != nil {
 		return fmt.Errorf("failed to initialize sync engine: %w", err)
 	}
-
 	return nil
 }
 
@@ -322,10 +314,12 @@ func (a *App) OpenSyncFolder() error {
 
 // OpenWebUI opens the nOS web UI in the browser.
 func (a *App) OpenWebUI() error {
-	if a.cfg.ServerURL == "" {
+	url := a.cfg.GetServerURL()
+	if url == "" {
 		return fmt.Errorf("server not configured")
 	}
-	return wailsruntime.BrowserOpenURL(a.ctx, a.cfg.ServerURL)
+	wailsruntime.BrowserOpenURL(a.ctx, url)
+	return nil
 }
 
 // GetSystemInfo returns system information.
@@ -361,10 +355,8 @@ func (a *App) SelectFolder() (string, error) {
 
 // Quit quits the application.
 func (a *App) Quit() {
-	if a.engine != nil {
-		a.engine.Stop()
-	}
-	wailsruntime.Quit(a.ctx)
+	wailsruntime.Quit(a.ctx) // Shutdown stops the engine
+
 }
 
 // ShowWindow shows the main window.

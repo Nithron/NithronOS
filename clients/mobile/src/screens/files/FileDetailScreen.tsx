@@ -3,7 +3,7 @@
  * View file details and actions
  */
 
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -12,84 +12,84 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Share,
 } from 'react-native';
-import {useRoute, useTheme, RouteProp} from '@react-navigation/native';
+import {
+  RouteProp,
+  useNavigation,
+  useRoute,
+  useTheme,
+} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {format} from 'date-fns';
 
-import {apiClient} from '../../api/client';
+import {apiClient, ApiError} from '../../api/client';
 import {FileMetadata} from '../../api/types';
 import {FilesStackParamList} from '../../navigation/RootNavigator';
+import {errorMessage} from '../../stores/authStore';
+import {formatBytes} from '../../utils/format';
+
+const HTTP_FORBIDDEN = 403;
 
 type FileDetailRouteProp = RouteProp<FilesStackParamList, 'FileDetail'>;
 
 export function FileDetailScreen(): React.JSX.Element {
   const {colors} = useTheme();
+  const navigation = useNavigation();
   const route = useRoute<FileDetailRouteProp>();
   const {shareId, path} = route.params;
 
   const [file, setFile] = useState<FileMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    loadFileDetails();
-  }, [shareId, path]);
-
-  const loadFileDetails = async () => {
+  const loadFileDetails = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const metadata = await apiClient.getMetadata(shareId, path);
-      setFile(metadata);
+      setFile(await apiClient.getFileMetadata(shareId, path));
     } catch (err) {
-      setError((err as Error).message || 'Failed to load file details');
+      setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
-  };
+  }, [shareId, path]);
 
-  const handleShare = async () => {
-    if (!file) return;
-    
+  useEffect(() => {
+    loadFileDetails();
+  }, [loadFileDetails]);
+
+  const deleteFile = async () => {
+    setIsDeleting(true);
     try {
-      const webdavUrl = `${apiClient.getServerUrl()}/dav/${shareId}${path}`;
-      await Share.share({
-        message: `Check out this file: ${file.name}`,
-        url: webdavUrl,
-      });
+      await apiClient.deletePath(shareId, path, false);
+      navigation.goBack();
     } catch (err) {
-      console.error('Share error:', err);
+      const reason =
+        err instanceof ApiError && err.status === HTTP_FORBIDDEN
+          ? 'You can read this share but not change it.'
+          : errorMessage(err);
+      Alert.alert("Couldn't delete the file", reason);
+    } finally {
+      setIsDeleting(false);
     }
-  };
-
-  const handleDownload = () => {
-    // In a real implementation, this would download the file
-    Alert.alert('Download', 'File download started.');
   };
 
   const handleDelete = () => {
     Alert.alert(
       'Delete File',
-      `Are you sure you want to delete "${file?.name}"?`,
+      `Delete "${fileName(path)}" from the share? This can't be undone here.`,
       [
         {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            // Would implement delete here
-            Alert.alert('Deleted', 'File has been deleted.');
-          },
-        },
-      ]
+        {text: 'Delete', style: 'destructive', onPress: deleteFile},
+      ],
     );
   };
 
   if (loading) {
     return (
-      <View style={[styles.centerContainer, {backgroundColor: colors.background}]}>
+      <View
+        style={[styles.centerContainer, {backgroundColor: colors.background}]}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -97,7 +97,8 @@ export function FileDetailScreen(): React.JSX.Element {
 
   if (error || !file) {
     return (
-      <View style={[styles.centerContainer, {backgroundColor: colors.background}]}>
+      <View
+        style={[styles.centerContainer, {backgroundColor: colors.background}]}>
         <Icon name="alert-circle" size={48} color="#EF4444" />
         <Text style={[styles.errorText, {color: colors.text}]}>
           {error || 'File not found'}
@@ -111,48 +112,50 @@ export function FileDetailScreen(): React.JSX.Element {
     );
   }
 
-  const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
+  const name = fileName(file.path);
+  const fileExt = name.includes('.')
+    ? name.split('.').pop()?.toLowerCase() ?? ''
+    : '';
 
   return (
-    <ScrollView style={[styles.container, {backgroundColor: colors.background}]}>
+    <ScrollView
+      style={[styles.container, {backgroundColor: colors.background}]}>
       {/* File Preview */}
       <View style={[styles.previewContainer, {backgroundColor: colors.card}]}>
-        <View style={[styles.fileIconLarge, {backgroundColor: `${colors.primary}15`}]}>
+        <View
+          style={[
+            styles.fileIconLarge,
+            {backgroundColor: `${colors.primary}15`},
+          ]}>
           <Icon name={getFileIcon(fileExt)} size={64} color={colors.primary} />
         </View>
-        <Text style={[styles.fileName, {color: colors.text}]}>{file.name}</Text>
+        <Text style={[styles.fileName, {color: colors.text}]}>{name}</Text>
         <Text style={[styles.fileType, {color: `${colors.text}60`}]}>
-          {file.mime_type || getFileType(fileExt)}
+          {getFileType(fileExt)}
         </Text>
       </View>
 
-      {/* Quick Actions */}
       <View style={styles.actionsRow}>
         <ActionButton
-          icon="download"
-          label="Download"
-          onPress={handleDownload}
-          colors={colors}
-        />
-        <ActionButton
-          icon="share-variant"
-          label="Share"
-          onPress={handleShare}
-          colors={colors}
-        />
-        <ActionButton
           icon="delete"
-          label="Delete"
+          label={isDeleting ? 'Deleting…' : 'Delete'}
           onPress={handleDelete}
+          disabled={isDeleting}
           colors={colors}
           destructive
         />
       </View>
 
       {/* File Info */}
-      <View style={[styles.infoCard, {backgroundColor: colors.card, borderColor: colors.border}]}>
-        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>FILE INFO</Text>
-        
+      <View
+        style={[
+          styles.infoCard,
+          {backgroundColor: colors.card, borderColor: colors.border},
+        ]}>
+        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>
+          FILE INFO
+        </Text>
+
         <InfoRow
           icon="harddisk"
           label="Size"
@@ -162,7 +165,7 @@ export function FileDetailScreen(): React.JSX.Element {
         <InfoRow
           icon="calendar"
           label="Modified"
-          value={format(new Date(file.modified), 'MMM d, yyyy h:mm a')}
+          value={format(new Date(file.mtime), 'MMM d, yyyy h:mm a')}
           colors={colors}
         />
         <InfoRow
@@ -175,7 +178,7 @@ export function FileDetailScreen(): React.JSX.Element {
           <InfoRow
             icon="fingerprint"
             label="Hash"
-            value={file.hash.substring(0, 16) + '...'}
+            value={`${file.hash.substring(0, 16)}…`}
             colors={colors}
           />
         )}
@@ -188,14 +191,27 @@ interface ActionButtonProps {
   icon: string;
   label: string;
   onPress: () => void;
+  disabled?: boolean;
   colors: {primary: string; text: string; card: string};
   destructive?: boolean;
 }
 
-function ActionButton({icon, label, onPress, colors, destructive}: ActionButtonProps) {
+function ActionButton({
+  icon,
+  label,
+  onPress,
+  disabled,
+  colors,
+  destructive,
+}: ActionButtonProps) {
   const color = destructive ? '#EF4444' : colors.primary;
   return (
-    <TouchableOpacity style={styles.actionButton} onPress={onPress}>
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityState={{disabled}}
+      style={styles.actionButton}
+      onPress={onPress}
+      disabled={disabled}>
       <View style={[styles.actionIcon, {backgroundColor: `${color}15`}]}>
         <Icon name={icon} size={22} color={color} />
       </View>
@@ -214,13 +230,24 @@ interface InfoRowProps {
 function InfoRow({icon, label, value, colors}: InfoRowProps) {
   return (
     <View style={styles.infoRow}>
-      <Icon name={icon} size={18} color={`${colors.text}50`} style={styles.infoIcon} />
-      <Text style={[styles.infoLabel, {color: `${colors.text}70`}]}>{label}</Text>
+      <Icon
+        name={icon}
+        size={18}
+        color={`${colors.text}50`}
+        style={styles.infoIcon}
+      />
+      <Text style={[styles.infoLabel, {color: `${colors.text}70`}]}>
+        {label}
+      </Text>
       <Text style={[styles.infoValue, {color: colors.text}]} numberOfLines={1}>
         {value}
       </Text>
     </View>
   );
+}
+
+function fileName(path: string): string {
+  return path.split('/').pop() || path;
 }
 
 function getFileIcon(ext: string): string {
@@ -283,14 +310,6 @@ function getFileType(ext: string): string {
     default:
       return ext.toUpperCase() + ' File';
   }
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
 const styles = StyleSheet.create({
@@ -394,4 +413,3 @@ const styles = StyleSheet.create({
 });
 
 export default FileDetailScreen;
-

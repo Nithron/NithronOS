@@ -23,7 +23,7 @@ type Client struct {
 	mu         sync.RWMutex
 
 	// Token refresh callback
-	onTokenRefresh func(accessToken, refreshToken string)
+	onTokenRefresh func(deviceToken, refreshToken string)
 }
 
 // NewClient creates a new API client.
@@ -38,6 +38,7 @@ func NewClient(cfg *config.Config) *Client {
 				DisableCompression: false,
 				DisableKeepAlives:  false,
 				MaxConnsPerHost:    10,
+				TLSClientConfig:    tlsConfig(cfg.GetServerKeySHA256()),
 			},
 		},
 		baseURL: cfg.GetServerURL(),
@@ -45,7 +46,7 @@ func NewClient(cfg *config.Config) *Client {
 }
 
 // SetTokenRefreshCallback sets the callback for token refresh events.
-func (c *Client) SetTokenRefreshCallback(fn func(accessToken, refreshToken string)) {
+func (c *Client) SetTokenRefreshCallback(fn func(deviceToken, refreshToken string)) {
 	c.mu.Lock()
 	c.onTokenRefresh = fn
 	c.mu.Unlock()
@@ -53,6 +54,13 @@ func (c *Client) SetTokenRefreshCallback(fn func(accessToken, refreshToken strin
 
 // request makes an authenticated HTTP request.
 func (c *Client) request(ctx context.Context, method, path string, body interface{}, result interface{}) error {
+	return c.doRequest(ctx, method, path, body, result, true)
+}
+
+// doRequest refreshes the token and retries once on a 401. (It retried
+// for as long as the server said 401, so an endpoint that refused the
+// token made the client refresh it several times a second, forever.)
+func (c *Client) doRequest(ctx context.Context, method, path string, body interface{}, result interface{}, mayRefresh bool) error {
 	c.mu.RLock()
 	baseURL := c.baseURL
 	c.mu.RUnlock()
@@ -81,10 +89,10 @@ func (c *Client) request(ctx context.Context, method, path string, body interfac
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "NithronSync/1.0.0")
 
-	// Add authorization
-	accessToken := c.cfg.GetAccessToken()
-	if accessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+accessToken)
+	// The device token from pairing. (The client sent an "access token"
+	// that nosd never issues, so no request was ever authenticated.)
+	if tok := c.cfg.GetDeviceToken(); tok != "" {
+		req.Header.Set("Authorization", "Bearer "+tok)
 	}
 
 	// Execute request
@@ -95,12 +103,11 @@ func (c *Client) request(ctx context.Context, method, path string, body interfac
 	defer resp.Body.Close()
 
 	// Handle 401 - try to refresh token
-	if resp.StatusCode == http.StatusUnauthorized {
+	if resp.StatusCode == http.StatusUnauthorized && mayRefresh {
 		if err := c.refreshToken(ctx); err != nil {
 			return fmt.Errorf("authentication failed: %w", err)
 		}
-		// Retry with new token
-		return c.request(ctx, method, path, body, result)
+		return c.doRequest(ctx, method, path, body, result, false)
 	}
 
 	// Read response body
@@ -111,11 +118,14 @@ func (c *Client) request(ctx context.Context, method, path string, body interfac
 
 	// Handle errors
 	if resp.StatusCode >= 400 {
-		var apiErr APIError
-		if err := json.Unmarshal(respBody, &apiErr); err != nil {
+		var body struct {
+			Error APIError `json:"error"`
+		}
+		if err := json.Unmarshal(respBody, &body); err != nil || body.Error.Code == "" {
 			return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(respBody))
 		}
-		return &apiErr
+		body.Error.Status = resp.StatusCode
+		return &body.Error
 	}
 
 	// Parse result
@@ -173,7 +183,10 @@ func (c *Client) refreshToken(ctx context.Context) error {
 	}
 
 	// Update tokens
-	if err := c.cfg.SetTokens(resp.AccessToken, resp.RefreshToken); err != nil {
+	if resp.DeviceToken == "" {
+		return fmt.Errorf("token refresh returned no device token")
+	}
+	if err := c.cfg.SetTokens(resp.DeviceToken, resp.RefreshToken); err != nil {
 		return err
 	}
 
@@ -182,17 +195,17 @@ func (c *Client) refreshToken(ctx context.Context) error {
 	callback := c.onTokenRefresh
 	c.mu.RUnlock()
 	if callback != nil {
-		callback(resp.AccessToken, resp.RefreshToken)
+		callback(resp.DeviceToken, resp.RefreshToken)
 	}
 
 	return nil
 }
 
-// APIError represents an API error response.
+// APIError is nosd's typed error ({"error": {"code", "message"}}).
 type APIError struct {
-	Message string `json:"error"`
 	Code    string `json:"code"`
-	Details any    `json:"details,omitempty"`
+	Message string `json:"message"`
+	Status  int    `json:"-"`
 }
 
 func (e *APIError) Error() string {
@@ -207,127 +220,83 @@ type TokenRefreshRequest struct {
 	DeviceID     string `json:"device_id"`
 }
 
-// TokenRefreshResponse is the response from token refresh.
+// TokenRefreshResponse is nosd's answer to a refresh (pkg/sync
+// DeviceRefreshResponse).
 type TokenRefreshResponse struct {
-	AccessToken  string `json:"access_token"`
+	DeviceToken  string `json:"device_token"`
 	RefreshToken string `json:"refresh_token"`
-	ExpiresAt    string `json:"access_expires_at"`
+	ExpiresAt    string `json:"expires_at"`
 }
 
-// DeviceRegistration is the request for registering a device.
-type DeviceRegistration struct {
-	DeviceName    string `json:"device_name"`
-	DeviceType    string `json:"device_type"`
-	ClientVersion string `json:"client_version"`
-	OSVersion     string `json:"os_version,omitempty"`
-}
+// The types below are nosd's wire format (backend/nosd/pkg/sync/types.go).
+// (They were written against another API: share "id" for "share_id",
+// "mod_time" for "mtime", "content_hash" for "hash", a bare list of shares
+// for {"shares": [...]}, change "action"s nosd doesn't send, so nothing the
+// server returned decoded.)
 
-// DeviceRegistrationResponse is the response from device registration.
-type DeviceRegistrationResponse struct {
-	DeviceToken struct {
-		ID         string `json:"id"`
-		DeviceName string `json:"device_name"`
-		DeviceType string `json:"device_type"`
-	} `json:"device_token"`
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-}
-
-// SyncShare represents a sync-enabled share.
+// SyncShare is a share this device may sync.
 type SyncShare struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Path        string   `json:"path"`
-	SyncEnabled bool     `json:"sync_enabled"`
-	SyncMaxSize int64    `json:"sync_max_size"`
-	SyncExclude []string `json:"sync_exclude"`
+	ID          string `json:"share_id"`
+	Name        string `json:"share_name"`
+	Path        string `json:"share_path"`
+	SyncEnabled bool   `json:"sync_enabled"`
+	TotalSize   int64  `json:"total_size"`
+	FileCount   int64  `json:"file_count"`
 }
 
-// SyncConfig represents device sync configuration.
-type SyncConfig struct {
-	DeviceID       string   `json:"device_id"`
-	Enabled        bool     `json:"enabled"`
-	SyncShares     []string `json:"sync_shares"`
-	BandwidthLimit int      `json:"bandwidth_limit_kbps"`
-	SyncOnMetered  bool     `json:"sync_on_metered"`
-}
+// Change types nosd reports.
+const (
+	ChangeCreate = "create"
+	ChangeModify = "modify"
+	ChangeDelete = "delete"
+	ChangeRename = "rename"
+)
 
-// FileChange represents a file change from the server.
+// FileChange is one change on the server.
 type FileChange struct {
-	Path         string `json:"path"`
-	Type         string `json:"type"`   // "file" or "dir"
-	Action       string `json:"action"` // "created", "modified", "deleted", "moved"
-	Size         int64  `json:"size"`
-	ModTime      string `json:"mod_time"`
-	ContentHash  string `json:"content_hash"`
-	PreviousPath string `json:"previous_path,omitempty"`
-	Version      int    `json:"version"`
+	Path    string    `json:"path"`
+	Type    string    `json:"type"` // ChangeCreate, ...
+	Size    int64     `json:"size"`
+	MTime   time.Time `json:"mtime"`
+	Hash    string    `json:"hash,omitempty"`     // SHA-256, when nosd has it
+	OldPath string    `json:"old_path,omitempty"` // for renames
+	IsDir   bool      `json:"is_dir"`
 }
 
-// ChangesResponse is the response from the changes endpoint.
+// ChangesResponse is a page of changes after a cursor.
 type ChangesResponse struct {
 	Changes []FileChange `json:"changes"`
 	Cursor  string       `json:"cursor"`
 	HasMore bool         `json:"has_more"`
 }
 
-// FileMetadata represents file or directory metadata.
-type FileMetadata struct {
-	Path        string         `json:"path"`
-	Type        string         `json:"type"`
-	Size        int64          `json:"size"`
-	ModTime     string         `json:"mod_time"`
-	ContentHash string         `json:"content_hash,omitempty"`
-	Children    []FileMetadata `json:"children,omitempty"`
-}
-
-// BlockHash represents a block hash for delta sync.
+// BlockHash is one block of the server's copy of a file.
 type BlockHash struct {
-	Index      int    `json:"index"`
 	Offset     int64  `json:"offset"`
-	Size       int    `json:"size"`
-	StrongHash string `json:"strong_hash"`
-	WeakHash   uint32 `json:"weak_hash"`
+	Size       int64  `json:"size"`
+	StrongHash string `json:"hash"` // SHA-256
+	WeakHash   uint32 `json:"weak"` // Adler-32
 }
 
-// BlockHashResponse is the response from block hash endpoint.
+// BlockHashResponse is the server's blocks of a file. BlockSize is the
+// server's choice (it doesn't take the client's).
 type BlockHashResponse struct {
 	Path      string      `json:"path"`
 	Size      int64       `json:"size"`
-	BlockSize int         `json:"block_size"`
+	Hash      string      `json:"hash"`
+	BlockSize int64       `json:"block_size"`
 	Blocks    []BlockHash `json:"blocks"`
-}
-
-// SyncState represents sync state for a share.
-type SyncState struct {
-	ShareID          string `json:"share_id"`
-	DeviceID         string `json:"device_id"`
-	LastSyncAt       string `json:"last_sync_at"`
-	Cursor           string `json:"cursor"`
-	SyncStatus       string `json:"sync_status"`
-	PendingUploads   int    `json:"pending_uploads"`
-	PendingDownloads int    `json:"pending_downloads"`
 }
 
 // API Methods
 
-// ListShares returns all sync-enabled shares.
+// ListShares returns the shares this device may sync.
 func (c *Client) ListShares(ctx context.Context) ([]SyncShare, error) {
-	var shares []SyncShare
-	err := c.request(ctx, "GET", "/api/v1/sync/shares", nil, &shares)
-	return shares, err
-}
-
-// GetSyncConfig returns the device sync configuration.
-func (c *Client) GetSyncConfig(ctx context.Context) (*SyncConfig, error) {
-	var cfg SyncConfig
-	err := c.request(ctx, "GET", "/api/v1/sync/config", nil, &cfg)
-	return &cfg, err
-}
-
-// UpdateSyncConfig updates the device sync configuration.
-func (c *Client) UpdateSyncConfig(ctx context.Context, cfg *SyncConfig) error {
-	return c.request(ctx, "PUT", "/api/v1/sync/config", cfg, nil)
+	var resp struct {
+		Shares []SyncShare `json:"shares"`
+	}
+	err := c.request(ctx, "GET", "/api/v1/sync/shares", nil, &resp)
+	return resp.Shares, err
 }
 
 // GetChanges returns file changes since the given cursor.
@@ -341,16 +310,6 @@ func (c *Client) GetChanges(ctx context.Context, shareID, cursor string, limit i
 	var resp ChangesResponse
 	err := c.request(ctx, "GET", path, nil, &resp)
 	return &resp, err
-}
-
-// GetFileMetadata returns metadata for a file or directory.
-func (c *Client) GetFileMetadata(ctx context.Context, shareID, path string, includeChildren bool) (*FileMetadata, error) {
-	reqPath := fmt.Sprintf("/api/v1/sync/files/%s/metadata?path=%s&include_children=%t",
-		url.QueryEscape(shareID), url.QueryEscape(path), includeChildren)
-
-	var meta FileMetadata
-	err := c.request(ctx, "GET", reqPath, nil, &meta)
-	return &meta, err
 }
 
 // GetBlockHashes returns block hashes for delta sync.
@@ -367,25 +326,20 @@ func (c *Client) GetBlockHashes(ctx context.Context, shareID, path string, block
 	return &resp, err
 }
 
-// GetSyncState returns the sync state for a share.
-func (c *Client) GetSyncState(ctx context.Context, shareID string) (*SyncState, error) {
-	path := fmt.Sprintf("/api/v1/sync/state/%s", url.QueryEscape(shareID))
-
-	var state SyncState
-	err := c.request(ctx, "GET", path, nil, &state)
-	return &state, err
+// DeltaOp is one step of a delta upload: copy Size bytes at Offset of the
+// server's current file, or new Data.
+type DeltaOp struct {
+	Offset int64  `json:"offset,omitempty"`
+	Size   int64  `json:"size,omitempty"`
+	Data   []byte `json:"data,omitempty"`
 }
 
-// UpdateSyncState updates the sync state for a share.
-func (c *Client) UpdateSyncState(ctx context.Context, shareID string, cursor, status string) error {
-	path := fmt.Sprintf("/api/v1/sync/state/%s", url.QueryEscape(shareID))
-
-	body := map[string]string{
-		"cursor":      cursor,
-		"sync_status": status,
-	}
-
-	return c.request(ctx, "PUT", path, body, nil)
+// UploadDelta rebuilds path on the server from its current content and ops;
+// sha256Hex is what the result must hash to (the server refuses otherwise).
+func (c *Client) UploadDelta(ctx context.Context, shareID, path, sha256Hex string, ops []DeltaOp) error {
+	reqPath := fmt.Sprintf("/api/v1/sync/files/%s/delta", url.QueryEscape(shareID))
+	body := map[string]any{"path": path, "sha256": sha256Hex, "ops": ops}
+	return c.request(ctx, "POST", reqPath, body, nil)
 }
 
 // HealthCheck checks if the server is reachable.

@@ -79,11 +79,11 @@ type Share struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	// NithronSync settings.
-	SyncEnabled      bool     `json:"sync_enabled,omitempty"`
-	SyncMaxSize      int64    `json:"sync_max_size,omitempty"` // bytes, 0 = unlimited
-	SyncExclude      []string `json:"sync_exclude,omitempty"`  // glob patterns
-	SyncAllowedUsers []string `json:"sync_allowed_users,omitempty"`
+	// SyncDisabled keeps the share away from NithronSync clients (the sync
+	// API and WebDAV); shares are syncable by default. (Four sync settings
+	// used to be here that no API could set; the share form's sync tab
+	// was ignored.)
+	SyncDisabled bool `json:"sync_disabled,omitempty"`
 }
 
 // SMBEnabled reports whether the share is exported over SMB.
@@ -98,8 +98,6 @@ func (s Share) Clone() Share {
 	s.Owners = slices.Clone(s.Owners)
 	s.Readers = slices.Clone(s.Readers)
 	s.Apps = slices.Clone(s.Apps)
-	s.SyncExclude = slices.Clone(s.SyncExclude)
-	s.SyncAllowedUsers = slices.Clone(s.SyncAllowedUsers)
 	if s.SMB != nil {
 		smb := *s.SMB
 		if smb.Recycle != nil {
