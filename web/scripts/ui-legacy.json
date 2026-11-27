@@ -1,8 +1,6 @@
 {
   "src/components/Banner.tsx": 9,
   "src/components/layout/AppShell.tsx": 1,
-  "src/components/shares/PermissionsEditor.tsx": 10,
-  "src/components/shares/ShareForm.tsx": 1,
   "src/components/ui/status.tsx": 6,
   "src/hooks/use-dashboard.ts": 3,
   "src/hooks/use-health.ts": 3,
@@ -16,7 +14,6 @@
   "src/pages/RemoteAccessWizard.tsx": 6,
   "src/pages/SettingsSync.tsx": 39,
   "src/pages/Setup.tsx": 8,
-  "src/pages/SharesList.tsx": 4,
   "src/pages/Snapshots.tsx": 9,
   "src/pages/SyncActivity.tsx": 20,
   "src/pages/SyncConflicts.tsx": 13,

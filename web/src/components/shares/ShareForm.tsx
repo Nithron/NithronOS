@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { CloseIcon, DeleteIcon, FailedIcon, NetworkIcon, NoticeIcon, PermissionsIcon, ServerIcon, SyncIcon, SyncedFolderIcon, TimeIcon, UsersIcon } from '@/components/icons'
+import { DeleteIcon, FailedIcon, NetworkIcon, NoticeIcon, PermissionsIcon, ServerIcon, SyncIcon, SyncedFolderIcon, TimeIcon, UsersIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
+import { Chip } from '@/components/ui/chip'
 import { Separator } from '@/components/ui/separator'
 import { PermissionsEditor } from '@/components/shares/PermissionsEditor'
 import { usePolicy, type Share, type CreateShareRequest, type UpdateShareRequest } from '@/api/shares'
@@ -76,7 +76,9 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 			name: share?.name || '',
 			description: share?.description || '',
 			smb: {
-				enabled: share?.smb?.enabled || true,
+				// A new share offers SMB; an existing one shows what it has (this
+				// used to show SMB on for every share, and saving turned it on).
+				enabled: share ? Boolean(share.smb?.enabled) : true,
 				guest: share?.smb?.guest || false,
 				time_machine: share?.smb?.time_machine || false,
 				recycle: {
@@ -131,7 +133,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 	return (
 		<form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
 			<Tabs value={activeTab} onValueChange={setActiveTab}>
-				<TabsList className="grid w-full grid-cols-4">
+				<TabsList>
 					<TabsTrigger value="general">General</TabsTrigger>
 					<TabsTrigger value="protocols">Protocols</TabsTrigger>
 					<TabsTrigger value="sync">Sync</TabsTrigger>
@@ -182,6 +184,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 								</div>
 							</div>
 							<Switch
+								aria-label="SMB file sharing"
 								checked={watchSmbEnabled}
 								        onCheckedChange={(checked: boolean) => setValue('smb.enabled', checked)}
 							/>
@@ -201,7 +204,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 												</p>
 											</div>
 										</div>
-										<Switch
+										<Switch aria-label="Guest access"
 											checked={watchSmbGuest}
 											           onCheckedChange={(checked: boolean) => setValue('smb.guest', checked)}
 											disabled={guestAccessForbidden}
@@ -228,7 +231,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 												</p>
 											</div>
 										</div>
-										<Switch
+										<Switch aria-label="Time Machine"
 											checked={watch('smb.time_machine')}
 											           onCheckedChange={(checked: boolean) => setValue('smb.time_machine', checked)}
 										/>
@@ -244,7 +247,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 												</p>
 											</div>
 										</div>
-										<Switch
+										<Switch aria-label="Recycle bin"
 											checked={watchSmbRecycleEnabled}
 											           onCheckedChange={(checked: boolean) => setValue('smb.recycle.enabled', checked)}
 										/>
@@ -276,7 +279,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 									<p className="text-sm text-muted-foreground">Unix/Linux network filesystem</p>
 								</div>
 							</div>
-							<Switch
+							<Switch aria-label="NFS"
 								checked={watchNfsEnabled}
 								        onCheckedChange={(checked: boolean) => setValue('nfs.enabled', checked)}
 							/>
@@ -296,7 +299,7 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 												</p>
 											</div>
 										</div>
-										<Switch
+										<Switch aria-label="NFS read only"
 											checked={watch('nfs.read_only')}
 											           onCheckedChange={(checked: boolean) => setValue('nfs.read_only', checked)}
 										/>
@@ -306,19 +309,16 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 										<Label>Allowed networks</Label>
 										<div className="flex flex-wrap gap-2">
 											{watch('nfs.networks')?.map((network, index) => (
-												<Badge key={index} variant="secondary">
-													{network}
-													<button
-														type="button"
-														onClick={() => {
-															const networks = watch('nfs.networks') || []
-															setValue('nfs.networks', networks.filter((_, i) => i !== index))
-														}}
-														className="ml-1"
-													>
-														<CloseIcon className="h-3 w-3" />
-													</button>
-												</Badge>
+												<Chip
+													key={index}
+													name={network}
+													onRemove={() => {
+														const networks = watch('nfs.networks') || []
+														setValue('nfs.networks', networks.filter((_, i) => i !== index))
+													}}
+												>
+													<span className="font-mono">{network}</span>
+												</Chip>
 											))}
 										</div>
 										<Input
@@ -358,13 +358,13 @@ export function ShareForm({ share, onSubmit, onCancel, mode }: ShareFormProps) {
 					<Card className="p-6 space-y-6">
 						<div className="flex items-center justify-between">
 							<div className="flex items-center gap-3">
-								<SyncIcon className="h-5 w-5 text-blue-500" />
+								<SyncIcon className="h-4 w-4 text-ink-2" />
 								<div>
 									<h3 className="font-medium">NithronSync</h3>
 									<p className="text-sm text-muted-foreground">Enable file synchronization to devices</p>
 								</div>
 							</div>
-							<Switch
+							<Switch aria-label="NithronSync for this share"
 								checked={watchSyncEnabled}
 								onCheckedChange={(checked: boolean) => setValue('sync.enabled', checked)}
 							/>

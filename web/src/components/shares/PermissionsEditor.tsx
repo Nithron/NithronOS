@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react'
-import { AddUserIcon, CloseIcon, FailedIcon, NoticeIcon, PermissionsIcon, UserIcon, UsersIcon, WarningIcon } from '@/components/icons'
+import { AddUserIcon, FailedIcon, NoticeIcon, PermissionsIcon, UserIcon, UsersIcon, WarningIcon } from '@/components/icons'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Chip } from '@/components/ui/chip'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 import {
@@ -132,13 +132,13 @@ export function PermissionsEditor({
 					
 					<div className="grid gap-4 md:grid-cols-2">
 						<div className="space-y-2">
-							<p className="text-sm font-medium text-green-600">Owners (Read/Write)</p>
+							<p className="text-sm font-[560]">Owners (read and write)</p>
 							<p className="text-sm text-muted-foreground">
 								Full access to create, modify, and delete files
 							</p>
 						</div>
 						<div className="space-y-2">
-							<p className="text-sm font-medium text-blue-600">Readers (Read only)</p>
+							<p className="text-sm font-[560]">Readers (read only)</p>
 							<p className="text-sm text-muted-foreground">
 								Can view and download files but cannot modify
 							</p>
@@ -181,24 +181,10 @@ export function PermissionsEditor({
 					{ownersParsed.length > 0 ? (
 						<div className="flex flex-wrap gap-2">
 							{ownersParsed.map((principal, index) => (
-								<Badge
-									key={index}
-									variant="secondary"
-									className="pl-2 pr-1 py-1 bg-green-500/10 text-green-700 hover:bg-green-500/20"
-								>
-									{principal.type === 'user' ? (
-										<UserIcon className="h-3 w-3 mr-1" />
-									) : (
-										<UsersIcon className="h-3 w-3 mr-1" />
-									)}
+								<Chip key={index} name={principal.name} onRemove={() => handleRemoveOwner(owners[index])}>
+									{principal.type === 'user' ? <UserIcon className="h-3 w-3" /> : <UsersIcon className="h-3 w-3" />}
 									{principal.name}
-									<button
-										className="h-4 w-4 ml-1 hover:bg-green-500/20 rounded"
-										onClick={() => handleRemoveOwner(owners[index])}
-									>
-										<CloseIcon className="h-3 w-3" />
-									</button>
-								</Badge>
+								</Chip>
 							))}
 						</div>
 					) : (
@@ -231,24 +217,10 @@ export function PermissionsEditor({
 					{readersParsed.length > 0 ? (
 						<div className="flex flex-wrap gap-2">
 							{readersParsed.map((principal, index) => (
-								<Badge
-									key={index}
-									variant="secondary"
-									className="pl-2 pr-1 py-1 bg-blue-500/10 text-blue-700 hover:bg-blue-500/20"
-								>
-									{principal.type === 'user' ? (
-										<UserIcon className="h-3 w-3 mr-1" />
-									) : (
-										<UsersIcon className="h-3 w-3 mr-1" />
-									)}
+								<Chip key={index} name={principal.name} onRemove={() => handleRemoveReader(readers[index])}>
+									{principal.type === 'user' ? <UserIcon className="h-3 w-3" /> : <UsersIcon className="h-3 w-3" />}
 									{principal.name}
-									<button
-										className="h-4 w-4 ml-1 hover:bg-blue-500/20 rounded"
-										onClick={() => handleRemoveReader(readers[index])}
-									>
-										<CloseIcon className="h-3 w-3" />
-									</button>
-								</Badge>
+								</Chip>
 							))}
 						</div>
 					) : (

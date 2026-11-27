@@ -447,7 +447,7 @@ export default function SyncEncryption() {
                       Automatically enable encryption for new sync shares
                     </p>
                   </div>
-                  <Switch
+                  <Switch aria-label="Encrypt new shares"
                     checked={settings?.encrypt_new_shares}
                     onCheckedChange={(checked) =>
                       updateSettingsMutation.mutate({ encrypt_new_shares: checked })
@@ -462,7 +462,7 @@ export default function SyncEncryption() {
                       Also encrypt file and folder names (may impact search)
                     </p>
                   </div>
-                  <Switch
+                  <Switch aria-label="Encrypt filenames"
                     checked={settings?.encrypt_filenames}
                     onCheckedChange={(checked) =>
                       updateSettingsMutation.mutate({ encrypt_filenames: checked })

@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { BackIcon, WorkingIcon } from '@/components/icons'
+import { BackIcon } from '@/components/icons'
+import { Working } from '@/components/ui/pixel'
 import { PageHeader } from '@/components/layouts/PageHeader'
 import { Button } from '@/components/ui/button'
 import { ShareForm } from '@/components/shares/ShareForm'
@@ -38,7 +39,7 @@ export function ShareDetails() {
 	if (isLoading && !isNew) {
 		return (
 			<div className="flex items-center justify-center h-full">
-				<WorkingIcon className="h-8 w-8 animate-spin text-muted-foreground" />
+				<Working>Loading the share</Working>
 			</div>
 		)
 	}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { AddIcon, DeleteIcon, EditIcon, FolderIcon, MoreIcon, NetworkIcon, PermissionsIcon, ServerIcon, ShareIcon, TimeIcon, UsersIcon } from '@/components/icons'
+import { Link, useNavigate } from 'react-router-dom'
+import { AddIcon, DeleteIcon, EditIcon, FolderIcon, MoreIcon, NetworkIcon, ServerIcon, ShareIcon } from '@/components/icons'
 import { useShares, useShareMutations, type Share } from '@/api/shares'
 import { getErrorMessage } from '@/lib/nos-client'
 import { toast } from '@/components/ui/toast'
@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
 import { EmptyState } from '@/components/ui/empty-state'
-import { StatusPill } from '@/components/ui/status-pill'
+import { StatusMark } from '@/components/ui/pixel'
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -60,16 +60,15 @@ export function SharesList() {
 			cell: ({ row }: any) => {
 				const share = row.original as Share
 				return (
-					<div className="flex items-center gap-3">
-						<div className="p-2 bg-blue-500/10 rounded-lg">
-							<FolderIcon className="h-4 w-4 text-blue-500" />
-						</div>
-						<div>
-							<div className="font-medium">{share.name}</div>
-							<div className="text-xs text-muted-foreground">
-								/srv/shares/{share.name}
-							</div>
-						</div>
+					<div>
+						<Link
+							to={`/shares/${encodeURIComponent(share.name)}`}
+							className="font-[560] underline decoration-ink-2 underline-offset-4 hover:decoration-ink"
+							onClick={(e) => e.stopPropagation()}
+						>
+							{share.name}
+						</Link>
+						<div className="font-mono text-xs text-ink-2">/srv/shares/{share.name}</div>
 					</div>
 				)
 			},
@@ -107,24 +106,10 @@ export function SharesList() {
 				const share = row.original as Share
 				return (
 					<div className="flex items-center gap-2">
-						{share.smb?.guest && (
-							<StatusPill status="warning" size="sm">
-								<UsersIcon className="h-3 w-3" />
-								Guest
-							</StatusPill>
-						)}
-						{share.smb?.time_machine && (
-							<StatusPill status="success" size="sm">
-								<TimeIcon className="h-3 w-3" />
-								Time Machine
-							</StatusPill>
-						)}
-						{share.smb?.recycle?.enabled && (
-							<StatusPill status="info" size="sm">
-								<DeleteIcon className="h-3 w-3" />
-								Recycle
-							</StatusPill>
-						)}
+						{/* Guest access is a state worth a warning; the rest are words. */}
+						{share.smb?.guest && <StatusMark state="warning" className="text-sm">Guest access</StatusMark>}
+						{share.smb?.time_machine && <span className="text-sm">Time Machine</span>}
+						{share.smb?.recycle?.enabled && <span className="text-sm">Recycle bin</span>}
 					</div>
 				)
 			},
@@ -141,14 +126,14 @@ export function SharesList() {
 					<div className="flex items-center gap-3 text-sm">
 						{ownerCount > 0 && (
 							<div className="flex items-center gap-1.5">
-								<PermissionsIcon className="h-3.5 w-3.5 text-green-500" />
-								<span>{ownerCount} owner{ownerCount !== 1 ? 's' : ''}</span>
+								<span className="font-mono tabular-nums">{ownerCount}</span>
+								<span>owner{ownerCount !== 1 ? 's' : ''}</span>
 							</div>
 						)}
 						{readerCount > 0 && (
 							<div className="flex items-center gap-1.5">
-								<PermissionsIcon className="h-3.5 w-3.5 text-blue-500" />
-								<span>{readerCount} reader{readerCount !== 1 ? 's' : ''}</span>
+								<span className="font-mono tabular-nums">{readerCount}</span>
+								<span>reader{readerCount !== 1 ? 's' : ''}</span>
 							</div>
 						)}
 						{ownerCount === 0 && readerCount === 0 && (

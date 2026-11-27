@@ -225,6 +225,7 @@ export default function SettingsSync() {
                           <Badge variant="secondary">Sync enabled</Badge>
                         )}
                         <Switch
+                          aria-label={`Sync ${share.share_name ?? share.share_id}`}
                           checked={selectedShares.includes(share.share_id)}
                           onCheckedChange={() => toggleShare(share.share_id)}
                         />
@@ -254,7 +255,7 @@ export default function SettingsSync() {
                     Temporarily stop all sync operations
                   </p>
                 </div>
-                <Switch
+                <Switch aria-label="Pause sync"
                   checked={pauseSync}
                   onCheckedChange={setPauseSync}
                 />
