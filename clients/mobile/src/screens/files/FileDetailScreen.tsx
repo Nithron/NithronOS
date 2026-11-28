@@ -1,39 +1,35 @@
 /**
  * File Detail Screen
- * View file details and actions
+ * A file's facts as a ruled group, and deleting it (confirmed in the app's
+ * own dialog, its name typed first: the file is erased on nOS).
  */
 
 import React, {useCallback, useEffect, useState} from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
-import {
-  RouteProp,
-  useNavigation,
-  useRoute,
-  useTheme,
-} from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import {format} from 'date-fns';
+import {ScrollView, Text, View} from 'react-native';
+import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 
 import {apiClient, ApiError} from '../../api/client';
 import {FileMetadata} from '../../api/types';
 import {FilesStackParamList} from '../../navigation/RootNavigator';
 import {errorMessage} from '../../stores/authStore';
-import {formatBytes} from '../../utils/format';
+import {Button} from '../../components/Button';
+import {ConfirmDialog} from '../../components/ConfirmDialog';
+import {DeleteIcon} from '../../components/icons';
+import {Group, InfoRow} from '../../components/layout';
+import {StatusMark, Working} from '../../components/pixel';
+import {showToast} from '../../components/Toast';
+import {formatDateTime} from '../../utils/datetime';
+import {fileName, formatBytes} from '../../utils/format';
+import {metrics, Palette, type, useThemedStyles} from '../../theme/theme';
 
 const HTTP_FORBIDDEN = 403;
+/** How much of a hash is shown; the rest is cut with an ellipsis. */
+const HASH_SHOWN = 16;
 
 type FileDetailRouteProp = RouteProp<FilesStackParamList, 'FileDetail'>;
 
 export function FileDetailScreen(): React.JSX.Element {
-  const {colors} = useTheme();
+  const styles = useThemedStyles(detailStyles);
   const navigation = useNavigation();
   const route = useRoute<FileDetailRouteProp>();
   const {shareId, path} = route.params;
@@ -41,7 +37,9 @@ export function FileDetailScreen(): React.JSX.Element {
   const [file, setFile] = useState<FileMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const loadFileDetails = useCallback(async () => {
     try {
@@ -59,357 +57,140 @@ export function FileDetailScreen(): React.JSX.Element {
     loadFileDetails();
   }, [loadFileDetails]);
 
+  const name = fileName(path);
+
   const deleteFile = async () => {
     setIsDeleting(true);
+    setDeleteError(null);
     try {
       await apiClient.deletePath(shareId, path, false);
+      setConfirming(false);
+      showToast('ok', `Deleted ${name}.`);
       navigation.goBack();
     } catch (err) {
-      const reason =
+      setDeleteError(
         err instanceof ApiError && err.status === HTTP_FORBIDDEN
-          ? 'You can read this share but not change it.'
-          : errorMessage(err);
-      Alert.alert("Couldn't delete the file", reason);
+          ? "Couldn't delete the file: you can read this share but not change it."
+          : `Couldn't delete the file. ${errorMessage(err)}`,
+      );
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      'Delete File',
-      `Delete "${fileName(path)}" from the share? This can't be undone here.`,
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {text: 'Delete', style: 'destructive', onPress: deleteFile},
-      ],
-    );
+  const openConfirm = () => {
+    setDeleteError(null);
+    setConfirming(true);
   };
 
   if (loading) {
     return (
-      <View
-        style={[styles.centerContainer, {backgroundColor: colors.background}]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.screen, styles.inset]}>
+        <Working>Loading the file</Working>
       </View>
     );
   }
 
   if (error || !file) {
     return (
-      <View
-        style={[styles.centerContainer, {backgroundColor: colors.background}]}>
-        <Icon name="alert-circle" size={48} color="#EF4444" />
-        <Text style={[styles.errorText, {color: colors.text}]}>
-          {error || 'File not found'}
-        </Text>
-        <TouchableOpacity
-          style={[styles.retryButton, {backgroundColor: colors.primary}]}
-          onPress={loadFileDetails}>
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
+      <View style={[styles.screen, styles.inset, styles.problem]}>
+        <StatusMark state="failed">{error || 'File not found.'}</StatusMark>
+        <Button kind="primary" label="Try again" onPress={loadFileDetails} />
       </View>
     );
   }
 
-  const name = fileName(file.path);
-  const fileExt = name.includes('.')
-    ? name.split('.').pop()?.toLowerCase() ?? ''
-    : '';
-
   return (
-    <ScrollView
-      style={[styles.container, {backgroundColor: colors.background}]}>
-      {/* File Preview */}
-      <View style={[styles.previewContainer, {backgroundColor: colors.card}]}>
-        <View
-          style={[
-            styles.fileIconLarge,
-            {backgroundColor: `${colors.primary}15`},
-          ]}>
-          <Icon name={getFileIcon(fileExt)} size={64} color={colors.primary} />
-        </View>
-        <Text style={[styles.fileName, {color: colors.text}]}>{name}</Text>
-        <Text style={[styles.fileType, {color: `${colors.text}60`}]}>
-          {getFileType(fileExt)}
-        </Text>
-      </View>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Text style={styles.kind}>{fileKind(name)}</Text>
 
-      <View style={styles.actionsRow}>
-        <ActionButton
-          icon="delete"
-          label={isDeleting ? 'Deleting…' : 'Delete'}
-          onPress={handleDelete}
-          disabled={isDeleting}
-          colors={colors}
-          destructive
-        />
-      </View>
-
-      {/* File Info */}
-      <View
-        style={[
-          styles.infoCard,
-          {backgroundColor: colors.card, borderColor: colors.border},
-        ]}>
-        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>
-          FILE INFO
-        </Text>
-
-        <InfoRow
-          icon="harddisk"
-          label="Size"
-          value={formatBytes(file.size)}
-          colors={colors}
-        />
-        <InfoRow
-          icon="calendar"
-          label="Modified"
-          value={format(new Date(file.mtime), 'MMM d, yyyy h:mm a')}
-          colors={colors}
-        />
-        <InfoRow
-          icon="folder"
-          label="Location"
-          value={file.path}
-          colors={colors}
-        />
-        {file.hash && (
+      <Group label="File">
+        <InfoRow label="Size" value={formatBytes(file.size)} />
+        <InfoRow label="Modified" value={formatDateTime(file.mtime)} />
+        <InfoRow label="Location" value={file.path} />
+        {file.hash ? (
           <InfoRow
-            icon="fingerprint"
             label="Hash"
-            value={`${file.hash.substring(0, 16)}…`}
-            colors={colors}
+            value={
+              file.hash.length > HASH_SHOWN
+                ? `${file.hash.substring(0, HASH_SHOWN)}…`
+                : file.hash
+            }
           />
-        )}
+        ) : null}
+      </Group>
+
+      <View style={styles.actions}>
+        <Button
+          icon={DeleteIcon}
+          label={isDeleting ? 'Deleting' : 'Delete file'}
+          onPress={openConfirm}
+          disabled={isDeleting}
+        />
       </View>
+
+      <ConfirmDialog
+        visible={confirming}
+        title={`Delete ${name}?`}
+        message="The file is erased from the share on nOS. It can't be restored from this phone."
+        confirmName={name}
+        actions={[{label: `Delete ${name}`, onPress: deleteFile}]}
+        onCancel={() => setConfirming(false)}
+        error={deleteError}
+        busy={isDeleting}
+      />
     </ScrollView>
   );
 }
 
-interface ActionButtonProps {
-  icon: string;
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-  colors: {primary: string; text: string; card: string};
-  destructive?: boolean;
-}
-
-function ActionButton({
-  icon,
-  label,
-  onPress,
-  disabled,
-  colors,
-  destructive,
-}: ActionButtonProps) {
-  const color = destructive ? '#EF4444' : colors.primary;
-  return (
-    <TouchableOpacity
-      accessibilityRole="button"
-      accessibilityState={{disabled}}
-      style={styles.actionButton}
-      onPress={onPress}
-      disabled={disabled}>
-      <View style={[styles.actionIcon, {backgroundColor: `${color}15`}]}>
-        <Icon name={icon} size={22} color={color} />
-      </View>
-      <Text style={[styles.actionLabel, {color: colors.text}]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
-interface InfoRowProps {
-  icon: string;
-  label: string;
-  value: string;
-  colors: {text: string; primary: string};
-}
-
-function InfoRow({icon, label, value, colors}: InfoRowProps) {
-  return (
-    <View style={styles.infoRow}>
-      <Icon
-        name={icon}
-        size={18}
-        color={`${colors.text}50`}
-        style={styles.infoIcon}
-      />
-      <Text style={[styles.infoLabel, {color: `${colors.text}70`}]}>
-        {label}
-      </Text>
-      <Text style={[styles.infoValue, {color: colors.text}]} numberOfLines={1}>
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-function fileName(path: string): string {
-  return path.split('/').pop() || path;
-}
-
-function getFileIcon(ext: string): string {
+/** What kind of file a name says it is. */
+export function fileKind(name: string): string {
+  const ext = name.includes('.')
+    ? name.split('.').pop()?.toLowerCase() ?? ''
+    : '';
   switch (ext) {
+    case '':
+      return 'File';
     case 'jpg':
     case 'jpeg':
+      return 'JPEG image';
     case 'png':
+      return 'PNG image';
     case 'gif':
-    case 'webp':
-      return 'file-image';
+      return 'GIF image';
     case 'mp4':
+      return 'MP4 video';
     case 'mov':
-    case 'avi':
-      return 'file-video';
+      return 'QuickTime video';
     case 'mp3':
-    case 'wav':
-    case 'flac':
-      return 'file-music';
+      return 'MP3 audio';
     case 'pdf':
-      return 'file-pdf-box';
+      return 'PDF document';
     case 'doc':
     case 'docx':
-      return 'file-word';
+      return 'Word document';
     case 'xls':
     case 'xlsx':
-      return 'file-excel';
+      return 'Excel spreadsheet';
     case 'zip':
-    case 'rar':
-      return 'folder-zip';
+      return 'ZIP archive';
     default:
-      return 'file-document';
+      return `${ext.toUpperCase()} file`;
   }
 }
 
-function getFileType(ext: string): string {
-  switch (ext) {
-    case 'jpg':
-    case 'jpeg':
-      return 'JPEG Image';
-    case 'png':
-      return 'PNG Image';
-    case 'gif':
-      return 'GIF Image';
-    case 'mp4':
-      return 'MP4 Video';
-    case 'mov':
-      return 'QuickTime Video';
-    case 'mp3':
-      return 'MP3 Audio';
-    case 'pdf':
-      return 'PDF Document';
-    case 'doc':
-    case 'docx':
-      return 'Word Document';
-    case 'xls':
-    case 'xlsx':
-      return 'Excel Spreadsheet';
-    case 'zip':
-      return 'ZIP Archive';
-    default:
-      return ext.toUpperCase() + ' File';
-  }
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+const detailStyles = (p: Palette) => ({
+  screen: {flex: 1, backgroundColor: p.page},
+  content: {paddingBottom: metrics.space6},
+  inset: {padding: metrics.gutter},
+  problem: {gap: metrics.space4, alignItems: 'flex-start' as const},
+  kind: {
+    ...type.small,
+    color: p.ink2,
+    paddingHorizontal: metrics.gutter,
+    paddingTop: metrics.space4,
   },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  errorText: {
-    fontSize: 15,
-    marginTop: 12,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  retryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  previewContainer: {
-    alignItems: 'center',
-    padding: 32,
-    marginBottom: 16,
-  },
-  fileIconLarge: {
-    width: 120,
-    height: 120,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  fileName: {
-    fontSize: 20,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  fileType: {
-    fontSize: 14,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 24,
-    gap: 24,
-  },
-  actionButton: {
-    alignItems: 'center',
-  },
-  actionIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  actionLabel: {
-    fontSize: 13,
-  },
-  infoCard: {
-    marginHorizontal: 16,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  infoIcon: {
-    marginRight: 12,
-  },
-  infoLabel: {
-    fontSize: 14,
-    width: 80,
-  },
-  infoValue: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-    textAlign: 'right',
-  },
+  actions: {paddingHorizontal: metrics.gutter, marginTop: metrics.space5},
 });
 
 export default FileDetailScreen;

@@ -4,13 +4,20 @@
  */
 
 import React from 'react';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {StyleSheet, View} from 'react-native';
+import {
+  createNativeStackNavigator,
+  type NativeStackNavigationOptions,
+} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {useTheme} from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import {useAuthStore} from '../stores/authStore';
 import {unresolvedCount, useSyncStore} from '../stores/syncStore';
+import {HistoryIcon, SettingsIcon, ShareIcon} from '../components/icons';
+import {makeTabBar, StackHeader} from '../components/navigation';
+import {Working} from '../components/pixel';
+import {metrics, usePalette} from '../theme/theme';
+import {fileName} from '../utils/format';
 
 // Auth Screens
 import {WelcomeScreen} from '../screens/auth/WelcomeScreen';
@@ -67,17 +74,19 @@ const MainTabs = createBottomTabNavigator<MainTabsParamList>();
 const FilesStack = createNativeStackNavigator<FilesStackParamList>();
 const SettingsStack = createNativeStackNavigator<SettingsStackParamList>();
 
+/** Every stack: the app's own header, and screens on the ground. */
+function useStackOptions(): NativeStackNavigationOptions {
+  const p = usePalette();
+  return {
+    header: StackHeader,
+    contentStyle: {backgroundColor: p.page},
+  };
+}
+
 // Auth Navigator
 function AuthNavigator() {
-  const {colors} = useTheme();
-
   return (
-    <AuthStack.Navigator
-      screenOptions={{
-        headerStyle: {backgroundColor: colors.card},
-        headerTintColor: colors.text,
-        headerTitleStyle: {fontWeight: '600'},
-      }}>
+    <AuthStack.Navigator screenOptions={useStackOptions()}>
       <AuthStack.Screen
         name="Welcome"
         component={WelcomeScreen}
@@ -86,12 +95,12 @@ function AuthNavigator() {
       <AuthStack.Screen
         name="QRScanner"
         component={QRScannerScreen}
-        options={{title: 'Scan QR Code'}}
+        options={{title: 'Scan the QR code'}}
       />
       <AuthStack.Screen
         name="ManualSetup"
         component={ManualSetupScreen}
-        options={{title: 'Pairing Link'}}
+        options={{title: 'Pairing link'}}
       />
     </AuthStack.Navigator>
   );
@@ -99,19 +108,12 @@ function AuthNavigator() {
 
 // Files Navigator
 function FilesNavigator() {
-  const {colors} = useTheme();
-
   return (
-    <FilesStack.Navigator
-      screenOptions={{
-        headerStyle: {backgroundColor: colors.card},
-        headerTintColor: colors.text,
-        headerTitleStyle: {fontWeight: '600'},
-      }}>
+    <FilesStack.Navigator screenOptions={useStackOptions()}>
       <FilesStack.Screen
         name="Shares"
         component={SharesScreen}
-        options={{title: 'My Shares'}}
+        options={{title: 'Shares'}}
       />
       <FilesStack.Screen
         name="Folder"
@@ -121,7 +123,7 @@ function FilesNavigator() {
       <FilesStack.Screen
         name="FileDetail"
         component={FileDetailScreen}
-        options={{title: 'File Details'}}
+        options={({route}) => ({title: fileName(route.params.path)})}
       />
     </FilesStack.Navigator>
   );
@@ -129,15 +131,8 @@ function FilesNavigator() {
 
 // Settings Navigator
 function SettingsNavigator() {
-  const {colors} = useTheme();
-
   return (
-    <SettingsStack.Navigator
-      screenOptions={{
-        headerStyle: {backgroundColor: colors.card},
-        headerTintColor: colors.text,
-        headerTitleStyle: {fontWeight: '600'},
-      }}>
+    <SettingsStack.Navigator screenOptions={useStackOptions()}>
       <SettingsStack.Screen
         name="SettingsMain"
         component={SettingsScreen}
@@ -146,7 +141,7 @@ function SettingsNavigator() {
       <SettingsStack.Screen
         name="DeviceSettings"
         component={DeviceSettingsScreen}
-        options={{title: 'Device'}}
+        options={{title: 'This device'}}
       />
       <SettingsStack.Screen
         name="About"
@@ -157,82 +152,71 @@ function SettingsNavigator() {
   );
 }
 
-interface TabIconProps {
-  color: string;
-  size: number;
-}
-
-function tabIcon(name: string): (props: TabIconProps) => React.JSX.Element {
-  return function TabIcon({color, size}: TabIconProps) {
-    return <Icon name={name} size={size} color={color} />;
-  };
-}
-
-const FilesIcon = tabIcon('folder-outline');
-const ActivityIcon = tabIcon('history');
-const ConflictsIcon = tabIcon('alert-circle-outline');
-const SettingsIcon = tabIcon('cog-outline');
+// Words with their icons beside them; Conflicts has no drawing yet, so it
+// stands as its word.
+const TabBar = makeTabBar({
+  Files: ShareIcon,
+  Activity: HistoryIcon,
+  Settings: SettingsIcon,
+});
 
 // Main Tab Navigator
 function MainNavigator() {
-  const {colors} = useTheme();
   const conflicts = useSyncStore(s => unresolvedCount(s.conflicts));
 
   return (
-    <MainTabs.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-        },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.text,
-      }}>
+    <MainTabs.Navigator tabBar={TabBar} screenOptions={{headerShown: false}}>
       <MainTabs.Screen
         name="Files"
         component={FilesNavigator}
-        options={{
-          tabBarLabel: 'Files',
-          tabBarIcon: FilesIcon,
-        }}
+        options={{tabBarLabel: 'Files'}}
       />
       <MainTabs.Screen
         name="Activity"
         component={ActivityScreen}
-        options={{
-          tabBarLabel: 'Activity',
-          tabBarIcon: ActivityIcon,
-        }}
+        options={{tabBarLabel: 'Activity'}}
       />
       <MainTabs.Screen
         name="Conflicts"
         component={ConflictsScreen}
         options={{
           tabBarLabel: 'Conflicts',
-          tabBarIcon: ConflictsIcon,
           tabBarBadge: conflicts > 0 ? conflicts : undefined,
         }}
       />
       <MainTabs.Screen
         name="Settings"
         component={SettingsNavigator}
-        options={{
-          tabBarLabel: 'Settings',
-          tabBarIcon: SettingsIcon,
-        }}
+        options={{tabBarLabel: 'Settings'}}
       />
     </MainTabs.Navigator>
   );
 }
+
+/** While the pairing is read from the secure store. */
+function Starting(): React.JSX.Element {
+  const p = usePalette();
+  return (
+    <View style={[startingStyles.screen, {backgroundColor: p.page}]}>
+      <Working size={24}>Starting</Working>
+    </View>
+  );
+}
+
+const startingStyles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: metrics.gutter,
+  },
+});
 
 // Root Navigator
 export function RootNavigator() {
   const status = useAuthStore(s => s.status);
 
   if (status === 'starting') {
-    // A moment: the pairing is read from the secure store.
-    return null;
+    return <Starting />;
   }
 
   return (

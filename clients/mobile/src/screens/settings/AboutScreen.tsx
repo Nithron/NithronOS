@@ -1,266 +1,127 @@
 /**
  * About Screen
- * App information and support
+ * The app's name and version, what it does, and where to read more.
  */
 
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Linking,
-  Alert,
-} from 'react-native';
-import {useTheme} from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import React, {useState} from 'react';
+import {Linking, ScrollView, Text, View} from 'react-native';
 
+import {Group, Row} from '../../components/layout';
+import {PixelText, StatusMark} from '../../components/pixel';
 import {APP_VERSION} from '../../version';
+import {metrics, Palette, type, useThemedStyles} from '../../theme/theme';
+
+interface Link {
+  title: string;
+  detail: string;
+  url: string;
+}
+
+const READ_MORE: Link[] = [
+  {title: 'Nithron', detail: 'nithron.com', url: 'https://nithron.com'},
+  {
+    title: 'Documentation',
+    detail: 'nos.nithron.com/docs/sync',
+    url: 'https://nos.nithron.com/docs/sync/',
+  },
+  {
+    title: 'Community',
+    detail: 'discord.gg/qzB37WS5AT',
+    url: 'https://discord.gg/qzB37WS5AT',
+  },
+  {
+    title: 'Email',
+    detail: 'hello@nithron.com',
+    url: 'mailto:hello@nithron.com',
+  },
+];
+
+const LEGAL: Link[] = [
+  {
+    title: 'Privacy policy',
+    detail: 'nithron.com/privacy',
+    url: 'https://nithron.com/privacy',
+  },
+  {
+    title: 'Terms of service',
+    detail: 'nithron.com/terms',
+    url: 'https://nithron.com/terms',
+  },
+  {
+    title: 'Licences',
+    detail: 'nithron.com/licenses',
+    url: 'https://nithron.com/licenses',
+  },
+];
 
 export function AboutScreen(): React.JSX.Element {
-  const {colors} = useTheme();
+  const styles = useThemedStyles(aboutStyles);
+  const [failedLink, setFailedLink] = useState<string | null>(null);
 
-  const handleLink = (url: string) => {
-    Linking.openURL(url).catch(() =>
-      Alert.alert("Couldn't open the link", url),
-    );
+  const open = (url: string) => {
+    setFailedLink(null);
+    Linking.openURL(url).catch(() => setFailedLink(url));
   };
 
+  const rows = (links: Link[]) =>
+    links.map(link => (
+      <Row
+        key={link.url}
+        title={link.title}
+        detail={link.detail}
+        onPress={() => open(link.url)}
+        external
+      />
+    ));
+
   return (
-    <ScrollView
-      style={[styles.container, {backgroundColor: colors.background}]}>
-      {/* App Logo & Info */}
-      <View style={styles.header}>
-        <View style={[styles.logo, {backgroundColor: colors.primary}]}>
-          <Icon name="cloud-sync" size={48} color="#FFFFFF" />
-        </View>
-        <Text style={[styles.appName, {color: colors.text}]}>NithronSync</Text>
-        <Text style={[styles.version, {color: `${colors.text}60`}]}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <View style={styles.name}>
+        <PixelText size={24} accessibilityRole="header">
+          NithronSync
+        </PixelText>
+        <Text style={styles.version} selectable>
           Version {APP_VERSION}
         </Text>
-      </View>
-
-      {/* Description */}
-      <View
-        style={[
-          styles.card,
-          {backgroundColor: colors.card, borderColor: colors.border},
-        ]}>
-        <Text style={[styles.description, {color: `${colors.text}80`}]}>
-          NithronSync is the official mobile client for nOS file
-          synchronization. Keep your files in sync across all your devices with
-          secure, private, self-hosted storage.
+        <Text style={styles.description}>
+          NithronSync browses the shares of a paired nOS machine. It does not
+          sync files to this phone.
         </Text>
       </View>
 
-      {/* Links Section */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>
-          SUPPORT
-        </Text>
-        <View
-          style={[
-            styles.card,
-            {backgroundColor: colors.card, borderColor: colors.border},
-          ]}>
-          <LinkRow
-            icon="web"
-            title="Website"
-            subtitle="nithron.com"
-            onPress={() => handleLink('https://nithron.com')}
-            colors={colors}
-          />
-          <Divider color={colors.border} />
-          <LinkRow
-            icon="book-open-variant"
-            title="Documentation"
-            subtitle="View user guide"
-            onPress={() => handleLink('https://nos.nithron.com/docs/sync/')}
-            colors={colors}
-          />
-          <Divider color={colors.border} />
-          <LinkRow
-            icon="discord"
-            title="Community"
-            subtitle="Join our Discord"
-            onPress={() => handleLink('https://discord.gg/qzB37WS5AT')}
-            colors={colors}
-          />
-          <Divider color={colors.border} />
-          <LinkRow
-            icon="email-outline"
-            title="Support"
-            subtitle="hello@nithron.com"
-            onPress={() => handleLink('mailto:hello@nithron.com')}
-            colors={colors}
-          />
+      {failedLink ? (
+        <View style={styles.problem} accessibilityLiveRegion="polite">
+          <StatusMark state="failed">{`Couldn't open ${failedLink}`}</StatusMark>
         </View>
-      </View>
+      ) : null}
 
-      {/* Legal Section */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>
-          LEGAL
-        </Text>
-        <View
-          style={[
-            styles.card,
-            {backgroundColor: colors.card, borderColor: colors.border},
-          ]}>
-          <LinkRow
-            icon="shield-lock-outline"
-            title="Privacy Policy"
-            onPress={() => handleLink('https://nithron.com/privacy')}
-            colors={colors}
-          />
-          <Divider color={colors.border} />
-          <LinkRow
-            icon="file-document-outline"
-            title="Terms of Service"
-            onPress={() => handleLink('https://nithron.com/terms')}
-            colors={colors}
-          />
-          <Divider color={colors.border} />
-          <LinkRow
-            icon="license"
-            title="Open Source Licenses"
-            onPress={() => handleLink('https://nithron.com/licenses')}
-            colors={colors}
-          />
-        </View>
-      </View>
+      <Group label="Read more">{rows(READ_MORE)}</Group>
+      <Group label="Legal">{rows(LEGAL)}</Group>
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={[styles.footerText, {color: `${colors.text}40`}]}>
-          © 2024 Nithron. All rights reserved.
-        </Text>
-        <Text style={[styles.footerText, {color: `${colors.text}30`}]}>
-          Made with ♥ for the self-hosted community
-        </Text>
-      </View>
+      <Text style={styles.footer}>
+        © 2025-2026 Thiago Benkendorf &amp; Nithron. nOS and NithronSync are
+        source-available under the Nithron Community License (NCL) v1.0.
+      </Text>
     </ScrollView>
   );
 }
 
-interface LinkRowProps {
-  icon: string;
-  title: string;
-  subtitle?: string;
-  onPress: () => void;
-  colors: {text: string; primary: string};
-}
-
-function LinkRow({icon, title, subtitle, onPress, colors}: LinkRowProps) {
-  return (
-    <TouchableOpacity style={styles.linkRow} onPress={onPress}>
-      <View
-        style={[
-          styles.iconContainer,
-          {backgroundColor: `${colors.primary}15`},
-        ]}>
-        <Icon name={icon} size={20} color={colors.primary} />
-      </View>
-      <View style={styles.rowContent}>
-        <Text style={[styles.rowTitle, {color: colors.text}]}>{title}</Text>
-        {subtitle && (
-          <Text style={[styles.rowSubtitle, {color: `${colors.text}60`}]}>
-            {subtitle}
-          </Text>
-        )}
-      </View>
-      <Icon name="chevron-right" size={20} color={`${colors.text}40`} />
-    </TouchableOpacity>
-  );
-}
-
-function Divider({color}: {color: string}) {
-  return <View style={[styles.divider, {backgroundColor: color}]} />;
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+const aboutStyles = (p: Palette) => ({
+  screen: {flex: 1, backgroundColor: p.page},
+  content: {paddingBottom: metrics.space6},
+  name: {
+    paddingHorizontal: metrics.gutter,
+    paddingTop: metrics.space5,
+    gap: metrics.space2,
   },
-  header: {
-    alignItems: 'center',
-    paddingVertical: 32,
-  },
-  logo: {
-    width: 88,
-    height: 88,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  appName: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  version: {
-    fontSize: 14,
-  },
-  card: {
-    marginHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  description: {
-    fontSize: 15,
-    lineHeight: 22,
-    padding: 16,
-    textAlign: 'center',
-  },
-  section: {
-    marginTop: 24,
-    paddingHorizontal: 16,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  linkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-  },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  rowContent: {
-    flex: 1,
-  },
-  rowTitle: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  rowSubtitle: {
-    fontSize: 13,
-    marginTop: 1,
-  },
-  divider: {
-    height: 1,
-    marginLeft: 62,
-  },
+  version: {...type.mono, color: p.ink2},
+  description: {...type.small, color: p.ink, marginTop: metrics.space2},
+  problem: {paddingHorizontal: metrics.gutter, paddingTop: metrics.space4},
   footer: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 16,
-  },
-  footerText: {
-    fontSize: 12,
-    marginBottom: 4,
+    ...type.fine,
+    color: p.ink2,
+    paddingHorizontal: metrics.gutter,
+    marginTop: metrics.space6,
   },
 });
 

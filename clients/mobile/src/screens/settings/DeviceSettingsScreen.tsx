@@ -1,31 +1,35 @@
 /**
  * Device Settings Screen
- * Manage device information and settings
+ * This device's name (the one first action saves it) and its record in nOS.
  */
 
 import React, {useEffect, useState} from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
-import {useTheme} from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import {format} from 'date-fns';
+import {ScrollView, View} from 'react-native';
 
 import {errorMessage, useAuthStore} from '../../stores/authStore';
 import {Device} from '../../api/types';
+import {Button} from '../../components/Button';
+import {Field} from '../../components/Field';
+import {Group, InfoRow} from '../../components/layout';
+import {StatusMark, Working} from '../../components/pixel';
+import {showToast} from '../../components/Toast';
+import {formatDate, formatDateTime} from '../../utils/datetime';
 import {formatBytes} from '../../utils/format';
+import {metrics, Palette, useThemedStyles} from '../../theme/theme';
 
 const MAX_NAME_LENGTH = 64; // nosd's limit
 
+const TYPE_NAMES: Record<Device['device_type'], string> = {
+  windows: 'Windows',
+  linux: 'Linux',
+  macos: 'macOS',
+  android: 'Android',
+  ios: 'iOS',
+  unknown: 'Unknown',
+};
+
 export function DeviceSettingsScreen(): React.JSX.Element {
-  const {colors} = useTheme();
+  const styles = useThemedStyles(deviceStyles);
   const {
     device: currentDevice,
     error,
@@ -37,6 +41,7 @@ export function DeviceSettingsScreen(): React.JSX.Element {
     currentDevice?.device_name ?? '',
   );
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!currentDevice) {
@@ -56,10 +61,12 @@ export function DeviceSettingsScreen(): React.JSX.Element {
       return;
     }
     setIsSaving(true);
+    setSaveError(null);
     try {
       await renameDevice(trimmed);
+      showToast('ok', `Renamed this device to ${trimmed}.`);
     } catch (err) {
-      Alert.alert("Couldn't rename the device", errorMessage(err));
+      setSaveError(`Couldn't rename the device. ${errorMessage(err)}`);
     } finally {
       setIsSaving(false);
     }
@@ -67,12 +74,14 @@ export function DeviceSettingsScreen(): React.JSX.Element {
 
   if (!currentDevice) {
     return (
-      <View
-        style={[styles.centerContainer, {backgroundColor: colors.background}]}>
+      <View style={[styles.screen, styles.inset, styles.problem]}>
         {error ? (
-          <Text style={{color: colors.text}}>{error}</Text>
+          <>
+            <StatusMark state="failed">{error}</StatusMark>
+            <Button kind="primary" label="Try again" onPress={refreshDevice} />
+          </>
         ) : (
-          <ActivityIndicator size="large" color={colors.primary} />
+          <Working>Loading this device</Working>
         )}
       </View>
     );
@@ -80,227 +89,75 @@ export function DeviceSettingsScreen(): React.JSX.Element {
 
   return (
     <ScrollView
-      style={[styles.container, {backgroundColor: colors.background}]}>
-      {/* Device Icon */}
-      <View style={styles.header}>
-        <View
-          style={[styles.deviceIcon, {backgroundColor: `${colors.primary}15`}]}>
-          <Icon
-            name={currentDevice.device_type === 'ios' ? 'apple' : 'android'}
-            size={48}
-            color={colors.primary}
-          />
-        </View>
-      </View>
-
-      {/* Device Name */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>
-          DEVICE NAME
-        </Text>
-        <View
-          style={[
-            styles.inputCard,
-            {backgroundColor: colors.card, borderColor: colors.border},
-          ]}>
-          <TextInput
-            style={[styles.input, {color: colors.text}]}
-            value={deviceName}
-            onChangeText={setDeviceName}
-            maxLength={MAX_NAME_LENGTH}
-            accessibilityLabel="Device name"
-            placeholder="Enter device name"
-            placeholderTextColor={`${colors.text}50`}
-          />
-        </View>
-        {hasChanges && (
-          <TouchableOpacity
-            accessibilityRole="button"
-            style={[styles.saveButton, {backgroundColor: colors.primary}]}
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled">
+      <View style={[styles.inset, styles.form]}>
+        <Field
+          label="Device name"
+          value={deviceName}
+          onChangeText={text => {
+            setDeviceName(text);
+            setSaveError(null);
+          }}
+          maxLength={MAX_NAME_LENGTH}
+          placeholder="Name of this device"
+          error={saveError}
+          returnKeyType="done"
+          onSubmitEditing={handleSave}
+        />
+        {hasChanges ? (
+          <Button
+            kind="primary"
+            label={isSaving ? 'Saving' : 'Save the name'}
             onPress={handleSave}
-            disabled={isSaving}>
-            {isSaving ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.saveButtonText}>Save Changes</Text>
-            )}
-          </TouchableOpacity>
-        )}
+            disabled={isSaving}
+          />
+        ) : null}
       </View>
 
-      {/* Device Info */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>
-          DEVICE INFO
-        </Text>
-        <View
-          style={[
-            styles.infoCard,
-            {backgroundColor: colors.card, borderColor: colors.border},
-          ]}>
-          <InfoRow label="Device ID" value={currentDevice.id} colors={colors} />
-          <Divider color={colors.border} />
-          <InfoRow
-            label="Type"
-            value={capitalize(currentDevice.device_type)}
-            colors={colors}
-          />
-          <Divider color={colors.border} />
-          <InfoRow
-            label="Registered"
-            value={format(new Date(currentDevice.created_at), 'MMM d, yyyy')}
-            colors={colors}
-          />
-          <Divider color={colors.border} />
-          <InfoRow
-            label="Last Sync"
-            value={formatTime(currentDevice.last_sync_at)}
-            colors={colors}
-          />
-        </View>
-      </View>
+      <Group label="Device">
+        <InfoRow label="Device ID" value={currentDevice.id} />
+        <InfoRow label="Type" value={TYPE_NAMES[currentDevice.device_type]} />
+        <InfoRow
+          label="Registered"
+          value={formatDate(currentDevice.created_at)}
+        />
+        <InfoRow
+          label="Last sync"
+          value={formatWhen(currentDevice.last_sync_at)}
+        />
+      </Group>
 
-      {/* Sync Stats */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: `${colors.text}60`}]}>
-          SYNC STATISTICS
-        </Text>
-        <View
-          style={[
-            styles.infoCard,
-            {backgroundColor: colors.card, borderColor: colors.border},
-          ]}>
-          <InfoRow
-            label="Total Synced"
-            value={formatBytes(currentDevice.bytes_synced)}
-            colors={colors}
-          />
-          <Divider color={colors.border} />
-          <InfoRow
-            label="Last Seen"
-            value={formatTime(currentDevice.last_seen_at)}
-            colors={colors}
-          />
-          <Divider color={colors.border} />
-          <InfoRow
-            label="Access"
-            value={currentDevice.is_revoked ? 'Revoked' : 'Active'}
-            valueColor={currentDevice.is_revoked ? '#EF4444' : '#10B981'}
-            colors={colors}
-          />
-        </View>
-      </View>
+      <Group label="Sync statistics">
+        <InfoRow
+          label="Total synced"
+          value={formatBytes(currentDevice.bytes_synced)}
+        />
+        <InfoRow
+          label="Last seen"
+          value={formatWhen(currentDevice.last_seen_at)}
+        />
+        <InfoRow label="Access">
+          <StatusMark state={currentDevice.is_revoked ? 'failed' : 'ok'}>
+            {currentDevice.is_revoked ? 'Revoked' : 'Active'}
+          </StatusMark>
+        </InfoRow>
+      </Group>
     </ScrollView>
   );
 }
 
-function capitalize(type: Device['device_type']): string {
-  return type.charAt(0).toUpperCase() + type.slice(1);
+function formatWhen(time: string | undefined): string {
+  return time ? formatDateTime(time) : 'Never';
 }
 
-function formatTime(time: string | undefined): string {
-  return time ? format(new Date(time), 'MMM d, yyyy h:mm a') : 'Never';
-}
-
-interface InfoRowProps {
-  label: string;
-  value: string;
-  valueColor?: string;
-  colors: {text: string};
-}
-
-function InfoRow({label, value, valueColor, colors}: InfoRowProps) {
-  return (
-    <View style={styles.infoRow}>
-      <Text style={[styles.infoLabel, {color: `${colors.text}70`}]}>
-        {label}
-      </Text>
-      <Text
-        style={[styles.infoValue, {color: valueColor || colors.text}]}
-        numberOfLines={1}>
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-function Divider({color}: {color: string}) {
-  return <View style={[styles.divider, {backgroundColor: color}]} />;
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    alignItems: 'center',
-    paddingVertical: 32,
-  },
-  deviceIcon: {
-    width: 96,
-    height: 96,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  section: {
-    paddingHorizontal: 16,
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  inputCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 4,
-  },
-  input: {
-    fontSize: 16,
-    padding: 12,
-  },
-  saveButton: {
-    marginTop: 12,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  infoCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 14,
-  },
-  infoLabel: {
-    fontSize: 15,
-  },
-  infoValue: {
-    fontSize: 15,
-    fontWeight: '500',
-    maxWidth: '60%',
-  },
-  divider: {
-    height: 1,
-    marginLeft: 14,
-  },
+const deviceStyles = (p: Palette) => ({
+  screen: {flex: 1, backgroundColor: p.page},
+  content: {paddingBottom: metrics.space6},
+  inset: {padding: metrics.gutter},
+  problem: {gap: metrics.space4, alignItems: 'flex-start' as const},
+  form: {gap: metrics.space3},
 });
 
 export default DeviceSettingsScreen;

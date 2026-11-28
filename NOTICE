@@ -23,5 +23,14 @@ Both files are the upstream release files, unchanged (renamed only).
 
 The design tokens in web/src/styles/nithron-tokens.css come from @nithron/tokens 0.4.0, the pixel display
 face web/public/fonts/nithron-pixel.woff2 (Nithron Pixel) from the same package, and the pixel icons in
-web/src/vendor/nithron-icons from @nithron/icons 0.1.0; all by Nithron, under the Nithron Community License
+web/src/vendor/nithron-icons from @nithron/icons 0.2.0; all by Nithron, under the Nithron Community License
 v1.0 (web/public/fonts/NITHRON-PIXEL-LICENSE.txt, web/src/vendor/nithron-icons/LICENSE).
+
+The NithronSync mobile app (clients/mobile) carries the same faces in clients/mobile/assets/fonts, with
+their licence texts and a README naming each source file and its SHA-256: Mona Sans 2.0.27 Regular and
+SemiBold (MonaSans-Regular.otf, MonaSans-SemiBold.otf) and Monaspace Neon 1.400 Regular
+(MonaspaceNeon-Regular.otf), SIL Open Font License 1.1, each the upstream WOFF2 release file decompressed
+to OpenType, outlines and names unchanged; Nithron Pixel (NithronPixel-Regular.ttf) from @nithron/tokens
+0.4.0. Its design tokens (clients/mobile/src/theme/nithron-tokens.js) come from @nithron/tokens 0.4.0 and
+its pixel icons (clients/mobile/src/vendor/nithron-icons) from @nithron/icons 0.2.0; all by Nithron, under
+the Nithron Community License v1.0.

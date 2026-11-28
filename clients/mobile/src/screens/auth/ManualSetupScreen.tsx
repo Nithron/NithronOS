@@ -5,24 +5,21 @@
 
 import React, {useState} from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
-  View,
 } from 'react-native';
-import {useTheme} from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import {errorMessage, useAuthStore} from '../../stores/authStore';
+import {Button} from '../../components/Button';
+import {Field} from '../../components/Field';
+import {metrics, Palette, type, useThemedStyles} from '../../theme/theme';
 import {explainBadLink, PAIRING_STEPS} from './pairingHelp';
 
 export function ManualSetupScreen(): React.JSX.Element {
-  const {colors} = useTheme();
+  const styles = useThemedStyles(setupStyles);
   const {pairWithLink, isBusy} = useAuthStore();
   const [link, setLink] = useState('');
   const [failure, setFailure] = useState<string | null>(null);
@@ -44,145 +41,51 @@ export function ManualSetupScreen(): React.JSX.Element {
 
   return (
     <KeyboardAvoidingView
-      style={styles.flex}
+      style={layout.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
-        style={[styles.flex, {backgroundColor: colors.background}]}
+        style={styles.screen}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled">
-        <Text style={[styles.title, {color: colors.text}]}>
-          Paste the pairing link
-        </Text>
-        <Text style={[styles.description, {color: `${colors.text}99`}]}>
-          {PAIRING_STEPS}
-        </Text>
+        <Text style={styles.description}>{PAIRING_STEPS}</Text>
 
-        <TextInput
-          accessibilityLabel="Pairing link"
-          style={[
-            styles.input,
-            {color: colors.text, borderColor: colors.border},
-          ]}
+        <Field
+          label="Pairing link"
           placeholder="nos://sync?server=…"
-          placeholderTextColor={`${colors.text}50`}
           value={link}
           onChangeText={setLink}
           autoCapitalize="none"
           autoCorrect={false}
+          error={failure}
           multiline
-          textAlignVertical="top"
+          mono
         />
 
-        <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityState={{disabled: !canPair}}
-          style={[
-            styles.button,
-            {backgroundColor: colors.primary},
-            !canPair && styles.buttonDisabled,
-          ]}
+        <Button
+          kind="primary"
+          label={isBusy ? 'Pairing' : 'Pair'}
           onPress={handlePair}
-          disabled={!canPair}>
-          {isBusy ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <>
-              <Text style={styles.buttonText}>Pair</Text>
-              <Icon name="link-variant" size={20} color="#FFFFFF" />
-            </>
-          )}
-        </TouchableOpacity>
+          disabled={!canPair}
+          block
+        />
 
-        {failure && (
-          <View style={styles.errorContainer} accessibilityLiveRegion="polite">
-            <Icon name="alert-circle" size={20} color="#DC2626" />
-            <Text style={styles.errorText}>{failure}</Text>
-          </View>
-        )}
-
-        <View style={styles.helpSection}>
-          <Icon
-            name="shield-lock-outline"
-            size={18}
-            color={`${colors.text}80`}
-          />
-          <Text style={[styles.helpText, {color: `${colors.text}80`}]}>
-            The link carries this device's sign-in and your server's key, so
-            NithronSync trusts that server's own certificate. Keep the link to
-            yourself.
-          </Text>
-        </View>
+        <Text style={styles.help}>
+          The link carries this device's sign-in and your server's key, so
+          NithronSync trusts that server's own certificate. Keep the link to
+          yourself.
+        </Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  content: {
-    padding: 24,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  description: {
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 24,
-  },
-  input: {
-    borderWidth: 1.5,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 15,
-    minHeight: 120,
-    marginBottom: 16,
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 16,
-    gap: 8,
-    backgroundColor: '#FEE2E2',
-  },
-  errorText: {
-    flex: 1,
-    color: '#991B1B',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  helpSection: {
-    flexDirection: 'row',
-    marginTop: 24,
-    gap: 8,
-  },
-  helpText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
-  },
+const layout = StyleSheet.create({flex: {flex: 1}});
+
+const setupStyles = (p: Palette) => ({
+  screen: {flex: 1, backgroundColor: p.page},
+  content: {padding: metrics.gutter, gap: metrics.space5},
+  description: {...type.small, color: p.ink},
+  help: {...type.fine, color: p.ink2},
 });
 
 export default ManualSetupScreen;

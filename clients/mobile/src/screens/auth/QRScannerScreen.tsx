@@ -3,18 +3,9 @@
  */
 
 import React, {useCallback, useRef, useState} from 'react';
-import {
-  ActivityIndicator,
-  Dimensions,
-  Linking,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import {useIsFocused, useNavigation, useTheme} from '@react-navigation/native';
+import {Dimensions, Linking, StyleSheet, Text, View} from 'react-native';
+import {useIsFocused, useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
   Camera,
   Code,
@@ -25,10 +16,16 @@ import {
 
 import {errorMessage, useAuthStore} from '../../stores/authStore';
 import {AuthStackParamList} from '../../navigation/RootNavigator';
+import {Button} from '../../components/Button';
+import {PairingLinkIcon} from '../../components/icons';
+import {StatusMark, Working} from '../../components/pixel';
+import {metrics, Palette, type, useThemedStyles} from '../../theme/theme';
 import {explainBadLink, PAIRING_STEPS} from './pairingHelp';
 
+const SCAN_AREA_SHARE = 0.7;
+const SCAN_AREA_MAX = 280;
 const {width} = Dimensions.get('window');
-const SCAN_AREA_SIZE = Math.min(width * 0.7, 280);
+const SCAN_AREA_SIZE = Math.min(width * SCAN_AREA_SHARE, SCAN_AREA_MAX);
 
 type QRScannerNavigationProp = NativeStackNavigationProp<
   AuthStackParamList,
@@ -37,7 +34,7 @@ type QRScannerNavigationProp = NativeStackNavigationProp<
 
 export function QRScannerScreen(): React.JSX.Element {
   const navigation = useNavigation<QRScannerNavigationProp>();
-  const {colors} = useTheme();
+  const styles = useThemedStyles(scannerStyles);
   const isFocused = useIsFocused();
   const {hasPermission, requestPermission} = useCameraPermission();
   const device = useCameraDevice('back');
@@ -82,47 +79,49 @@ export function QRScannerScreen(): React.JSX.Element {
     setWasDenied(!granted);
   };
 
+  const pasteLink = (
+    <Button
+      icon={PairingLinkIcon}
+      label="Paste the pairing link"
+      onPress={() => navigation.navigate('ManualSetup')}
+      block
+    />
+  );
+
   if (!hasPermission) {
     return (
-      <View
-        style={[styles.messageContainer, {backgroundColor: colors.background}]}>
-        <Icon name="camera-off" size={64} color={colors.text} />
-        <Text style={[styles.messageTitle, {color: colors.text}]}>
+      <View style={styles.message}>
+        <Text accessibilityRole="header" style={styles.messageTitle}>
           Camera access needed
         </Text>
-        <Text style={[styles.messageText, {color: `${colors.text}99`}]}>
+        <Text style={styles.messageText}>
           {wasDenied
             ? 'Camera access is off for NithronSync. Turn it on in the system settings, or paste the pairing link instead.'
             : 'NithronSync uses the camera only to read the pairing QR code.'}
         </Text>
-        <TouchableOpacity
-          accessibilityRole="button"
-          style={[styles.primaryButton, {backgroundColor: colors.primary}]}
-          onPress={wasDenied ? () => Linking.openSettings() : askForCamera}>
-          <Text style={styles.primaryButtonText}>
-            {wasDenied ? 'Open settings' : 'Allow camera'}
-          </Text>
-        </TouchableOpacity>
-        <PasteLinkButton
-          color={colors.primary}
-          onPress={() => navigation.navigate('ManualSetup')}
-        />
+        <View style={styles.messageActions}>
+          <Button
+            kind="primary"
+            label={wasDenied ? 'Open settings' : 'Allow camera'}
+            onPress={wasDenied ? () => Linking.openSettings() : askForCamera}
+            block
+          />
+          {pasteLink}
+        </View>
       </View>
     );
   }
 
   if (!device) {
     return (
-      <View
-        style={[styles.messageContainer, {backgroundColor: colors.background}]}>
-        <Icon name="camera-off" size={64} color={colors.text} />
-        <Text style={[styles.messageTitle, {color: colors.text}]}>
+      <View style={styles.message}>
+        <Text accessibilityRole="header" style={styles.messageTitle}>
           No camera found
         </Text>
-        <PasteLinkButton
-          color={colors.primary}
-          onPress={() => navigation.navigate('ManualSetup')}
-        />
+        <Text style={styles.messageText}>
+          Paste the pairing link instead.
+        </Text>
+        <View style={styles.messageActions}>{pasteLink}</View>
       </View>
     );
   }
@@ -139,164 +138,74 @@ export function QRScannerScreen(): React.JSX.Element {
       />
 
       <View style={styles.overlay} pointerEvents="box-none">
-        <View style={styles.overlayDark} />
-        <View style={styles.overlayMiddle}>
-          <View style={styles.overlayDark} />
-          <View style={[styles.scanFrame, {borderColor: colors.primary}]}>
+        <View style={styles.dim} />
+        <View style={styles.middle}>
+          <View style={styles.dim} />
+          <View style={styles.frame}>
             {isPairing && (
-              <View style={styles.pairingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={styles.pairingText}>Pairing…</Text>
+              <View style={styles.pairing}>
+                <Working>Pairing</Working>
               </View>
             )}
           </View>
-          <View style={styles.overlayDark} />
+          <View style={styles.dim} />
         </View>
-        <View style={[styles.overlayDark, styles.bottomArea]}>
+        <View style={[styles.dim, styles.bottomArea]}>
           {failure ? (
             <View style={styles.failure} accessibilityLiveRegion="polite">
-              <Icon name="alert-circle" size={20} color="#FFFFFF" />
-              <Text style={styles.failureText}>{failure}</Text>
-              <TouchableOpacity
-                accessibilityRole="button"
-                style={[
-                  styles.primaryButton,
-                  {backgroundColor: colors.primary},
-                ]}
-                onPress={scanAgain}>
-                <Text style={styles.primaryButtonText}>Scan again</Text>
-              </TouchableOpacity>
+              <StatusMark state="failed">{failure}</StatusMark>
+              <Button
+                kind="primary"
+                label="Scan again"
+                onPress={scanAgain}
+                block
+              />
             </View>
           ) : (
-            <Text style={styles.instructionText}>{PAIRING_STEPS}</Text>
+            <Text style={styles.instruction}>{PAIRING_STEPS}</Text>
           )}
-          <PasteLinkButton
-            color="#FFFFFF"
-            onPress={() => navigation.navigate('ManualSetup')}
-          />
+          {pasteLink}
         </View>
       </View>
     </View>
   );
 }
 
-function PasteLinkButton({
-  color,
-  onPress,
-}: {
-  color: string;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      accessibilityRole="button"
-      style={styles.linkButton}
-      onPress={onPress}>
-      <Icon name="link-variant" size={18} color={color} />
-      <Text style={[styles.linkButtonText, {color}]}>
-        Paste the pairing link
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  overlayDark: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-  },
-  overlayMiddle: {
-    flexDirection: 'row',
-    height: SCAN_AREA_SIZE,
-  },
-  scanFrame: {
+const scannerStyles = (p: Palette) => ({
+  container: {flex: 1, backgroundColor: p.page},
+  overlay: {...StyleSheet.absoluteFillObject},
+  // Outside the frame the picture lies under the ground at 70 percent.
+  dim: {flex: 1, backgroundColor: p.scrim},
+  middle: {flexDirection: 'row' as const, height: SCAN_AREA_SIZE},
+  frame: {
     width: SCAN_AREA_SIZE,
     height: SCAN_AREA_SIZE,
-    borderWidth: 3,
-    borderRadius: 16,
-    overflow: 'hidden',
+    borderWidth: metrics.focus,
+    borderColor: p.main,
   },
-  pairingContainer: {
+  pairing: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  pairingText: {
-    color: '#FFFFFF',
-    marginTop: 12,
-    fontSize: 14,
+    justifyContent: 'center' as const,
+    paddingHorizontal: metrics.gutter,
+    backgroundColor: p.scrim,
   },
   bottomArea: {
     flex: 1.4,
-    padding: 24,
-    alignItems: 'center',
+    padding: metrics.gutter,
+    gap: metrics.space4,
   },
-  instructionText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    lineHeight: 21,
-    textAlign: 'center',
-  },
-  failure: {
-    alignItems: 'center',
-    gap: 10,
-  },
-  failureText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    lineHeight: 21,
-    textAlign: 'center',
-  },
-  messageContainer: {
+  instruction: {...type.small, color: p.ink},
+  failure: {gap: metrics.space3},
+  message: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
+    justifyContent: 'center' as const,
+    padding: metrics.gutter,
+    gap: metrics.space3,
+    backgroundColor: p.page,
   },
-  messageTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  messageText: {
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  primaryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    minHeight: 48,
-    justifyContent: 'center',
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  linkButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 16,
-    minHeight: 48,
-    paddingHorizontal: 12,
-  },
-  linkButtonText: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
+  messageTitle: {...type.title, color: p.ink},
+  messageText: {...type.small, color: p.ink2},
+  messageActions: {gap: metrics.space3, marginTop: metrics.space3},
 });
 
 export default QRScannerScreen;

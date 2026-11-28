@@ -4,30 +4,33 @@
  */
 
 import React, {useCallback, useState} from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-  ActivityIndicator,
-} from 'react-native';
+import {FlatList, Pressable, Text, View} from 'react-native';
 import {
   RouteProp,
   useFocusEffect,
   useNavigation,
   useRoute,
-  useTheme,
 } from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import {formatDistanceToNow} from 'date-fns';
 
 import {apiClient} from '../../api/client';
 import {FolderEntry} from '../../api/types';
 import {FilesStackParamList} from '../../navigation/RootNavigator';
-import {formatBytes} from '../../utils/format';
+import {errorMessage} from '../../stores/authStore';
+import {Button} from '../../components/Button';
+import {ChevronRightIcon, FileIcon, FolderIcon} from '../../components/icons';
+import {EmptyState} from '../../components/layout';
+import {StatusMark, Working} from '../../components/pixel';
+import {RefreshButton, Toolbar, useRefresh} from '../../components/Refresh';
+import {formatDateTime} from '../../utils/datetime';
+import {countOf, formatBytes} from '../../utils/format';
+import {
+  metrics,
+  Palette,
+  type,
+  usePalette,
+  useThemedStyles,
+} from '../../theme/theme';
 
 type FolderNavigationProp = NativeStackNavigationProp<
   FilesStackParamList,
@@ -36,14 +39,14 @@ type FolderNavigationProp = NativeStackNavigationProp<
 type FolderRouteProp = RouteProp<FilesStackParamList, 'Folder'>;
 
 export function FolderScreen(): React.JSX.Element {
-  const {colors} = useTheme();
+  const p = usePalette();
+  const styles = useThemedStyles(folderStyles);
   const navigation = useNavigation<FolderNavigationProp>();
   const route = useRoute<FolderRouteProp>();
   const {shareId, path} = route.params;
 
   const [files, setFiles] = useState<FolderEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadFiles = useCallback(async () => {
@@ -52,11 +55,13 @@ export function FolderScreen(): React.JSX.Element {
       // Folders first, then by name.
       setFiles(await apiClient.listFolder(shareId, path));
     } catch (err) {
-      setError((err as Error).message || 'Failed to load files');
+      setError(errorMessage(err) || "Couldn't load the folder");
     } finally {
       setLoading(false);
     }
   }, [shareId, path]);
+
+  const {refreshing, refresh} = useRefresh(loadFiles);
 
   // Again on coming back, e.g. after deleting a file.
   useFocusEffect(
@@ -65,205 +70,88 @@ export function FolderScreen(): React.JSX.Element {
     }, [loadFiles]),
   );
 
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadFiles();
-    setRefreshing(false);
-  }, [loadFiles]);
-
-  const handleFilePress = (file: FolderEntry) => {
-    if (file.isDir) {
+  const openEntry = (entry: FolderEntry) => {
+    if (entry.isDir) {
       navigation.push('Folder', {
         shareId,
-        path: file.path,
-        name: file.name,
+        path: entry.path,
+        name: entry.name,
       });
     } else {
-      navigation.navigate('FileDetail', {
-        shareId,
-        path: file.path,
-      });
+      navigation.navigate('FileDetail', {shareId, path: entry.path});
     }
   };
 
-  const getFileIcon = (file: FolderEntry): string => {
-    if (file.isDir) {
-      return 'folder';
-    }
-
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    switch (ext) {
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-      case 'gif':
-      case 'webp':
-        return 'file-image';
-      case 'mp4':
-      case 'mov':
-      case 'avi':
-      case 'mkv':
-        return 'file-video';
-      case 'mp3':
-      case 'wav':
-      case 'flac':
-      case 'aac':
-        return 'file-music';
-      case 'pdf':
-        return 'file-pdf-box';
-      case 'doc':
-      case 'docx':
-        return 'file-word';
-      case 'xls':
-      case 'xlsx':
-        return 'file-excel';
-      case 'ppt':
-      case 'pptx':
-        return 'file-powerpoint';
-      case 'zip':
-      case 'rar':
-      case '7z':
-      case 'tar':
-      case 'gz':
-        return 'folder-zip';
-      case 'js':
-      case 'ts':
-      case 'py':
-      case 'go':
-      case 'rs':
-      case 'java':
-        return 'file-code';
-      default:
-        return 'file-document';
-    }
-  };
-
-  const getFileIconColor = (file: FolderEntry): string => {
-    if (file.isDir) {
-      return '#F59E0B';
-    }
-
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    switch (ext) {
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-      case 'gif':
-      case 'webp':
-        return '#10B981';
-      case 'mp4':
-      case 'mov':
-      case 'avi':
-      case 'mkv':
-        return '#8B5CF6';
-      case 'mp3':
-      case 'wav':
-      case 'flac':
-        return '#EC4899';
-      case 'pdf':
-        return '#EF4444';
-      default:
-        return colors.primary;
-    }
-  };
-
-  const renderFile = ({item}: {item: FolderEntry}) => {
-    const iconName = getFileIcon(item);
-    const iconColor = getFileIconColor(item);
-
+  const renderEntry = ({item}: {item: FolderEntry}) => {
+    const Icon = item.isDir ? FolderIcon : FileIcon;
     return (
-      <TouchableOpacity
+      <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${item.name}, ${describeEntry(item)}`}
-        style={[styles.fileItem, {borderBottomColor: colors.border}]}
-        onPress={() => handleFilePress(item)}>
-        <View style={[styles.fileIcon, {backgroundColor: `${iconColor}15`}]}>
-          <Icon name={iconName} size={24} color={iconColor} />
-        </View>
-        <View style={styles.fileContent}>
-          <Text
-            style={[styles.fileName, {color: colors.text}]}
-            numberOfLines={1}>
+        style={({pressed}) => [styles.row, pressed && styles.rowPressed]}
+        onPress={() => openEntry(item)}>
+        <Icon color={p.ink} />
+        <View style={styles.rowText}>
+          <Text style={styles.name} numberOfLines={1}>
             {item.name}
           </Text>
-          <Text style={[styles.fileMeta, {color: `${colors.text}60`}]}>
+          <Text style={styles.meta} numberOfLines={1}>
             {describeEntry(item)}
           </Text>
         </View>
-        <Icon
-          name={item.isDir ? 'chevron-right' : 'information-outline'}
-          size={20}
-          color={`${colors.text}40`}
-        />
-      </TouchableOpacity>
+        <ChevronRightIcon color={p.ink2} />
+      </Pressable>
     );
   };
 
   const renderEmpty = () => {
     if (loading) {
       return (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={styles.inset}>
+          <Working>Loading the folder</Working>
         </View>
       );
     }
-
     if (error) {
       return (
-        <View style={styles.centerContainer}>
-          <Icon name="alert-circle" size={48} color="#EF4444" />
-          <Text style={[styles.errorText, {color: colors.text}]}>{error}</Text>
-          <TouchableOpacity
-            style={[styles.retryButton, {backgroundColor: colors.primary}]}
-            onPress={loadFiles}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
+        <View style={[styles.inset, styles.problem]}>
+          <StatusMark state="failed">{error}</StatusMark>
+          <Button kind="primary" label="Try again" onPress={refresh} />
         </View>
       );
     }
-
     return (
-      <View style={styles.centerContainer}>
-        <Icon name="folder-open" size={64} color={`${colors.text}30`} />
-        <Text style={[styles.emptyTitle, {color: colors.text}]}>
-          Empty Folder
-        </Text>
-        <Text style={[styles.emptyText, {color: `${colors.text}60`}]}>
-          This folder doesn't contain any files
-        </Text>
-      </View>
+      <EmptyState
+        title="This folder is empty."
+        text="Files added to it in nOS show here."
+      />
     );
   };
 
-  return (
-    <View style={[styles.container, {backgroundColor: colors.background}]}>
-      {/* Breadcrumb */}
-      {path !== '' && (
-        <View style={[styles.breadcrumb, {borderBottomColor: colors.border}]}>
-          <Icon name="folder-outline" size={16} color={`${colors.text}60`} />
-          <Text
-            style={[styles.breadcrumbText, {color: `${colors.text}60`}]}
-            numberOfLines={1}>
-            {path}
-          </Text>
-        </View>
-      )}
+  const fact = loading || error ? undefined : countOf(files.length, 'item', 'items');
 
+  return (
+    <View style={styles.screen}>
+      {path !== '' && (
+        <Text style={styles.path} numberOfLines={2} selectable>
+          {path}
+        </Text>
+      )}
+      <Toolbar fact={fact}>
+        <RefreshButton refreshing={refreshing} onPress={refresh} />
+      </Toolbar>
+      {error && files.length > 0 ? (
+        <View style={[styles.inset, styles.banner]}>
+          <StatusMark state="failed">
+            {`Couldn't refresh the folder. ${error}`}
+          </StatusMark>
+        </View>
+      ) : null}
       <FlatList
         data={files}
-        renderItem={renderFile}
+        renderItem={renderEntry}
         keyExtractor={item => item.path}
         ListEmptyComponent={renderEmpty}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary}
-          />
-        }
-        contentContainerStyle={
-          files.length === 0 ? styles.emptyList : undefined
-        }
       />
     </View>
   );
@@ -274,90 +162,36 @@ function describeEntry(entry: FolderEntry): string {
     return 'Folder';
   }
   const size = formatBytes(entry.size);
-  return entry.modified
-    ? `${size} • ${formatDistanceToNow(new Date(entry.modified), {
-        addSuffix: true,
-      })}`
-    : size;
+  return entry.modified ? `${size}  ${formatDateTime(entry.modified)}` : size;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+const folderStyles = (p: Palette) => ({
+  screen: {flex: 1, backgroundColor: p.page},
+  path: {
+    ...type.label,
+    color: p.ink2,
+    paddingHorizontal: metrics.gutter,
+    paddingVertical: metrics.space2,
+    borderBottomWidth: metrics.hair,
+    borderBottomColor: p.hairline,
   },
-  breadcrumb: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    gap: 6,
+  row: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: metrics.space3,
+    minHeight: metrics.target + metrics.space1,
+    paddingVertical: metrics.space3,
+    paddingHorizontal: metrics.gutter,
+    borderBottomWidth: metrics.hair,
+    borderBottomColor: p.hairline,
   },
-  breadcrumbText: {
-    fontSize: 13,
-    flex: 1,
-  },
-  fileItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-  },
-  fileIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  fileContent: {
-    flex: 1,
-  },
-  fileName: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  fileMeta: {
-    fontSize: 13,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  emptyList: {
-    flex: 1,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  errorText: {
-    fontSize: 15,
-    marginTop: 12,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  retryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
+  rowPressed: {backgroundColor: p.pressed},
+  rowText: {flex: 1, gap: metrics.space1},
+  name: {...type.small, color: p.ink},
+  meta: {...type.label, color: p.ink2},
+  inset: {padding: metrics.gutter},
+  problem: {gap: metrics.space4, alignItems: 'flex-start' as const},
+  banner: {borderBottomWidth: metrics.hair, borderBottomColor: p.hairline},
 });
 
 export default FolderScreen;

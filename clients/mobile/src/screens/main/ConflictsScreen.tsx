@@ -1,286 +1,218 @@
 /**
  * Conflicts Screen
- * List and resolve sync conflicts
+ * The conflicts nOS recorded for this device that wait for a decision, as
+ * a ruled list; a decision is taken in the app's own dialog.
  */
 
-import React, {useEffect, useCallback, useState} from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-  Alert,
-} from 'react-native';
-import {useTheme} from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import {formatDistanceToNow} from 'date-fns';
+import React, {useCallback, useEffect, useState} from 'react';
+import {FlatList, Pressable, Text, View} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {useSyncStore} from '../../stores/syncStore';
-import {ConflictResolution, SyncConflict} from '../../api/types';
+import {ConflictResolution, FileVersion, SyncConflict} from '../../api/types';
 import {errorMessage} from '../../stores/authStore';
-import {formatBytes} from '../../utils/format';
+import {ConfirmDialog} from '../../components/ConfirmDialog';
+import {ChevronRightIcon} from '../../components/icons';
+import {EmptyState, InfoRow, ScreenTitle} from '../../components/layout';
+import {StatusMark, Working} from '../../components/pixel';
+import {RefreshButton, useRefresh} from '../../components/Refresh';
+import {showToast} from '../../components/Toast';
+import {formatDateTime} from '../../utils/datetime';
+import {countOf, fileName, formatBytes} from '../../utils/format';
+import {
+  metrics,
+  Palette,
+  type,
+  usePalette,
+  useThemedStyles,
+} from '../../theme/theme';
+
+const RESOLVED_WORDS: Record<ConflictResolution, string> = {
+  keep_local: 'Kept the local version of',
+  keep_remote: 'Kept the remote version of',
+  keep_both: 'Kept both versions of',
+};
+
+function describeVersion(version: FileVersion): string {
+  return `${formatBytes(version.size)}  ${formatDateTime(version.modified)}`;
+}
 
 export function ConflictsScreen(): React.JSX.Element {
-  const {colors} = useTheme();
+  const p = usePalette();
+  const styles = useThemedStyles(conflictStyles);
   const {conflicts, conflictsError, refreshConflicts, resolveConflict} =
     useSyncStore();
-  const [refreshing, setRefreshing] = useState(false);
-  const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const {refreshing, refresh} = useRefresh(refreshConflicts);
+  const [loaded, setLoaded] = useState(conflicts.length > 0);
+  const [chosen, setChosen] = useState<SyncConflict | null>(null);
+  const [resolving, setResolving] = useState(false);
+  const [resolveError, setResolveError] = useState<string | null>(null);
 
-  const unresolvedConflicts = conflicts.filter(c => !c.resolved);
+  const unresolved = conflicts.filter(c => !c.resolved);
 
   useEffect(() => {
-    refreshConflicts();
+    refreshConflicts().finally(() => setLoaded(true));
   }, [refreshConflicts]);
 
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await refreshConflicts();
-    setRefreshing(false);
-  }, [refreshConflicts]);
+  const choose = (conflict: SyncConflict) => {
+    setResolveError(null);
+    setChosen(conflict);
+  };
 
   const handleResolve = useCallback(
     async (conflict: SyncConflict, resolution: ConflictResolution) => {
-      setResolvingId(conflict.id);
+      setResolving(true);
+      setResolveError(null);
       try {
         await resolveConflict(conflict.id, resolution);
-        Alert.alert(
-          'Conflict Resolved',
-          'The file conflict has been resolved.',
-        );
+        setChosen(null);
+        showToast('ok', `${RESOLVED_WORDS[resolution]} ${fileName(conflict.path)}.`);
       } catch (error) {
-        Alert.alert("Couldn't resolve the conflict", errorMessage(error));
+        setResolveError(`Couldn't resolve the conflict. ${errorMessage(error)}`);
       } finally {
-        setResolvingId(null);
+        setResolving(false);
       }
     },
     [resolveConflict],
   );
 
-  const showResolveOptions = (conflict: SyncConflict) => {
-    const fileName = conflict.path.split('/').pop() || conflict.path;
+  const renderConflict = ({item}: {item: SyncConflict}) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${fileName(item.path)}, local ${formatBytes(
+        item.local_version.size,
+      )}, remote ${formatBytes(item.remote_version.size)}`}
+      accessibilityHint="Choose which version to keep"
+      style={({pressed}) => [styles.row, pressed && styles.rowPressed]}
+      onPress={() => choose(item)}>
+      <View style={styles.rowText}>
+        <Text style={styles.name} numberOfLines={1}>
+          {fileName(item.path)}
+        </Text>
+        <Text style={styles.meta} numberOfLines={1}>
+          {item.path}
+        </Text>
+        <Text style={styles.meta}>
+          {`Local ${formatBytes(item.local_version.size)}   Remote ${formatBytes(
+            item.remote_version.size,
+          )}`}
+        </Text>
+        <Text style={styles.meta}>{`Found ${formatDateTime(item.detected_at)}`}</Text>
+      </View>
+      <ChevronRightIcon color={p.ink2} />
+    </Pressable>
+  );
 
-    Alert.alert(
-      `Resolve: ${fileName}`,
-      `Local: ${formatBytes(
-        conflict.local_version.size,
-      )}\nRemote: ${formatBytes(conflict.remote_version.size)}`,
-      [
-        {
-          text: 'Keep Local',
-          onPress: () => handleResolve(conflict, 'keep_local'),
-        },
-        {
-          text: 'Keep Remote',
-          onPress: () => handleResolve(conflict, 'keep_remote'),
-        },
-        {
-          text: 'Keep Both',
-          onPress: () => handleResolve(conflict, 'keep_both'),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ],
-    );
-  };
-
-  const renderConflict = ({item}: {item: SyncConflict}) => {
-    const fileName = item.path.split('/').pop() || item.path;
-    const isResolving = resolvingId === item.id;
-
+  const renderEmpty = () => {
+    if (!loaded) {
+      return (
+        <View style={styles.inset}>
+          <Working>Loading the conflicts</Working>
+        </View>
+      );
+    }
+    if (conflictsError) {
+      return null;
+    }
     return (
-      <TouchableOpacity
-        style={[styles.conflictItem, {borderBottomColor: colors.border}]}
-        onPress={() => showResolveOptions(item)}
-        disabled={isResolving}>
-        <View style={[styles.conflictIcon, styles.conflictIconWarning]}>
-          <Icon name="alert-circle" size={24} color="#F59E0B" />
-        </View>
-        <View style={styles.conflictContent}>
-          <Text
-            style={[styles.conflictName, {color: colors.text}]}
-            numberOfLines={1}>
-            {fileName}
-          </Text>
-          <Text
-            style={[styles.conflictPath, {color: `${colors.text}60`}]}
-            numberOfLines={1}>
-            {item.path}
-          </Text>
-          <View style={styles.conflictVersions}>
-            <View style={styles.versionBadge}>
-              <Icon name="cellphone" size={12} color={colors.primary} />
-              <Text style={[styles.versionText, {color: `${colors.text}70`}]}>
-                Local: {formatBytes(item.local_version.size)}
-              </Text>
-            </View>
-            <View style={styles.versionBadge}>
-              <Icon name="cloud" size={12} color={colors.primary} />
-              <Text style={[styles.versionText, {color: `${colors.text}70`}]}>
-                Remote: {formatBytes(item.remote_version.size)}
-              </Text>
-            </View>
-          </View>
-        </View>
-        <View style={styles.conflictMeta}>
-          <Text style={[styles.conflictTime, {color: `${colors.text}50`}]}>
-            {formatDistanceToNow(new Date(item.detected_at), {addSuffix: true})}
-          </Text>
-          <Icon name="chevron-right" size={20} color={`${colors.text}40`} />
-        </View>
-      </TouchableOpacity>
+      <EmptyState
+        title="No conflicts."
+        text="A file changed in two places at once shows here, to choose which version to keep."
+      />
     );
   };
 
-  const renderHeader = () => (
-    <View style={[styles.header, {borderBottomColor: colors.border}]}>
-      <View>
-        <Text style={[styles.headerTitle, {color: colors.text}]}>
-          Conflicts
-        </Text>
-        <Text style={[styles.headerSubtitle, {color: `${colors.text}60`}]}>
-          {conflictsError ??
-            (unresolvedConflicts.length === 0
-              ? 'No conflicts to resolve'
-              : `${unresolvedConflicts.length} conflict${
-                  unresolvedConflicts.length === 1 ? '' : 's'
-                } need${
-                  unresolvedConflicts.length === 1 ? 's' : ''
-                } attention`)}
-        </Text>
+  const summary =
+    loaded && !conflictsError && unresolved.length > 0 ? (
+      <View style={styles.inset}>
+        <StatusMark state="warning">
+          {`${countOf(unresolved.length, 'conflict', 'conflicts')} to resolve`}
+        </StatusMark>
       </View>
-    </View>
-  );
-
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <View
-        style={[styles.emptyIcon, {backgroundColor: `${colors.primary}15`}]}>
-        <Icon name="check-circle" size={48} color={colors.primary} />
-      </View>
-      <Text style={[styles.emptyTitle, {color: colors.text}]}>All Clear!</Text>
-      <Text style={[styles.emptyText, {color: `${colors.text}60`}]}>
-        You have no file conflicts to resolve
-      </Text>
-    </View>
-  );
+    ) : null;
 
   return (
-    <View style={[styles.container, {backgroundColor: colors.background}]}>
+    <SafeAreaView edges={['top']} style={styles.screen}>
       <FlatList
-        data={unresolvedConflicts}
+        data={unresolved}
         renderItem={renderConflict}
         keyExtractor={item => item.id}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <ScreenTitle
+              title="Conflicts"
+              action={<RefreshButton refreshing={refreshing} onPress={refresh} />}
+            />
+            {summary}
+            {conflictsError ? (
+              <View style={styles.inset}>
+                <StatusMark state="failed">
+                  {`Couldn't load the conflicts. ${conflictsError}`}
+                </StatusMark>
+              </View>
+            ) : null}
+          </View>
+        }
         ListEmptyComponent={renderEmpty}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary}
-          />
-        }
-        contentContainerStyle={
-          unresolvedConflicts.length === 0 ? styles.emptyList : undefined
-        }
       />
-    </View>
+
+      <ConfirmDialog
+        visible={chosen !== null}
+        title={chosen ? `Which version of ${fileName(chosen.path)} to keep?` : ''}
+        message="nOS records the choice for this device. It can't be changed here afterwards."
+        actions={
+          chosen
+            ? [
+                {
+                  label: 'Keep the local version',
+                  onPress: () => handleResolve(chosen, 'keep_local'),
+                },
+                {
+                  label: 'Keep the remote version',
+                  onPress: () => handleResolve(chosen, 'keep_remote'),
+                },
+                {
+                  label: 'Keep both',
+                  onPress: () => handleResolve(chosen, 'keep_both'),
+                },
+              ]
+            : []
+        }
+        onCancel={() => setChosen(null)}
+        error={resolveError}
+        busy={resolving}>
+        {chosen ? (
+          <View style={styles.versions}>
+            <InfoRow label="Local" value={describeVersion(chosen.local_version)} />
+            <InfoRow label="Remote" value={describeVersion(chosen.remote_version)} />
+          </View>
+        ) : null}
+      </ConfirmDialog>
+    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  conflictIconWarning: {
-    backgroundColor: '#FEF3C7',
+const conflictStyles = (p: Palette) => ({
+  screen: {flex: 1, backgroundColor: p.page},
+  header: {borderBottomWidth: metrics.hair, borderBottomColor: p.hairline},
+  inset: {paddingHorizontal: metrics.gutter, paddingBottom: metrics.space3},
+  row: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: metrics.space3,
+    paddingVertical: metrics.space3,
+    paddingHorizontal: metrics.gutter,
+    borderBottomWidth: metrics.hair,
+    borderBottomColor: p.hairline,
   },
-  container: {
-    flex: 1,
-  },
-  header: {
-    padding: 16,
-    borderBottomWidth: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    marginTop: 4,
-  },
-  conflictItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-  },
-  conflictIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  conflictContent: {
-    flex: 1,
-  },
-  conflictName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  conflictPath: {
-    fontSize: 13,
-    marginBottom: 6,
-  },
-  conflictVersions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  versionBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  versionText: {
-    fontSize: 12,
-  },
-  conflictMeta: {
-    alignItems: 'flex-end',
-  },
-  conflictTime: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  emptyList: {
-    flex: 1,
-  },
-  emptyIcon: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    textAlign: 'center',
+  rowPressed: {backgroundColor: p.pressed},
+  rowText: {flex: 1, gap: metrics.space1},
+  name: {...type.small, color: p.ink},
+  meta: {...type.label, color: p.ink2},
+  versions: {
+    borderTopWidth: metrics.hair,
+    borderTopColor: p.hairline,
+    marginHorizontal: -metrics.gutter,
   },
 });
 

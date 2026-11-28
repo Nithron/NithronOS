@@ -1,20 +1,55 @@
 /**
  * Activity Screen
- * Shows sync activity history
+ * What nOS recorded for this device, as a ruled list: each entry its file,
+ * what was done, and its state as a mark and a word.
  */
 
-import React, {useEffect, useCallback} from 'react';
-import {View, Text, StyleSheet, FlatList, RefreshControl} from 'react-native';
-import {useTheme} from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import {formatDistanceToNow} from 'date-fns';
+import React, {useEffect, useState} from 'react';
+import {FlatList, Text, View} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {useSyncStore} from '../../stores/syncStore';
-import {SyncActivity} from '../../api/types';
-import {formatBytes} from '../../utils/format';
+import {ActivityAction, SyncActivity} from '../../api/types';
+import {EmptyState, ScreenTitle} from '../../components/layout';
+import {MarkState, Meter, StatusMark, Working} from '../../components/pixel';
+import {RefreshButton, useRefresh} from '../../components/Refresh';
+import {formatDateTime} from '../../utils/datetime';
+import {countOf, fileName, formatBytes} from '../../utils/format';
+import {metrics, Palette, type, useThemedStyles} from '../../theme/theme';
+
+const ACTION_WORDS: Record<ActivityAction, string> = {
+  upload: 'Upload',
+  download: 'Download',
+  delete: 'Delete',
+  rename: 'Rename',
+  conflict: 'Conflict',
+};
+
+interface StateWords {
+  state: MarkState;
+  word: string;
+}
+
+function activityState(activity: SyncActivity): StateWords {
+  switch (activity.status) {
+    case 'pending':
+      return {state: 'warning', word: 'Waiting'};
+    case 'in_progress':
+      return {state: 'running', word: 'Running'};
+    case 'completed':
+      return {
+        state: 'ok',
+        word: formatDateTime(activity.completed_at || activity.started_at),
+      };
+    case 'failed':
+      return {state: 'failed', word: activity.error || 'Failed'};
+    default:
+      return {state: 'off', word: 'Unknown'};
+  }
+}
 
 export function ActivityScreen(): React.JSX.Element {
-  const {colors} = useTheme();
+  const styles = useThemedStyles(activityStyles);
   const {
     activities,
     activityTotal,
@@ -22,231 +57,126 @@ export function ActivityScreen(): React.JSX.Element {
     refreshActivity,
     loadMoreActivity,
   } = useSyncStore();
-  const [refreshing, setRefreshing] = React.useState(false);
+  const {refreshing, refresh} = useRefresh(refreshActivity);
+  const [loaded, setLoaded] = useState(activities.length > 0);
 
   useEffect(() => {
-    refreshActivity();
+    refreshActivity().finally(() => setLoaded(true));
   }, [refreshActivity]);
-
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await refreshActivity();
-    setRefreshing(false);
-  }, [refreshActivity]);
-
-  const getActivityIcon = (action: SyncActivity['action']): string => {
-    switch (action) {
-      case 'upload':
-        return 'cloud-upload';
-      case 'download':
-        return 'cloud-download';
-      case 'delete':
-        return 'delete';
-      case 'rename':
-        return 'file-move';
-      case 'conflict':
-        return 'alert-circle';
-      default:
-        return 'file';
-    }
-  };
-
-  const getActivityColor = (activity: SyncActivity): string => {
-    if (activity.status === 'failed') {
-      return '#EF4444';
-    }
-    if (activity.action === 'conflict') {
-      return '#F59E0B';
-    }
-    if (activity.action === 'delete') {
-      return '#EF4444';
-    }
-    return colors.primary;
-  };
-
-  const getStatusText = (activity: SyncActivity): string => {
-    switch (activity.status) {
-      case 'pending':
-        return 'Pending';
-      case 'in_progress':
-        return `${activity.progress || 0}%`;
-      case 'completed':
-        return formatDistanceToNow(
-          new Date(activity.completed_at || activity.started_at),
-          {
-            addSuffix: true,
-          },
-        );
-      case 'failed':
-        return 'Failed';
-      default:
-        return '';
-    }
-  };
 
   const renderActivity = ({item}: {item: SyncActivity}) => {
-    const iconColor = getActivityColor(item);
-    const fileName = item.path.split('/').pop() || item.path;
-
+    const {state, word} = activityState(item);
     return (
-      <View style={[styles.activityItem, {borderBottomColor: colors.border}]}>
-        <View
-          style={[styles.activityIcon, {backgroundColor: `${iconColor}15`}]}>
-          <Icon
-            name={getActivityIcon(item.action)}
-            size={20}
-            color={iconColor}
-          />
-        </View>
-        <View style={styles.activityContent}>
-          <Text
-            style={[styles.activityName, {color: colors.text}]}
-            numberOfLines={1}>
-            {fileName}
-          </Text>
-          <Text
-            style={[styles.activityPath, {color: `${colors.text}60`}]}
-            numberOfLines={1}>
-            {item.path}
+      <View style={styles.row}>
+        <Text style={styles.name} numberOfLines={1}>
+          {fileName(item.path)}
+        </Text>
+        <View style={styles.facts}>
+          <Text style={styles.action}>{ACTION_WORDS[item.action] ?? item.action}</Text>
+          <Text style={styles.path} numberOfLines={1}>
+            {item.old_path ? `${item.old_path} → ${item.path}` : item.path}
           </Text>
         </View>
-        <View style={styles.activityMeta}>
-          <Text style={[styles.activityStatus, {color: `${colors.text}80`}]}>
-            {getStatusText(item)}
-          </Text>
-          {!!item.size && (
-            <Text style={[styles.activitySize, {color: `${colors.text}50`}]}>
-              {formatBytes(item.size)}
-            </Text>
+        <View style={styles.state}>
+          {item.status === 'in_progress' ? (
+            <View style={styles.running}>
+              <StatusMark state="running" textStyle={type.label}>
+                {word}
+              </StatusMark>
+              <Meter
+                kind="progress"
+                value={item.progress || 0}
+                label={`${fileName(item.path)}, progress`}
+              />
+            </View>
+          ) : (
+            <StatusMark state={state} textStyle={type.label}>
+              {word}
+            </StatusMark>
           )}
+          {item.size ? <Text style={styles.size}>{formatBytes(item.size)}</Text> : null}
         </View>
       </View>
     );
   };
 
-  const renderHeader = () => (
-    <View style={[styles.header, {borderBottomColor: colors.border}]}>
-      <View style={styles.headerInfo}>
-        <Text style={[styles.headerTitle, {color: colors.text}]}>
-          Sync Activity
-        </Text>
-        <Text style={[styles.headerSubtitle, {color: `${colors.text}60`}]}>
-          {activityError ?? `${activityTotal} recorded for this device`}
-        </Text>
-      </View>
-    </View>
-  );
+  const renderEmpty = () => {
+    if (!loaded) {
+      return (
+        <View style={styles.inset}>
+          <Working>Loading the activity</Working>
+        </View>
+      );
+    }
+    if (activityError) {
+      return null;
+    }
+    return (
+      <EmptyState
+        title="No activity."
+        text="What nOS records for this device (uploads, downloads, resolved conflicts) shows here."
+      />
+    );
+  };
 
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Icon name="history" size={64} color={`${colors.text}30`} />
-      <Text style={[styles.emptyTitle, {color: colors.text}]}>No Activity</Text>
-      <Text style={[styles.emptyText, {color: `${colors.text}60`}]}>
-        What nOS records for this device (uploads, downloads, resolved
-        conflicts) shows up here
-      </Text>
-    </View>
-  );
+  const detail = loaded && !activityError
+    ? `${countOf(activityTotal, 'entry', 'entries')} recorded for this device`
+    : undefined;
 
   return (
-    <View style={[styles.container, {backgroundColor: colors.background}]}>
+    <SafeAreaView edges={['top']} style={styles.screen}>
       <FlatList
         data={activities}
         renderItem={renderActivity}
         keyExtractor={item => item.id}
-        ListHeaderComponent={renderHeader}
-        ListEmptyComponent={renderEmpty}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary}
-          />
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <ScreenTitle
+              title="Activity"
+              detail={detail}
+              action={<RefreshButton refreshing={refreshing} onPress={refresh} />}
+            />
+            {activityError ? (
+              <View style={styles.inset}>
+                <StatusMark state="failed">
+                  {`Couldn't load the activity. ${activityError}`}
+                </StatusMark>
+              </View>
+            ) : null}
+          </View>
         }
+        ListEmptyComponent={renderEmpty}
         onEndReached={loadMoreActivity}
         onEndReachedThreshold={0.5}
-        contentContainerStyle={
-          activities.length === 0 ? styles.emptyList : undefined
-        }
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+const activityStyles = (p: Palette) => ({
+  screen: {flex: 1, backgroundColor: p.page},
+  header: {borderBottomWidth: metrics.hair, borderBottomColor: p.hairline},
+  inset: {paddingHorizontal: metrics.gutter, paddingBottom: metrics.space3},
+  row: {
+    paddingVertical: metrics.space3,
+    paddingHorizontal: metrics.gutter,
+    gap: metrics.space1,
+    borderBottomWidth: metrics.hair,
+    borderBottomColor: p.hairline,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
+  name: {...type.small, color: p.ink},
+  facts: {flexDirection: 'row' as const, gap: metrics.space2},
+  action: {...type.label, color: p.ink},
+  path: {...type.label, color: p.ink2, flex: 1},
+  state: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: metrics.space3,
+    marginTop: metrics.space1,
   },
-  headerInfo: {},
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-  },
-  activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  activityContent: {
-    flex: 1,
-  },
-  activityName: {
-    fontSize: 15,
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  activityPath: {
-    fontSize: 13,
-  },
-  activityMeta: {
-    alignItems: 'flex-end',
-  },
-  activityStatus: {
-    fontSize: 13,
-  },
-  activitySize: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  emptyList: {
-    flex: 1,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
+  running: {gap: metrics.space2},
+  size: {...type.label, color: p.ink2},
 });
 
 export default ActivityScreen;
