@@ -50,7 +50,6 @@ function routedPaths(appSource: string): string[] {
 // Routes the walk can't open, and why.
 const notWalked: Record<string, string> = {
 	'/*': 'the not-found page; /no-such-page is opened instead',
-	'/apps/:id': "an installed app's page; the live container has no Docker to install one",
 }
 
 const themes = ['dark', 'light'] as const
@@ -95,7 +94,8 @@ test('every page renders against a real nosd', async ({ page }) => {
 	})
 
 	// Every route; a route with a parameter opens the first thing of its kind
-	// (the share the sync pass made, the first pool, the first catalog app).
+	// (the share the sync pass made, the first pool, the first catalog app,
+	// the app the apps pass installed).
 	// Asked from the page: the session cookie is Secure, which Playwright's
 	// own request client won't send over http, while the browser does on
 	// 127.0.0.1.
@@ -104,6 +104,7 @@ test('every page renders against a real nosd', async ({ page }) => {
 	const pools = await get('/api/v1/pools')
 	const shares = await get('/api/v1/shares')
 	const catalog = await get('/api/v1/apps/catalog')
+	const installed = await get('/api/v1/apps/installed')
 	const first = (list: unknown, ...keys: string[]): string | undefined => {
 		const item = Array.isArray(list) ? list[0] : undefined
 		for (const k of keys) if (item?.[k]) return String(item[k])
@@ -113,6 +114,7 @@ test('every page renders against a real nosd', async ({ page }) => {
 		'/storage/:id': first(pools, 'id', 'uuid'),
 		'/shares/:name': first(shares, 'name'),
 		'/apps/install/:id': first(catalog?.entries, 'id'),
+		'/apps/:id': first(installed?.items, 'id'),
 	}
 	const appSource = fs.readFileSync(path.resolve(__dirname, '../../../../web/src/App.tsx'), 'utf8')
 	const pages: string[] = ['/no-such-page']

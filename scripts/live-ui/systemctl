@@ -1,0 +1,45 @@
+#!/bin/sh
+# systemctl for the live container, which has no systemd: the nos-app@<id>
+# units run what packaging/deb/nos-apps-runtime/nos-app@.service runs (as
+# nos, in the docker group), so apps install and start. Every other unit
+# fails as before ("no systemd"), and the pages show that as a warning.
+set -eu
+
+op="${1:-}"
+[ "$op" = "--no-block" ] && { shift; op="${1:-}"; }
+shift || true
+[ "${1:-}" = "--now" ] && { now=1; shift; } || now=0
+unit="${1:-}"
+
+case "$unit" in
+nos-app@*.service) id="${unit#nos-app@}" id="${id%.service}" ;;
+*)
+	echo "systemctl $op $unit: no systemd in the live container" >&2
+	exit 1
+	;;
+esac
+case "$id" in *[!a-z0-9-]* | "") echo "systemctl: bad app id '$id'" >&2; exit 1 ;; esac
+
+dir="/srv/apps/$id"
+compose() {
+	su nos -s /bin/sh -c "cd '$dir' && docker compose --project-directory '$dir' -f '$dir/config/docker-compose.yml' --env-file '$dir/config/.env' --project-name 'nos-app-$id' $*"
+}
+running() { [ -n "$(docker ps -q --filter "label=com.docker.compose.project=nos-app-$id")" ]; }
+
+case "$op" in
+enable) ;;
+start)
+	/usr/lib/nos/apps/nos-app-helper.sh pre-start "$id" || true
+	compose up -d --remove-orphans
+	;;
+stop) compose down ;;
+restart | reload | reload-or-restart) compose restart ;;
+disable) [ "$now" = 1 ] && compose down ;;
+is-active)
+	if running; then echo active; else echo inactive; exit 3; fi
+	;;
+*)
+	echo "systemctl $op: not handled for $unit in the live container" >&2
+	exit 1
+	;;
+esac

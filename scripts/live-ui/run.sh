@@ -3,7 +3,9 @@
 # a throwaway Debian container, completes first-boot setup through the API,
 # runs NithronSync end to end (sync-e2e.sh: the real sync daemon against the
 # container) and storage end to end (storage-e2e.sh: a RAID1 pool created,
-# checked and destroyed through the API on loop devices), serves the built UI with `vite preview` (proxying /api to the
+# checked and destroyed through the API on loop devices) and apps end to end
+# (apps-e2e.sh: the whoami app installed and run by the container's own
+# Docker), serves the built UI with `vite preview` (proxying /api to the
 # container) and walks every page with Playwright
 # (tests/e2e/ui/tests/live-walk.spec.ts).
 #
@@ -11,9 +13,10 @@
 #   KEEP=1 scripts/live-ui/run.sh       leave it running for a manual look
 #   ONLY=sync scripts/live-ui/run.sh    only the sync pass (no UI build or walk)
 #   ONLY=storage scripts/live-ui/run.sh only the storage pass
+#   ONLY=apps scripts/live-ui/run.sh    only the apps pass
 #
-# Needs docker (privileged containers, for the loop-device Btrfs pool), Go
-# and Node. The report lands in tests/e2e/ui/live-report.json.
+# Needs docker (privileged containers, for the loop-device Btrfs pool and the
+# container's own Docker engine), Go and Node. The report lands in tests/e2e/ui/live-report.json.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -30,7 +33,8 @@ log() { echo "[live-ui] $*"; }
 # privileged container's loop devices belong to the host and outlive it.
 remove_container() {
 	docker exec "$NAME" sh -c 'umount /mnt/pool1 /srv/pool/* 2>/dev/null; [ -s /run/live-ui-loop ] && xargs -r -n1 losetup -d </run/live-ui-loop' >/dev/null 2>&1 || true
-	docker rm -f "$NAME" >/dev/null 2>&1 || true
+	# -v: the container's /var/lib/docker volume goes with it.
+	docker rm -fv "$NAME" >/dev/null 2>&1 || true
 }
 cleanup() {
 	# preview runs in its own process group (npx leaves vite behind otherwise)
@@ -50,7 +54,8 @@ fi
 log "building nosd, nos-agent and the web UI"
 (cd "$ROOT/backend/nosd" && CGO_ENABLED=0 go build -o "$WORK/nosd" .)
 (cd "$ROOT/agent/nos-agent" && CGO_ENABLED=0 go build -o "$WORK/nos-agent" .)
-cp "$ROOT/scripts/live-ui/Dockerfile" "$ROOT/scripts/live-ui/entrypoint.sh" "$WORK/"
+cp "$ROOT/scripts/live-ui/Dockerfile" "$ROOT/scripts/live-ui/entrypoint.sh" "$ROOT/scripts/live-ui/systemctl" \
+	"$ROOT/packaging/deb/nos-apps-runtime/nos-app-helper.sh" "$ROOT/packaging/deb/nos-apps-runtime/nos-app-snapshot.sh" "$WORK/"
 cp -r "$ROOT/usr/share/nos/apps" "$WORK/apps"
 ONLY="${ONLY:-}"
 [ -n "$ONLY" ] || (cd "$ROOT/web" && npm run build --silent >/dev/null)
@@ -58,7 +63,9 @@ ONLY="${ONLY:-}"
 log "starting $NAME"
 remove_container
 docker build -q -t nos-live "$WORK" >/dev/null
-docker run -d --privileged --name "$NAME" -p "127.0.0.1:$API_PORT:9000" nos-live >/dev/null
+# /var/lib/docker on a volume: the container's Docker can't keep its layers
+# on the container's own overlay filesystem.
+docker run -d --privileged --name "$NAME" -v /var/lib/docker -p "127.0.0.1:$API_PORT:9000" nos-live >/dev/null
 
 api="http://127.0.0.1:$API_PORT/api/v1"
 for _ in $(seq 1 60); do curl -fsS "$api/setup/state" >/dev/null 2>&1 && break; sleep 0.5; done
@@ -80,6 +87,10 @@ fi
 if [ -z "$ONLY" ] || [ "$ONLY" = storage ]; then
 	log "storage end to end"
 	bash "$ROOT/scripts/live-ui/storage-e2e.sh" "http://127.0.0.1:$API_PORT" "$NAME" "$ADMIN_USER" "$ADMIN_PASS" || status=$?
+fi
+if [ -z "$ONLY" ] || [ "$ONLY" = apps ]; then
+	log "apps end to end"
+	bash "$ROOT/scripts/live-ui/apps-e2e.sh" "http://127.0.0.1:$API_PORT" "$NAME" "$ADMIN_USER" "$ADMIN_PASS" || status=$?
 fi
 [ -n "$ONLY" ] && exit "$status"
 
