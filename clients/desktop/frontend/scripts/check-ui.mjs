@@ -2,9 +2,11 @@
 // nOS): no hue outside the tokens file, no second icon set, no shadow,
 // gradient, glow or blur, no dark: variants (the tokens follow the system).
 import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const root = new URL('..', import.meta.url).pathname
+// fileURLToPath, not URL.pathname: on Windows the latter is /D:/... .
+const root = fileURLToPath(new URL('..', import.meta.url))
 const skip = new Set(['styles/nithron-tokens.css', 'vendor'])
 const rules = [
   [/lucide-react|react-icons|@heroicons/, 'a second icon set'],
@@ -19,7 +21,7 @@ const files = []
 const walk = (dir) => {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name)
-    const rel = p.slice(join(root, 'src').length + 1)
+    const rel = relative(join(root, 'src'), p).split(sep).join('/')
     if (skip.has(rel) || skip.has(rel.split('/')[0])) continue
     if (statSync(p).isDirectory()) walk(p)
     else if (/\.(tsx?|css)$/.test(name)) files.push(p)
@@ -33,7 +35,7 @@ for (const f of files) {
   readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
     for (const [re, what] of rules) {
       if (re.test(line)) {
-        console.log(`${f.slice(root.length)}:${i + 1}: ${what}: ${line.trim()}`)
+        console.log(`${relative(root, f)}:${i + 1}: ${what}: ${line.trim()}`)
         problems++
       }
     }
