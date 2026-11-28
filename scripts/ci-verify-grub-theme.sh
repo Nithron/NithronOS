@@ -63,9 +63,10 @@ echo "=== Checking GRUB Theme Files ==="
 # Check theme configuration
 check_file "boot/grub/themes/nithron/theme.txt" "Theme configuration" || EXIT_CODE=1
 
-# Check fonts
-check_file "boot/grub/themes/nithron/DroidSans-32.pf2" "DroidSans font" || EXIT_CODE=1
-check_file "boot/grub/themes/nithron/DroidSans-Bold-32.pf2" "DroidSans Bold font" || EXIT_CODE=1
+# Check the font (GRUB's Unifont, which the theme names) and the pieces of
+# the frame round the chosen entry
+check_file "boot/grub/unicode.pf2" "Unifont (unicode.pf2)" || EXIT_CODE=1
+check_file "boot/grub/themes/nithron/highlight_c.png" "Highlight frame" || EXIT_CODE=1
 
 # Check background
 check_file "boot/grub/themes/nithron/background.png" "Background image" || EXIT_CODE=1

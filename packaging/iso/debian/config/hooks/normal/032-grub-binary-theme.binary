@@ -130,7 +130,7 @@ else
     echo "[grub-binary-theme] ⚠ Theme configuration missing!"
 fi
 
-if ls boot/grub/themes/nithron/*.pf2 >/dev/null 2>&1; then
+if [ -f boot/grub/unicode.pf2 ]; then
     echo "[grub-binary-theme] ✓ Font files found"
 else
     echo "[grub-binary-theme] ⚠ Font files missing!"
