@@ -1,6 +1,6 @@
 # nOS ISO (live-build)
 
-This profile builds a Debian Bookworm live ISO and installs local `.deb` artifacts
+This profile builds a Debian 13 (trixie) live ISO and installs local `.deb` artifacts
 (nosd, nos-agent, nos-web, and meta `nos`) during image creation.
 
 ## Build locally

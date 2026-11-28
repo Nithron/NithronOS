@@ -53,14 +53,17 @@ func handleUpdatesPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
+	// A first refresh downloads the whole package lists, and apt's daily
+	// job may hold the lock for a while after boot.
+	ctx, cancel := context.WithTimeout(r.Context(), 6*time.Minute)
 	defer cancel()
 
-	// apt-get update
-	upd := exec.CommandContext(ctx, "apt-get", "update")
-	if out, err := upd.CombinedOutput(); err != nil {
-		// best-effort: continue but include error in raw note
-		logAuthPriv(fmt.Sprintf("updates: apt-get update failed: %s", string(out)))
+	// The lists must be fresh: a check on stale lists offers nothing new
+	// (it used to carry on silently when this failed).
+	if out, err := refreshPackageLists(ctx); err != nil {
+		logAuthPriv(fmt.Sprintf("updates: apt-get update failed: %s", out))
+		writeErr(w, http.StatusBadGateway, "the package lists could not be refreshed (apt-get update): "+tailLines(out, 4))
+		return
 	}
 
 	// simulate upgrade
@@ -142,4 +145,50 @@ func parseAptSimulateUpgrade(out []byte) []UpdateEntry {
 func fileExists(p string) bool {
 	_, err := os.Stat(filepath.Clean(p))
 	return err == nil
+}
+
+// aptLockBusy is apt's message when another apt (apt-daily, an upgrade)
+// holds the lock.
+var aptLockBusy = regexp.MustCompile(`Could not get lock|Unable to lock directory|is held by process`)
+
+// runAptUpdate runs apt-get update as its own transient unit, like the
+// upgrade: inside nos-agent's service, apt 3 (Debian 13) can't switch its
+// download helpers to the _apt user ("setresuid: Operation not permitted").
+// --wait --pipe give back its output and exit status. Without systemd (a
+// container) it runs directly. A var so tests replace it.
+var runAptUpdate = func(ctx context.Context) (string, error) {
+	args := []string{"apt-get", "update"}
+	if _, err := exec.LookPath("systemd-run"); err == nil && fileExists("/run/systemd/system") {
+		args = append([]string{"systemd-run", "--wait", "--pipe", "--collect", "--quiet",
+			"--description=nOS package list refresh", "--setenv=DEBIAN_FRONTEND=noninteractive", "--"}, args...)
+	}
+	out, err := exec.CommandContext(ctx, args[0], args[1:]...).CombinedOutput()
+	return string(out), err
+}
+
+// refreshPackageLists runs apt-get update, waiting while another apt holds
+// the lock, until ctx ends.
+func refreshPackageLists(ctx context.Context) (string, error) {
+	for {
+		out, err := runAptUpdate(ctx)
+		if err == nil || !aptLockBusy.MatchString(out) {
+			return out, err
+		}
+		select {
+		case <-ctx.Done():
+			return out, err
+		case <-time.After(aptLockRetry):
+		}
+	}
+}
+
+var aptLockRetry = 5 * time.Second
+
+// tailLines is the last n lines of out, joined for a one-line message.
+func tailLines(out string, n int) string {
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) > n {
+		lines = lines[len(lines)-n:]
+	}
+	return strings.Join(lines, " / ")
 }

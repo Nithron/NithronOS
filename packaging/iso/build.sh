@@ -59,15 +59,15 @@ mkdir -p "$PROFILE_DIR/config/includes.chroot/etc/apt" "$PROFILE_DIR/config/incl
 mkdir -p "$PROFILE_DIR/config/archives"
 mkdir -p "$PROFILE_DIR/config/hooks/early"
 
-# Force-correct apt sources early inside chroot to avoid bookworm/updates and duplicates
+# Force-correct apt sources early inside chroot to avoid the old <dist>/updates security suite and duplicates
 FORCE_SOURCES_HOOK="$PROFILE_DIR/config/hooks/early/00-force-sources.chroot"
 cat > "$FORCE_SOURCES_HOOK" <<'EOS'
 #!/bin/sh
 set -e
 cat > /etc/apt/sources.list <<'EOF'
-deb http://deb.debian.org/debian bookworm main contrib non-free-firmware
-deb http://deb.debian.org/debian bookworm-updates main contrib non-free-firmware
-deb http://security.debian.org/debian-security bookworm-security main contrib non-free-firmware
+deb http://deb.debian.org/debian trixie main contrib non-free-firmware
+deb http://deb.debian.org/debian trixie-updates main contrib non-free-firmware
+deb http://security.debian.org/debian-security trixie-security main contrib non-free-firmware
 EOF
 # Remove any additional lists to prevent duplicates
 rm -f /etc/apt/sources.list.d/* 2>/dev/null || true
@@ -124,11 +124,11 @@ pushd "$PROFILE_DIR" >/dev/null
 ${SUDO_CMD} lb clean --purge || true
 rm -rf chroot/ cache/* || true
 
-# Configure build (Debian bookworm, ISO-hybrid)
+# Configure build (Debian trixie, ISO-hybrid)
 DEBIAN_MIRROR="http://deb.debian.org/debian"
 ARCH="${ISO_ARCH:-amd64}"
 
-# Disable LB security mirrors to avoid legacy bookworm/updates
+# Disable LB security mirrors to avoid the legacy <dist>/updates security suite
 export LB_MIRROR_CHROOT_SECURITY=""
 export LB_MIRROR_BINARY_SECURITY=""
 export LB_SECURITY="false"
@@ -140,7 +140,7 @@ export LB_SYSLINUX_SERIAL="0 115200"
 
 ${SUDO_CMD} lb config \
   --mode debian \
-  --distribution bookworm \
+  --distribution trixie \
   --architectures "${ARCH}" \
   --binary-images iso-hybrid \
   --apt-recommends true \
@@ -164,7 +164,7 @@ printf '%s\n' 'LB_SYSLINUX_SERIAL="0 115200"' >> "$PROFILE_DIR/config/common"
 printf '%s\n' 'LB_SYSLINUX_SERIAL="0 115200"' >> "$PROFILE_DIR/config/chroot"
 
 # Remove any stale security lines live-build might inject
-sed -i '/security\.debian\.org.*bookworm\/updates/d' "$PROFILE_DIR"/config/* 2>/dev/null || true
+sed -i '/security\.debian\.org.*trixie\/updates/d' "$PROFILE_DIR"/config/* 2>/dev/null || true
 
 # Normalize LB_SECURITY in any persisted live-build config and remove legacy --security flags
 sed -i -E 's/^LB_SECURITY=.*$/LB_SECURITY="false"/' "$PROFILE_DIR"/config/* 2>/dev/null || true

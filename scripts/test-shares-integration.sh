@@ -12,7 +12,7 @@ trap 'rm -rf "$bin"' EXIT
 # The test binary is built on the host; the container only needs Samba.
 (cd "$root/agent/nos-agent" && CGO_ENABLED=0 go test -c -o "$bin/server.test" ./internal/server)
 
-docker run --rm -v "$bin:/t:ro" debian:bookworm sh -euc '
+docker run --rm -v "$bin:/t:ro" debian:trixie sh -euc '
 	apt-get update -qq >/dev/null
 	DEBIAN_FRONTEND=noninteractive apt-get install -y -qq samba smbclient acl >/dev/null
 	useradd --system nos
