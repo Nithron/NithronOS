@@ -1,0 +1,407 @@
+/*
+ * The nOS documentation on the Nithron tokens (nithron-tokens.css, loaded
+ * first). Material's own variables are mapped onto the tokens here; this
+ * file holds no colour value. The tokens follow the system's light or dark
+ * theme. No hue in the chrome: links, the current item and focus are ink.
+ * Colour is only status (admonitions) and code (the syntax tokens).
+ */
+@font-face {
+  font-family: 'Nithron Pixel';
+  src: url('../fonts/nithron-pixel.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Mona Sans Variable';
+  src: url('../fonts/MonaSansVF-opsz-wght.woff2') format('woff2');
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monaspace Neon';
+  src: url('../fonts/MonaspaceNeon-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light dark;
+  --status-ok: var(--status-pass);
+  --status-ok-tint: var(--status-pass-tint);
+  --status-warning: var(--status-earlier);
+  --status-warning-tint: var(--status-earlier-tint);
+  --hover: color-mix(in srgb, var(--ink) 9%, var(--page));
+}
+
+[data-md-color-scheme] {
+  --md-text-font-family: var(--font-sans);
+  --md-code-font-family: var(--font-mono);
+
+  --md-default-bg-color: var(--page);
+  --md-default-bg-color--light: var(--page);
+  --md-default-bg-color--lighter: var(--page);
+  --md-default-bg-color--lightest: var(--page);
+  --md-default-fg-color: var(--ink);
+  --md-default-fg-color--light: var(--ink-2);
+  --md-default-fg-color--lighter: var(--dim);
+  --md-default-fg-color--lightest: var(--hairline);
+
+  /* The header and tabs are the page, parted by a hairline. */
+  --md-primary-fg-color: var(--page);
+  --md-primary-fg-color--light: var(--page);
+  --md-primary-fg-color--dark: var(--page);
+  --md-primary-bg-color: var(--ink);
+  --md-primary-bg-color--light: var(--ink-2);
+  --md-accent-fg-color: var(--ink);
+  --md-accent-fg-color--transparent: var(--hover);
+  --md-accent-bg-color: var(--page);
+  --md-accent-bg-color--light: var(--page);
+
+  --md-typeset-color: var(--ink);
+  --md-typeset-a-color: var(--ink);
+  --md-typeset-mark-color: var(--hover);
+  --md-typeset-del-color: var(--status-failed-tint);
+  --md-typeset-ins-color: var(--status-ok-tint);
+  --md-typeset-kbd-color: var(--page);
+  --md-typeset-kbd-accent-color: var(--page);
+  --md-typeset-kbd-border-color: var(--edge);
+  --md-typeset-table-color: var(--hairline);
+  --md-typeset-table-color--light: var(--hover);
+
+  --md-admonition-fg-color: var(--ink);
+  --md-admonition-bg-color: var(--page);
+  --md-warning-fg-color: var(--ink);
+  --md-warning-bg-color: var(--page);
+
+  --md-footer-fg-color: var(--ink);
+  --md-footer-fg-color--light: var(--ink-2);
+  --md-footer-fg-color--lighter: var(--dim);
+  --md-footer-bg-color: var(--page);
+  --md-footer-bg-color--dark: var(--page);
+
+  /* Code: the ground, a hairline frame, the editor's syntax palette. */
+  --md-code-fg-color: var(--ink);
+  --md-code-bg-color: var(--page);
+  --md-code-bg-color--light: var(--page);
+  --md-code-bg-color--lighter: var(--page);
+  --md-code-hl-color: var(--hover);
+  --md-code-hl-color--light: var(--hover);
+  --md-code-hl-comment-color: var(--syntax-comment);
+  --md-code-hl-keyword-color: var(--syntax-keyword);
+  --md-code-hl-function-color: var(--syntax-function);
+  --md-code-hl-string-color: var(--syntax-string);
+  --md-code-hl-number-color: var(--syntax-number);
+  --md-code-hl-constant-color: var(--syntax-number);
+  --md-code-hl-special-color: var(--syntax-type);
+  --md-code-hl-name-color: var(--ink);
+  --md-code-hl-variable-color: var(--ink);
+  --md-code-hl-operator-color: var(--ink-2);
+  --md-code-hl-punctuation-color: var(--ink-2);
+  --md-code-hl-generic-color: var(--ink-2);
+
+  /* Material's mask icons, from the pixel set. */
+  --md-clipboard-icon: url("data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges"><path d="M1 1H11V4H9V3H3V9H4V11H1ZM5 5H15V15H5Z"/></svg>");
+  --md-nav-icon--prev: url("data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges"><path d="M8 4H11V5H10V6H9V7H8V9H9V10H10V11H11V12H8V11H7V10H6V9H5V7H6V6H7V5H8Z"/></svg>");
+  --md-nav-icon--next: url("data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges"><path d="M5 4H8V5H9V6H10V7H11V9H10V10H9V11H8V12H5V11H6V10H7V9H8V7H7V6H6V5H5Z"/></svg>");
+  --md-toc-icon: url("data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges"><path d="M4 5H5V6H6V7H7V8H9V7H10V6H11V5H12V8H11V9H10V10H9V11H7V10H6V9H5V8H4Z"/></svg>");
+  --md-details-icon: url("data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges"><path d="M5 4H8V5H9V6H10V7H11V9H10V10H9V11H8V12H5V11H6V10H7V9H8V7H7V6H6V5H5Z"/></svg>");
+  --md-tasklist-icon--checked: url("data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges"><path d="M12 4H15V5H14V6H13V7H12V8H11V9H10V10H9V11H8V12H5V11H4V10H3V9H2V8H5V9H6V10H7V9H8V8H9V7H10V6H11V5H12Z"/></svg>");
+  --md-search-result-icon: url("data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges"><path d="M4 1H8V2H10V4H11V8H10V10H12V11H13V12H14V13H15V15H13V14H12V13H11V12H10V11H9V10H8V11H4V10H2V8H1V4H2V2H4ZM4 3V4H3V8H4V9H8V8H9V4H8V3Z"/></svg>");
+}
+
+/* The family bar: one ruled row above the header, the current site marked
+   with ink, weight 560 and a 2 px ink line along the bottom edge. */
+.nithron-family {
+  border-bottom: 1px solid var(--hairline);
+  background: var(--page);
+  font-size: var(--text-small);
+}
+
+.nithron-family__inner {
+  display: flex;
+  align-items: stretch;
+  gap: 1.5rem;
+  max-width: 61rem;
+  height: 2.375rem;
+  margin: 0 auto;
+  padding: 0 1.2rem;
+}
+
+.nithron-family__name {
+  align-self: center;
+  font-weight: var(--weight-strong);
+}
+
+.nithron-family a {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.nithron-family a:hover {
+  color: var(--ink);
+}
+
+.nithron-family a[aria-current='page'] {
+  color: var(--ink);
+  font-weight: var(--weight-strong);
+  border-bottom: 2px solid var(--ink);
+  padding-top: 2px;
+}
+
+/* The header: the product's name in the pixel face, no drawn logo yet. */
+.md-header {
+  border-bottom: 1px solid var(--hairline);
+  box-shadow: none;
+}
+
+.md-header--shadow {
+  box-shadow: none;
+}
+
+.md-header__button.md-logo {
+  display: none;
+}
+
+.md-header__topic:first-child {
+  font-family: var(--font-pixel);
+  font-size: 16px;
+  font-weight: 400;
+  font-synthesis: none;
+  letter-spacing: 0;
+}
+
+.md-tabs {
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink-2);
+}
+
+.md-tabs__link--active,
+.md-tabs__item--active .md-tabs__link {
+  color: var(--ink);
+  font-weight: var(--weight-strong);
+}
+
+/* The current item in the navigation: ink and weight. */
+.md-nav__link--active,
+.md-nav__item .md-nav__link--active {
+  color: var(--ink);
+  font-weight: var(--weight-strong);
+}
+
+/* Links in text: ink with an underline. */
+.md-typeset a {
+  text-decoration: underline;
+  text-decoration-color: var(--ink-2);
+  text-underline-offset: 0.18em;
+}
+
+.md-typeset a:hover {
+  text-decoration-color: var(--ink);
+}
+
+/* Focus: a 2 px ink outline, 4 px away. */
+:focus-visible,
+.md-typeset a:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 4px;
+}
+
+/* Search: a field with an --edge line on the ground. */
+.md-search__form {
+  background: var(--page);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-control);
+  box-shadow: none;
+}
+
+.md-search__form:hover {
+  background: var(--page);
+}
+
+.md-search__input,
+.md-search__input::placeholder {
+  color: var(--ink);
+}
+
+.md-search__output,
+.md-search__scrollwrap {
+  background: var(--page);
+}
+
+[data-md-toggle='search']:checked ~ .md-header .md-search__form {
+  border-color: var(--ink);
+}
+
+/* No shadows anywhere. */
+.md-typeset .admonition,
+.md-typeset details,
+.md-search__output,
+.md-top,
+.md-select__inner,
+.md-dialog,
+.md-tooltip,
+.md-typeset .md-tooltip {
+  box-shadow: none;
+}
+
+.md-top {
+  background: var(--page);
+  border: 1px solid var(--edge);
+  color: var(--ink);
+}
+
+.md-dialog {
+  background: var(--page);
+  border: 1px solid var(--edge);
+  color: var(--ink);
+}
+
+/* Code: the ground inside a hairline frame, no tint. */
+.md-typeset pre > code,
+.md-typeset :not(pre) > code {
+  border: 1px solid var(--hairline);
+  border-radius: 0;
+}
+
+.md-typeset kbd {
+  background: var(--ink);
+  box-shadow: none;
+}
+
+/* Tables: a ruled grid, heads in the mono label face. */
+.md-typeset table:not([class]) {
+  border: 0;
+  border-top: 1px solid var(--hairline);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.md-typeset table:not([class]) th {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: 400;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.md-typeset table:not([class]) tbody tr:hover {
+  background: var(--hover);
+  box-shadow: none;
+}
+
+/* Admonitions: one hairline frame and the set's state icon; a hue only for
+   a pass, a warning or a failure. */
+.md-typeset .admonition,
+.md-typeset details {
+  border: 1px solid var(--hairline);
+  border-radius: 0;
+}
+
+.md-typeset .admonition-title,
+.md-typeset summary {
+  background: var(--page);
+  font-weight: var(--weight-strong);
+}
+
+.md-typeset .admonition-title::before,
+.md-typeset summary::before {
+  width: 16px;
+  height: 16px;
+  background-color: var(--ink);
+  mask-size: 16px 16px;
+  -webkit-mask-size: 16px 16px;
+}
+
+.md-typeset :is(.admonition, details) {
+  border-color: var(--hairline);
+}
+
+.md-typeset :is(.success, .check, .done) {
+  border-color: var(--status-ok);
+}
+
+.md-typeset :is(.success, .check, .done) > :is(.admonition-title, summary)::before {
+  background-color: var(--status-ok);
+}
+
+.md-typeset :is(.warning, .caution, .attention) {
+  border-color: var(--status-warning);
+}
+
+.md-typeset :is(.warning, .caution, .attention) > :is(.admonition-title, summary)::before {
+  background-color: var(--status-warning);
+}
+
+.md-typeset :is(.failure, .fail, .missing, .danger, .error, .bug) {
+  border-color: var(--status-failed);
+}
+
+.md-typeset :is(.failure, .fail, .missing, .danger, .error, .bug) > :is(.admonition-title, summary)::before {
+  background-color: var(--status-failed);
+}
+
+/* Material's mask icons on whole pixels. */
+.md-clipboard::after,
+.md-nav__link .md-nav__icon::after,
+.md-search-result__icon {
+  mask-size: 16px 16px;
+  -webkit-mask-size: 16px 16px;
+}
+
+/* A check box in a task list is a drawn square. */
+.md-typeset .task-list-indicator::before {
+  background-color: var(--edge);
+}
+
+.md-typeset [type='checkbox']:checked + .task-list-indicator::before {
+  background-color: var(--ink);
+}
+
+.md-footer,
+.md-footer-meta {
+  border-top: 1px solid var(--hairline);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Material's inline icons at the set's 16 px. */
+.md-icon svg,
+.md-header__button svg,
+.md-source__icon svg,
+.md-search__icon svg,
+.md-nav__button svg,
+.md-content__button svg,
+.md-top svg,
+.md-footer__button svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* The repository's star and fork counts come with Material's own icons. */
+.md-source__facts {
+  display: none;
+}
+
+/* The title of a page: ink, the tokens' heading weight. */
+.md-typeset h1 {
+  color: var(--ink);
+  font-weight: var(--weight-h3);
+}
+
+.md-typeset h2,
+.md-typeset h3 {
+  color: var(--ink);
+  font-weight: var(--weight-strong);
+}

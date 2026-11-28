@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{#
+  The family bar (DESIGN-V3.md section 8 in the nithron-site repository):
+  this documentation is hosted by Nithron, so it carries the bar the sites
+  carry, with its own name in the list, marked as current. One row, not
+  sticky; the word "Nithron" is not a link.
+#}
+{% block header %}
+  <nav class="nithron-family" aria-label="Nithron sites">
+    <div class="nithron-family__inner">
+      <span class="nithron-family__name">Nithron</span>
+      <a href="https://nithron.com/">Studio</a>
+      <a href="https://ai.nithron.com/">Intelligence</a>
+      <a href="{{ config.site_url }}" aria-current="page">nOS documentation</a>
+    </div>
+  </nav>
+  {{ super() }}
+{% endblock %}

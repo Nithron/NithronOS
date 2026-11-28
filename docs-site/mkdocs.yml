@@ -1,16 +1,56 @@
 site_name: nOS Documentation
 site_url: https://nos.nithron.com/docs/
-site_description: Complete documentation for nOS - The secure, self-hosted storage and app platform
-site_author: nOS Team
-copyright: Copyright &copy; 2025 nOS
+site_description: Documentation for nOS, a NAS operating system on Debian
+site_author: Nithron
+copyright: >-
+  nOS is source-available under the Nithron Community License v1.0.
+  <a href="https://github.com/Nithron/nOS">Source on GitHub</a>,
+  <a href="https://discord.gg/qzB37WS5AT">community forum on Discord</a>,
+  <a href="https://patreon.com/Nithron">support on Patreon</a>.
 
 repo_url: https://github.com/Nithron/nOS
-repo_name: nOS
+repo_name: Source on GitHub
 edit_uri: edit/main/docs-site/docs/
 
+# The font licences travel with the files; they are not pages.
+exclude_docs: |
+  assets/fonts/README.md
+
+# On the Nithron identity (DESIGN-APPS.md in the nithron-site repository):
+# Material's variables are mapped onto @nithron/tokens in
+# assets/stylesheets/nos-docs.css, the fonts are served from this site,
+# every icon is from the shared pixel set (overrides/.icons/nithron), and the
+# family bar stands above the header (overrides/main.html). The theme
+# follows the system.
 theme:
   name: material
+  custom_dir: overrides
   language: en
+  font: false
+  icon:
+    logo: nithron/menu
+    menu: nithron/menu
+    search: nithron/search
+    close: nithron/close
+    repo: nithron/external-link
+    edit: nithron/edit
+    view: nithron/eye
+    top: nithron/up
+    previous: nithron/chevron-left
+    next: nithron/chevron-right
+    admonition:
+      note: nithron/notice
+      abstract: nithron/notice
+      info: nithron/notice
+      tip: nithron/notice
+      success: nithron/ok
+      question: nithron/help
+      warning: nithron/warning
+      failure: nithron/failed
+      danger: nithron/failed
+      bug: nithron/failed
+      example: nithron/notice
+      quote: nithron/notice
   
   features:
     - navigation.instant
@@ -28,33 +68,19 @@ theme:
     - toc.integrate
     - search.suggest
     - search.highlight
-    - search.share
-    - header.autohide
     - content.code.annotate
     - content.code.copy
     - content.code.select
     - content.tabs.link
     - content.tooltips
     
+  # One palette: the tokens follow the system's light or dark theme.
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: indigo
-      accent: indigo
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: indigo
-      accent: indigo
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
-        
-  font:
-    text: Inter
-    code: JetBrains Mono
+    scheme: default
+
+extra_css:
+  - assets/stylesheets/nithron-tokens.css
+  - assets/stylesheets/nos-docs.css
 
 plugins:
   - search:
@@ -64,15 +90,6 @@ plugins:
 
 extra:
   version: v0.9.5-pre-alpha
-  social:
-    - icon: fontawesome/brands/github
-      link: https://github.com/Nithron/nOS
-    - icon: fontawesome/brands/discord
-      link: https://discord.gg/qzB37WS5AT
-      name: Official Community Forum
-    - icon: fontawesome/brands/patreon
-      link: https://patreon.com/Nithron
-      name: Support on Patreon
 
 markdown_extensions:
   - abbr
@@ -90,9 +107,6 @@ markdown_extensions:
       smart_enable: all
   - pymdownx.caret
   - pymdownx.details
-  - pymdownx.emoji:
-      emoji_index: !!python/name:material.extensions.emoji.twemoji
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
