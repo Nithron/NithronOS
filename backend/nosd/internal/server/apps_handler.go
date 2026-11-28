@@ -11,6 +11,7 @@ import (
 	"nos/backend/nosd/pkg/httpx"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog/log"
 )
 
 // handleGetCatalog returns the merged app catalog
@@ -85,7 +86,7 @@ func handleInstallApp(appManager *apps.Manager) http.HandlerFunc {
 			} else if strings.Contains(err.Error(), "validation failed") {
 				httpx.WriteError(w, http.StatusBadRequest, err.Error())
 			} else {
-				httpx.WriteError(w, http.StatusInternalServerError, "Failed to install app")
+				appFailed(w, "install", err)
 			}
 			return
 		}
@@ -124,7 +125,7 @@ func handleUpgradeApp(appManager *apps.Manager) http.HandlerFunc {
 			} else if strings.Contains(err.Error(), "rolled back") {
 				httpx.WriteError(w, http.StatusInternalServerError, "Upgrade failed and was rolled back")
 			} else {
-				httpx.WriteError(w, http.StatusInternalServerError, "Failed to upgrade app")
+				appFailed(w, "upgrade", err)
 			}
 			return
 		}
@@ -146,7 +147,7 @@ func handleStartApp(appManager *apps.Manager) http.HandlerFunc {
 			if strings.Contains(err.Error(), "not found") {
 				httpx.WriteError(w, http.StatusNotFound, "App not found")
 			} else {
-				httpx.WriteError(w, http.StatusInternalServerError, "Failed to start app")
+				appFailed(w, "start", err)
 			}
 			return
 		}
@@ -167,7 +168,7 @@ func handleStopApp(appManager *apps.Manager) http.HandlerFunc {
 			if strings.Contains(err.Error(), "not found") {
 				httpx.WriteError(w, http.StatusNotFound, "App not found")
 			} else {
-				httpx.WriteError(w, http.StatusInternalServerError, "Failed to stop app")
+				appFailed(w, "stop", err)
 			}
 			return
 		}
@@ -188,7 +189,7 @@ func handleRestartApp(appManager *apps.Manager) http.HandlerFunc {
 			if strings.Contains(err.Error(), "not found") {
 				httpx.WriteError(w, http.StatusNotFound, "App not found")
 			} else {
-				httpx.WriteError(w, http.StatusInternalServerError, "Failed to restart app")
+				appFailed(w, "restart", err)
 			}
 			return
 		}
@@ -220,7 +221,7 @@ func handleDeleteApp(appManager *apps.Manager) http.HandlerFunc {
 			if strings.Contains(err.Error(), "not found") {
 				httpx.WriteError(w, http.StatusNotFound, "App not found")
 			} else {
-				httpx.WriteError(w, http.StatusInternalServerError, "Failed to delete app")
+				appFailed(w, "delete", err)
 			}
 			return
 		}
@@ -271,7 +272,7 @@ func handleRollbackApp(appManager *apps.Manager) http.HandlerFunc {
 			if strings.Contains(err.Error(), "not found") {
 				httpx.WriteError(w, http.StatusNotFound, "App or snapshot not found")
 			} else {
-				httpx.WriteError(w, http.StatusInternalServerError, "Failed to rollback app")
+				appFailed(w, "rollback", err)
 			}
 			return
 		}
@@ -391,7 +392,7 @@ func handleForceHealthCheck(appManager *apps.Manager) http.HandlerFunc {
 			if strings.Contains(err.Error(), "not found") {
 				httpx.WriteError(w, http.StatusNotFound, "App not found")
 			} else {
-				httpx.WriteError(w, http.StatusInternalServerError, "Failed to check health")
+				appFailed(w, "check health", err)
 			}
 			return
 		}
@@ -410,7 +411,7 @@ func handleForceHealthCheck(appManager *apps.Manager) http.HandlerFunc {
 func handleSyncCatalogs(appManager *apps.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := appManager.SyncCatalogs(); err != nil {
-			httpx.WriteError(w, http.StatusInternalServerError, "Failed to sync catalogs")
+			appFailed(w, "sync catalogs", err)
 			return
 		}
 
@@ -427,4 +428,11 @@ func getUserIDFromContext(r *http.Request) string {
 		return uid
 	}
 	return "system"
+}
+
+// appFailed answers an app operation that failed with its reason (these are
+// admin routes; the reason is what the admin needs to fix it) and logs it.
+func appFailed(w http.ResponseWriter, what string, err error) {
+	log.Error().Err(err).Str("op", what).Msg("apps: operation failed")
+	httpx.WriteError(w, http.StatusInternalServerError, fmt.Sprintf("Could not %s: %v", what, err))
 }

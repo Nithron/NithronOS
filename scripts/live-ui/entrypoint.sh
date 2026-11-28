@@ -22,6 +22,23 @@ else
 	log "no loop device: storage pages will show no pools"
 fi
 
+# Docker for apps; /var/lib/docker is a volume (run.sh), not the overlay.
+# With cgroup v2, the container's own processes move to a child group first
+# so the root group can hand its controllers down to Docker's containers
+# (what Docker's dind image does).
+if [ -f /sys/fs/cgroup/cgroup.controllers ]; then
+	mkdir -p /sys/fs/cgroup/init
+	xargs -rn1 </sys/fs/cgroup/cgroup.procs >/sys/fs/cgroup/init/cgroup.procs 2>/dev/null || true
+	sed -e 's/ / +/g' -e 's/^/+/' </sys/fs/cgroup/cgroup.controllers >/sys/fs/cgroup/cgroup.subtree_control 2>/dev/null || true
+fi
+dockerd >/var/log/dockerd.log 2>&1 &
+for _ in $(seq 1 60); do docker info >/dev/null 2>&1 && break; sleep 0.5; done
+if docker info >/dev/null 2>&1; then
+	log "Docker ready"
+else
+	log "Docker did not start (see /var/log/dockerd.log): apps can't be installed"
+fi
+
 /usr/sbin/nos-agent >/var/log/nos-agent.log 2>&1 &
 for _ in $(seq 1 50); do [ -S /run/nos-agent.sock ] && break; sleep 0.2; done
 [ -S /run/nos-agent.sock ] || { cat /var/log/nos-agent.log; exit 1; }
