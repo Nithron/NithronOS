@@ -18,41 +18,9 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # live): it copies the live system to disk and embeds
 # config/includes.installer/preseed.cfg. No stock installer is downloaded.
 
-# --- begin logo wiring ---
-LOGO_SRC=""
-for p in \
-  "$REPO_ROOT/assets/nos-logo-mark.png" \
-  "$REPO_ROOT/assets/brand/nos-logo-mark.png"
-do
-  if [ -f "$p" ]; then LOGO_SRC="$p"; break; fi
-done
-
-if [ -n "$LOGO_SRC" ]; then
-  echo "[iso] branding with logo: $LOGO_SRC"
-
-  # Debian Installer graphics
-  mkdir -p "$PROFILE_DIR/config/includes.installer/usr/share/graphics"
-  # Logo (light + dark)
-  cp "$LOGO_SRC" "$PROFILE_DIR/config/includes.installer/usr/share/graphics/logo_debian.png"
-  cp "$LOGO_SRC" "$PROFILE_DIR/config/includes.installer/usr/share/graphics/logo_debian_dark.png" || true
-
-  # Splash: try convert to 640x480, fallback to raw
-  SPL_OUT="$PROFILE_DIR/config/includes.installer/usr/share/graphics/splash.png"
-  if command -v convert >/dev/null 2>&1; then
-    convert "$LOGO_SRC" -resize 640x480 -background black -gravity center -extent 640x480 "$SPL_OUT" || cp "$LOGO_SRC" "$SPL_OUT"
-  else
-    cp "$LOGO_SRC" "$SPL_OUT"
-  fi
-
-  # GRUB background (UEFI)
-  mkdir -p "$PROFILE_DIR/config/includes.binary/boot/grub"
-  cp "$SPL_OUT" "$PROFILE_DIR/config/includes.binary/boot/grub/splash.png" || cp "$LOGO_SRC" "$PROFILE_DIR/config/includes.binary/boot/grub/splash.png"
-
-  # ISOLINUX background (BIOS)
-  mkdir -p "$PROFILE_DIR/config/includes.binary/isolinux"
-  cp "$SPL_OUT" "$PROFILE_DIR/config/includes.binary/isolinux/splash.png" || cp "$LOGO_SRC" "$PROFILE_DIR/config/includes.binary/isolinux/splash.png"
-fi
-# --- end logo wiring ---
+# The boot and installer pictures (GRUB background, ISOLINUX splash, the
+# installer's banner) are committed under config/, made by
+# scripts/gen-boot-art.py: the ground and the name in type, two colours.
 
 # Ensure apt includes directories exist for pinned sources
 mkdir -p "$PROFILE_DIR/config/includes.chroot/etc/apt" "$PROFILE_DIR/config/includes.binary/etc/apt"

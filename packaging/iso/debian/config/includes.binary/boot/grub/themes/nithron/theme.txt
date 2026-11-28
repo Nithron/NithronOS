@@ -1,80 +1,51 @@
-# nOS GRUB Theme
-# ISO Boot Menu Theme Configuration
+# The nOS boot menu on the Nithron identity (DESIGN-APPS.md in the
+# nithron-site repository, "Other surfaces of a product"): the ground and the
+# product's name in type, two colours. The values are the tokens' dark
+# --page and --ink (GRUB reads no CSS); background.png and the highlight
+# pieces come from scripts/gen-boot-art.py. Text is GRUB's Unifont, a bitmap
+# face, so it stands on whole pixels like the name.
+title-text: ""
+desktop-image: "background.png"
+desktop-color: "#0c0d0f"
+terminal-font: "Unifont Regular 16"
 
-# Global Properties
-title-text: "nOS Boot Menu"
-title-font: "DejaVu Sans Bold 24"
-title-color: "#2D7FF9"
-desktop-color: "#1a1a1a"
-terminal-font: "DejaVu Sans Mono 14"
-terminal-box: "terminal_box_*.png"
-
-# Boot menu styling
 + boot_menu {
   left = 15%
-  width = 70%
   top = 30%
-  height = 40%
-  
-  # Menu box appearance
-  menu_pixmap_style = "menu_box_*.png"
-  
-  # Item styling
-  item_font = "DejaVu Sans 16"
-  item_color = "#cccccc"
-  item_height = 30
-  item_padding = 10
-  item_spacing = 5
-  
-  # Selected item styling
-  selected_item_font = "DejaVu Sans Bold 16"
-  selected_item_color = "#ffffff"
-  selected_item_pixmap_style = "select_*.png"
-  
-  # Scrollbar
-  scrollbar = true
-  scrollbar_width = 20
-  scrollbar_thumb = "slider_*.png"
+  width = 70%
+  height = 45%
+  item_font = "Unifont Regular 16"
+  item_color = "#eceef0"
+  selected_item_font = "Unifont Regular 16"
+  selected_item_color = "#eceef0"
+  # The chosen entry: a 1 px ink frame.
+  selected_item_pixmap_style = "highlight_*.png"
+  item_height = 32
+  item_padding = 12
+  item_spacing = 8
+  icon_width = 0
+  icon_height = 0
+  item_icon_space = 0
+  scrollbar = false
 }
 
-# Progress bar
-+ progress_bar {
++ label {
   id = "__timeout__"
   left = 15%
+  top = 80%
   width = 70%
-  top = 75%
-  height = 20
-  
-  font = "DejaVu Sans 12"
-  text_color = "#ffffff"
+  height = 24
+  font = "Unifont Regular 16"
+  color = "#eceef0"
   text = "@TIMEOUT_NOTIFICATION_SHORT@"
-  
-  bar_style = "progress_bar_*.png"
-  highlight_style = "progress_highlight_*.png"
 }
 
-# Help text
 + label {
   left = 15%
-  top = 85%
+  top = 86%
   width = 70%
-  height = 20
-  
-  text = "Use ↑ and ↓ keys to select, Enter to boot"
-  font = "DejaVu Sans 12"
-  color = "#888888"
-  align = "center"
-}
-
-# Brand text
-+ label {
-  left = 15%
-  top = 10%
-  width = 70%
-  height = 30
-  
-  text = "nOS - Open Source NAS & Homelab OS"
-  font = "DejaVu Sans Bold 18"
-  color = "#2D7FF9"
-  align = "center"
+  height = 24
+  font = "Unifont Regular 16"
+  color = "#eceef0"
+  text = "Up and down choose, Enter starts, e edits the entry, c opens a command line"
 }

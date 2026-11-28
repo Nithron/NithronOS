@@ -4,74 +4,47 @@ This directory contains the GRUB 2 theme and branding configuration for nOS ISO 
 
 ## Overview
 
-The nOS GRUB theme provides a branded boot experience for both BIOS and UEFI systems with:
-- Custom dark theme matching nOS brand colors
-- Branded menu entry titles
-- Professional boot menu appearance
-- Support for both legacy BIOS and modern UEFI boot
+The boot menu follows the Nithron identity (DESIGN-APPS.md in the
+nithron-site repository, "Other surfaces of a product"): the ground and the
+product's name in type, in two colours, the tokens' dark `--page` (#0c0d0f)
+and `--ink` (#eceef0). No drawn logo, no accent colour, no progress bar. The
+same theme serves the ISO (BIOS and UEFI) and the installed system.
 
 ## Components
 
-### Theme Files
-Located in `includes.chroot/boot/grub/themes/nithron/`:
-- `theme.txt` - GRUB theme configuration with nOS colors
-- `background.png` - Dark background with centered nOS logo
-- `DroidSans-32.pf2` - DroidSans font for menu items and text
-- `DroidSans-Bold-32.pf2` - DroidSans Bold font for selected items and title
+### Theme files
+In `includes.chroot/boot/grub/themes/nithron/` and the same in
+`includes.binary/boot/grub/themes/nithron/`:
+- `theme.txt`: the layout; every entry in ink, the chosen one in a 1 px ink
+  frame, the timeout and the keys as words.
+- `background.png`: the ground with "nOS" in the Nithron Pixel face at 64 px.
+- `highlight_*.png`: the pieces of the frame round the chosen entry.
 
-### Configuration Files
+Text uses GRUB's Unifont (`unicode.pf2`, a bitmap face), loaded by
+`includes.binary/boot/grub/grub.cfg` and copied by hook 032.
+
+Also made from the same face: `includes.binary/isolinux/splash.png` and the
+installer's banner `includes.installer/usr/share/graphics/logo_debian.png`.
+
+### Configuration files
 - `includes.chroot/etc/default/grub.d/99-nos.cfg` - GRUB defaults and theme activation
 - `includes.binary/boot/grub/40_nos_titles.cfg` - Menu entry title overrides
 
-### Build Hooks
-Located in `hooks/normal/`:
+### Build hooks
+In `hooks/normal/`:
 - `030-grub-theme.hook.chroot` - Runs update-grub to apply theme
 - `031-grub-titles.hook.chroot` - Updates menu entry titles to nOS branding
-- `032-grub-binary-theme.hook.binary` - Copies theme to ISO boot partition
+- `032-grub-binary-theme.binary` - Copies theme and font to the ISO
 
-## Color Palette
+## Making the pictures
 
-Based on nOS brand colors (from assets/brand/palette.json):
-- Background: `#0B0E13` (dark)
-- Card/Panel: `#121622` 
-- Text: `#E6EDF7` (light)
-- Muted text: `#9AA7B8`
-- Accent cyan: `#00D1FF`
-- Accent blue: `#2D7FF9`
-- Accent lime: `#A4F932`
-
-## Generating Missing Assets
-
-### Background Image
 ```bash
-# Install ImageMagick if not present
-apt-get install -y imagemagick
-
-# Create dark background
-convert -size 1024x768 xc:'#0B0E13' background.png
-
-# Add logo (composite with existing logo file)
-convert background.png ../../../../assets/brand/nos-logo-mark.png \
-  -gravity center -resize 200x200 -composite background.png
-
-# Optimize size (keep under 100KB)
-convert background.png -quality 85 -strip background.png
+python3 packaging/iso/scripts/gen-boot-art.py \
+  <nithron-site>/packages/tokens/fonts/nithron-pixel.ttf packaging/iso/debian/config
 ```
 
-### Font Files
-The theme uses DroidSans fonts which are included:
-- `DroidSans-32.pf2` - Regular font for menu items
-- `DroidSans-Bold-32.pf2` - Bold font for selected items
-
-To regenerate or create different sizes:
-```bash
-# Install grub tools
-apt-get install -y grub-common
-
-# Generate from TTF files (if you have DroidSans.ttf)
-grub-mkfont -s 32 -o DroidSans-32.pf2 DroidSans.ttf
-grub-mkfont -s 32 -o DroidSans-Bold-32.pf2 DroidSans-Bold.ttf
-```
+It draws without smoothing and fails unless each picture holds exactly two
+colours. It needs Pillow.
 
 ## Menu Entries
 
@@ -108,14 +81,6 @@ During live-build ISO creation:
 5. Hook 032 copies theme to binary boot partition for ISO
 6. Both BIOS and UEFI boot modes use the same theme
 
-## Customization
-
-To modify the theme:
-1. Edit `theme.txt` for colors and layout
-2. Replace `background.png` with custom artwork
-3. Replace font files (`DroidSans-32.pf2`, `DroidSans-Bold-32.pf2`) with different fonts/sizes
-4. Update `99-nos.cfg` for boot behavior changes
-
 ## Troubleshooting
 
 ### Theme Not Showing
@@ -135,5 +100,6 @@ To modify the theme:
 
 ## License
 
-Theme configuration and hooks are part of nOS and follow the project license.
-DejaVu fonts are freely available under their respective licenses.
+Theme configuration and hooks are part of nOS and follow its licence. The
+Nithron Pixel face is from @nithron/tokens 0.4.0 (Nithron Community License
+v1.0); Unifont comes with GRUB.
