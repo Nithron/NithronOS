@@ -151,7 +151,7 @@ the record (`GET /api/v1/snapshots/<id>`). For the checks after an upgrade:
 
 ```bash
 systemctl status nosd nos-agent caddy
-curl -s http://127.0.0.1/api/v1/health
+curl -sk https://127.0.0.1/api/v1/health
 ```
 
 ## Telemetry

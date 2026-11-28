@@ -21,7 +21,9 @@ USER_NAME=admin
 USER_PASS='Upgrade-Test-Passw0rd!'
 WAIT="${UPGRADE_WAIT:-900}"
 
-log() { echo "[upgrade-test] $*"; }
+# On stderr: fail() also runs inside $(wait_progress ...), where stdout is
+# captured and its message would be lost.
+log() { echo "[upgrade-test] $*" >&2; }
 fail() {
 	log "FAIL: $*"
 	exit 1
@@ -67,8 +69,8 @@ log "ok: nosd $NEXT is offered"
 
 log "applying the update"
 api POST /api/v1/updates/apply '{"packages":["nosd"]}' >/dev/null || fail "update apply"
-progress="$(wait_progress success failed)"
-[ "$(jq -r .state <<<"$progress")" = success ] || fail "update: $(jq -c '{message,error,logs:[.logs[-8:][]?.message]}' <<<"$progress")"
+progress="$(wait_progress success failed rolled_back)"
+[ "$(jq -r .state <<<"$progress")" = success ] || fail "update ended $(jq -r .state <<<"$progress"): $(jq -c '{message,error,logs:[.logs[-12:][]?.message]}' <<<"$progress")"
 snapshot="$(jq -r '.snapshot_id // empty' <<<"$progress")"
 [ -n "$snapshot" ] || fail "the update saved no snapshot"
 log "ok: updated (snapshot $snapshot)"

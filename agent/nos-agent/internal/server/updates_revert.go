@@ -3,6 +3,7 @@ package server
 import (
 	"cmp"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -246,10 +247,11 @@ func handleUpdatesRevertStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 // The services an update must leave running, and the page nosd answers
-// through Caddy (port 80 proxies /api without redirecting).
+// through Caddy: on 443, with this machine's own self-signed certificate
+// (port 80 only redirects to it).
 var (
 	healthUnits = []string{"nosd", "nos-agent", "caddy"}
-	healthURL   = "http://127.0.0.1/api/v1/health"
+	healthURL   = "https://127.0.0.1/api/v1/health"
 	webIndex    = "/usr/share/nos/web/index.html"
 )
 
@@ -259,7 +261,15 @@ var unitActive = func(unit string) string {
 }
 
 var webAnswers = func() error {
-	client := &http.Client{Timeout: 5 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	client := &http.Client{
+		Timeout:       5 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+		Transport: &http.Transport{
+			// Loopback to this machine's own Caddy, whose certificate is
+			// self-signed (nos-certgen): nothing to verify it against.
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // loopback, own self-signed certificate
+		},
+	}
 	resp, err := client.Get(healthURL)
 	if err != nil {
 		return err
