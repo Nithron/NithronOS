@@ -4484,6 +4484,30 @@
         ]
       }
     },
+    "/api/v1/updates/config": {
+      "get": {
+        "operationId": "getUpdatesConfig",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "updates"
+        ]
+      },
+      "put": {
+        "operationId": "putUpdatesConfig",
+        "responses": {
+          "default": {
+            "description": "See docs/api/versioning-and-errors.md for the error format."
+          }
+        },
+        "tags": [
+          "updates"
+        ]
+      }
+    },
     "/api/v1/updates/progress": {
       "get": {
         "operationId": "getUpdatesProgress",

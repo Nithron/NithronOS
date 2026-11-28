@@ -39,6 +39,7 @@ const (
 	PhaseSnapshot   Phase = "snapshot"
 	PhaseInstall    Phase = "install"
 	PhasePostflight Phase = "postflight"
+	PhaseRollback   Phase = "rollback"
 )
 
 // SystemVersion is what is installed.

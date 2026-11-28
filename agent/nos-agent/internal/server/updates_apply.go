@@ -141,7 +141,12 @@ func handleUpdatesStatus(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
-	st := readUpdateUnit()
+	writeJSON(w, http.StatusOK, unitWithLog(updateUnit))
+}
+
+// unitWithLog is a transient unit's state with the last lines of its journal.
+func unitWithLog(unit string) UpdateUnitStatus {
+	st := readUnit(unit)
 	if st.invocation != "" {
 		out, _ := exec.Command("journalctl", "_SYSTEMD_INVOCATION_ID="+st.invocation, "-o", "cat", "--no-pager", "-n", "300").Output()
 		for _, line := range strings.Split(strings.TrimRight(string(out), "\n"), "\n") {
@@ -151,7 +156,7 @@ func handleUpdatesStatus(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	st.RebootRequired = fileExists("/var/run/reboot-required")
-	writeJSON(w, http.StatusOK, st)
+	return st
 }
 
 func appendUpdateLog(ts time.Time, changed []string) error {

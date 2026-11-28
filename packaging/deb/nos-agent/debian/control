@@ -8,7 +8,7 @@ Rules-Requires-Root: no
 
 Package: nos-agent
 Architecture: amd64
-Depends: ${misc:Depends}, ${shlibs:Depends}, nftables
+Depends: ${misc:Depends}, ${shlibs:Depends}, nftables, dpkg-repack
 Description: nOS privileged agent (root-only ops)
 
 
