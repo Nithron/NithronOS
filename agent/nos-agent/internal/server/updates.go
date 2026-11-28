@@ -151,9 +151,18 @@ func fileExists(p string) bool {
 // holds the lock.
 var aptLockBusy = regexp.MustCompile(`Could not get lock|Unable to lock directory|is held by process`)
 
-// runAptUpdate runs apt-get update (a var so tests replace it).
+// runAptUpdate runs apt-get update as its own transient unit, like the
+// upgrade: inside nos-agent's service, apt 3 (Debian 13) can't switch its
+// download helpers to the _apt user ("setresuid: Operation not permitted").
+// --wait --pipe give back its output and exit status. Without systemd (a
+// container) it runs directly. A var so tests replace it.
 var runAptUpdate = func(ctx context.Context) (string, error) {
-	out, err := exec.CommandContext(ctx, "apt-get", "update").CombinedOutput()
+	args := []string{"apt-get", "update"}
+	if _, err := exec.LookPath("systemd-run"); err == nil && fileExists("/run/systemd/system") {
+		args = append([]string{"systemd-run", "--wait", "--pipe", "--collect", "--quiet",
+			"--description=nOS package list refresh", "--setenv=DEBIAN_FRONTEND=noninteractive", "--"}, args...)
+	}
+	out, err := exec.CommandContext(ctx, args[0], args[1:]...).CombinedOutput()
 	return string(out), err
 }
 
