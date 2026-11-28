@@ -291,10 +291,10 @@ func (s *Service) run(req ApplyRequest) {
 	if !req.SkipSnapshot {
 		kept, err := s.keepVersions(ctx, rec)
 		if err != nil && !req.Force {
-			s.fail(err.Error())
+			s.fail("Stopped before installing anything: " + err.Error())
 			return
 		} else if err != nil {
-			s.log("warn", PhaseSnapshot, err.Error()+"; continuing (force)")
+			s.log("warn", PhaseSnapshot, "Continuing (force), although "+err.Error())
 		}
 		rec.Kept = kept
 	}

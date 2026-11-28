@@ -54,7 +54,7 @@ func (s *Service) keepVersions(ctx context.Context, rec Record) ([]Package, erro
 	}
 	var reply keepReply
 	if err := s.agent.PostJSON(ctx, "/v1/updates/keep", map[string]any{"id": rec.ID, "packages": want}, &reply); err != nil {
-		return nil, fmt.Errorf("The installed versions could not be kept, so the update could not be rolled back: %w", err)
+		return nil, fmt.Errorf("the installed versions could not be kept, so the update could not be rolled back: %w", err)
 	}
 	kept := []Package{}
 	for _, k := range reply.Kept {
@@ -65,7 +65,7 @@ func (s *Service) keepVersions(ctx context.Context, rec Record) ([]Package, erro
 		for _, m := range reply.Missing {
 			names = append(names, fmt.Sprintf("%s %s (%s)", m.Name, m.Version, m.Error))
 		}
-		return kept, fmt.Errorf("The installed versions of %d package(s) could not be kept, so the update could not be rolled back: %s", len(reply.Missing), strings.Join(names, "; "))
+		return kept, fmt.Errorf("the installed versions of %d package(s) could not be kept, so the update could not be rolled back: %s", len(reply.Missing), strings.Join(names, "; "))
 	}
 	s.log("info", PhaseSnapshot, fmt.Sprintf("Kept the installed versions of %d package(s)", len(kept)))
 	return kept, nil
@@ -85,7 +85,7 @@ func (s *Service) postflight(ctx context.Context, reboot bool) {
 	s.mu.Unlock()
 	s.step(PhasePostflight, 92, "Checking that nOS works after the update")
 	deadline := time.Now().Add(s.postflightWait)
-	last := "nos-agent did not answer"
+	var last string
 	for {
 		var h healthReply
 		err := s.agent.GetJSON(ctx, "/v1/updates/health", &h)
