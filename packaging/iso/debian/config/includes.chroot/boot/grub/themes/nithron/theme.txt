@@ -1,83 +1,51 @@
-# nOS GRUB Theme
-# Based on brand colors from palette.json
-
-# Global properties
-title-text: "nOS"
-title-font: "DroidSans-Bold-32"
-title-color: "#E6EDF7"
+# The nOS boot menu on the Nithron identity (DESIGN-APPS.md in the
+# nithron-site repository, "Other surfaces of a product"): the ground and the
+# product's name in type, two colours. The values are the tokens' dark
+# --page and --ink (GRUB reads no CSS); background.png and the highlight
+# pieces come from scripts/gen-boot-art.py. Text is GRUB's Unifont, a bitmap
+# face, so it stands on whole pixels like the name.
+title-text: ""
 desktop-image: "background.png"
-desktop-color: "#0B0E13"
-terminal-font: "DroidSans-32"
-terminal-box: "terminal_*.png"
+desktop-color: "#0c0d0f"
+terminal-font: "Unifont Regular 16"
 
-# nOS Logo
-+ image {
-  left = 50%-64
-  top = 10%
-  width = 128
-  height = 128
-  file = "nos-logo-mark.png"
-}
-
-# Boot menu styling
 + boot_menu {
   left = 15%
-  width = 70%
   top = 30%
+  width = 70%
   height = 45%
-  
-  # Menu item appearance
-  item_font = "DroidSans-32"
-  item_color = "#9AA7B8"
-  item_height = 40
-  item_padding = 10
-  item_spacing = 5
-  
-  # Selected item highlighting
-  selected_item_font = "DroidSans-Bold-32"
-  selected_item_color = "#E6EDF7"
+  item_font = "Unifont Regular 16"
+  item_color = "#eceef0"
+  selected_item_font = "Unifont Regular 16"
+  selected_item_color = "#eceef0"
+  # The chosen entry: a 1 px ink frame.
   selected_item_pixmap_style = "highlight_*.png"
-  
-  # Scrollbar
-  scrollbar = true
-  scrollbar_width = 8
-  scrollbar_thumb = "scrollbar_thumb_*.png"
-  scrollbar_frame = "scrollbar_frame_*.png"
+  item_height = 32
+  item_padding = 12
+  item_spacing = 8
+  icon_width = 0
+  icon_height = 0
+  item_icon_space = 0
+  scrollbar = false
 }
 
-# Progress bar for timeout
-+ progress_bar {
++ label {
   id = "__timeout__"
   left = 15%
+  top = 80%
   width = 70%
-  top = 78%
-  height = 16
-  
-  font = "DroidSans-32"
-  text_color = "#9AA7B8"
-  fg_color = "#00D1FF"
-  bg_color = "#121622"
-  border_color = "#2D7FF9"
-  
-  text = "@TIMEOUT_NOTIFICATION_LONG@"
+  height = 24
+  font = "Unifont Regular 16"
+  color = "#eceef0"
+  text = "@TIMEOUT_NOTIFICATION_SHORT@"
 }
 
-# Help text at bottom
 + label {
   left = 15%
-  top = 85%
+  top = 86%
   width = 70%
-  height = 20
-  
-  text = "Use ↑ and ↓ keys to select, Enter to boot, 'e' to edit, 'c' for command line"
-  font = "DroidSans-32"
-  color = "#9AA7B8"
-  align = "center"
+  height = 24
+  font = "Unifont Regular 16"
+  color = "#eceef0"
+  text = "Up and down choose, Enter starts, e edits the entry, c opens a command line"
 }
-
-# Terminal window styling (if accessed)
-terminal-left = "10%"
-terminal-top = "10%"
-terminal-width = "80%"
-terminal-height = "60%"
-terminal-border = "2"
