@@ -46,9 +46,24 @@ src/api/          pairing link parser, nosd client (refresh once on 401), WebDAV
 src/native/       the JavaScript side of the pinning module
 src/stores/       zustand stores: the pairing, shares/activity/conflicts
 src/screens/      auth (welcome, QR scanner, paste link), files, main tabs, settings
+src/theme/        the Nithron tokens (a copy of @nithron/tokens 0.4.0) and the app's one mapping onto them
+src/components/   icons by meaning, the pixel layer (marks, meters, loading), buttons, fields, the dialog, the toast
+src/vendor/       the shared pixel icons (@nithron/icons 0.2.0), copied whole
+assets/fonts/     Mona Sans, Monaspace Neon and Nithron Pixel, with their licences (linked by react-native.config.js)
 android/app/src/main/java/com/nithron/sync/pinning/   key pinning for React Native's HTTP client
-__tests__/        Jest tests (pairing link, WebDAV, client); android/app/src/test: JVM tests for pinning
+__tests__/        Jest tests (pairing link, WebDAV, client, theme, components, identity); android/app/src/test: JVM tests for pinning
 ```
+
+## Look
+
+The app follows the Nithron identity as the nOS web interface does
+(nithron-site DESIGN-APPS.md): one ground with hairlines, light or dark as
+the system is, no hue but the states (green for a pass, red with its cross
+for a failure, gold with an open square for a warning), pixel icons on
+whole device pixels. Every colour comes from `src/theme/nithron-tokens.js`
+through `src/theme/theme.ts`; `__tests__/identity.test.ts` fails on a hex
+value, a hue's name, a spinner, the system's alert or a shadow anywhere
+else.
 
 ## Pinning
 
