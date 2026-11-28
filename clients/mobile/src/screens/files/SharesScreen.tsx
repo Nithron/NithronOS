@@ -1,25 +1,21 @@
 /**
  * Shares Screen
- * List all sync-enabled shares
+ * The shares this device may read that have sync turned on, as a ruled list.
  */
 
-import React, {useEffect, useCallback} from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
-import {useNavigation, useTheme} from '@react-navigation/native';
+import React, {useEffect, useState} from 'react';
+import {FlatList, View} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import {useSyncStore} from '../../stores/syncStore';
 import {SyncShare} from '../../api/types';
 import {FilesStackParamList} from '../../navigation/RootNavigator';
-import {formatBytes} from '../../utils/format';
+import {EmptyState, Row} from '../../components/layout';
+import {StatusMark, Working} from '../../components/pixel';
+import {RefreshButton, Toolbar, useRefresh} from '../../components/Refresh';
+import {countOf, formatBytes} from '../../utils/format';
+import {metrics, Palette, useThemedStyles} from '../../theme/theme';
 
 type SharesNavigationProp = NativeStackNavigationProp<
   FilesStackParamList,
@@ -27,22 +23,18 @@ type SharesNavigationProp = NativeStackNavigationProp<
 >;
 
 export function SharesScreen(): React.JSX.Element {
-  const {colors} = useTheme();
+  const styles = useThemedStyles(sharesStyles);
   const navigation = useNavigation<SharesNavigationProp>();
   const {shares, sharesError, refreshShares} = useSyncStore();
-  const [refreshing, setRefreshing] = React.useState(false);
+  const {refreshing, refresh} = useRefresh(refreshShares);
+  // Until the first answer, "no shares" would not be true yet.
+  const [loaded, setLoaded] = useState(shares.length > 0);
 
   useEffect(() => {
-    refreshShares();
+    refreshShares().finally(() => setLoaded(true));
   }, [refreshShares]);
 
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await refreshShares();
-    setRefreshing(false);
-  }, [refreshShares]);
-
-  const handleSharePress = (share: SyncShare) => {
+  const openShare = (share: SyncShare) => {
     navigation.navigate('Folder', {
       shareId: share.share_id,
       path: '',
@@ -51,151 +43,75 @@ export function SharesScreen(): React.JSX.Element {
   };
 
   const renderShare = ({item}: {item: SyncShare}) => (
-    <TouchableOpacity
-      accessibilityRole="button"
-      accessibilityLabel={`${item.share_name}, ${item.file_count} items`}
-      style={[
-        styles.shareItem,
-        {backgroundColor: colors.card, borderColor: colors.border},
-      ]}
-      onPress={() => handleSharePress(item)}>
-      <View
-        style={[styles.shareIcon, {backgroundColor: `${colors.primary}15`}]}>
-        <Icon name="folder" size={28} color={colors.primary} />
-      </View>
-      <View style={styles.shareContent}>
-        <Text style={[styles.shareName, {color: colors.text}]}>
-          {item.share_name}
-        </Text>
-        <View style={styles.shareMeta}>
-          <Text style={[styles.shareMetaText, {color: `${colors.text}60`}]}>
-            {item.file_count} items • {formatBytes(item.total_size)}
-          </Text>
-        </View>
-      </View>
-      <View style={styles.shareStatus}>
-        <Icon name="chevron-right" size={24} color={`${colors.text}40`} />
-      </View>
-    </TouchableOpacity>
+    <Row
+      title={item.share_name}
+      detail={`${countOf(item.file_count, 'item', 'items')}  ${formatBytes(
+        item.total_size,
+      )}`}
+      accessibilityLabel={`${item.share_name}, ${countOf(
+        item.file_count,
+        'item',
+        'items',
+      )}, ${formatBytes(item.total_size)}`}
+      onPress={() => openShare(item)}
+    />
   );
 
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Icon
-        name={sharesError ? 'cloud-alert' : 'folder-off-outline'}
-        size={64}
-        color={`${colors.text}30`}
+  const renderEmpty = () => {
+    if (!loaded) {
+      return (
+        <View style={styles.loading}>
+          <Working>Loading the shares</Working>
+        </View>
+      );
+    }
+    if (sharesError) {
+      return (
+        <View style={styles.problem}>
+          <StatusMark state="failed">
+            {`Couldn't load the shares. ${sharesError}`}
+          </StatusMark>
+        </View>
+      );
+    }
+    return (
+      <EmptyState
+        title="No shares."
+        text="No share you can read has sync turned on. A share's owner can turn it on in nOS."
       />
-      <Text style={[styles.emptyTitle, {color: colors.text}]}>
-        {sharesError ? "Couldn't load the shares" : 'No Shares'}
-      </Text>
-      <Text style={[styles.emptyText, {color: `${colors.text}60`}]}>
-        {sharesError ??
-          'No share you can read has sync turned on. Share owners can turn it on in nOS.'}
-      </Text>
-    </View>
-  );
+    );
+  };
 
   return (
-    <View style={[styles.container, {backgroundColor: colors.background}]}>
+    <View style={styles.screen}>
+      <Toolbar
+        fact={loaded && shares.length > 0 ? countOf(shares.length, 'share', 'shares') : undefined}>
+        <RefreshButton refreshing={refreshing} onPress={refresh} />
+      </Toolbar>
+      {sharesError && shares.length > 0 ? (
+        <View style={styles.problem}>
+          <StatusMark state="failed">
+            {`Couldn't refresh the shares. ${sharesError}`}
+          </StatusMark>
+        </View>
+      ) : null}
       <FlatList
         data={shares}
         renderItem={renderShare}
         keyExtractor={item => item.share_id}
-        contentContainerStyle={styles.list}
         ListEmptyComponent={renderEmpty}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary}
-          />
-        }
-        ItemSeparatorComponent={Separator}
       />
     </View>
   );
 }
 
-function Separator(): React.JSX.Element {
-  return <View style={styles.separator} />;
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  list: {
-    padding: 16,
-    flexGrow: 1,
-  },
-  shareItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  shareIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  shareContent: {
-    flex: 1,
-  },
-  shareName: {
-    fontSize: 17,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  shareMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  shareMetaText: {
-    fontSize: 13,
-  },
-  shareStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  pendingBadge: {
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  pendingText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  separator: {
-    height: 12,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
+const sharesStyles = (p: Palette) => ({
+  screen: {flex: 1, backgroundColor: p.page},
+  loading: {padding: metrics.gutter},
+  problem: {
+    padding: metrics.gutter,
+    borderBottomWidth: metrics.hair,
+    borderBottomColor: p.hairline,
   },
 });
 

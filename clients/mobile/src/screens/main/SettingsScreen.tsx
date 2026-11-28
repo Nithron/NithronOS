@@ -1,304 +1,148 @@
 /**
  * Settings: the server this phone is paired with, this device, and
- * unpairing.
+ * unpairing (confirmed in the app's own dialog).
  */
 
-import React from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import {useNavigation, useTheme} from '@react-navigation/native';
+import React, {useState} from 'react';
+import {ScrollView, Text, View} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import {errorMessage, useAuthStore} from '../../stores/authStore';
 import {useSyncStore} from '../../stores/syncStore';
 import {SettingsStackParamList} from '../../navigation/RootNavigator';
+import {Button} from '../../components/Button';
+import {ConfirmDialog} from '../../components/ConfirmDialog';
+import {RefreshIcon, SignOutIcon} from '../../components/icons';
+import {Group, Row} from '../../components/layout';
+import {StatusMark} from '../../components/pixel';
+import {showToast} from '../../components/Toast';
 import {APP_VERSION} from '../../version';
+import {metrics, Palette, type, useThemedStyles} from '../../theme/theme';
 
 type SettingsNavigationProp = NativeStackNavigationProp<
   SettingsStackParamList,
   'SettingsMain'
 >;
 
-const CONNECTED = '#10B981';
-const PROBLEM = '#EF4444';
-
 export function SettingsScreen(): React.JSX.Element {
-  const {colors} = useTheme();
+  const styles = useThemedStyles(settingsStyles);
   const navigation = useNavigation<SettingsNavigationProp>();
   const {device, serverUrl, error, isBusy, unpair, refreshDevice} =
     useAuthStore();
   const resetData = useSyncStore(s => s.reset);
-
-  const statusColor = error ? PROBLEM : CONNECTED;
+  const [confirming, setConfirming] = useState(false);
+  const [unpairError, setUnpairError] = useState<string | null>(null);
 
   const doUnpair = async () => {
+    setUnpairError(null);
     try {
       const {revoked} = await unpair();
+      setConfirming(false);
       resetData();
       if (!revoked) {
-        Alert.alert(
-          'Unpaired on this phone',
-          "The server couldn't be told, so the device is still listed in nOS. Remove it under Settings → Sync → Devices.",
+        showToast(
+          'warning',
+          "Unpaired on this phone. nOS couldn't be told, so it still lists the device: remove it under Sync → Devices.",
         );
       }
     } catch (err) {
-      Alert.alert("Couldn't unpair", errorMessage(err));
+      setUnpairError(`Couldn't unpair. ${errorMessage(err)}`);
     }
   };
 
-  const handleUnpair = () => {
-    Alert.alert(
-      'Unpair this phone',
-      'This removes the device from nOS and forgets the pairing here. To use it again, pair it with a new QR code.',
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {text: 'Unpair', style: 'destructive', onPress: doUnpair},
-      ],
-    );
-  };
-
   return (
-    <ScrollView
-      style={[styles.container, {backgroundColor: colors.background}]}>
-      <View
-        style={[
-          styles.statusCard,
-          {backgroundColor: colors.card, borderColor: colors.border},
-        ]}>
-        <View style={styles.statusHeader}>
-          <View
-            style={[styles.statusIcon, {backgroundColor: `${statusColor}20`}]}>
-            <Icon
-              name={error ? 'cloud-alert' : 'check-circle'}
-              size={24}
-              color={statusColor}
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Group label="Server">
+        <View style={styles.server}>
+          <StatusMark state={error ? 'failed' : 'ok'}>
+            {error ? "Can't reach the server" : 'Paired'}
+          </StatusMark>
+          {error ? <Text style={styles.reason}>{error}</Text> : null}
+          {serverUrl ? (
+            <Text style={styles.url} selectable>
+              {serverUrl}
+            </Text>
+          ) : null}
+          {error ? (
+            <Button
+              icon={RefreshIcon}
+              label="Try again"
+              onPress={refreshDevice}
+              compact
             />
-          </View>
-          <View style={styles.statusInfo}>
-            <Text style={[styles.statusTitle, {color: colors.text}]}>
-              {error ? "Can't reach the server" : 'Paired'}
-            </Text>
-            <Text
-              style={[styles.statusSubtitle, {color: `${colors.text}99`}]}
-              numberOfLines={3}>
-              {error ?? serverUrl ?? ''}
-            </Text>
-          </View>
-          {error && (
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="Try again"
-              style={styles.retry}
-              onPress={refreshDevice}>
-              <Icon name="refresh" size={22} color={colors.primary} />
-            </TouchableOpacity>
-          )}
+          ) : null}
         </View>
+      </Group>
+
+      <Group label="Device">
+        <Row
+          title={device?.device_name ?? 'This device'}
+          detail="Name, sync statistics"
+          onPress={() => navigation.navigate('DeviceSettings')}
+        />
+        <Row
+          title="About"
+          detail="Version, links"
+          onPress={() => navigation.navigate('About')}
+        />
+      </Group>
+
+      <View style={styles.unpair}>
+        <Button
+          icon={SignOutIcon}
+          label={isBusy ? 'Unpairing' : 'Unpair this phone'}
+          onPress={() => {
+            setUnpairError(null);
+            setConfirming(true);
+          }}
+          disabled={isBusy}
+        />
+        {unpairError && !confirming ? (
+          <StatusMark state="failed" textStyle={type.fine}>
+            {unpairError}
+          </StatusMark>
+        ) : null}
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: `${colors.text}99`}]}>
-          DEVICE
-        </Text>
-        <View
-          style={[
-            styles.sectionCard,
-            {backgroundColor: colors.card, borderColor: colors.border},
-          ]}>
-          <SettingsRow
-            icon="cellphone"
-            title={device?.device_name ?? 'This Device'}
-            subtitle="Name, sync statistics"
-            onPress={() => navigation.navigate('DeviceSettings')}
-            colors={colors}
-          />
-          <Divider color={colors.border} />
-          <SettingsRow
-            icon="information-outline"
-            title="About"
-            subtitle="Version, links"
-            onPress={() => navigation.navigate('About')}
-            colors={colors}
-          />
-        </View>
-      </View>
+      <Text style={styles.footer}>NithronSync {APP_VERSION}</Text>
 
-      <TouchableOpacity
-        accessibilityRole="button"
-        accessibilityState={{disabled: isBusy}}
-        style={[styles.unpairButton, {borderColor: PROBLEM}]}
-        onPress={handleUnpair}
-        disabled={isBusy}>
-        {isBusy ? (
-          <ActivityIndicator color={PROBLEM} />
-        ) : (
-          <>
-            <Icon name="link-off" size={20} color={PROBLEM} />
-            <Text style={styles.unpairText}>Unpair This Phone</Text>
-          </>
-        )}
-      </TouchableOpacity>
-
-      <View style={styles.footer}>
-        <Text style={[styles.footerText, {color: `${colors.text}80`}]}>
-          NithronSync {APP_VERSION}
-        </Text>
-      </View>
+      <ConfirmDialog
+        visible={confirming}
+        title="Unpair this phone?"
+        message="nOS removes the device and this phone forgets the pairing. To use it again, pair it with a new QR code."
+        actions={[{label: 'Unpair', onPress: doUnpair}]}
+        onCancel={() => setConfirming(false)}
+        error={unpairError}
+        busy={isBusy}
+      />
     </ScrollView>
   );
 }
 
-interface SettingsRowProps {
-  icon: string;
-  title: string;
-  subtitle?: string;
-  onPress: () => void;
-  colors: {text: string; primary: string};
-}
-
-function SettingsRow({
-  icon,
-  title,
-  subtitle,
-  onPress,
-  colors,
-}: SettingsRowProps) {
-  return (
-    <TouchableOpacity
-      accessibilityRole="button"
-      style={styles.settingsRow}
-      onPress={onPress}>
-      <View style={[styles.rowIcon, {backgroundColor: `${colors.primary}15`}]}>
-        <Icon name={icon} size={20} color={colors.primary} />
-      </View>
-      <View style={styles.rowContent}>
-        <Text style={[styles.rowTitle, {color: colors.text}]}>{title}</Text>
-        {subtitle && (
-          <Text style={[styles.rowSubtitle, {color: `${colors.text}99`}]}>
-            {subtitle}
-          </Text>
-        )}
-      </View>
-      <Icon name="chevron-right" size={20} color={`${colors.text}40`} />
-    </TouchableOpacity>
-  );
-}
-
-function Divider({color}: {color: string}) {
-  return <View style={[styles.divider, {backgroundColor: color}]} />;
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+const settingsStyles = (p: Palette) => ({
+  screen: {flex: 1, backgroundColor: p.page},
+  content: {paddingBottom: metrics.space6},
+  server: {
+    gap: metrics.space2,
+    paddingHorizontal: metrics.gutter,
+    paddingVertical: metrics.space3,
+    borderBottomWidth: metrics.hair,
+    borderBottomColor: p.hairline,
+    alignItems: 'flex-start' as const,
   },
-  statusCard: {
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  statusHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  statusInfo: {
-    flex: 1,
-  },
-  statusTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  statusSubtitle: {
-    fontSize: 13,
-  },
-  retry: {
-    padding: 12,
-  },
-  section: {
-    marginTop: 8,
-    paddingHorizontal: 16,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  sectionCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  settingsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    minHeight: 56,
-  },
-  rowIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  rowContent: {
-    flex: 1,
-  },
-  rowTitle: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  rowSubtitle: {
-    fontSize: 13,
-    marginTop: 1,
-  },
-  divider: {
-    height: 1,
-    marginLeft: 62,
-  },
-  unpairButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 16,
-    marginTop: 24,
-    paddingVertical: 14,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    gap: 8,
-    minHeight: 52,
-  },
-  unpairText: {
-    color: PROBLEM,
-    fontSize: 15,
-    fontWeight: '600',
+  reason: {...type.fine, color: p.ink2},
+  url: {...type.mono, color: p.ink},
+  unpair: {
+    paddingHorizontal: metrics.gutter,
+    marginTop: metrics.space6,
+    gap: metrics.space3,
   },
   footer: {
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  footerText: {
-    fontSize: 12,
+    ...type.label,
+    color: p.ink2,
+    paddingHorizontal: metrics.gutter,
+    marginTop: metrics.space6,
   },
 });
 

@@ -89,6 +89,5 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
 }
 
-// The one react-native-vector-icons font the app uses.
-project.ext.vectoricons = [iconFontNames: ["MaterialCommunityIcons.ttf"]]
-apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
+// The type faces are plain assets: assets/fonts, copied into
+// src/main/assets/fonts (see react-native.config.js).
