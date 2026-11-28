@@ -3,7 +3,7 @@
 # Docker engine of its own for apps. There is no systemd: the systemctl here
 # runs the nos-app@ units only, so other service reloads only warn. Built by
 # scripts/live-ui/run.sh.
-FROM debian:bookworm
+FROM debian:trixie
 
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -15,7 +15,7 @@ RUN apt-get update \
 # with the other tools that package depends on.
 RUN install -d -m 0755 /etc/apt/keyrings \
  && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
- && echo "deb [signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable" > /etc/apt/sources.list.d/docker.list \
+ && echo "deb [signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian trixie stable" > /etc/apt/sources.list.d/docker.list \
  && apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       docker-ce docker-ce-cli containerd.io docker-compose-plugin iptables rsync jq \

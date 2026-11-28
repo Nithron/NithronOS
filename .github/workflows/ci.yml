@@ -424,7 +424,7 @@ jobs:
     permissions:
       contents: write
     container:
-      image: debian:bookworm
+      image: debian:trixie
       options: --privileged --security-opt seccomp=unconfined --cap-add=SYS_ADMIN --tmpfs /run --tmpfs /run/lock --tmpfs /tmp
     steps:
       - name: Show container context

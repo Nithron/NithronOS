@@ -1,11 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
-# Setup Docker repository for Debian 12 (bookworm)
+# Setup Docker repository for Debian 13 (trixie)
 # This script is idempotent and can be run multiple times safely
 
 DISTRO="debian"
-CODENAME="bookworm"
+CODENAME="trixie"
 DOCKER_REPO_URL="https://download.docker.com/linux/${DISTRO}"
 DOCKER_GPG_KEY="/usr/share/keyrings/docker-archive-keyring.gpg"
 DOCKER_LIST="/etc/apt/sources.list.d/docker.list"

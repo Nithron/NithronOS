@@ -22,9 +22,9 @@ log "nOS packages present"
 #    needed for ZFS. Docker's repository list, if the live system has one, is
 #    kept as is in sources.list.d.
 cat > "$T/etc/apt/sources.list" <<'EOF'
-deb http://deb.debian.org/debian bookworm main contrib non-free-firmware
-deb http://deb.debian.org/debian bookworm-updates main contrib non-free-firmware
-deb http://security.debian.org/debian-security bookworm-security main contrib non-free-firmware
+deb http://deb.debian.org/debian trixie main contrib non-free-firmware
+deb http://deb.debian.org/debian trixie-updates main contrib non-free-firmware
+deb http://security.debian.org/debian-security trixie-security main contrib non-free-firmware
 EOF
 log "APT sources written"
 

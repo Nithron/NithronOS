@@ -6,13 +6,13 @@ set -e
 # Base configuration
 lb config noauto \
     --mode debian \
-    --distribution bookworm \
+    --distribution trixie \
     --architectures amd64 \
     --linux-flavours amd64 \
     --binary-images iso-hybrid \
     --debian-installer true \
     --debian-installer-gui false \
-    --debian-installer-distribution bookworm \
+    --debian-installer-distribution trixie \
     --apt-indices false \
     --apt-recommends true \
     --cache true \
@@ -37,11 +37,11 @@ mkdir -p config/includes.installer
 mkdir -p config/includes.binary
 
 # Add security and updates
-echo "deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware" > config/archives/security.list.chroot
-echo "deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware" > config/archives/updates.list.chroot
+echo "deb http://security.debian.org/debian-security trixie-security main contrib non-free non-free-firmware" > config/archives/security.list.chroot
+echo "deb http://deb.debian.org/debian trixie-updates main contrib non-free non-free-firmware" > config/archives/updates.list.chroot
 
 # Add Docker repository
-echo "deb [arch=amd64] https://download.docker.com/linux/debian bookworm stable" > config/archives/docker.list.chroot
+echo "deb [arch=amd64] https://download.docker.com/linux/debian trixie stable" > config/archives/docker.list.chroot
 curl -fsSL https://download.docker.com/linux/debian/gpg > config/archives/docker.key.chroot
 
 # Package lists
