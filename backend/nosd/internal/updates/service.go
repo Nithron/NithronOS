@@ -30,21 +30,24 @@ var (
 )
 
 // ConfigDir is what the pre-update snapshot covers: nOS's users, shares,
-// groups, settings and secrets. Package updates don't touch data pools; a
-// whole-system rollback needs a Btrfs root and booting from a snapshot,
-// which nOS doesn't do yet.
+// groups, settings and secrets. With it, the agent keeps the .deb of every
+// package's installed version, so a rollback restores both. Data pools are
+// not touched by package updates.
 const ConfigDir = "/etc/nos"
 
 // Record is one update: its snapshot and what it changed.
 type Record struct {
-	ID        string     `json:"id"`
-	CreatedAt time.Time  `json:"created_at"`
-	Reason    string     `json:"reason"` // update, rollback
-	Packages  []Package  `json:"packages"`
-	Targets   []Target   `json:"targets"`
-	Success   *bool      `json:"success,omitempty"`
-	Finished  *time.Time `json:"finished_at,omitempty"`
-	Notes     string     `json:"notes,omitempty"`
+	ID        string    `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	Reason    string    `json:"reason"` // update, rollback
+	Packages  []Package `json:"packages"`
+	Targets   []Target  `json:"targets"`
+	// Kept are the versions installed before the update whose .debs the
+	// agent kept, so a rollback can reinstall them.
+	Kept     []Package  `json:"kept,omitempty"`
+	Success  *bool      `json:"success,omitempty"`
+	Finished *time.Time `json:"finished_at,omitempty"`
+	Notes    string     `json:"notes,omitempty"`
 }
 
 // Target is one snapshot taken by the agent.
@@ -61,6 +64,7 @@ type persisted struct {
 	RecordID  string         `json:"record_id,omitempty"`
 	LastCheck *CheckResponse `json:"last_check,omitempty"`
 	LogsSeen  int            `json:"logs_seen"`
+	Rollback  *rollbackState `json:"rollback,omitempty"`
 }
 
 // Service runs updates. It is safe for concurrent use.
@@ -69,6 +73,10 @@ type Service struct {
 	dir         string // state.json, records.json
 	channelFile string
 	pollEvery   time.Duration
+	// postflightWait is how long the services get to come back after an
+	// upgrade; minFree is the space an update needs on / (2 GiB).
+	postflightWait time.Duration
+	minFree        uint64
 
 	mu      sync.Mutex
 	st      persisted
@@ -82,7 +90,8 @@ func New(agent Agent, dir, channelFile string) (*Service, error) {
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return nil, err
 	}
-	s := &Service{agent: agent, dir: dir, channelFile: channelFile, pollEvery: 3 * time.Second, subs: map[chan Progress]struct{}{}}
+	s := &Service{agent: agent, dir: dir, channelFile: channelFile, pollEvery: 3 * time.Second,
+		postflightWait: 3 * time.Minute, minFree: 2 << 30, subs: map[chan Progress]struct{}{}}
 	if _, err := fsatomic.LoadJSON(s.statePath(), &s.st); err != nil {
 		return nil, fmt.Errorf("load %s: %w", s.statePath(), err)
 	}
@@ -95,13 +104,22 @@ func New(agent Agent, dir, channelFile string) (*Service, error) {
 func (s *Service) statePath() string   { return filepath.Join(s.dir, "state.json") }
 func (s *Service) recordsPath() string { return filepath.Join(s.dir, "records.json") }
 
-// Resume continues an update that was installing when nosd stopped (the
-// upgrade restarts nosd); one interrupted earlier is marked failed.
+// Resume continues an update or rollback that was running when nosd stopped
+// (the upgrade, and the rollback when it is done, restart nosd); an update
+// interrupted before it installed anything is marked failed.
 func (s *Service) Resume() {
 	s.mu.Lock()
 	p := s.st.Progress
 	if p.State != StateApplying && p.State != StateVerifying && p.State != StateRollingBack {
 		s.mu.Unlock()
+		return
+	}
+	if p.State == StateRollingBack && s.st.Rollback != nil {
+		s.running = true
+		started := s.st.Rollback.Started
+		s.mu.Unlock()
+		s.log("info", PhaseRollback, "nosd restarted during the rollback; following it")
+		go s.resumeRollback(context.Background(), started)
 		return
 	}
 	if p.Phase == PhaseInstall || p.State == StateVerifying {
@@ -235,6 +253,23 @@ func (s *Service) run(req ApplyRequest) {
 		s.fail("Another update is already running on this system")
 		return
 	}
+	if msg := s.spaceProblem(); msg != "" {
+		if !req.Force {
+			s.fail(msg)
+			return
+		}
+		s.log("warn", PhasePreflight, msg+"; continuing (force)")
+	}
+	s.step(PhasePreflight, 8, "Refreshing the package lists")
+	if _, err := s.Check(ctx); err != nil {
+		s.fail("Could not refresh the package lists: " + err.Error())
+		return
+	}
+	rec.Packages = s.pendingPackages(req.Packages)
+	if len(rec.Packages) == 0 {
+		s.finishNothing()
+		return
+	}
 
 	if !req.SkipSnapshot {
 		s.step(PhaseSnapshot, 10, "Saving nOS's configuration ("+ConfigDir+")")
@@ -253,12 +288,22 @@ func (s *Service) run(req ApplyRequest) {
 			return
 		}
 	}
+	if !req.SkipSnapshot {
+		kept, err := s.keepVersions(ctx, rec)
+		if err != nil && !req.Force {
+			s.fail(err.Error())
+			return
+		} else if err != nil {
+			s.log("warn", PhaseSnapshot, err.Error()+"; continuing (force)")
+		}
+		rec.Kept = kept
+	}
 	if err := s.putRecord(rec); err != nil {
 		s.log("warn", PhaseSnapshot, "Could not record the snapshot: "+err.Error())
 	}
 	s.mu.Lock()
 	s.st.RecordID = rec.ID
-	if len(rec.Targets) > 0 {
+	if len(rec.Targets) > 0 || len(rec.Kept) > 0 {
 		s.st.Progress.SnapshotID = rec.ID
 	}
 	s.mu.Unlock()
@@ -297,15 +342,17 @@ func (s *Service) follow(ctx context.Context) {
 		s.addAgentLog(st.Log)
 		switch st.State {
 		case "succeeded":
-			s.finish(st.RebootRequired)
+			s.postflight(ctx, st.RebootRequired)
 			return
 		case "failed":
-			s.fail(fmt.Sprintf("apt-get failed (exit status %d); see the log. The configuration snapshot can be restored with a rollback.", st.ExitStatus))
+			s.autoRollback(ctx, fmt.Sprintf("apt-get failed (exit status %d)", st.ExitStatus))
 			return
 		case "none":
-			// systemd-run returned before the unit showed up; give it a moment.
+			// systemd-run returned before the unit showed up; give it a
+			// moment. Still none: it never ran, or the system restarted
+			// while it did (transient units don't survive a reboot).
 			if time.Since(start) > time.Minute {
-				s.fail("The upgrade did not start")
+				s.autoRollback(ctx, "The upgrade did not run to the end (did the system restart during it?)")
 				return
 			}
 		}
@@ -525,7 +572,7 @@ func (s *Service) Snapshots() ([]Snapshot, error) {
 	}
 	out := []Snapshot{}
 	for _, r := range list {
-		if r.Reason != "update" || len(r.Targets) == 0 {
+		if r.Reason != "update" || (len(r.Targets) == 0 && len(r.Kept) == 0) {
 			continue
 		}
 		paths := []string{}
@@ -533,6 +580,9 @@ func (s *Service) Snapshots() ([]Snapshot, error) {
 			paths = append(paths, t.Path)
 		}
 		desc := fmt.Sprintf("Before updating %d package(s)", len(r.Packages))
+		if len(r.Kept) > 0 {
+			desc += fmt.Sprintf("; the previous versions of %d are kept", len(r.Kept))
+		}
 		out = append(out, Snapshot{ID: r.ID, CreatedAt: r.CreatedAt, Reason: "update", Subvolumes: paths, CanRollback: true, Description: desc})
 	}
 	return out, nil
@@ -549,64 +599,14 @@ func (s *Service) DeleteSnapshot(ctx context.Context, id string) error {
 			return fmt.Errorf("delete %s: %w", t.Location, err)
 		}
 	}
+	if len(rec.Kept) > 0 {
+		if err := s.agent.PostJSON(ctx, "/v1/updates/keep/delete", map[string]any{"id": rec.ID}, nil); err != nil {
+			return fmt.Errorf("delete the kept packages of %s: %w", id, err)
+		}
+	}
 	return s.changeRecords(func(list []Record) []Record {
 		return slices.DeleteFunc(list, func(r Record) bool { return r.ID == id })
 	})
-}
-
-// Rollback restores the configuration saved before update id, then restarts
-// nosd so it reads it. Packages are not downgraded.
-func (s *Service) Rollback(ctx context.Context, id string) error {
-	rec, err := s.Record(id)
-	if err != nil {
-		return err
-	}
-	if len(rec.Targets) == 0 {
-		return fmt.Errorf("update %s has no snapshot", id)
-	}
-	s.mu.Lock()
-	if s.running {
-		s.mu.Unlock()
-		return ErrBusy
-	}
-	s.running = true
-	now := time.Now().UTC()
-	s.st.Progress = Progress{State: StateRollingBack, Phase: PhasePostflight, Progress: 10, Message: "Restoring the configuration", StartedAt: now, Logs: []LogEntry{}, SnapshotID: id}
-	s.st.RecordID = ""
-	s.saveLocked()
-	s.publishLocked()
-	s.mu.Unlock()
-
-	roll := Record{ID: uuid.NewString(), CreatedAt: now, Reason: "rollback", Packages: []Package{}, Targets: rec.Targets, Notes: "rollback of " + id}
-	for _, t := range rec.Targets {
-		if err := s.agent.PostJSON(ctx, "/v1/snapshot/rollback", map[string]any{"path": t.Path, "snapshot_id": t.ID, "type": t.Type}, nil); err != nil {
-			s.fail("Restoring " + t.Path + " failed: " + err.Error())
-			ok := false
-			roll.Success = &ok
-			_ = s.putRecord(roll)
-			return err
-		}
-	}
-	ok := true
-	done := time.Now().UTC()
-	roll.Success, roll.Finished = &ok, &done
-	_ = s.putRecord(roll)
-
-	s.mu.Lock()
-	p := &s.st.Progress
-	p.State, p.Progress, p.CompletedAt = StateRolledBack, 100, &done
-	p.Message = "Configuration restored; nosd restarts to load it (packages were not downgraded)"
-	s.running = false
-	s.saveLocked()
-	s.publishLocked()
-	s.mu.Unlock()
-
-	// nosd holds the old state in memory; restart it (after this reply).
-	go func() {
-		time.Sleep(time.Second)
-		_ = s.agent.PostJSON(context.Background(), "/v1/service/reload", map[string]any{"name": "nosd"}, nil)
-	}()
-	return nil
 }
 
 // Prune deletes all but the newest keep update snapshots.

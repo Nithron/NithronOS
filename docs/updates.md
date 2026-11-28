@@ -1,240 +1,159 @@
-# nOS Updates & Releases
+# nOS updates and rollback
 
-## Overview
+An update upgrades the system's packages with APT. Before it does, nOS saves
+its own configuration and keeps the installed version of every package it is
+about to upgrade. If the upgrade fails, or nOS does not work afterwards, the
+update is rolled back automatically: the configuration is restored and the
+previous package versions are reinstalled. Any update can also be rolled back
+by hand later, from the snapshot it left.
 
-nOS provides atomic system updates with automatic rollback capabilities, ensuring your system remains stable and recoverable even if an update fails.
+## What an update does
 
-## Key Features
+The Updates page (**Settings → Updates & releases**) and `POST /api/v1/updates/apply`
+start the same sequence. nosd runs it and asks nos-agent for everything that
+needs root.
 
-- **Signed APT repositories**: All packages are GPG-signed for security
-- **Multiple channels**: Choose between stable and beta update tracks
-- **Atomic updates**: Btrfs snapshots ensure updates can be rolled back
-- **Automatic rollback**: Failed updates automatically revert to the previous state
-- **Progress tracking**: Real-time update progress with detailed logs
-- **Snapshot management**: Keep and manage multiple system snapshots
+1. **Checks.** nos-agent must answer and no other update may be running. At
+   least 2 GB must be free on `/` and on `/var/cache/apt`. The package lists
+   are refreshed (`apt-get update`) and the packages to upgrade are listed with
+   their installed and new versions.
+2. **Snapshot.** nOS's configuration, `/etc/nos` (users, groups, shares,
+   settings and secrets), is saved as an archive under
+   `/var/lib/nos/snapshots/`. Then nos-agent keeps a `.deb` of the installed
+   version of each package being upgraded, in `/var/lib/nos/update-debs/<id>/`.
+   It takes the file from APT's cache when it is there, downloads it from the
+   package repository when it is still offered, and otherwise rebuilds it from
+   the installed files with `dpkg-repack`.
+   If a version cannot be kept, the update stops before anything is installed,
+   because it could not be undone.
+3. **Install.** `apt-get upgrade` (or `apt-get install --only-upgrade` for the
+   packages chosen) runs as its own systemd unit, `nos-update`, so it is not
+   interrupted when the upgrade restarts nosd or nos-agent. New dependencies
+   are installed; nothing is removed. Changed configuration files keep the
+   local version.
+4. **Verify.** After the upgrade, nosd, nos-agent and Caddy must be running,
+   the web interface's files must be in place, and the API must answer through
+   Caddy. nOS gives them up to three minutes to come back.
+5. **Done.** The update is marked successful and old snapshots are pruned (see
+   [Snapshot retention](#snapshot-retention)). If a package asks for a restart
+   (a new kernel, for example), the page says so; nOS does not restart the
+   system by itself.
 
-## Update Channels
+Data pools are never touched by an update.
 
-### Stable Channel (Default)
-- Production-ready releases
-- Thoroughly tested updates
-- Recommended for most users
-- Lower update frequency
+## Automatic rollback
 
-### Beta Channel
-- Early access to new features
-- More frequent updates
-- May contain bugs
-- For testing and development
+The update is rolled back without asking when:
 
-To change channels:
+- APT fails;
+- the checks after the upgrade still fail when the three minutes are over;
+- the upgrade did not run to the end, for example because the system lost
+  power or was restarted during it. nosd notices when it starts again.
+
+A rollback restores `/etc/nos` from the snapshot and then runs the systemd unit
+`nos-update-revert`. That unit finishes any interrupted `dpkg` run
+(`dpkg --configure -a`), reinstalls the kept `.deb`s with downgrades allowed,
+and restarts nosd. The restarted nosd reads the restored configuration and
+marks the rollback done. The update is recorded as failed, with the reason and
+"rolled back automatically".
+
+If the rollback itself fails, the page says so and shows the log. The system
+may then be between versions; the kept `.deb`s are still in
+`/var/lib/nos/update-debs/<id>/` and can be installed by hand with
+`apt-get install --allow-downgrades /var/lib/nos/update-debs/<id>/*.deb`.
+
+## Rolling back by hand
+
+Every snapshot listed under **System snapshots** can be rolled back. This puts
+back the configuration from before that update and reinstalls the package
+versions that update replaced. nosd restarts at the end, so the page reconnects.
+
 ```bash
-# Via API
-curl -X POST http://localhost:9000/api/v1/updates/channel \
+curl -X POST https://<nos>/api/v1/updates/rollback \
   -H "Content-Type: application/json" \
-  -d '{"channel": "beta"}'
-
-# Via UI
-Navigate to Settings → Updates & Releases → Update Channel
+  -d '{"snapshot_id": "<id from /api/v1/updates/snapshots>"}'
 ```
 
-## Update Process
+A rollback answers `202 Accepted` once it has started. Follow
+`/api/v1/updates/progress` until the state is `rolled_back` or `failed`.
 
-### 1. Preflight Checks
-Before applying updates, the system performs:
-- Disk space verification (minimum 2GB required)
-- Network connectivity test
-- Repository accessibility check
-- GPG signature verification
+Packages that an update newly installed (new dependencies) stay installed after
+a rollback; they are not removed.
 
-### 2. Snapshot Creation
-- Creates Btrfs snapshots of critical subvolumes:
-  - `@` (root filesystem)
-  - `@etc` (configuration)
-  - `@var` (variable data)
-- Snapshots are stored in `/.snapshots/nos-update/`
-- Each snapshot is timestamped and read-only
+Rolling back an older update only reinstalls the packages that update changed;
+packages upgraded by later updates stay at their newer versions. The
+configuration goes back to how it was before that update.
 
-### 3. Package Download & Installation
-- Downloads packages from the configured channel
-- Applies updates using `apt-get dist-upgrade`
-- Maintains package dependencies automatically
+## Snapshot retention
 
-### 4. Postflight Verification
-After installation, the system verifies:
-- Critical services are running (nosd, nos-agent, caddy)
-- Web UI is accessible
-- No system degradation detected
+After each successful update, nOS keeps the newest **3** update snapshots and
+deletes the older ones together with their kept `.deb`s. To change the number
+(1 to 20), use the setting under **System snapshots**, or the API:
 
-### 5. Automatic Rollback
-If postflight checks fail:
-- System automatically rolls back to the pre-update snapshot
-- Services are restarted
-- Update is marked as failed
-
-## Using the Updates UI
-
-### Checking for Updates
-1. Navigate to **Settings → Updates & Releases**
-2. Click **Check for Updates**
-3. Review available updates and their changelog
-
-### Applying Updates
-1. Click **Apply Update** when updates are available
-2. Monitor real-time progress:
-   - Preflight checks
-   - Snapshot creation
-   - Package download
-   - Installation
-   - Postflight verification
-3. System will notify on completion or failure
-
-### Managing Snapshots
-- View all system snapshots in the UI
-- Each snapshot shows:
-  - Creation timestamp
-  - Size on disk
-  - Rollback availability
-- Delete old snapshots to free space
-- Manually rollback to any snapshot
-
-## CLI Usage
-
-### Check for Updates
 ```bash
-curl http://localhost:9000/api/v1/updates/check
-```
-
-### Apply Updates
-```bash
-curl -X POST http://localhost:9000/api/v1/updates/apply
-```
-
-### Monitor Progress
-```bash
-# Get current progress
-curl http://localhost:9000/api/v1/updates/progress
-
-# Stream progress (Server-Sent Events)
-curl -N http://localhost:9000/api/v1/updates/progress/stream
-```
-
-### List Snapshots
-```bash
-curl http://localhost:9000/api/v1/updates/snapshots
-```
-
-### Rollback
-```bash
-curl -X POST http://localhost:9000/api/v1/updates/rollback \
+curl -X PUT https://<nos>/api/v1/updates/config \
   -H "Content-Type: application/json" \
-  -d '{"snapshot_id": "update-1234567890"}'
+  -d '{"snapshot_retention": 5}'
 ```
 
-## Snapshot Retention
+The setting is stored in `/etc/nos/update/config.json` and is read when it is
+needed, so no restart is necessary after changing the file. A snapshot can also
+be deleted by hand from the list.
 
-By default, the system keeps the 3 most recent update snapshots. Older snapshots are automatically pruned to save disk space.
-
-To modify retention:
-- Edit `/etc/nos/update/config.json`
-- Set `snapshot_retention` to desired number
-- Restart the update service
-
-## Repository Configuration
-
-### Adding the nOS Repository
+## Following an update
 
 ```bash
-# Import GPG key
-wget -qO - https://nos.nithron.com/apt/nos-release.gpg | \
-  sudo gpg --dearmor -o /usr/share/keyrings/nos-archive-keyring.gpg
+# The state, the phase and the log
+curl https://<nos>/api/v1/updates/progress
 
-# Add repository
-echo "deb [signed-by=/usr/share/keyrings/nos-archive-keyring.gpg] \
-  https://nos.nithron.com/apt stable main" | \
-  sudo tee /etc/apt/sources.list.d/nos.list
-
-# Update package lists
-sudo apt update
+# The same as Server-Sent Events
+curl -N https://<nos>/api/v1/updates/progress/stream
 ```
 
-### Repository Pinning
+The states are `idle`, `applying`, `verifying`, `success`, `failed`,
+`rolling_back` and `rolled_back`. The phases are `preflight`, `snapshot`,
+`install`, `postflight` and `rollback`.
 
-APT preferences are automatically configured to prevent cross-channel package drift:
-- Packages from the selected channel have priority 1001
-- Other nOS packages have priority 900
-- System packages maintain default priority
+The progress is kept in `/var/lib/nos/updates/state.json` and the list of
+updates and rollbacks in `/var/lib/nos/updates/records.json`. Both survive a
+restart of nosd. Each run of APT is also written to
+`/var/log/nos-updates.log`, and the systemd journal has the full output:
 
-## Safety Features
+```bash
+journalctl -u nos-update
+journalctl -u nos-update-revert
+```
 
-### Power Loss Protection
-- Update state is persisted to `/var/lib/nos-update/state.json`
-- On boot, incomplete updates are detected and rolled back
-- Ensures system consistency after unexpected shutdowns
+Only one update or rollback runs at a time; starting a second one answers
+`409 Conflict`.
 
-### Lock File
-- Single-writer lock prevents concurrent updates
-- Located at `/var/run/nos-update.lock`
-- Automatically released on completion or failure
+## Channels and the package repository
 
-### Failure Limits
-- System tracks consecutive update failures
-- After 3 failures, automatic updates are disabled
-- Manual intervention required to reset
+nOS records a release channel, **stable** (the default) or **beta**, in
+`/etc/nos/update/channel`. nOS does not have its own package repository yet,
+so the channel does not change where packages come from: updates come from the
+APT sources the system has. When the signed nOS repository at
+`https://nos.nithron.com/apt` is published, the channel will choose between
+its stable and beta suites.
 
 ## Troubleshooting
 
-### Update Fails to Start
-- Check disk space: `df -h /`
-- Verify network: `ping nos.nithron.com`
-- Check lock file: `ls -la /var/run/nos-update.lock`
+**The update does not start.** The message says why: nos-agent not answering,
+another update running, or too little free space (`df -h / /var/cache/apt`).
 
-### Automatic Rollback Triggered
-- Review logs: `/var/log/nos-update.log`
-- Check service status:
-  ```bash
-  systemctl status nosd nos-agent caddy
-  ```
-- Verify connectivity to Web UI
+**The update stopped at "Keeping the installed versions".** A package's
+installed version could not be kept. Check that `dpkg-repack` is installed
+(`apt-get install dpkg-repack`). An update can still be forced through the API
+with `{"force": true}`, but then it cannot be rolled back completely.
 
-### Cannot Create Snapshots
-- Ensure filesystem is Btrfs: `stat -f -c %T /`
-- Check snapshot directory permissions
-- Verify sufficient disk space
+**The update was rolled back.** The reason is shown on the Updates page and in
+the record (`GET /api/v1/snapshots/<id>`). For the checks after an upgrade:
 
-### Repository Issues
-- Verify GPG key: `apt-key list`
-- Check sources: `cat /etc/apt/sources.list.d/nos.list`
-- Test signature verification:
-  ```bash
-  apt-get update -o Debug::Acquire::gpgv=true
-  ```
-
-## Best Practices
-
-1. **Regular Updates**: Check for updates weekly
-2. **Monitor Disk Space**: Keep at least 5GB free for updates
-3. **Test Beta Updates**: Use a non-production system for beta channel
-4. **Backup Important Data**: While snapshots provide rollback, they're not backups
-5. **Review Changelogs**: Understand what's changing before updating
-
-## Security Considerations
-
-- All packages are GPG-signed with nOS release key
-- HTTPS is used for all repository communications
-- Signature verification is mandatory (cannot be bypassed)
-- Failed signature checks prevent any package installation
-
-## API Reference
-
-See [API Documentation](./api/updates.md) for detailed endpoint specifications.
+```bash
+systemctl status nosd nos-agent caddy
+curl -s http://127.0.0.1/api/v1/health
+```
 
 ## Telemetry
 
-Telemetry is **disabled by default** and completely optional. If enabled, the following anonymous data is collected:
-- System version information
-- Update success/failure status
-- Update duration
-- Rollback frequency
-
-No personal or identifying information is ever collected or transmitted.
+nOS sends nothing about updates anywhere.

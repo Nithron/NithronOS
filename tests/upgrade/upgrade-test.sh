@@ -7,9 +7,10 @@
 #   tests/upgrade/upgrade-test.sh <base URL> <setup token> <new nosd version>
 #
 # Checks: the update check offers the new nosd; applying it saves /etc/nos
-# first and installs it; a rollback restores /etc/nos as it was before the
-# update (a share made after the update is gone, one made before is kept)
-# and nosd comes back.
+# and keeps the installed nosd's .deb first, installs it, and passes the
+# check after the update; a rollback restores /etc/nos as it was before the
+# update (a share made after the update is gone, one made before is kept),
+# reinstalls the nosd that was there before, and nosd comes back.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -76,14 +77,19 @@ check="$(api POST /api/v1/updates/check)" || fail "update check after the update
 [ -z "$(jq -r '.latest_version.packages[]? | select(.name == "nosd") | .new_version' <<<"$check")" ] ||
 	fail "nosd is still offered after the update: $(jq -c . <<<"$check")"
 log "ok: nosd $NEXT is installed"
+kept="$(api GET /api/v1/updates/snapshots | jq -r --arg s "$snapshot" '.snapshots[] | select(.id == $s) | .description')"
+case "$kept" in *"previous versions of 1 are kept"*) ;; *) fail "the snapshot does not keep the previous nosd: '$kept'" ;; esac
+log "ok: the previous nosd is kept"
 
 make_share after-update || fail "share after the update"
 [ "$(share_names)" = "after-update before-update" ] || fail "shares before the rollback: $(share_names)"
 
-log "rolling back to the configuration before the update"
+log "rolling back the update"
 api POST /api/v1/updates/rollback "$(jq -nc --arg s "$snapshot" '{snapshot_id:$s}')" >/dev/null || fail "rollback"
-wait_progress rolled_back failed >/dev/null
-# nosd restarts to read the restored configuration.
+# The previous nosd is reinstalled, then nosd restarts (and finishes the
+# rollback) with the restored configuration.
+progress="$(wait_progress rolled_back failed)"
+[ "$(jq -r .state <<<"$progress")" = rolled_back ] || fail "rollback: $(jq -c '{message,error,logs:[.logs[-8:][]?.message]}' <<<"$progress")"
 sleep 5
 for _ in $(seq 1 60); do
 	k -f "$BASE/api/v1/health" >/dev/null 2>&1 && break
@@ -98,5 +104,12 @@ for _ in $(seq 1 10); do
 done
 [ "$names" = "before-update" ] || fail "shares after the rollback: '$names' (want before-update)"
 log "ok: /etc/nos restored (the share made after the update is gone)"
+# The test's next nosd is the same build under a newer package version, so
+# the package version tells them apart: offered again means the old one is
+# installed.
+check="$(api POST /api/v1/updates/check)" || fail "update check after the rollback"
+offered="$(jq -r '.latest_version.packages[]? | select(.name == "nosd") | .new_version' <<<"$check")"
+[ "$offered" = "$NEXT" ] || fail "after the rollback the check offers nosd '${offered:-nothing}', want $NEXT again: $(jq -c . <<<"$check")"
+log "ok: the nosd from before the update is installed again"
 
 log "passed"

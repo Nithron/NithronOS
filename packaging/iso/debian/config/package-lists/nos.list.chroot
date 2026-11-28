@@ -21,6 +21,8 @@ util-linux
 coreutils
 findutils
 nvme-cli
+# Rolling an update back rebuilds .debs of installed versions (nos-agent).
+dpkg-repack
 
 
 systemd-sysv

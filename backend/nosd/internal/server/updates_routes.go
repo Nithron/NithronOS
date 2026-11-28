@@ -42,6 +42,20 @@ func (d *routeDeps) registerUpdates(pr chi.Router) {
 		writeJSON(w, map[string]any{"status": "ok", "channel": body.Channel})
 	})
 
+	pr.Get("/api/v1/updates/config", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, svc.Config()) })
+	pr.With(admin).Put("/api/v1/updates/config", func(w http.ResponseWriter, r *http.Request) {
+		var body updates.Config
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&body); err != nil {
+			httpx.WriteTypedError(w, http.StatusBadRequest, "updates.invalid_config", "The settings could not be read", 0)
+			return
+		}
+		if err := svc.SetConfig(body); err != nil {
+			httpx.WriteTypedError(w, http.StatusBadRequest, "updates.invalid_config", err.Error(), 0)
+			return
+		}
+		writeJSON(w, svc.Config())
+	})
+
 	check := func(w http.ResponseWriter, r *http.Request) {
 		res, err := svc.Check(r.Context())
 		if err != nil {
@@ -89,7 +103,9 @@ func (d *routeDeps) registerUpdates(pr chi.Router) {
 		case err != nil:
 			httpx.WriteTypedError(w, http.StatusBadGateway, "updates.rollback_failed", err.Error(), 0)
 		default:
-			writeJSON(w, map[string]any{"status": "rolled_back", "message": "Configuration restored; nosd restarts to load it (packages were not downgraded)"})
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusAccepted)
+			_ = json.NewEncoder(w).Encode(map[string]any{"status": "rolling_back", "message": "Configuration restored; the previous package versions are being reinstalled, then nosd restarts. Follow /api/v1/updates/progress"})
 		}
 	})
 
@@ -139,7 +155,7 @@ func (d *routeDeps) registerUpdates(pr chi.Router) {
 		}
 		_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&body)
 		if body.KeepPerTarget <= 0 {
-			body.KeepPerTarget = 5
+			body.KeepPerTarget = svc.Config().SnapshotRetention
 		}
 		deleted, err := svc.Prune(r.Context(), body.KeepPerTarget)
 		if err != nil {
