@@ -62,7 +62,9 @@ wait_progress() {
 make_share before-update || fail "share before the update"
 
 log "checking for updates"
-check="$(api POST /api/v1/updates/check)" || fail "update check"
+status="$(api_status POST /api/v1/updates/check)"
+[ "$status" = 200 ] || fail "update check answered $status: $(cat "$API_BODY_FILE")"
+check="$(cat "$API_BODY_FILE")"
 offered="$(jq -r '.latest_version.packages[]? | select(.name == "nosd") | .new_version' <<<"$check")"
 [ "$offered" = "$NEXT" ] || fail "the check offers nosd '${offered:-nothing}', want $NEXT: $(jq -c . <<<"$check")"
 log "ok: nosd $NEXT is offered"
