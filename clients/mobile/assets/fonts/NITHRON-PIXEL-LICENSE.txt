@@ -1,0 +1,51 @@
+Nithron Community License (NCL) v1.0
+Copyright (c) 2025-2026 Thiago Benkendorf & Nithron. All rights reserved.
+This License covers the Nithron software it is distributed with (for example NithronOS, NithronAI or Niro); the NOTICE file names the product.
+https://nithron.com
+
+1. Definitions
+“Software” means the source code, build scripts, and documentation in the repository or source distribution this License accompanies.
+“Official Build Artifacts” means prebuilt ISOs, packages, update repositories, container images, and signing keys released by Nithron.
+“Non-Commercial Use” means use by an individual for personal, educational, research, or open-source contribution purposes, with no direct or indirect monetary compensation or consideration and not on behalf of any for-profit entity.
+“Commercial Use” means any use that is not Non-Commercial Use, including use by or on behalf of a for-profit entity, providing services to third parties, hosting, resale, paid support, consulting, or any monetized distribution.
+“Trademarks” means the names “Nithron”, “NithronOS”, “nOS”, “NithronAI”, “nAI”, “Niro”, the names of other Nithron products, related logos, wordmarks, and brand assets.
+
+2. License Grant (Non-Commercial)
+Subject to your full compliance with this License:
+2.1 You may copy, use, modify, and create derivative works of the Software for Non-Commercial Use.
+2.2 You may compile the Software for your own Non-Commercial Use. You may not redistribute compiled binaries or images.
+2.3 You may redistribute source code and patches for Non-Commercial Use, provided you include this License and preserve all notices.
+
+3. Restrictions
+3.1 No Commercial Use. You may not use, host, offer, sell, license, sublicense, monetize, or distribute the Software, derivative works, or compiled artifacts for Commercial Use without a separate commercial agreement with Nithron.
+3.2 No Competing Distribution. You may not publish or distribute prebuilt binaries, ISOs, container images, app catalogs, or update repositories derived from the Software, whether or not for consideration, without a commercial agreement.
+3.3 No Service Offering. You may not offer or provide the Software as a hosted or managed service to third parties without a commercial agreement.
+3.4 Trademarks. This License does not grant rights to the Trademarks. You may not use them, or confusingly similar names (including “NithronOS”, “Nithron OS”, “nOS”, “NOS”, “NithronAI”, “Nithron AI”, “nAI”, “NAI”, “Niro”, “Niro Bot”, or variants such as “BetterNOS”, “BetterNAI” or “BetterNiro”), except to truthfully describe your fork as a fork of the product it is based on (for example “a fork of NithronOS”) in plain text. Remove all brand assets in forks.
+3.5 Notices. Do not remove or alter copyright, license, or attribution notices.
+3.6 No Sublicensing. You may not sublicense the Software.
+
+4. Contributions
+By submitting a contribution, you:
+(a) represent you have the right to do so and your contribution does not violate third-party rights; and
+(b) license your contribution to Nithron under this NCL; and
+(c) grant Nithron a perpetual, worldwide, irrevocable right to relicense your contribution, including under open-source or commercial terms, to ensure project continuity.
+
+5. Official Build Artifacts
+Official Build Artifacts are NOT provided under this License. Their use is governed by Nithron’s Binary EULA or commercial terms. You must not mirror, repackage, resell, or redistribute Official Build Artifacts.
+
+6. Patent Grant (Non-Commercial)
+For Non-Commercial Use only, each contributor grants a non-exclusive, worldwide, royalty-free patent license to make, use, and modify the Software. No patent rights are granted for Commercial Use.
+
+7. Compliance & Termination
+This License terminates automatically if you breach it. Upon termination, you must stop using the Software and destroy all copies. Sections 3–10 survive termination.
+
+8. Warranty Disclaimer
+THE SOFTWARE IS PROVIDED “AS IS” WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. USE AT YOUR OWN RISK.
+
+9. Limitation of Liability
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, NITHRON AND CONTRIBUTORS ARE NOT LIABLE FOR ANY DAMAGES OR DATA LOSS ARISING FROM USE OF THE SOFTWARE.
+
+10. Governing Law
+This License is governed by the laws of Germany. Exclusive venue: Berlin, Germany.
+
+For Commercial Use rights, contact: licensing@nithron.com
