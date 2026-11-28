@@ -2,17 +2,83 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --nithron-blue: #2D7FF9;
-  --nithron-lime: #A4F932;
-  --nithron-dark: #0f172a;
+/*
+ * NithronSync on the Nithron tokens (styles/nithron-tokens.css, loaded first
+ * by main.tsx), the same way the nOS web interface is: the tokens hold every
+ * value and follow the system's light or dark theme. This file never holds a
+ * colour value. The interface has no hue; colour is only status.
+ */
+@layer base {
+  @font-face {
+    font-family: 'Nithron Pixel';
+    src: url('/fonts/nithron-pixel.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: 'Mona Sans Variable';
+    src: url('/fonts/MonaSansVF-opsz-wght.woff2') format('woff2');
+    font-weight: 200 900;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: 'Monaspace Neon';
+    src: url('/fonts/MonaspaceNeon-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  :root {
+    --status-ok: var(--status-pass);
+    --status-ok-text: var(--status-pass-text);
+    --status-warning: var(--status-earlier);
+    --status-warning-text: var(--status-earlier-text);
+  }
+
+  * {
+    border-color: var(--hairline);
+  }
+
+  html {
+    font-family: var(--font-sans);
+    font-size: 16px;
+  }
+
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-size: var(--text-small);
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  input,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--rule);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-2);
+  }
 }
 
-body {
-  @apply bg-slate-50 text-slate-900;
-}
-
-/* Drag region for window */
+/* The window's own title bar. */
 .drag-region {
   -webkit-app-region: drag;
 }
@@ -21,22 +87,202 @@ body {
   -webkit-app-region: no-drag;
 }
 
-/* Animations */
-@keyframes pulse-sync {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+@layer components {
+  .screen-title {
+    font-size: var(--text-h3);
+    line-height: var(--leading-h3);
+    font-weight: var(--weight-h3);
+    letter-spacing: var(--tracking-h3);
+  }
+
+  /* Labels and column heads: the mono face, quieter. */
+  .label {
+    font-family: var(--font-mono);
+    font-size: var(--text-label);
+    color: var(--ink-2);
+  }
+
+  /* Fields: 44 px high, a 1 px --edge line that turns ink on focus. */
+  .field {
+    display: block;
+    min-height: var(--control-height);
+    width: 100%;
+    border: 1px solid var(--edge);
+    border-radius: var(--radius-control);
+    background: var(--page);
+    color: var(--ink);
+    padding: 0 0.75rem;
+    font-size: var(--text-small);
+  }
+
+  textarea.field {
+    padding: 0.625rem 0.75rem;
+  }
+
+  .field::placeholder {
+    color: var(--dim);
+  }
+
+  .field:focus {
+    border-color: var(--ink);
+    outline: none;
+  }
+
+  .field:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+
+  .field[aria-invalid='true'] {
+    border-color: var(--status-failed);
+  }
+
+  /* The first action in ink; every other one a line button. */
+  .btn {
+    display: inline-flex;
+    min-height: var(--control-height);
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-control);
+    padding: 0 1.25rem;
+    font-size: var(--text-small);
+    font-weight: var(--weight-strong);
+  }
+
+  .btn:focus-visible,
+  .icon-btn:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .btn-primary {
+    background: var(--ink);
+    color: var(--page);
+  }
+
+  .btn-line {
+    border: 1px solid var(--rule);
+    color: var(--ink);
+  }
+
+  .btn-line:hover:not(:disabled) {
+    border-color: var(--ink);
+  }
+
+  /* An icon-only button: 32 px, its name for a screen reader. */
+  .icon-btn {
+    display: inline-flex;
+    width: 32px;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-control);
+    color: var(--ink-2);
+  }
+
+  .icon-btn:hover {
+    background: color-mix(in srgb, var(--ink) 9%, var(--page));
+    color: var(--ink);
+  }
+
+  /* A switch: a 1 px --edge track, ink when on, its state in words. */
+  .switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+    border: 1px solid var(--edge);
+    border-radius: 999px;
+    background: var(--page);
+  }
+
+  .switch::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    background: var(--ink-2);
+    transition: transform var(--duration-state);
+  }
+
+  .switch[aria-checked='true'] {
+    border-color: var(--ink);
+    background: var(--ink);
+  }
+
+  .switch[aria-checked='true']::after {
+    background: var(--page);
+    transform: translateX(16px);
+  }
+
+  .switch:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
 }
 
-.animate-pulse-sync {
-  animation: pulse-sync 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
+/* The pixel layer: whole pixels, no smoothing. */
+@layer components {
+  /* Nithron Pixel: the product's name, the words of a loading or empty
+     screen. Sharp only at whole multiples of 8 px. */
+  .pixel-display {
+    font-family: var(--font-pixel);
+    font-size: 16px;
+    line-height: 1.25;
+    font-weight: 400;
+    font-style: normal;
+    font-synthesis: none;
+    letter-spacing: 0;
+    font-kerning: none;
+    font-variant-ligatures: none;
+  }
 
-@keyframes spin-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
+  .pixel-display.pixel-24 {
+    font-size: 24px;
+  }
 
-.animate-spin-slow {
-  animation: spin-slow 3s linear infinite;
-}
+  .pixel-blink {
+    animation: pixel-lamp var(--loop-lamp) steps(1, end) infinite;
+  }
 
+  .pixel-cursor::after {
+    content: '';
+    display: inline-block;
+    width: 0.6em;
+    height: 1.1em;
+    margin-left: 0.15em;
+    vertical-align: text-bottom;
+    background: currentColor;
+    animation: pixel-blink var(--loop-cursor) steps(1, end) infinite;
+  }
+
+  @keyframes pixel-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes pixel-lamp {
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pixel-blink,
+    .pixel-cursor::after,
+    .switch::after {
+      animation: none;
+      transition: none;
+    }
+  }
+}

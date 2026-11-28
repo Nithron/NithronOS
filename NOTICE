@@ -23,5 +23,9 @@ Both files are the upstream release files, unchanged (renamed only).
 
 The design tokens in web/src/styles/nithron-tokens.css come from @nithron/tokens 0.4.0, the pixel display
 face web/public/fonts/nithron-pixel.woff2 (Nithron Pixel) from the same package, and the pixel icons in
-web/src/vendor/nithron-icons from @nithron/icons 0.1.0; all by Nithron, under the Nithron Community License
+web/src/vendor/nithron-icons from @nithron/icons 0.2.0; all by Nithron, under the Nithron Community License
 v1.0 (web/public/fonts/NITHRON-PIXEL-LICENSE.txt, web/src/vendor/nithron-icons/LICENSE).
+
+The NithronSync desktop client carries the same copies: clients/desktop/frontend/src/styles/nithron-tokens.css,
+clients/desktop/frontend/public/fonts (the three faces with their licences) and
+clients/desktop/frontend/src/vendor/nithron-icons.
